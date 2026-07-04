@@ -13,9 +13,15 @@ namespace {
 constexpr double MU0_OVER_4PI = 1.0e-7;
 constexpr double TWOPI = 6.283185307179586476925286766559;
 constexpr int WARP_SIZE = 32;
-constexpr int WARPS_PER_BLOCK = 8;
+#ifndef SGPU_WARPS_PER_BLOCK
+#define SGPU_WARPS_PER_BLOCK 8
+#endif
+#ifndef SGPU_SEG_TILE
+#define SGPU_SEG_TILE 256
+#endif
+constexpr int WARPS_PER_BLOCK = SGPU_WARPS_PER_BLOCK;
 constexpr int THREADS_PER_BLOCK = WARP_SIZE * WARPS_PER_BLOCK;
-constexpr int SEG_TILE = 256;
+constexpr int SEG_TILE = SGPU_SEG_TILE;
 
 thread_local std::string g_last_error;
 
@@ -210,6 +216,139 @@ __global__ void trace_period_kernel(
         Z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z);
     }
     if (line < nlines && lane == 0) {
+        R1[line] = R;
+        Z1[line] = Z;
+    }
+}
+
+__device__ void eval_B_block(
+    double px, double py, double pz,
+    const double* __restrict__ seg_x,
+    const double* __restrict__ seg_y,
+    const double* __restrict__ seg_z,
+    const double* __restrict__ seg_wx,
+    const double* __restrict__ seg_wy,
+    const double* __restrict__ seg_wz,
+    int nseg,
+    double* sh,
+    double& bx_out,
+    double& by_out,
+    double& bz_out
+) {
+    int tid = threadIdx.x;
+    double* sx = sh;
+    double* sy = sx + SEG_TILE;
+    double* sz = sy + SEG_TILE;
+    double* swx = sz + SEG_TILE;
+    double* swy = swx + SEG_TILE;
+    double* swz = swy + SEG_TILE;
+    double* rb = swz + SEG_TILE;
+    double* rby = rb + blockDim.x;
+    double* rbz = rby + blockDim.x;
+
+    double bx = 0.0, by = 0.0, bz = 0.0;
+    for (int base = 0; base < nseg; base += SEG_TILE) {
+        int count = min(SEG_TILE, nseg - base);
+        for (int j = tid; j < count; j += blockDim.x) {
+            int idx = base + j;
+            sx[j] = seg_x[idx];
+            sy[j] = seg_y[idx];
+            sz[j] = seg_z[idx];
+            swx[j] = seg_wx[idx];
+            swy[j] = seg_wy[idx];
+            swz[j] = seg_wz[idx];
+        }
+        __syncthreads();
+        for (int j = tid; j < count; j += blockDim.x) {
+            double rx = px - sx[j];
+            double ry = py - sy[j];
+            double rz = pz - sz[j];
+            double r2 = rx * rx + ry * ry + rz * rz + 1.0e-300;
+            double invr = rsqrt(r2);
+            double invr3 = invr * invr * invr;
+            double wx = swx[j];
+            double wy = swy[j];
+            double wz = swz[j];
+            bx += (wy * rz - wz * ry) * invr3;
+            by += (wz * rx - wx * rz) * invr3;
+            bz += (wx * ry - wy * rx) * invr3;
+        }
+        __syncthreads();
+    }
+    rb[tid] = bx;
+    rby[tid] = by;
+    rbz[tid] = bz;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            rb[tid] += rb[tid + stride];
+            rby[tid] += rby[tid + stride];
+            rbz[tid] += rbz[tid + stride];
+        }
+        __syncthreads();
+    }
+    bx_out = rb[0] * MU0_OVER_4PI;
+    by_out = rby[0] * MU0_OVER_4PI;
+    bz_out = rbz[0] * MU0_OVER_4PI;
+}
+
+__device__ void rhs_cyl_block(
+    double R, double Z, double phi,
+    const double* __restrict__ seg_x,
+    const double* __restrict__ seg_y,
+    const double* __restrict__ seg_z,
+    const double* __restrict__ seg_wx,
+    const double* __restrict__ seg_wy,
+    const double* __restrict__ seg_wz,
+    int nseg,
+    double* sh,
+    double& dR,
+    double& dZ
+) {
+    double cp = cos(phi);
+    double sp = sin(phi);
+    double bx, by, bz;
+    eval_B_block(R * cp, R * sp, Z, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, bx, by, bz);
+    double br = bx * cp + by * sp;
+    double bphi = -bx * sp + by * cp;
+    double denom = fabs(bphi) > 1.0e-14 ? bphi : copysign(1.0e-14, bphi == 0.0 ? 1.0 : bphi);
+    dR = R * br / denom;
+    dZ = R * bz / denom;
+}
+
+__global__ void trace_period_blockline_kernel(
+    const double* __restrict__ seg_x,
+    const double* __restrict__ seg_y,
+    const double* __restrict__ seg_z,
+    const double* __restrict__ seg_wx,
+    const double* __restrict__ seg_wy,
+    const double* __restrict__ seg_wz,
+    int nseg,
+    const double* __restrict__ R0,
+    const double* __restrict__ Z0,
+    double* __restrict__ R1,
+    double* __restrict__ Z1,
+    int nlines,
+    int nfp,
+    int steps
+) {
+    extern __shared__ double sh[];
+    int line = blockIdx.x;
+    double R = (line < nlines) ? R0[line] : 1.0;
+    double Z = (line < nlines) ? Z0[line] : 0.0;
+    double period = TWOPI / static_cast<double>(nfp);
+    double h = period / static_cast<double>(steps);
+    for (int s = 0; s < steps; ++s) {
+        double phi = h * static_cast<double>(s);
+        double k1r, k1z, k2r, k2z, k3r, k3z, k4r, k4z;
+        rhs_cyl_block(R, Z, phi, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k1r, k1z);
+        rhs_cyl_block(R + 0.5 * h * k1r, Z + 0.5 * h * k1z, phi + 0.5 * h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k2r, k2z);
+        rhs_cyl_block(R + 0.5 * h * k2r, Z + 0.5 * h * k2z, phi + 0.5 * h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k3r, k3z);
+        rhs_cyl_block(R + h * k3r, Z + h * k3z, phi + h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k4r, k4z);
+        R += (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r);
+        Z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z);
+    }
+    if (line < nlines && threadIdx.x == 0) {
         R1[line] = R;
         Z1[line] = Z;
     }
@@ -434,6 +573,45 @@ int sgpu_trace_period(void* handle, const double* R0_host, const double* Z0_host
     trace_period_kernel<<<blocks, THREADS_PER_BLOCK, shmem>>>(f->d_x, f->d_y, f->d_z, f->d_wx, f->d_wy, f->d_wz, f->n_segments, d_R0, d_Z0, d_R1, d_Z1, n_lines, nfp, steps);
     if (cuda_check(cudaGetLastError(), "trace_period kernel") ||
         cuda_check(cudaDeviceSynchronize(), "trace_period sync") ||
+        cuda_check(cudaMemcpy(R1_host, d_R1, bytes, cudaMemcpyDeviceToHost), "copy R1") ||
+        cuda_check(cudaMemcpy(Z1_host, d_Z1, bytes, cudaMemcpyDeviceToHost), "copy Z1")) {
+        cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
+        return 1;
+    }
+    cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
+    set_error("");
+    return 0;
+}
+
+int sgpu_trace_period_blockline(void* handle, const double* R0_host, const double* Z0_host, double* R1_host, double* Z1_host, int n_lines, int nfp, int steps, int threads_per_line) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !R0_host || !Z0_host || !R1_host || !Z1_host || n_lines < 0 || nfp <= 0 || steps <= 0) {
+        set_error("invalid trace_period_blockline arguments");
+        return 1;
+    }
+    if (!(threads_per_line == 128 || threads_per_line == 256 || threads_per_line == 512 || threads_per_line == 1024)) {
+        set_error("threads_per_line must be 128, 256, 512, or 1024");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "cudaSetDevice")) return 1;
+    double *d_R0 = nullptr, *d_Z0 = nullptr, *d_R1 = nullptr, *d_Z1 = nullptr;
+    size_t bytes = static_cast<size_t>(n_lines) * sizeof(double);
+    if (cuda_check(cudaMalloc(&d_R0, bytes), "cudaMalloc R0") ||
+        cuda_check(cudaMalloc(&d_Z0, bytes), "cudaMalloc Z0") ||
+        cuda_check(cudaMalloc(&d_R1, bytes), "cudaMalloc R1") ||
+        cuda_check(cudaMalloc(&d_Z1, bytes), "cudaMalloc Z1")) {
+        cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
+        return 1;
+    }
+    if (cuda_check(cudaMemcpy(d_R0, R0_host, bytes, cudaMemcpyHostToDevice), "copy R0") ||
+        cuda_check(cudaMemcpy(d_Z0, Z0_host, bytes, cudaMemcpyHostToDevice), "copy Z0")) {
+        cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
+        return 1;
+    }
+    size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(double) + static_cast<size_t>(threads_per_line) * 3 * sizeof(double);
+    trace_period_blockline_kernel<<<n_lines, threads_per_line, shmem>>>(f->d_x, f->d_y, f->d_z, f->d_wx, f->d_wy, f->d_wz, f->n_segments, d_R0, d_Z0, d_R1, d_Z1, n_lines, nfp, steps);
+    if (cuda_check(cudaGetLastError(), "trace_period_blockline kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "trace_period_blockline sync") ||
         cuda_check(cudaMemcpy(R1_host, d_R1, bytes, cudaMemcpyDeviceToHost), "copy R1") ||
         cuda_check(cudaMemcpy(Z1_host, d_Z1, bytes, cudaMemcpyDeviceToHost), "copy Z1")) {
         cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);

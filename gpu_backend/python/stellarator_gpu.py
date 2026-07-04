@@ -87,6 +87,18 @@ class CoilFieldGpu:
             ctypes.c_int,
             ctypes.c_int,
         ]
+        self.lib.sgpu_trace_period_blockline.restype = ctypes.c_int
+        self.lib.sgpu_trace_period_blockline.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
         self.lib.sgpu_last_error.restype = ctypes.c_char_p
 
     def _check(self, code: int):
@@ -137,6 +149,27 @@ class CoilFieldGpu:
             ctypes.c_int(R0.size),
             ctypes.c_int(self.nfp if nfp is None else nfp),
             ctypes.c_int(steps),
+        )
+        self._check(code)
+        return R1, Z1
+
+    def trace_period_blockline(self, R0, Z0, steps: int, threads_per_line: int = 256, nfp: int | None = None):
+        R0 = np.ascontiguousarray(R0, dtype=np.float64).ravel()
+        Z0 = np.ascontiguousarray(Z0, dtype=np.float64).ravel()
+        if R0.shape != Z0.shape:
+            raise ValueError("R0/Z0 shape mismatch")
+        R1 = np.empty_like(R0)
+        Z1 = np.empty_like(Z0)
+        code = self.lib.sgpu_trace_period_blockline(
+            self.handle,
+            R0.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            Z0.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            R1.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            Z1.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(R0.size),
+            ctypes.c_int(self.nfp if nfp is None else nfp),
+            ctypes.c_int(steps),
+            ctypes.c_int(threads_per_line),
         )
         self._check(code)
         return R1, Z1

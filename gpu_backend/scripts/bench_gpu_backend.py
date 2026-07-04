@@ -33,6 +33,7 @@ def main():
     p.add_argument("--lines", type=int, default=256)
     p.add_argument("--steps", type=int, default=800)
     p.add_argument("--repeat", type=int, default=5)
+    p.add_argument("--blockline-threads", default="256,512")
     p.add_argument("--output", default="bench_result.json")
     args = p.parse_args()
 
@@ -79,6 +80,28 @@ def main():
     disp = np.sqrt((R1 - R0) ** 2 + (Z1 - Z0) ** 2)
     print(f"trace n={args.lines} steps={args.steps} median={np.median(trace_times):.6f}s disp_min={disp.min():.3e}")
 
+    blockline_results = {}
+    for text in args.blockline_threads.replace(",", " ").split():
+        threads = int(text)
+        field.trace_period_blockline(R0, Z0, args.steps, threads_per_line=threads, nfp=nfp)
+        times = []
+        for _ in range(args.repeat):
+            t0 = time.perf_counter()
+            br1, bz1 = field.trace_period_blockline(R0, Z0, args.steps, threads_per_line=threads, nfp=nfp)
+            times.append(time.perf_counter() - t0)
+        err = np.sqrt((br1 - R1) ** 2 + (bz1 - Z1) ** 2)
+        print(
+            f"trace_blockline threads={threads} n={args.lines} steps={args.steps} "
+            f"median={np.median(times):.6f}s diff_vs_warp_p95={np.percentile(err,95):.3e}"
+        )
+        blockline_results[str(threads)] = {
+            "times_s": times,
+            "median_s": float(np.median(times)),
+            "line_steps_per_s": float(args.lines * args.steps / np.median(times)),
+            "diff_vs_warp_p95": float(np.percentile(err, 95)),
+            "diff_vs_warp_max": float(np.max(err)),
+        }
+
     result = {
         "case_file": args.case_file,
         "key": args.key,
@@ -108,6 +131,7 @@ def main():
             "disp_min": float(disp.min()),
             "disp_median": float(np.median(disp)),
         },
+        "trace_period_blockline": blockline_results,
     }
     Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
     field.close()

@@ -13,6 +13,14 @@ target_include_directories(stellarator_gpu PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+set(SGPU_WARPS_PER_BLOCK "8" CACHE STRING "Warps per block for warp-per-line kernels")
+set(SGPU_SEG_TILE "256" CACHE STRING "Segment tile size")
+
+target_compile_definitions(stellarator_gpu PRIVATE
+    SGPU_WARPS_PER_BLOCK=${SGPU_WARPS_PER_BLOCK}
+    SGPU_SEG_TILE=${SGPU_SEG_TILE}
+)
+
 set_target_properties(stellarator_gpu PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )

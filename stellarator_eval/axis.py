@@ -7,6 +7,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from .config import AxisGAConfig
+from .timing import record_b_call
 
 TWOPI = 2.0 * np.pi
 
@@ -33,8 +34,10 @@ def b_components(field, r, z, phi):
     cp = np.cos(phi)
     sp = np.sin(phi)
     xyz = np.ascontiguousarray(np.column_stack([r * cp, r * sp, z]))
+    t0 = time.perf_counter()
     field.set_points(xyz)
     b = field.B()
+    record_b_call(time.perf_counter() - t0, len(xyz))
     br = b[:, 0] * cp + b[:, 1] * sp
     bphi = -b[:, 0] * sp + b[:, 1] * cp
     bz = b[:, 2]

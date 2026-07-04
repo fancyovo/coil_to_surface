@@ -29,6 +29,7 @@ class LevelScreen:
     radius_min: float
     radius_mean: float
     radius_max: float
+    curve_newton_time_s: float
     end_distance_p95: float
     rel_end_distance_p95: float
     trace_time_s: float
@@ -72,7 +73,9 @@ def level_curve_phi0(model: PsiModel, psi_level: float, n_alpha: int, cfg: Surfa
 
 
 def screen_level(field, model: PsiModel, psi_level: float, cfg: SurfaceScanConfig) -> LevelScreen:
+    t_curve = time.perf_counter()
     theta, R, Z, rho = level_curve_phi0(model, psi_level, cfg.n_alpha, cfg)
+    curve_time = time.perf_counter() - t_curve
     t0 = time.perf_counter()
     Re, Ze = rk4_one_period(field, R, Z, model.nfp, cfg.trace_steps)
     trace_time = time.perf_counter() - t0
@@ -92,6 +95,7 @@ def screen_level(field, model: PsiModel, psi_level: float, cfg: SurfaceScanConfi
         radius_min=float(np.min(rho)),
         radius_mean=radius_mean,
         radius_max=float(np.max(rho)),
+        curve_newton_time_s=curve_time,
         end_distance_p95=p95,
         rel_end_distance_p95=float(rel),
         trace_time_s=trace_time,
@@ -99,6 +103,7 @@ def screen_level(field, model: PsiModel, psi_level: float, cfg: SurfaceScanConfi
 
 
 def surface_points_from_level(model: PsiModel, psi_level: float, order: int, cfg: SurfaceScanConfig):
+    t_newton = time.perf_counter()
     nphi = 2 * order + 1
     ntheta = 2 * order + 1
     phis = np.linspace(0.0, TWOPI / model.nfp, nphi, endpoint=False)
@@ -126,7 +131,7 @@ def surface_points_from_level(model: PsiModel, psi_level: float, order: int, cfg
         xyz[i, :, 1] = R * sp
         xyz[i, :, 2] = Z
         radii[i] = rho
-    return xyz, radii
+    return xyz, radii, time.perf_counter() - t_newton
 
 
 def fit_xyz_tensor_surface(xyz, nfp: int, order: int, stellsym: bool):
@@ -190,8 +195,9 @@ def helical_qs_metric(boozer_surface, biotsavart, helicity_m: int, helicity_n: i
 def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: SurfaceScanConfig, boozer_cfg: BoozerConfig, out_npz=None):
     result: dict[str, object] = {"psi_level": float(psi_level)}
     t0 = time.perf_counter()
-    xyz, radii = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)
+    xyz, radii, newton_time = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)
     result["extract_surface_time_s"] = time.perf_counter() - t0
+    result["level_surface_1d_newton_time_s"] = float(newton_time)
     result["radius_min"] = float(np.min(radii))
     result["radius_mean"] = float(np.mean(radii))
     result["radius_max"] = float(np.max(radii))

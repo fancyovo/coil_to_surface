@@ -183,6 +183,7 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             "surface_screen_s": result["surface_screen"]["time_s"],
             "surface_screen_curve_newton_s": sum(float(r.get("curve_newton_time_s", 0.0)) for r in screen_results),
             "surface_screen_fieldline_trace_s": sum(float(r.get("trace_time_s", 0.0)) for r in screen_results),
+            "surface_screen_verify_trace_s": sum(float(r.get("verify_trace_time_s", 0.0)) for r in screen_results),
             "surface_extract_1d_newton_s": sum(float(r.get("level_surface_1d_newton_time_s", 0.0)) for r in surface_results),
             "boozer_ls_s": sum(float(r.get("ls_time_s", 0.0)) for r in surface_results),
             "boozer_newton_s": sum(float(r.get("newton_time_s", 0.0)) for r in surface_results),

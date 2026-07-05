@@ -382,6 +382,15 @@ def helical_qs_metric(boozer_surface, biotsavart, helicity_m: int, helicity_n: i
 def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: SurfaceScanConfig, boozer_cfg: BoozerConfig, out_npz=None):
     from simsopt.geo import BoozerSurface, Volume, boozer_surface_residual
 
+    def total_surface_time() -> float:
+        return float(
+            result.get("extract_surface_time_s", 0.0)
+            + result.get("surface_fit_time_s", 0.0)
+            + result.get("ls_time_s", 0.0)
+            + result.get("newton_time_s", 0.0)
+            + result.get("qs_time_s", 0.0)
+        )
+
     result: dict[str, object] = {"psi_level": float(psi_level)}
     t0 = time.perf_counter()
     xyz, radii, newton_time = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)
@@ -426,7 +435,7 @@ def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: 
         result["ls_residual_norm"] = float(np.linalg.norm(boozer_surface_residual(surf, ls["iota"], ls["G"], field, derivatives=0)[0]))
     except Exception as exc:
         result["ls_error"] = repr(exc)
-        result["total_time_s"] = sum(v for k, v in result.items() if k.endswith("_time_s") and isinstance(v, float))
+        result["total_time_s"] = total_surface_time()
         return result
 
     surf2 = clone_surface(surf)
@@ -452,7 +461,7 @@ def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: 
             np.savez(out_npz, dofs=surf2.get_dofs(), iota=result["iota"], G=result["G"], psi_level=psi_level)
     except Exception as exc:
         result["newton_error"] = repr(exc)
-        result["total_time_s"] = sum(v for k, v in result.items() if k.endswith("_time_s") and isinstance(v, float))
+        result["total_time_s"] = total_surface_time()
         return result
 
     if result.get("newton_success"):
@@ -462,5 +471,5 @@ def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: 
         result["qs_error_QP_0_1"] = helical_qs_metric(boozer2, field, 0, 1, boozer_cfg.qs_sdim)
         result["qs_time_s"] = time.perf_counter() - t0
 
-    result["total_time_s"] = sum(v for k, v in result.items() if k.endswith("_time_s") and isinstance(v, float))
+    result["total_time_s"] = total_surface_time()
     return result

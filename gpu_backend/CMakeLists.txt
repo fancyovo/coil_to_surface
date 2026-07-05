@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(stellarator_gpu_backend LANGUAGES CXX CUDA)
+find_package(CUDAToolkit REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
@@ -12,6 +13,8 @@ add_library(stellarator_gpu SHARED
 target_include_directories(stellarator_gpu PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+target_link_libraries(stellarator_gpu PUBLIC CUDA::cublas)
 
 set(SGPU_WARPS_PER_BLOCK "8" CACHE STRING "Warps per block for warp-per-line kernels")
 set(SGPU_SEG_TILE "256" CACHE STRING "Segment tile size")

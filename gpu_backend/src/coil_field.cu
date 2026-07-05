@@ -1,5 +1,6 @@
 #include "coil_field.h"
 
+#include <cublas_v2.h>
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 
@@ -50,6 +51,14 @@ void set_error(const std::string& msg) { g_last_error = msg; }
 int cuda_check(cudaError_t err, const char* where) {
     if (err != cudaSuccess) {
         set_error(std::string(where) + ": " + cudaGetErrorString(err));
+        return 1;
+    }
+    return 0;
+}
+
+int cublas_check(cublasStatus_t status, const char* where) {
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        set_error(std::string(where) + ": cublas status " + std::to_string(static_cast<int>(status)));
         return 1;
     }
     return 0;
@@ -819,6 +828,174 @@ int sgpu_eval_B(void* handle, const double* xyz_host, double* B_host, int n_poin
     if (cuda_check(cudaMemcpy(B_host, d_B, xyz_bytes, cudaMemcpyDeviceToHost), "copy B")) { cudaFree(d_xyz); cudaFree(d_B); return 1; }
     cudaFree(d_xyz);
     cudaFree(d_B);
+    set_error("");
+    return 0;
+}
+
+int sgpu_normal_eq(
+    void* handle,
+    const double* mat_host,
+    const double* rhs_host,
+    double* ata_host,
+    double* atb_host,
+    int n_rows,
+    int n_cols
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !mat_host || !rhs_host || !ata_host || !atb_host || n_rows < 0 || n_cols <= 0) {
+        set_error("invalid normal_eq arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "cudaSetDevice")) return 1;
+    double *d_mat = nullptr, *d_rhs = nullptr, *d_ata = nullptr, *d_atb = nullptr;
+    size_t mat_bytes = static_cast<size_t>(n_rows) * static_cast<size_t>(n_cols) * sizeof(double);
+    size_t rhs_bytes = static_cast<size_t>(n_rows) * sizeof(double);
+    size_t ata_bytes = static_cast<size_t>(n_cols) * static_cast<size_t>(n_cols) * sizeof(double);
+    size_t atb_bytes = static_cast<size_t>(n_cols) * sizeof(double);
+    cublasHandle_t blas = nullptr;
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mat), mat_bytes), "normal_eq d_mat") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_rhs), rhs_bytes), "normal_eq d_rhs") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata), ata_bytes), "normal_eq d_ata") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb), atb_bytes), "normal_eq d_atb") ||
+        cuda_check(cudaMemcpy(d_mat, mat_host, mat_bytes, cudaMemcpyHostToDevice), "normal_eq copy mat") ||
+        cuda_check(cudaMemcpy(d_rhs, rhs_host, rhs_bytes, cudaMemcpyHostToDevice), "normal_eq copy rhs") ||
+        cuda_check(cudaMemset(d_ata, 0, ata_bytes), "normal_eq memset ata") ||
+        cuda_check(cudaMemset(d_atb, 0, atb_bytes), "normal_eq memset atb") ||
+        cublas_check(cublasCreate(&blas), "cublasCreate")) {
+        cudaFree(d_mat); cudaFree(d_rhs); cudaFree(d_ata); cudaFree(d_atb);
+        if (blas) cublasDestroy(blas);
+        return 1;
+    }
+    const double one = 1.0;
+    const double zero = 0.0;
+    // mat_host is C-order A[n_rows, n_cols]. The same memory interpreted as
+    // column-major is B[n_cols, n_rows] = A^T, so B * B^T = A^T A.
+    if (cublas_check(
+            cublasDgemm(
+                blas,
+                CUBLAS_OP_N,
+                CUBLAS_OP_T,
+                n_cols,
+                n_cols,
+                n_rows,
+                &one,
+                d_mat,
+                n_cols,
+                d_mat,
+                n_cols,
+                &zero,
+                d_ata,
+                n_cols),
+            "cublasDgemm normal_eq") ||
+        cublas_check(
+            cublasDgemv(
+                blas,
+                CUBLAS_OP_N,
+                n_cols,
+                n_rows,
+                &one,
+                d_mat,
+                n_cols,
+                d_rhs,
+                1,
+                &zero,
+                d_atb,
+                1),
+            "cublasDgemv normal_eq") ||
+        cuda_check(cudaMemcpy(ata_host, d_ata, ata_bytes, cudaMemcpyDeviceToHost), "normal_eq copy ata") ||
+        cuda_check(cudaMemcpy(atb_host, d_atb, atb_bytes, cudaMemcpyDeviceToHost), "normal_eq copy atb")) {
+        cublasDestroy(blas);
+        cudaFree(d_mat); cudaFree(d_rhs); cudaFree(d_ata); cudaFree(d_atb);
+        return 1;
+    }
+    cublasDestroy(blas);
+    cudaFree(d_mat);
+    cudaFree(d_rhs);
+    cudaFree(d_ata);
+    cudaFree(d_atb);
+    set_error("");
+    return 0;
+}
+
+int sgpu_normal_eq_f32(
+    void* handle,
+    const float* mat_host,
+    const float* rhs_host,
+    float* ata_host,
+    float* atb_host,
+    int n_rows,
+    int n_cols
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !mat_host || !rhs_host || !ata_host || !atb_host || n_rows < 0 || n_cols <= 0) {
+        set_error("invalid normal_eq_f32 arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "cudaSetDevice")) return 1;
+    float *d_mat = nullptr, *d_rhs = nullptr, *d_ata = nullptr, *d_atb = nullptr;
+    size_t mat_bytes = static_cast<size_t>(n_rows) * static_cast<size_t>(n_cols) * sizeof(float);
+    size_t rhs_bytes = static_cast<size_t>(n_rows) * sizeof(float);
+    size_t ata_bytes = static_cast<size_t>(n_cols) * static_cast<size_t>(n_cols) * sizeof(float);
+    size_t atb_bytes = static_cast<size_t>(n_cols) * sizeof(float);
+    cublasHandle_t blas = nullptr;
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mat), mat_bytes), "normal_eq_f32 d_mat") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_rhs), rhs_bytes), "normal_eq_f32 d_rhs") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata), ata_bytes), "normal_eq_f32 d_ata") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb), atb_bytes), "normal_eq_f32 d_atb") ||
+        cuda_check(cudaMemcpy(d_mat, mat_host, mat_bytes, cudaMemcpyHostToDevice), "normal_eq_f32 copy mat") ||
+        cuda_check(cudaMemcpy(d_rhs, rhs_host, rhs_bytes, cudaMemcpyHostToDevice), "normal_eq_f32 copy rhs") ||
+        cuda_check(cudaMemset(d_ata, 0, ata_bytes), "normal_eq_f32 memset ata") ||
+        cuda_check(cudaMemset(d_atb, 0, atb_bytes), "normal_eq_f32 memset atb") ||
+        cublas_check(cublasCreate(&blas), "cublasCreate f32")) {
+        cudaFree(d_mat); cudaFree(d_rhs); cudaFree(d_ata); cudaFree(d_atb);
+        if (blas) cublasDestroy(blas);
+        return 1;
+    }
+    const float one = 1.0f;
+    const float zero = 0.0f;
+    if (cublas_check(
+            cublasSgemm(
+                blas,
+                CUBLAS_OP_N,
+                CUBLAS_OP_T,
+                n_cols,
+                n_cols,
+                n_rows,
+                &one,
+                d_mat,
+                n_cols,
+                d_mat,
+                n_cols,
+                &zero,
+                d_ata,
+                n_cols),
+            "cublasSgemm normal_eq_f32") ||
+        cublas_check(
+            cublasSgemv(
+                blas,
+                CUBLAS_OP_N,
+                n_cols,
+                n_rows,
+                &one,
+                d_mat,
+                n_cols,
+                d_rhs,
+                1,
+                &zero,
+                d_atb,
+                1),
+            "cublasSgemv normal_eq_f32") ||
+        cuda_check(cudaMemcpy(ata_host, d_ata, ata_bytes, cudaMemcpyDeviceToHost), "normal_eq_f32 copy ata") ||
+        cuda_check(cudaMemcpy(atb_host, d_atb, atb_bytes, cudaMemcpyDeviceToHost), "normal_eq_f32 copy atb")) {
+        cublasDestroy(blas);
+        cudaFree(d_mat); cudaFree(d_rhs); cudaFree(d_ata); cudaFree(d_atb);
+        return 1;
+    }
+    cublasDestroy(blas);
+    cudaFree(d_mat);
+    cudaFree(d_rhs);
+    cudaFree(d_ata);
+    cudaFree(d_atb);
     set_error("");
     return 0;
 }

@@ -33,6 +33,9 @@ class AxisGAConfig:
 
 @dataclass
 class PsiFitConfig:
+    backend: str = "cpu"
+    normal_eq_backend: str = "auto"
+    normal_eq_precision: str = "fp64"
     a: float = 0.05
     rho_min: float = 0.002
     poly_degree: int = 10
@@ -43,6 +46,9 @@ class PsiFitConfig:
     n_phi: int = 80
     batch_size: int = 20000
     validation_points: int = 4000
+    gpu_lib_path: str = "gpu_backend/build_mixed/libstellarator_gpu.so"
+    gpu_segments_per_coil: int = 256
+    gpu_device: int = 0
 
 
 @dataclass

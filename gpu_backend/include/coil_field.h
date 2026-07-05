@@ -28,6 +28,26 @@ int sgpu_eval_B(
     int n_points
 );
 
+int sgpu_normal_eq(
+    void* handle,
+    const double* mat_host,
+    const double* rhs_host,
+    double* ata_host,
+    double* atb_host,
+    int n_rows,
+    int n_cols
+);
+
+int sgpu_normal_eq_f32(
+    void* handle,
+    const float* mat_host,
+    const float* rhs_host,
+    float* ata_host,
+    float* atb_host,
+    int n_rows,
+    int n_cols
+);
+
 int sgpu_trace_period(
     void* handle,
     const double* R0_host,

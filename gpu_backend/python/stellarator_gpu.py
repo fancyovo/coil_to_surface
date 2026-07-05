@@ -89,6 +89,26 @@ class CoilFieldGpu:
             ctypes.POINTER(ctypes.c_double),
             ctypes.c_int,
         ]
+        self.lib.sgpu_normal_eq.restype = ctypes.c_int
+        self.lib.sgpu_normal_eq.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.lib.sgpu_normal_eq_f32.restype = ctypes.c_int
+        self.lib.sgpu_normal_eq_f32.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
         self.lib.sgpu_trace_period.restype = ctypes.c_int
         self.lib.sgpu_trace_period.argtypes = [
             ctypes.c_void_p,
@@ -158,6 +178,42 @@ class CoilFieldGpu:
         )
         self._check(code)
         return out
+
+    def normal_eq(self, mat, rhs, precision: str = "fp64"):
+        precision = precision.lower()
+        if precision not in {"fp64", "fp32"}:
+            raise ValueError("normal_eq precision must be 'fp64' or 'fp32'")
+        dtype = np.float32 if precision == "fp32" else np.float64
+        mat = np.ascontiguousarray(mat, dtype=dtype)
+        if mat.ndim != 2:
+            raise ValueError("mat must be a 2D array")
+        rhs = np.ascontiguousarray(rhs, dtype=dtype).ravel()
+        if rhs.size != mat.shape[0]:
+            raise ValueError("rhs length must equal mat.shape[0]")
+        ata = np.empty((mat.shape[1], mat.shape[1]), dtype=dtype)
+        atb = np.empty(mat.shape[1], dtype=dtype)
+        if precision == "fp32":
+            code = self.lib.sgpu_normal_eq_f32(
+                self.handle,
+                mat.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                rhs.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                ata.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                atb.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                ctypes.c_int(mat.shape[0]),
+                ctypes.c_int(mat.shape[1]),
+            )
+        else:
+            code = self.lib.sgpu_normal_eq(
+                self.handle,
+                mat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                rhs.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                ata.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                atb.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                ctypes.c_int(mat.shape[0]),
+                ctypes.c_int(mat.shape[1]),
+            )
+        self._check(code)
+        return ata.astype(np.float64, copy=False), atb.astype(np.float64, copy=False)
 
     def trace_period(self, R0, Z0, steps: int, nfp: int | None = None):
         R0 = np.ascontiguousarray(R0, dtype=np.float64).ravel()

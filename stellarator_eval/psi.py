@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -92,17 +93,124 @@ def _fixed_components(X, R_axis_phi, a_scale: float):
     return val, dR, dZ, dPhi
 
 
+def _trig_tables(phi, nfp: int, m_tor: int):
+    n = len(phi)
+    cols = 1 + 2 * m_tor
+    trig = np.empty((n, cols))
+    trig_phi = np.empty((n, cols))
+    trig[:, 0] = 1.0
+    trig_phi[:, 0] = 0.0
+    col = 1
+    for m in range(1, m_tor + 1):
+        arg = m * nfp * phi
+        s = np.sin(arg)
+        c = np.cos(arg)
+        fac = m * nfp
+        trig[:, col] = c
+        trig_phi[:, col] = -fac * s
+        col += 1
+        trig[:, col] = s
+        trig_phi[:, col] = fac * c
+        col += 1
+    return trig, trig_phi
+
+
+def _power_table(x, degree: int):
+    powers = [np.ones_like(x)]
+    if degree >= 1:
+        powers.append(x)
+    for k in range(2, degree + 1):
+        powers.append(powers[-1] * x)
+    return powers
+
+
+def _fill_design_matrix(mat, X, Zc, phi, rap, zap, br, bphi, bz, rr, nfp: int, cfg: PsiFitConfig):
+    trig, trig_phi = _trig_tables(phi, nfp, cfg.m_tor)
+    xpow = _power_table(X, cfg.poly_degree)
+    zpow = _power_table(Zc, cfg.poly_degree)
+    cphi = bphi / rr
+    cR = br - cphi * rap
+    cZ = bz - cphi * zap
+    col = 0
+    for deg in range(2, cfg.poly_degree + 1):
+        for ax in range(deg, -1, -1):
+            bz_exp = deg - ax
+            mono = xpow[ax] * zpow[bz_exp]
+            if ax:
+                mono_x = ax * xpow[ax - 1] * zpow[bz_exp]
+            else:
+                mono_x = 0.0
+            if bz_exp:
+                mono_z = bz_exp * xpow[ax] * zpow[bz_exp - 1]
+            else:
+                mono_z = 0.0
+            spatial = (cR * mono_x + cZ * mono_z) / cfg.a
+            toroidal = cphi * mono
+            block = spatial[:, None] * trig + toroidal[:, None] * trig_phi
+            if ax == 2 and bz_exp == 0:
+                block = block[:, 1:]
+            width = block.shape[1]
+            mat[:, col : col + width] = block
+            col += width
+    if col != mat.shape[1]:
+        raise RuntimeError(f"internal basis size mismatch: filled {col}, expected {mat.shape[1]}")
+
+
+def _mode_orders(model: PsiModel):
+    poly_degree = int(model.fit_info.get("poly_degree", max(m.a + m.b for m in model.modes)))
+    m_tor = int(model.fit_info.get("m_tor", max(m.m for m in model.modes)))
+    return poly_degree, m_tor
+
+
+def _coeff_block(coeffs, idx: int, ax: int, bz_exp: int, m_tor: int):
+    cols = 1 + 2 * m_tor
+    block = np.zeros(cols)
+    if ax == 2 and bz_exp == 0:
+        block[0] = 1.0
+        width = cols - 1
+        block[1:] = coeffs[idx : idx + width]
+        return block, idx + width
+    width = cols
+    block[:] = coeffs[idx : idx + width]
+    return block, idx + width
+
+
 def psi_and_gradient(model: PsiModel, R, Z, phi):
     ra, za, rap, zap = model.axis_at(phi)
     X = (R - ra) / model.a
     Zc = (Z - za) / model.a
-    psi, grad_R, grad_Z, grad_phi = _fixed_components(X, rap, model.a)
-    for c, mode in zip(model.coeffs, model.modes):
-        val, dR, dZ, dPhi = _basis_components(mode, X, Zc, phi, rap, zap, model.nfp, model.a)
-        psi += c * val
-        grad_R += c * dR
-        grad_Z += c * dZ
-        grad_phi += c * dPhi
+    poly_degree, m_tor = _mode_orders(model)
+    trig, trig_phi = _trig_tables(phi, model.nfp, m_tor)
+    xpow = _power_table(X, poly_degree)
+    zpow = _power_table(Zc, poly_degree)
+    psi = np.zeros_like(X)
+    grad_R = np.zeros_like(X)
+    grad_Z = np.zeros_like(X)
+    grad_phi = np.zeros_like(X)
+    idx = 0
+    for deg in range(2, poly_degree + 1):
+        for ax in range(deg, -1, -1):
+            bz_exp = deg - ax
+            block, idx = _coeff_block(model.coeffs, idx, ax, bz_exp, m_tor)
+            amp = trig @ block
+            amp_phi = trig_phi @ block
+            mono = xpow[ax] * zpow[bz_exp]
+            if ax:
+                mono_x = ax * xpow[ax - 1] * zpow[bz_exp]
+            else:
+                mono_x = 0.0
+            if bz_exp:
+                mono_z = bz_exp * xpow[ax] * zpow[bz_exp - 1]
+            else:
+                mono_z = 0.0
+            dR = mono_x * amp / model.a
+            dZ = mono_z * amp / model.a
+            psi += mono * amp
+            grad_R += dR
+            grad_Z += dZ
+            grad_phi += mono * amp_phi - rap * dR - zap * dZ
+    if idx != len(model.coeffs):
+        raise RuntimeError(f"internal coefficient size mismatch: used {idx}, expected {len(model.coeffs)}")
     return psi, grad_R, grad_Z, grad_phi
 
 
@@ -121,33 +229,100 @@ def _make_training_points(axis, nfp: int, cfg: PsiFitConfig):
     return ra + dr[keep], za + dz[keep], phi[keep]
 
 
-def _assemble(field, modes, R, Z, phi, axis, nfp: int, cfg: PsiFitConfig):
+def _b_components_gpu(gpu_field, r, z, phi):
+    r = np.asarray(r, dtype=float)
+    z = np.asarray(z, dtype=float)
+    phi = np.asarray(phi, dtype=float)
+    cp = np.cos(phi)
+    sp = np.sin(phi)
+    xyz = np.ascontiguousarray(np.column_stack([r * cp, r * sp, z]))
+    b = gpu_field.eval_B(xyz)
+    br = b[:, 0] * cp + b[:, 1] * sp
+    bphi = -b[:, 0] * sp + b[:, 1] * cp
+    bz = b[:, 2]
+    return br, bphi, bz
+
+
+def _make_gpu_field(field_input, nfp: int, cfg: PsiFitConfig, current_unit: str):
+    import sys
+
+    gpu_python = Path(__file__).resolve().parents[1] / "gpu_backend" / "python"
+    if str(gpu_python) not in sys.path:
+        sys.path.insert(0, str(gpu_python))
+    from stellarator_gpu import CoilFieldGpu
+
+    lib_path = Path(cfg.gpu_lib_path)
+    if not lib_path.is_absolute():
+        lib_path = Path.cwd() / lib_path
+    unit = current_unit.lower()
+    if unit in {"ma", "megaamp", "megaamps"}:
+        currents = np.asarray(field_input.currents, dtype=float) * 1e6
+    elif unit in {"a", "amp", "amps"}:
+        currents = np.asarray(field_input.currents, dtype=float)
+    else:
+        raise ValueError(f"unknown current_unit={current_unit!r}; use 'MA' or 'A'")
+    return CoilFieldGpu(
+        lib_path,
+        field_input.coeffs_x,
+        field_input.coeffs_y,
+        field_input.coeffs_z,
+        currents,
+        nfp=nfp,
+        segments_per_coil=cfg.gpu_segments_per_coil,
+        device_id=cfg.gpu_device,
+    )
+
+
+def _assemble(field, modes, R, Z, phi, axis, nfp: int, cfg: PsiFitConfig, b_sampler=None, normal_eq_sampler=None):
     n_modes = len(modes)
     ata = np.zeros((n_modes, n_modes))
     atb = np.zeros(n_modes)
     rhs_norm2 = 0.0
+    timings = {
+        "assemble_interp_s": 0.0,
+        "assemble_b_sample_s": 0.0,
+        "assemble_basis_s": 0.0,
+        "assemble_normal_eq_s": 0.0,
+        "assemble_normal_eq_gpu_s": 0.0,
+        "assemble_normal_eq_cpu_s": 0.0,
+    }
+    if b_sampler is None:
+        b_sampler = lambda rr, zz, pp: b_components(field, rr, zz, pp)
     for start in range(0, len(R), cfg.batch_size):
         stop = min(start + cfg.batch_size, len(R))
         rr = R[start:stop]
         zz = Z[start:stop]
         pp = phi[start:stop]
+        t = time.perf_counter()
         ra = interp_periodic(pp, axis.phi, axis.R, nfp)
         za = interp_periodic(pp, axis.phi, axis.Z, nfp)
         rap = interp_periodic(pp, axis.phi, axis.R_phi, nfp)
         zap = interp_periodic(pp, axis.phi, axis.Z_phi, nfp)
         X = (rr - ra) / cfg.a
         Zc = (zz - za) / cfg.a
-        br, bphi, bz = b_components(field, rr, zz, pp)
+        timings["assemble_interp_s"] += time.perf_counter() - t
+        t = time.perf_counter()
+        br, bphi, bz = b_sampler(rr, zz, pp)
+        timings["assemble_b_sample_s"] += time.perf_counter() - t
+        t = time.perf_counter()
         _, dR0, dZ0, dPhi0 = _fixed_components(X, rap, cfg.a)
         rhs = -(br * dR0 + bz * dZ0 + (bphi / rr) * dPhi0)
         mat = np.empty((len(rr), n_modes))
-        for j, mode in enumerate(modes):
-            _, dR, dZ, dPhi = _basis_components(mode, X, Zc, pp, rap, zap, nfp, cfg.a)
-            mat[:, j] = br * dR + bz * dZ + (bphi / rr) * dPhi
-        ata += mat.T @ mat
-        atb += mat.T @ rhs
+        _fill_design_matrix(mat, X, Zc, pp, rap, zap, br, bphi, bz, rr, nfp, cfg)
+        timings["assemble_basis_s"] += time.perf_counter() - t
+        t = time.perf_counter()
+        if normal_eq_sampler is None:
+            ata += mat.T @ mat
+            atb += mat.T @ rhs
+            timings["assemble_normal_eq_cpu_s"] += time.perf_counter() - t
+        else:
+            batch_ata, batch_atb = normal_eq_sampler(mat, rhs)
+            ata += batch_ata
+            atb += batch_atb
+            timings["assemble_normal_eq_gpu_s"] += time.perf_counter() - t
         rhs_norm2 += float(rhs @ rhs)
-    return ata, atb, rhs_norm2
+        timings["assemble_normal_eq_s"] += time.perf_counter() - t
+    return ata, atb, rhs_norm2, timings
 
 
 def _solve(ata, atb, ridge):
@@ -158,7 +333,7 @@ def _solve(ata, atb, ridge):
     return coeff_scaled / scale, float(np.linalg.cond(scaled))
 
 
-def validate_model(field, model: PsiModel, cfg: PsiFitConfig):
+def validate_model(field, model: PsiModel, cfg: PsiFitConfig, b_sampler=None):
     rng = np.random.default_rng(20260704)
     phi = rng.uniform(0.0, TWOPI / model.nfp, cfg.validation_points)
     theta = rng.uniform(0.0, TWOPI, cfg.validation_points)
@@ -167,7 +342,11 @@ def validate_model(field, model: PsiModel, cfg: PsiFitConfig):
     ra, za, _, _ = model.axis_at(phi)
     R = ra + rho * np.cos(theta)
     Z = za + rho * np.sin(theta)
-    br, bphi, bz = b_components(field, R, Z, phi)
+    if b_sampler is None:
+        b_sampler = lambda rr, zz, pp: b_components(field, rr, zz, pp)
+    t = time.perf_counter()
+    br, bphi, bz = b_sampler(R, Z, phi)
+    b_time = time.perf_counter() - t
     psi, gr, gz, gp = psi_and_gradient(model, R, Z, phi)
     vals = br * gr + bz * gz + (bphi / R) * gp
     b_norm = np.sqrt(br**2 + bphi**2 + bz**2)
@@ -181,15 +360,57 @@ def validate_model(field, model: PsiModel, cfg: PsiFitConfig):
         "validation_angle_l2": float(np.sqrt(np.sum(vals**2) / np.sum((b_norm * grad_norm) ** 2))),
         "psi_min": float(np.min(psi)),
         "psi_max": float(np.max(psi)),
+        "validation_b_sample_s": float(b_time),
     }
 
 
-def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig) -> PsiModel:
+def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig, field_input=None, current_unit: str = "MA") -> PsiModel:
     t0 = time.perf_counter()
+    backend = cfg.backend.lower()
+    if backend not in {"cpu", "gpu"}:
+        raise ValueError(f"unknown psi backend {cfg.backend!r}; use 'cpu' or 'gpu'")
+    if backend == "gpu" and field_input is None:
+        raise ValueError("psi backend 'gpu' requires field_input")
+    gpu_field = None
+    b_sampler = None
+    normal_eq_sampler = None
+    gpu_create_time = 0.0
+    if backend == "gpu":
+        tg = time.perf_counter()
+        gpu_field = _make_gpu_field(field_input, nfp, cfg, current_unit)
+        gpu_create_time = time.perf_counter() - tg
+        b_sampler = lambda rr, zz, pp: _b_components_gpu(gpu_field, rr, zz, pp)
+    normal_eq_backend = cfg.normal_eq_backend.lower()
+    if normal_eq_backend == "auto":
+        normal_eq_backend = "gpu" if backend == "gpu" else "cpu"
+    if normal_eq_backend not in {"cpu", "gpu"}:
+        raise ValueError(f"unknown normal_eq_backend {cfg.normal_eq_backend!r}; use 'auto', 'cpu', or 'gpu'")
+    if normal_eq_backend == "gpu":
+        if gpu_field is None:
+            raise ValueError("GPU normal equation requires psi backend 'gpu'")
+        normal_eq_precision = cfg.normal_eq_precision.lower()
+        if normal_eq_precision not in {"fp64", "fp32"}:
+            raise ValueError("normal_eq_precision must be 'fp64' or 'fp32'")
+        normal_eq_sampler = lambda mat, rhs: gpu_field.normal_eq(mat, rhs, precision=normal_eq_precision)
+    else:
+        normal_eq_precision = "fp64"
+    t_modes = time.perf_counter()
     modes = build_modes(cfg.poly_degree, cfg.m_tor)
+    modes_time = time.perf_counter() - t_modes
+    t_points = time.perf_counter()
     R, Z, phi = _make_training_points(axis, nfp, cfg)
-    ata, atb, rhs_norm2 = _assemble(field, modes, R, Z, phi, axis, nfp, cfg)
+    points_time = time.perf_counter() - t_points
+    t_assemble = time.perf_counter()
+    try:
+        ata, atb, rhs_norm2, assemble_timings = _assemble(
+            field, modes, R, Z, phi, axis, nfp, cfg, b_sampler=b_sampler, normal_eq_sampler=normal_eq_sampler
+        )
+    finally:
+        pass
+    assemble_time = time.perf_counter() - t_assemble
+    t_solve = time.perf_counter()
     coeffs, cond = _solve(ata, atb, cfg.ridge)
+    solve_time = time.perf_counter() - t_solve
     train_resid = float(np.sqrt(abs(coeffs @ (ata @ coeffs) - 2.0 * coeffs @ atb + rhs_norm2)))
     train_rms = train_resid / np.sqrt(len(R))
     model = PsiModel(
@@ -204,6 +425,9 @@ def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig) -> PsiModel:
         Z_axis_phi=axis.Z_phi,
         fit_info={
             "basis": "cartesian_poly_toroidal_fourier",
+            "backend": backend,
+            "normal_eq_backend": normal_eq_backend,
+            "normal_eq_precision": normal_eq_precision,
             "fixed_term": "x^2 coefficient = 1",
             "poly_degree": cfg.poly_degree,
             "m_tor": cfg.m_tor,
@@ -211,11 +435,24 @@ def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig) -> PsiModel:
             "training_points": int(len(R)),
             "condition_number": cond,
             "train_rms": float(train_rms),
+            "gpu_create_s": float(gpu_create_time),
+            "mode_build_s": float(modes_time),
+            "training_point_s": float(points_time),
+            "assemble_s": float(assemble_time),
+            **{k: float(v) for k, v in assemble_timings.items()},
+            "solve_s": float(solve_time),
             "time_s": time.perf_counter() - t0,
         },
     )
-    model.fit_info.update(validate_model(field, model, cfg))
-    return model
+    t_validation = time.perf_counter()
+    try:
+        model.fit_info.update(validate_model(field, model, cfg, b_sampler=b_sampler))
+        model.fit_info["validation_s"] = float(time.perf_counter() - t_validation)
+        model.fit_info["time_s"] = time.perf_counter() - t0
+        return model
+    finally:
+        if gpu_field is not None:
+            gpu_field.close()
 
 
 def psi_ray_value_and_derivative(model: PsiModel, rho, theta, phi):

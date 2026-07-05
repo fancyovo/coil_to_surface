@@ -96,7 +96,7 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             return result
 
         with timing_phase("psi_fit"):
-            model = fit_psi(built.field, axis, built.nfp, config.psi)
+            model = fit_psi(built.field, axis, built.nfp, config.psi, field_input=field_input, current_unit=config.current_unit)
         result["psi"] = _psi_summary(model)
         np.savez(out / "psi_model.npz", **model_to_npz_dict(model))
 
@@ -164,6 +164,18 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             "axis_search_s": axis.search_time_s,
             "axis_trace_s": axis.trace_time_s,
             "psi_fit_s": model.fit_info["time_s"],
+            "psi_gpu_create_s": model.fit_info.get("gpu_create_s", 0.0),
+            "psi_training_point_s": model.fit_info.get("training_point_s", 0.0),
+            "psi_assemble_s": model.fit_info.get("assemble_s", 0.0),
+            "psi_assemble_interp_s": model.fit_info.get("assemble_interp_s", 0.0),
+            "psi_assemble_b_sample_s": model.fit_info.get("assemble_b_sample_s", 0.0),
+            "psi_assemble_basis_s": model.fit_info.get("assemble_basis_s", 0.0),
+            "psi_assemble_normal_eq_s": model.fit_info.get("assemble_normal_eq_s", 0.0),
+            "psi_assemble_normal_eq_cpu_s": model.fit_info.get("assemble_normal_eq_cpu_s", 0.0),
+            "psi_assemble_normal_eq_gpu_s": model.fit_info.get("assemble_normal_eq_gpu_s", 0.0),
+            "psi_solve_s": model.fit_info.get("solve_s", 0.0),
+            "psi_validation_s": model.fit_info.get("validation_s", 0.0),
+            "psi_validation_b_sample_s": model.fit_info.get("validation_b_sample_s", 0.0),
             "surface_screen_s": result["surface_screen"]["time_s"],
             "surface_screen_curve_newton_s": sum(float(r.get("curve_newton_time_s", 0.0)) for r in screen_results),
             "surface_screen_fieldline_trace_s": sum(float(r.get("trace_time_s", 0.0)) for r in screen_results),

@@ -27,7 +27,14 @@ def build_parser():
     p.add_argument("--psi-n-r", type=int, default=80)
     p.add_argument("--psi-n-z", type=int, default=80)
     p.add_argument("--psi-n-phi", type=int, default=80)
+    p.add_argument("--psi-batch-size", type=int, default=20000)
     p.add_argument("--psi-validation-points", type=int, default=4000)
+    p.add_argument("--psi-backend", choices=["cpu", "gpu"], default="cpu")
+    p.add_argument("--psi-normal-eq-backend", choices=["auto", "cpu", "gpu"], default="auto")
+    p.add_argument("--psi-normal-eq-precision", choices=["fp64", "fp32"], default="fp64")
+    p.add_argument("--psi-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
+    p.add_argument("--psi-gpu-segments", type=int, default=256)
+    p.add_argument("--psi-gpu-device", type=int, default=0)
 
     p.add_argument("--axis-max-generations", type=int, default=32)
     p.add_argument("--axis-rk4-steps", type=int, default=800)
@@ -81,13 +88,20 @@ def config_from_args(args) -> EvalConfig:
             switch_tol=args.axis_switch_tol,
         ),
         psi=PsiFitConfig(
+            backend=args.psi_backend,
+            normal_eq_backend=args.psi_normal_eq_backend,
+            normal_eq_precision=args.psi_normal_eq_precision,
             a=args.a,
             poly_degree=args.psi_poly_degree,
             m_tor=args.psi_m_tor,
             n_r=args.psi_n_r,
             n_z=args.psi_n_z,
             n_phi=args.psi_n_phi,
+            batch_size=args.psi_batch_size,
             validation_points=args.psi_validation_points,
+            gpu_lib_path=args.psi_gpu_lib,
+            gpu_segments_per_coil=args.psi_gpu_segments,
+            gpu_device=args.psi_gpu_device,
         ),
         scan=SurfaceScanConfig(
             levels=parse_levels(args.levels),

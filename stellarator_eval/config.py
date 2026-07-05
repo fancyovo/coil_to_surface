@@ -43,6 +43,14 @@ class SurfaceScanConfig:
     max_boozer_candidates: int = 3
     curve_newton_tol: float = 1e-12
     curve_newton_maxiter: int = 20
+    trace_backend: str = "cpu"
+    gpu_lib_path: str = "gpu_backend/build_mixed/libstellarator_gpu.so"
+    gpu_segments_per_coil: int = 256
+    gpu_device: int = 0
+    gpu_trace_precision: str = "mixed64"
+    gpu_verify_precision: str = "fp64"
+    gpu_threads_per_line: int = 256
+    gpu_verify_candidates: int = 3
 
 
 @dataclass

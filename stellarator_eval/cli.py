@@ -39,6 +39,13 @@ def build_parser():
     p.add_argument("--drift-rel-tol", type=float, default=0.30)
     p.add_argument("--drift-abs-tol", type=float, default=5e-4)
     p.add_argument("--max-boozer-candidates", type=int, default=3)
+    p.add_argument("--screen-trace-backend", choices=["cpu", "gpu"], default="cpu")
+    p.add_argument("--screen-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
+    p.add_argument("--screen-gpu-precision", choices=["mixed64", "fp64", "fp32"], default="mixed64")
+    p.add_argument("--screen-gpu-verify-precision", choices=["mixed64", "fp64", "fp32", "none"], default="fp64")
+    p.add_argument("--screen-gpu-verify-candidates", type=int, default=3)
+    p.add_argument("--screen-gpu-segments", type=int, default=256)
+    p.add_argument("--screen-gpu-device", type=int, default=0)
 
     p.add_argument("--surface-order", type=int, default=6)
     p.add_argument("--initial-iota", type=float, default=-2.0)
@@ -71,6 +78,13 @@ def config_from_args(args) -> EvalConfig:
             drift_rel_tol=args.drift_rel_tol,
             drift_abs_tol=args.drift_abs_tol,
             max_boozer_candidates=args.max_boozer_candidates,
+            trace_backend=args.screen_trace_backend,
+            gpu_lib_path=args.screen_gpu_lib,
+            gpu_trace_precision=args.screen_gpu_precision,
+            gpu_verify_precision="" if args.screen_gpu_verify_precision == "none" else args.screen_gpu_verify_precision,
+            gpu_verify_candidates=args.screen_gpu_verify_candidates,
+            gpu_segments_per_coil=args.screen_gpu_segments,
+            gpu_device=args.screen_gpu_device,
         ),
         boozer=BoozerConfig(
             surface_order=args.surface_order,

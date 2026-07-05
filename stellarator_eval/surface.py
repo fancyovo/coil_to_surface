@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 import os
+from pathlib import Path
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -11,7 +12,6 @@ os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 import numpy as np
 from scipy.spatial import cKDTree
-from simsopt.geo import BoozerSurface, SurfaceXYZTensorFourier, Volume, boozer_surface_residual
 
 from .axis import b_components, rk4_one_period
 from .config import BoozerConfig, SurfaceScanConfig
@@ -132,6 +132,157 @@ def screen_level(field, model: PsiModel, psi_level: float, cfg: SurfaceScanConfi
     )
 
 
+def _level_screen_from_endpoint(model: PsiModel, psi_level: float, rho, Re, Ze, cfg: SurfaceScanConfig, trace_time: float, curve_time: float, reason_ok="ok"):
+    phi_end = np.full_like(Re, TWOPI / model.nfp)
+    psi_end, gr, gz, gp = psi_and_gradient(model, Re, Ze, phi_end)
+    grad_norm = np.sqrt(gr**2 + gz**2 + (gp / Re) ** 2)
+    distance = np.abs(psi_end - psi_level) / np.maximum(grad_norm, 1e-14)
+    p95 = float(np.percentile(distance, 95))
+    radius_mean = float(np.mean(rho))
+    rel = p95 / max(radius_mean, 1e-14)
+    ok = bool((p95 <= cfg.drift_abs_tol) and (rel <= cfg.drift_rel_tol) and np.max(rho) < cfg.max_radius_scale * model.a * 0.999)
+    return LevelScreen(
+        psi_level=float(psi_level),
+        ok=ok,
+        reason=reason_ok if ok else "drift_or_radius_failed",
+        radius_min=float(np.min(rho)),
+        radius_mean=radius_mean,
+        radius_max=float(np.max(rho)),
+        curve_newton_time_s=curve_time,
+        end_distance_p95=p95,
+        rel_end_distance_p95=float(rel),
+        trace_time_s=trace_time,
+    )
+
+
+def screen_levels_gpu(field_input, model: PsiModel, levels, cfg: SurfaceScanConfig, current_unit: str = "MA") -> list[dict]:
+    try:
+        import sys
+
+        gpu_python = Path(__file__).resolve().parents[1] / "gpu_backend" / "python"
+        if str(gpu_python) not in sys.path:
+            sys.path.insert(0, str(gpu_python))
+        from stellarator_gpu import CoilFieldGpu
+    except Exception as exc:
+        raise RuntimeError(f"GPU backend import failed: {exc!r}") from exc
+
+    curves = []
+    for level in levels:
+        t_curve = time.perf_counter()
+        theta, R, Z, rho = level_curve_phi0(model, float(level), cfg.n_alpha, cfg)
+        curves.append(
+            {
+                "psi_level": float(level),
+                "R": R,
+                "Z": Z,
+                "rho": rho,
+                "curve_time": time.perf_counter() - t_curve,
+            }
+        )
+    if not curves:
+        return []
+
+    R0 = np.concatenate([c["R"] for c in curves])
+    Z0 = np.concatenate([c["Z"] for c in curves])
+    offsets = np.cumsum([0] + [len(c["R"]) for c in curves])
+    unit = current_unit.lower()
+    if unit in {"ma", "megaamp", "megaamps"}:
+        currents = np.asarray(field_input.currents, dtype=float) * 1e6
+    elif unit in {"a", "amp", "amps"}:
+        currents = np.asarray(field_input.currents, dtype=float)
+    else:
+        raise ValueError(f"unknown current_unit={current_unit!r}; use 'MA' or 'A'")
+    lib_path = Path(cfg.gpu_lib_path)
+    if not lib_path.is_absolute():
+        lib_path = Path.cwd() / lib_path
+    t_create = time.perf_counter()
+    gpu_field = CoilFieldGpu(
+        lib_path,
+        field_input.coeffs_x,
+        field_input.coeffs_y,
+        field_input.coeffs_z,
+        currents,
+        nfp=model.nfp,
+        segments_per_coil=cfg.gpu_segments_per_coil,
+        device_id=cfg.gpu_device,
+    )
+    gpu_create_time = time.perf_counter() - t_create
+    try:
+        t_trace = time.perf_counter()
+        Re, Ze = gpu_field.trace_period_blockline_precision(
+            R0,
+            Z0,
+            steps=cfg.trace_steps,
+            precision=cfg.gpu_trace_precision,
+            threads_per_line=cfg.gpu_threads_per_line,
+            nfp=model.nfp,
+        )
+        trace_total = time.perf_counter() - t_trace
+        per_line_time = trace_total / max(len(R0), 1)
+        results: list[dict] = []
+        for i, curve in enumerate(curves):
+            sl = slice(offsets[i], offsets[i + 1])
+            screen = _level_screen_from_endpoint(
+                model,
+                curve["psi_level"],
+                curve["rho"],
+                Re[sl],
+                Ze[sl],
+                cfg,
+                trace_time=per_line_time * (offsets[i + 1] - offsets[i]),
+                curve_time=curve["curve_time"],
+            ).__dict__
+            screen["trace_backend"] = "gpu"
+            screen["trace_precision"] = cfg.gpu_trace_precision
+            screen["gpu_batch_trace_time_s"] = trace_total
+            screen["gpu_create_time_s"] = gpu_create_time
+            results.append(screen)
+
+        verify_candidates = sorted([r for r in results if r.get("ok")], key=lambda r: r["psi_level"], reverse=True)[
+            : cfg.gpu_verify_candidates
+        ]
+        if verify_candidates and cfg.gpu_verify_precision:
+            verify_levels = {float(r["psi_level"]) for r in verify_candidates}
+            verify_indices = [i for i, c in enumerate(curves) if c["psi_level"] in verify_levels]
+            Rv = np.concatenate([curves[i]["R"] for i in verify_indices])
+            Zv = np.concatenate([curves[i]["Z"] for i in verify_indices])
+            voffsets = np.cumsum([0] + [len(curves[i]["R"]) for i in verify_indices])
+            t_verify = time.perf_counter()
+            Rev, Zev = gpu_field.trace_period_blockline_precision(
+                Rv,
+                Zv,
+                steps=cfg.trace_steps,
+                precision=cfg.gpu_verify_precision,
+                threads_per_line=cfg.gpu_threads_per_line,
+                nfp=model.nfp,
+            )
+            verify_time = time.perf_counter() - t_verify
+            for j, i in enumerate(verify_indices):
+                sl = slice(voffsets[j], voffsets[j + 1])
+                verified = _level_screen_from_endpoint(
+                    model,
+                    curves[i]["psi_level"],
+                    curves[i]["rho"],
+                    Rev[sl],
+                    Zev[sl],
+                    cfg,
+                    trace_time=verify_time / max(len(verify_indices), 1),
+                    curve_time=curves[i]["curve_time"],
+                    reason_ok="ok_verified",
+                ).__dict__
+                results[i]["verify_precision"] = cfg.gpu_verify_precision
+                results[i]["verify_trace_time_s"] = verify_time / max(len(verify_indices), 1)
+                results[i]["verify_ok"] = verified["ok"]
+                results[i]["verify_end_distance_p95"] = verified["end_distance_p95"]
+                results[i]["verify_rel_end_distance_p95"] = verified["rel_end_distance_p95"]
+                if not verified["ok"]:
+                    results[i]["ok"] = False
+                    results[i]["reason"] = "gpu_verify_failed"
+        return results
+    finally:
+        gpu_field.close()
+
+
 def surface_points_from_level(model: PsiModel, psi_level: float, order: int, cfg: SurfaceScanConfig):
     t_newton = time.perf_counter()
     nphi = 2 * order + 1
@@ -165,6 +316,8 @@ def surface_points_from_level(model: PsiModel, psi_level: float, order: int, cfg
 
 
 def fit_xyz_tensor_surface(xyz, nfp: int, order: int, stellsym: bool):
+    from simsopt.geo import SurfaceXYZTensorFourier
+
     nphi, ntheta, _ = xyz.shape
     surf = SurfaceXYZTensorFourier(
         mpol=order,
@@ -180,6 +333,8 @@ def fit_xyz_tensor_surface(xyz, nfp: int, order: int, stellsym: bool):
 
 
 def clone_surface(surf):
+    from simsopt.geo import SurfaceXYZTensorFourier
+
     other = SurfaceXYZTensorFourier(
         mpol=surf.mpol,
         ntor=surf.ntor,
@@ -193,6 +348,8 @@ def clone_surface(surf):
 
 
 def helical_qs_metric(boozer_surface, biotsavart, helicity_m: int, helicity_n: int, sdim: int = 16, n_alpha: int = 64):
+    from simsopt.geo import SurfaceXYZTensorFourier
+
     in_surface = boozer_surface.surface
     phis = np.linspace(0.0, 1.0 / in_surface.nfp, 2 * sdim, endpoint=False)
     thetas = np.linspace(0.0, 1.0, 2 * sdim, endpoint=False)
@@ -223,6 +380,8 @@ def helical_qs_metric(boozer_surface, biotsavart, helicity_m: int, helicity_n: i
 
 
 def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: SurfaceScanConfig, boozer_cfg: BoozerConfig, out_npz=None):
+    from simsopt.geo import BoozerSurface, Volume, boozer_surface_residual
+
     result: dict[str, object] = {"psi_level": float(psi_level)}
     t0 = time.perf_counter()
     xyz, radii, newton_time = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)

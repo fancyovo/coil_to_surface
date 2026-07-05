@@ -12,7 +12,7 @@ from .config import EvalConfig
 from .field import FieldInput, build_field, input_from_flat_vector, load_case_file
 from .psi import fit_psi, model_to_npz_dict
 from .serialization import write_json
-from .surface import evaluate_boozer_surface, screen_level
+from .surface import evaluate_boozer_surface, screen_level, screen_levels_gpu
 from .timing import timing_phase, timing_session
 
 
@@ -97,12 +97,19 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
         screen_results = []
         t_screen = time.perf_counter()
         with timing_phase("psi0_screen_fieldline"):
-            for level in config.scan.levels:
+            if config.scan.trace_backend.lower() == "gpu":
                 try:
-                    screen = screen_level(built.field, model, float(level), config.scan)
-                    screen_results.append(screen.__dict__)
+                    screen_results = screen_levels_gpu(field_input, model, config.scan.levels, config.scan, config.current_unit)
                 except Exception as exc:
-                    screen_results.append({"psi_level": float(level), "ok": False, "reason": repr(exc)})
+                    result["warnings"].append(f"GPU psi0 screen failed; falling back to CPU: {exc!r}")
+                    screen_results = []
+            if not screen_results:
+                for level in config.scan.levels:
+                    try:
+                        screen = screen_level(built.field, model, float(level), config.scan)
+                        screen_results.append(screen.__dict__)
+                    except Exception as exc:
+                        screen_results.append({"psi_level": float(level), "ok": False, "reason": repr(exc)})
         result["surface_screen"] = {
             "time_s": time.perf_counter() - t_screen,
             "levels": screen_results,

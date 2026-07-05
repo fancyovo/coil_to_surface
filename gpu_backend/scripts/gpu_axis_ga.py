@@ -54,7 +54,16 @@ def run_ga(field, r_center, nfp, args):
     best = None
     for gen in range(args.max_generations + 1):
         t0 = time.perf_counter()
-        if args.trace_mode == "warp":
+        if args.trace_mode == "auto":
+            re, ze = field.trace_period_blockline_precision(
+                r,
+                z,
+                steps=args.steps,
+                precision=args.trace_precision,
+                threads_per_line=args.blockline_threads,
+                nfp=nfp,
+            )
+        elif args.trace_mode == "warp":
             re, ze = field.trace_period(r, z, steps=args.steps, nfp=nfp)
         elif args.trace_mode == "blockline":
             re, ze = field.trace_period_blockline(
@@ -121,7 +130,13 @@ def main():
     p.add_argument("--steps", type=int, default=800)
     p.add_argument("--max-generations", type=int, default=32)
     p.add_argument("--tol", type=float, default=1e-8)
-    p.add_argument("--trace-mode", choices=["warp", "blockline", "blockline_mixed64", "blockline_f32", "blockline_f16state"], default="warp")
+    p.add_argument(
+        "--trace-mode",
+        choices=["auto", "warp", "blockline", "blockline_mixed64", "blockline_f32", "blockline_f16state"],
+        default="auto",
+        help="legacy kernel selector; default auto uses --trace-precision",
+    )
+    p.add_argument("--trace-precision", choices=["mixed64", "fp64", "fp32"], default="mixed64")
     p.add_argument("--blockline-threads", type=int, default=256)
     p.add_argument("--output", default="gpu_axis_ga.json")
     args = p.parse_args()
@@ -141,7 +156,9 @@ def main():
         "segments_per_coil": args.segments,
         "segment_count": field.segment_count,
         "trace_mode": args.trace_mode,
-        "blockline_threads": args.blockline_threads if args.trace_mode == "blockline" else None,
+        "trace_precision": args.trace_precision if args.trace_mode == "auto" else None,
+        "effective_trace": args.trace_precision if args.trace_mode == "auto" else args.trace_mode,
+        "blockline_threads": args.blockline_threads if args.trace_mode != "warp" else None,
         "create_time_s": create_time,
         "ga_time_s": total,
         "converged": bool(best["best_residual"] <= args.tol),

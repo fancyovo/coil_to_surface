@@ -6,6 +6,19 @@ from pathlib import Path
 
 import numpy as np
 
+TRACE_PRECISION_ALIASES = {
+    "mixed64": "mixed64",
+    "bf32_state64": "mixed64",
+    "blockline_mixed64": "mixed64",
+    "fp64": "fp64",
+    "float64": "fp64",
+    "blockline": "fp64",
+    "fp32": "fp32",
+    "float32": "fp32",
+    "f32": "fp32",
+    "blockline_f32": "fp32",
+}
+
 
 class GpuError(RuntimeError):
     pass
@@ -217,6 +230,36 @@ class CoilFieldGpu:
         )
         self._check(code)
         return R1, Z1
+
+    def trace_period_blockline_precision(
+        self,
+        R0,
+        Z0,
+        steps: int,
+        precision: str = "mixed64",
+        threads_per_line: int = 256,
+        nfp: int | None = None,
+    ):
+        """Trace one field period with the block-per-line kernel.
+
+        ``precision`` options:
+        - ``mixed64``: fp32 Biot-Savart accumulation, fp64 RK state. This is the default.
+        - ``fp64``: full fp64 block-per-line tracing.
+        - ``fp32``: fp32 Biot-Savart accumulation and fp32 RK state. Use for coarse screening.
+        """
+        key = TRACE_PRECISION_ALIASES.get(precision)
+        if key is None:
+            choices = ", ".join(sorted(set(TRACE_PRECISION_ALIASES)))
+            raise ValueError(f"unknown trace precision {precision!r}; choices: {choices}")
+        if key == "mixed64":
+            return self.trace_period_blockline_mixed(
+                R0, Z0, steps, threads_per_line=threads_per_line, mode="bf32_state64", nfp=nfp
+            )
+        if key == "fp32":
+            return self.trace_period_blockline_mixed(
+                R0, Z0, steps, threads_per_line=threads_per_line, mode="f32", nfp=nfp
+            )
+        return self.trace_period_blockline(R0, Z0, steps, threads_per_line=threads_per_line, nfp=nfp)
 
 
 def load_case(path: str | Path, key: str = "raw"):

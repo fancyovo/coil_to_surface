@@ -112,8 +112,8 @@ debug/raw: 不收敛，double 复核残差 3.885e-02
 当前建议：
 
 1. 默认追踪 kernel 使用一个 block 负责一条线，`256 threads/block`。
-2. 找磁轴的主力模式使用 `blockline_mixed64`，即 $B$ fp32、RK 状态 fp64。
-3. 若需要更激进加速，可以先用 `blockline_f32` 做粗筛，再用 `blockline_mixed64` 或 fp64 做精修和最终残差复核。
+2. 默认精度使用 `mixed64`，即 $B$ fp32、RK 状态 fp64。
+3. `fp64` 和 `fp32` 保留为显式选项：`fp64` 用于最终复核，`fp32` 用于粗筛。
 4. 不使用 fp16 状态。
 
 一个比较稳妥的找轴流程是：
@@ -126,3 +126,24 @@ debug/raw: 不收敛，double 复核残差 3.885e-02
 
 这样能利用 5090 的 fp32 算力优势，同时避免最终指标被低精度动力系统污染。
 
+代码入口已经固定为：
+
+```python
+field.trace_period_blockline_precision(
+    R0,
+    Z0,
+    steps=800,
+    precision="mixed64",  # 默认值
+    threads_per_line=256,
+)
+```
+
+可选值为：
+
+```text
+mixed64: B fp32 + RK state fp64，默认
+fp64:    B fp64 + RK state fp64，最终复核
+fp32:    B fp32 + RK state fp32，粗筛
+```
+
+`gpu_axis_ga.py` 默认已经切到 `--trace-mode auto --trace-precision mixed64`。后续 $\psi_0$ 筛选中沿等 $\psi$ 曲线批量追踪一周期时，应复用同一个入口；只有最终报告残差时再用 `precision="fp64"` 对候选做复核。

@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from .axis import find_axis
+from .axis import find_axis, find_axis_gpu
 from .config import EvalConfig
 from .field import FieldInput, build_field, input_from_flat_vector, load_case_file
 from .psi import fit_psi, model_to_npz_dict
@@ -29,6 +29,9 @@ def _axis_summary(axis) -> dict:
         "best_residual": axis.best_residual,
         "generation": axis.generation,
         "time_s": axis.time_s,
+        "search_time_s": axis.search_time_s,
+        "trace_time_s": axis.trace_time_s,
+        "backend": axis.backend,
         "history": axis.history,
     }
 
@@ -68,7 +71,10 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
         }
 
         with timing_phase("axis_search"):
-            axis = find_axis(built.field, built.nfp, built.coil_r0, config.axis)
+            if config.axis.backend.lower() == "gpu":
+                axis = find_axis_gpu(field_input, built.field, built.nfp, built.coil_r0, config.axis, config.current_unit)
+            else:
+                axis = find_axis(built.field, built.nfp, built.coil_r0, config.axis)
         result["axis"] = _axis_summary(axis)
         np.savez(
             out / "axis_data.npz",
@@ -155,6 +161,8 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
         result["timing"] = {
             "field_build_s": result["field"]["build_time_s"],
             "axis_s": axis.time_s,
+            "axis_search_s": axis.search_time_s,
+            "axis_trace_s": axis.trace_time_s,
             "psi_fit_s": model.fit_info["time_s"],
             "surface_screen_s": result["surface_screen"]["time_s"],
             "surface_screen_curve_newton_s": sum(float(r.get("curve_newton_time_s", 0.0)) for r in screen_results),

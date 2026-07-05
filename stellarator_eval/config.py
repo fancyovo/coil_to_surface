@@ -6,6 +6,7 @@ from typing import Sequence
 
 @dataclass
 class AxisGAConfig:
+    backend: str = "cpu"
     grid: int = 16
     keep: int = 16
     span: float = 0.5
@@ -14,6 +15,20 @@ class AxisGAConfig:
     max_generations: int = 32
     tol: float = 1e-8
     axis_trace_steps: int = 240
+    gpu_lib_path: str = "gpu_backend/build_mixed/libstellarator_gpu.so"
+    gpu_segments_per_coil: int = 256
+    gpu_device: int = 0
+    gpu_trace_precision: str = "mixed64"
+    gpu_verify_precision: str = "fp64"
+    gpu_threads_per_line: int = 256
+    staged: bool = False
+    switch_tol: float = 1e-6
+    coarse_precision: str = "fp32"
+    fine_precision: str = "mixed64"
+    fine_grid: int = 8
+    fine_keep: int = 8
+    fine_max_generations: int = 96
+    fine_span_min: float = 1e-8
 
 
 @dataclass

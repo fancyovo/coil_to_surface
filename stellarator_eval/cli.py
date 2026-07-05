@@ -29,17 +29,19 @@ def build_parser():
     p.add_argument("--psi-n-phi", type=int, default=80)
     p.add_argument("--psi-batch-size", type=int, default=20000)
     p.add_argument("--psi-validation-points", type=int, default=4000)
-    p.add_argument("--psi-backend", choices=["cpu", "gpu", "fullgpu"], default="cpu")
+    p.add_argument("--psi-backend", choices=["cpu", "gpu", "fullgpu"], default="fullgpu")
+    p.add_argument("--psi-linear-solver", choices=["normal_eq", "qr"], default="qr")
     p.add_argument("--psi-normal-eq-backend", choices=["auto", "cpu", "gpu"], default="auto")
-    p.add_argument("--psi-normal-eq-precision", choices=["fp64", "fp32"], default="fp64")
+    p.add_argument("--psi-normal-eq-precision", choices=["fp64", "fp32"], default="fp32")
     p.add_argument("--psi-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
     p.add_argument("--psi-gpu-segments", type=int, default=256)
     p.add_argument("--psi-gpu-device", type=int, default=0)
 
     p.add_argument("--axis-max-generations", type=int, default=32)
+    p.add_argument("--axis-method", choices=["fixed_point", "ga"], default="fixed_point")
     p.add_argument("--axis-rk4-steps", type=int, default=800)
-    p.add_argument("--axis-tol", type=float, default=1e-8)
-    p.add_argument("--axis-backend", choices=["cpu", "gpu"], default="cpu")
+    p.add_argument("--axis-tol", type=float, default=1e-7)
+    p.add_argument("--axis-backend", choices=["cpu", "gpu"], default="gpu")
     p.add_argument("--axis-span", type=float, default=0.5)
     p.add_argument("--axis-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
     p.add_argument("--axis-gpu-precision", choices=["mixed64", "fp64", "fp32"], default="mixed64")
@@ -48,6 +50,13 @@ def build_parser():
     p.add_argument("--axis-gpu-device", type=int, default=0)
     p.add_argument("--axis-staged", action="store_true")
     p.add_argument("--axis-switch-tol", type=float, default=1e-6)
+    p.add_argument("--axis-fp-grid", type=int, default=48)
+    p.add_argument("--axis-fp-max-candidates", type=int, default=16)
+    p.add_argument("--axis-fp-newton-iters", type=int, default=6)
+    p.add_argument("--axis-fp-fallback-grid", type=int, default=96)
+    p.add_argument("--axis-fp-fallback-max-candidates", type=int, default=96)
+    p.add_argument("--axis-fp-fallback-newton-iters", type=int, default=8)
+    p.add_argument("--axis-fp-r-floor", type=float, default=1e-4)
 
     p.add_argument("--levels", default="0.001,0.002,0.004,0.008,0.012,0.02,0.04,0.08,0.12,0.16")
     p.add_argument("--screen-n-alpha", type=int, default=256)
@@ -55,7 +64,7 @@ def build_parser():
     p.add_argument("--drift-rel-tol", type=float, default=0.30)
     p.add_argument("--drift-abs-tol", type=float, default=5e-4)
     p.add_argument("--max-boozer-candidates", type=int, default=3)
-    p.add_argument("--screen-trace-backend", choices=["cpu", "gpu"], default="cpu")
+    p.add_argument("--screen-trace-backend", choices=["cpu", "gpu"], default="gpu")
     p.add_argument("--screen-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
     p.add_argument("--screen-gpu-precision", choices=["mixed64", "fp64", "fp32"], default="mixed64")
     p.add_argument("--screen-gpu-verify-precision", choices=["mixed64", "fp64", "fp32", "none"], default="fp64")
@@ -64,6 +73,9 @@ def build_parser():
     p.add_argument("--screen-gpu-device", type=int, default=0)
 
     p.add_argument("--surface-order", type=int, default=6)
+    p.add_argument("--surface-extract-backend", choices=["cpu", "gpu"], default="gpu")
+    p.add_argument("--surface-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
+    p.add_argument("--surface-gpu-device", type=int, default=0)
     p.add_argument("--initial-iota", type=float, default=-2.0)
     p.add_argument("--ls-maxiter", type=int, default=100)
     p.add_argument("--newton-maxiter", type=int, default=30)
@@ -74,6 +86,7 @@ def build_parser():
 def config_from_args(args) -> EvalConfig:
     return EvalConfig(
         axis=AxisGAConfig(
+            method=args.axis_method,
             backend=args.axis_backend,
             span=args.axis_span,
             rk4_steps=args.axis_rk4_steps,
@@ -86,9 +99,17 @@ def config_from_args(args) -> EvalConfig:
             gpu_device=args.axis_gpu_device,
             staged=args.axis_staged,
             switch_tol=args.axis_switch_tol,
+            fixed_point_grid=args.axis_fp_grid,
+            fixed_point_max_candidates=args.axis_fp_max_candidates,
+            fixed_point_newton_iters=args.axis_fp_newton_iters,
+            fixed_point_fallback_grid=args.axis_fp_fallback_grid,
+            fixed_point_fallback_max_candidates=args.axis_fp_fallback_max_candidates,
+            fixed_point_fallback_newton_iters=args.axis_fp_fallback_newton_iters,
+            fixed_point_r_floor=args.axis_fp_r_floor,
         ),
         psi=PsiFitConfig(
             backend=args.psi_backend,
+            linear_solver=args.psi_linear_solver,
             normal_eq_backend=args.psi_normal_eq_backend,
             normal_eq_precision=args.psi_normal_eq_precision,
             a=args.a,
@@ -120,6 +141,9 @@ def config_from_args(args) -> EvalConfig:
         ),
         boozer=BoozerConfig(
             surface_order=args.surface_order,
+            surface_extract_backend=args.surface_extract_backend,
+            gpu_lib_path=args.surface_gpu_lib,
+            gpu_device=args.surface_gpu_device,
             initial_iota=args.initial_iota,
             ls_maxiter=args.ls_maxiter,
             newton_maxiter=args.newton_maxiter,

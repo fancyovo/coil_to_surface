@@ -69,9 +69,36 @@ int sgpu_fit_psi_fullgpu(
     int poly_degree,
     int m_tor,
     double ridge,
+    int solver_mode,
     int precision_mode,
     double* coeff_host,
     double* train_rms_out,
+    double* stats_out,
+    int stats_len
+);
+
+int sgpu_surface_points_from_level(
+    const double* coeff_host,
+    const int* mode_a_host,
+    const int* mode_b_host,
+    const int* mode_m_host,
+    const int* mode_kind_host,
+    int n_coeff,
+    int nfp,
+    double a,
+    int poly_degree,
+    int m_tor,
+    const double* axis_R_host,
+    const double* axis_Z_host,
+    int n_axis,
+    int order,
+    double psi_level,
+    int maxiter,
+    double tol,
+    double max_radius_scale,
+    int device_id,
+    double* xyz_host,
+    double* radii_host,
     double* stats_out,
     int stats_len
 );

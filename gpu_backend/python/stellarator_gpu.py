@@ -19,9 +19,127 @@ TRACE_PRECISION_ALIASES = {
     "blockline_f32": "fp32",
 }
 
+_UTILITY_LIB_CACHE: dict[str, ctypes.CDLL] = {}
+
 
 class GpuError(RuntimeError):
     pass
+
+
+def _check_lib_code(lib: ctypes.CDLL, code: int):
+    if code:
+        msg = lib.sgpu_last_error()
+        raise GpuError(msg.decode("utf-8", "replace") if msg else "unknown GPU backend error")
+
+
+def _load_utility_lib(lib_path: str | Path) -> ctypes.CDLL:
+    path = str(Path(lib_path))
+    lib = _UTILITY_LIB_CACHE.get(path)
+    if lib is not None:
+        return lib
+    lib = ctypes.CDLL(path)
+    lib.sgpu_surface_points_from_level.restype = ctypes.c_int
+    lib.sgpu_surface_points_from_level.argtypes = [
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+    ]
+    lib.sgpu_last_error.restype = ctypes.c_char_p
+    _UTILITY_LIB_CACHE[path] = lib
+    return lib
+
+
+def surface_points_from_level_gpu(
+    lib_path: str | Path,
+    coeffs,
+    mode_a,
+    mode_b,
+    mode_m,
+    mode_kind,
+    *,
+    nfp: int,
+    a: float,
+    poly_degree: int,
+    m_tor: int,
+    axis_R,
+    axis_Z,
+    order: int,
+    psi_level: float,
+    maxiter: int,
+    tol: float,
+    max_radius_scale: float,
+    device_id: int = 0,
+):
+    lib = _load_utility_lib(lib_path)
+    coeffs = np.ascontiguousarray(coeffs, dtype=np.float64).ravel()
+    mode_a = np.ascontiguousarray(mode_a, dtype=np.int32).ravel()
+    mode_b = np.ascontiguousarray(mode_b, dtype=np.int32).ravel()
+    mode_m = np.ascontiguousarray(mode_m, dtype=np.int32).ravel()
+    mode_kind = np.ascontiguousarray(mode_kind, dtype=np.int32).ravel()
+    axis_R = np.ascontiguousarray(axis_R, dtype=np.float64).ravel()
+    axis_Z = np.ascontiguousarray(axis_Z, dtype=np.float64).ravel()
+    if not (mode_a.shape == mode_b.shape == mode_m.shape == mode_kind.shape):
+        raise ValueError("mode arrays shape mismatch")
+    if coeffs.size != mode_a.size:
+        raise ValueError("coeff length must equal mode count")
+    nphi = 2 * int(order) + 1
+    ntheta = 2 * int(order) + 1
+    xyz = np.empty((nphi, ntheta, 3), dtype=np.float64)
+    radii = np.empty((nphi, ntheta), dtype=np.float64)
+    stats = np.empty(5, dtype=np.float64)
+    code = lib.sgpu_surface_points_from_level(
+        coeffs.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        mode_a.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        mode_b.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        mode_m.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        mode_kind.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        ctypes.c_int(coeffs.size),
+        ctypes.c_int(int(nfp)),
+        ctypes.c_double(float(a)),
+        ctypes.c_int(int(poly_degree)),
+        ctypes.c_int(int(m_tor)),
+        axis_R.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        axis_Z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_int(axis_R.size),
+        ctypes.c_int(int(order)),
+        ctypes.c_double(float(psi_level)),
+        ctypes.c_int(int(maxiter)),
+        ctypes.c_double(float(tol)),
+        ctypes.c_double(float(max_radius_scale)),
+        ctypes.c_int(int(device_id)),
+        xyz.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        radii.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        stats.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_int(stats.size),
+    )
+    _check_lib_code(lib, code)
+    return xyz, radii, {
+        "copy_in_s": float(stats[0]),
+        "coeff_build_s": float(stats[1]),
+        "newton_s": float(stats[2]),
+        "copy_out_s": float(stats[3]),
+        "total_s": float(stats[4]),
+    }
 
 
 class CoilFieldGpu:
@@ -131,6 +249,7 @@ class CoilFieldGpu:
             ctypes.c_int,
             ctypes.c_int,
             ctypes.c_double,
+            ctypes.c_int,
             ctypes.c_int,
             ctypes.POINTER(ctypes.c_double),
             ctypes.POINTER(ctypes.c_double),
@@ -262,10 +381,14 @@ class CoilFieldGpu:
         m_tor: int,
         ridge: float,
         precision: str = "fp64",
+        solver: str = "normal_eq",
     ):
         precision = precision.lower()
         if precision not in {"fp64", "fp32"}:
             raise ValueError("fit_psi_fullgpu precision must be 'fp64' or 'fp32'")
+        solver = solver.lower()
+        if solver not in {"normal_eq", "qr"}:
+            raise ValueError("fit_psi_fullgpu solver must be 'normal_eq' or 'qr'")
         R = np.ascontiguousarray(R, dtype=np.float64).ravel()
         Z = np.ascontiguousarray(Z, dtype=np.float64).ravel()
         phi = np.ascontiguousarray(phi, dtype=np.float64).ravel()
@@ -285,7 +408,7 @@ class CoilFieldGpu:
             raise ValueError("mode arrays shape mismatch")
         coeff = np.empty(mode_a.size, dtype=np.float64)
         train_rms = np.empty(1, dtype=np.float64)
-        stats = np.empty(7, dtype=np.float64)
+        stats = np.empty(12, dtype=np.float64)
         code = self.lib.sgpu_fit_psi_fullgpu(
             self.handle,
             R.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -307,6 +430,7 @@ class CoilFieldGpu:
             ctypes.c_int(poly_degree),
             ctypes.c_int(m_tor),
             ctypes.c_double(ridge),
+            ctypes.c_int(1 if solver == "normal_eq" else 2),
             ctypes.c_int(1 if precision == "fp64" else 2),
             coeff.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
             train_rms.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -317,11 +441,16 @@ class CoilFieldGpu:
         return coeff, float(train_rms[0]), {
             "copy_in_s": float(stats[0]),
             "assemble_s": float(stats[1]),
-            "normal_eq_s": float(stats[2]),
+            "linear_prep_s": float(stats[2]),
             "solve_s": float(stats[3]),
             "residual_s": float(stats[4]),
             "copy_out_s": float(stats[5]),
             "total_s": float(stats[6]),
+            "qr_transpose_s": float(stats[7]),
+            "qr_scale_s": float(stats[8]),
+            "qr_factor_s": float(stats[9]),
+            "qr_apply_qtb_s": float(stats[10]),
+            "qr_tri_s": float(stats[11]),
         }
 
     def trace_period(self, R0, Z0, steps: int, nfp: int | None = None):

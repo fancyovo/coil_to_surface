@@ -315,6 +315,43 @@ def surface_points_from_level(model: PsiModel, psi_level: float, order: int, cfg
     return xyz, radii, time.perf_counter() - t_newton
 
 
+def surface_points_from_level_gpu(model: PsiModel, psi_level: float, order: int, cfg: SurfaceScanConfig, boozer_cfg: BoozerConfig):
+    import sys
+
+    gpu_python = Path(__file__).resolve().parents[1] / "gpu_backend" / "python"
+    if str(gpu_python) not in sys.path:
+        sys.path.insert(0, str(gpu_python))
+    from stellarator_gpu import surface_points_from_level_gpu as gpu_surface_points_from_level
+
+    poly_degree = int(model.fit_info.get("poly_degree", max(m.a + m.b for m in model.modes)))
+    m_tor = int(model.fit_info.get("m_tor", max(m.m for m in model.modes)))
+    mode_kind = np.array([0 if m.kind == "cos" else 1 for m in model.modes], dtype=np.int32)
+    lib_path = Path(boozer_cfg.gpu_lib_path)
+    if not lib_path.is_absolute():
+        lib_path = Path.cwd() / lib_path
+    xyz, radii, stats = gpu_surface_points_from_level(
+        lib_path,
+        model.coeffs,
+        np.array([m.a for m in model.modes], dtype=np.int32),
+        np.array([m.b for m in model.modes], dtype=np.int32),
+        np.array([m.m for m in model.modes], dtype=np.int32),
+        mode_kind,
+        nfp=model.nfp,
+        a=model.a,
+        poly_degree=poly_degree,
+        m_tor=m_tor,
+        axis_R=model.R_axis,
+        axis_Z=model.Z_axis,
+        order=order,
+        psi_level=float(psi_level),
+        maxiter=cfg.curve_newton_maxiter,
+        tol=cfg.curve_newton_tol,
+        max_radius_scale=cfg.max_radius_scale,
+        device_id=boozer_cfg.gpu_device,
+    )
+    return xyz, radii, stats
+
+
 def fit_xyz_tensor_surface(xyz, nfp: int, order: int, stellsym: bool):
     from simsopt.geo import SurfaceXYZTensorFourier
 
@@ -393,7 +430,22 @@ def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: 
 
     result: dict[str, object] = {"psi_level": float(psi_level)}
     t0 = time.perf_counter()
-    xyz, radii, newton_time = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)
+    if boozer_cfg.surface_extract_backend.lower() == "gpu":
+        try:
+            xyz, radii, extract_stats = surface_points_from_level_gpu(model, psi_level, boozer_cfg.surface_order, scan_cfg, boozer_cfg)
+            newton_time = float(extract_stats["newton_s"])
+            result["extract_surface_backend"] = "gpu"
+            result["level_surface_coeff_build_time_s"] = float(extract_stats["coeff_build_s"])
+            result["level_surface_copy_in_time_s"] = float(extract_stats["copy_in_s"])
+            result["level_surface_copy_out_time_s"] = float(extract_stats["copy_out_s"])
+            result["level_surface_gpu_total_time_s"] = float(extract_stats["total_s"])
+        except Exception as exc:
+            xyz, radii, newton_time = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)
+            result["extract_surface_backend"] = "gpu_fallback_cpu"
+            result["extract_surface_gpu_error"] = repr(exc)
+    else:
+        xyz, radii, newton_time = surface_points_from_level(model, psi_level, boozer_cfg.surface_order, scan_cfg)
+        result["extract_surface_backend"] = "cpu"
     result["extract_surface_time_s"] = time.perf_counter() - t0
     result["level_surface_1d_newton_time_s"] = float(newton_time)
     result["radius_min"] = float(np.min(radii))

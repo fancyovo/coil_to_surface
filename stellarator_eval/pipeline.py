@@ -27,11 +27,15 @@ def _axis_summary(axis) -> dict:
         "best_R": axis.best_R,
         "best_Z": axis.best_Z,
         "best_residual": axis.best_residual,
+        "search_best_residual": axis.search_best_residual,
+        "best_residual_definition": "closure distance after tracing one field period from the best candidate",
         "generation": axis.generation,
         "time_s": axis.time_s,
         "search_time_s": axis.search_time_s,
         "trace_time_s": axis.trace_time_s,
         "backend": axis.backend,
+        "trace_error": axis.trace_error,
+        "failure_reason": axis.failure_reason,
         "history": axis.history,
     }
 
@@ -43,6 +47,53 @@ def _psi_summary(model) -> dict:
         "fit_info": model.fit_info,
         "modes": [{"a": m.a, "b": m.b, "m": m.m, "kind": m.kind} for m in model.modes],
         "coeffs": model.coeffs,
+    }
+
+
+def _timing_summary(*, field_build_s: float = 0.0, axis=None, model=None, screen_results=None, surface_results=None) -> dict:
+    screen_results = screen_results or []
+    surface_results = surface_results or []
+    fit_info = {} if model is None else model.fit_info
+    return {
+        "field_build_s": float(field_build_s),
+        "axis_s": 0.0 if axis is None else float(axis.time_s),
+        "axis_search_s": 0.0 if axis is None else float(axis.search_time_s),
+        "axis_trace_s": 0.0 if axis is None else float(axis.trace_time_s),
+        "psi_fit_s": float(fit_info.get("time_s", 0.0)),
+        "psi_gpu_create_s": float(fit_info.get("gpu_create_s", 0.0)),
+        "psi_training_point_s": float(fit_info.get("training_point_s", 0.0)),
+        "psi_assemble_s": float(fit_info.get("assemble_s", 0.0)),
+        "psi_assemble_interp_s": float(fit_info.get("assemble_interp_s", 0.0)),
+        "psi_assemble_b_sample_s": float(fit_info.get("assemble_b_sample_s", 0.0)),
+        "psi_assemble_basis_s": float(fit_info.get("assemble_basis_s", 0.0)),
+        "psi_assemble_normal_eq_s": float(fit_info.get("assemble_normal_eq_s", 0.0)),
+        "psi_assemble_normal_eq_cpu_s": float(fit_info.get("assemble_normal_eq_cpu_s", 0.0)),
+        "psi_assemble_normal_eq_gpu_s": float(fit_info.get("assemble_normal_eq_gpu_s", 0.0)),
+        "psi_qr_prep_s": float(fit_info.get("qr_prep_s", 0.0)),
+        "psi_qr_transpose_s": float(fit_info.get("qr_transpose_s", 0.0)),
+        "psi_qr_scale_s": float(fit_info.get("qr_scale_s", 0.0)),
+        "psi_qr_factor_s": float(fit_info.get("qr_factor_s", 0.0)),
+        "psi_qr_apply_qtb_s": float(fit_info.get("qr_apply_qtb_s", 0.0)),
+        "psi_qr_tri_s": float(fit_info.get("qr_tri_s", 0.0)),
+        "psi_fullgpu_copy_in_s": float(fit_info.get("fullgpu_copy_in_s", 0.0)),
+        "psi_fullgpu_residual_s": float(fit_info.get("fullgpu_residual_s", 0.0)),
+        "psi_fullgpu_copy_out_s": float(fit_info.get("fullgpu_copy_out_s", 0.0)),
+        "psi_fullgpu_total_kernel_s": float(fit_info.get("fullgpu_total_kernel_s", 0.0)),
+        "psi_solve_s": float(fit_info.get("solve_s", 0.0)),
+        "psi_validation_s": float(fit_info.get("validation_s", 0.0)),
+        "psi_validation_b_sample_s": float(fit_info.get("validation_b_sample_s", 0.0)),
+        "surface_screen_s": 0.0,
+        "surface_screen_curve_newton_s": sum(float(r.get("curve_newton_time_s", 0.0)) for r in screen_results),
+        "surface_screen_fieldline_trace_s": sum(float(r.get("trace_time_s", 0.0)) for r in screen_results),
+        "surface_screen_verify_trace_s": sum(float(r.get("verify_trace_time_s", 0.0)) for r in screen_results),
+        "surface_extract_1d_newton_s": sum(float(r.get("level_surface_1d_newton_time_s", 0.0)) for r in surface_results),
+        "surface_extract_coeff_build_s": sum(float(r.get("level_surface_coeff_build_time_s", 0.0)) for r in surface_results),
+        "surface_extract_copy_in_s": sum(float(r.get("level_surface_copy_in_time_s", 0.0)) for r in surface_results),
+        "surface_extract_copy_out_s": sum(float(r.get("level_surface_copy_out_time_s", 0.0)) for r in surface_results),
+        "boozer_ls_s": sum(float(r.get("ls_time_s", 0.0)) for r in surface_results),
+        "boozer_newton_s": sum(float(r.get("newton_time_s", 0.0)) for r in surface_results),
+        "boozer_qs_s": sum(float(r.get("qs_time_s", 0.0)) for r in surface_results),
+        "boozer_candidates_s": sum(float(r.get("total_time_s", 0.0)) for r in surface_results),
     }
 
 
@@ -91,6 +142,7 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
         if not axis.has_axis:
             result["warnings"].append("axis residual did not reach configured tolerance; downstream steps skipped")
             result["timing_b_calls"] = timings.as_dict()
+            result["timing"] = _timing_summary(field_build_s=result["field"]["build_time_s"], axis=axis)
             result["total_time_s"] = time.perf_counter() - t_all
             write_json(out / "summary.json", result)
             return result
@@ -126,6 +178,13 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             result["warnings"].append("no psi level passed the cheap fieldline drift screen")
             result["best_surface"] = None
             result["timing_b_calls"] = timings.as_dict()
+            result["timing"] = _timing_summary(
+                field_build_s=result["field"]["build_time_s"],
+                axis=axis,
+                model=model,
+                screen_results=screen_results,
+            )
+            result["timing"]["surface_screen_s"] = result["surface_screen"]["time_s"]
             result["total_time_s"] = time.perf_counter() - t_all
             write_json(out / "summary.json", result)
             return result
@@ -158,38 +217,14 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             result["warnings"].append("no screened psi level converged in Boozer LS/Newton")
 
         result["timing_b_calls"] = timings.as_dict()
-        result["timing"] = {
-            "field_build_s": result["field"]["build_time_s"],
-            "axis_s": axis.time_s,
-            "axis_search_s": axis.search_time_s,
-            "axis_trace_s": axis.trace_time_s,
-            "psi_fit_s": model.fit_info["time_s"],
-            "psi_gpu_create_s": model.fit_info.get("gpu_create_s", 0.0),
-            "psi_training_point_s": model.fit_info.get("training_point_s", 0.0),
-            "psi_assemble_s": model.fit_info.get("assemble_s", 0.0),
-            "psi_assemble_interp_s": model.fit_info.get("assemble_interp_s", 0.0),
-            "psi_assemble_b_sample_s": model.fit_info.get("assemble_b_sample_s", 0.0),
-            "psi_assemble_basis_s": model.fit_info.get("assemble_basis_s", 0.0),
-            "psi_assemble_normal_eq_s": model.fit_info.get("assemble_normal_eq_s", 0.0),
-            "psi_assemble_normal_eq_cpu_s": model.fit_info.get("assemble_normal_eq_cpu_s", 0.0),
-            "psi_assemble_normal_eq_gpu_s": model.fit_info.get("assemble_normal_eq_gpu_s", 0.0),
-            "psi_fullgpu_copy_in_s": model.fit_info.get("fullgpu_copy_in_s", 0.0),
-            "psi_fullgpu_residual_s": model.fit_info.get("fullgpu_residual_s", 0.0),
-            "psi_fullgpu_copy_out_s": model.fit_info.get("fullgpu_copy_out_s", 0.0),
-            "psi_fullgpu_total_kernel_s": model.fit_info.get("fullgpu_total_kernel_s", 0.0),
-            "psi_solve_s": model.fit_info.get("solve_s", 0.0),
-            "psi_validation_s": model.fit_info.get("validation_s", 0.0),
-            "psi_validation_b_sample_s": model.fit_info.get("validation_b_sample_s", 0.0),
-            "surface_screen_s": result["surface_screen"]["time_s"],
-            "surface_screen_curve_newton_s": sum(float(r.get("curve_newton_time_s", 0.0)) for r in screen_results),
-            "surface_screen_fieldline_trace_s": sum(float(r.get("trace_time_s", 0.0)) for r in screen_results),
-            "surface_screen_verify_trace_s": sum(float(r.get("verify_trace_time_s", 0.0)) for r in screen_results),
-            "surface_extract_1d_newton_s": sum(float(r.get("level_surface_1d_newton_time_s", 0.0)) for r in surface_results),
-            "boozer_ls_s": sum(float(r.get("ls_time_s", 0.0)) for r in surface_results),
-            "boozer_newton_s": sum(float(r.get("newton_time_s", 0.0)) for r in surface_results),
-            "boozer_qs_s": sum(float(r.get("qs_time_s", 0.0)) for r in surface_results),
-            "boozer_candidates_s": sum(float(r.get("total_time_s", 0.0)) for r in surface_results),
-        }
+        result["timing"] = _timing_summary(
+            field_build_s=result["field"]["build_time_s"],
+            axis=axis,
+            model=model,
+            screen_results=screen_results,
+            surface_results=surface_results,
+        )
+        result["timing"]["surface_screen_s"] = result["surface_screen"]["time_s"]
         result["total_time_s"] = time.perf_counter() - t_all
         write_json(out / "summary.json", result)
         return result
@@ -215,12 +250,13 @@ def evaluate_coils(
     else:
         if nfp is None:
             raise ValueError("nfp is required")
-        arr = np.asarray(coil_coefficients, dtype=float)
-        if arr.ndim == 3 and arr.shape[1] == 3:
-            x, y, z = arr[:, 0, :], arr[:, 1, :], arr[:, 2, :]
-        elif isinstance(coil_coefficients, dict):
+        if isinstance(coil_coefficients, dict):
             x, y, z = coil_coefficients["x"], coil_coefficients["y"], coil_coefficients["z"]
         else:
-            raise ValueError("coil_coefficients must be FieldInput, flat vector, dict{x,y,z}, or array (ncoil,3,ncoef)")
+            arr = np.asarray(coil_coefficients, dtype=float)
+            if arr.ndim == 3 and arr.shape[1] == 3:
+                x, y, z = arr[:, 0, :], arr[:, 1, :], arr[:, 2, :]
+            else:
+                raise ValueError("coil_coefficients must be FieldInput, flat vector, dict{x,y,z}, or array (ncoil,3,ncoef)")
         field_input = FieldInput(np.asarray(x, float), np.asarray(y, float), np.asarray(z, float), np.asarray(currents, float), int(nfp))
     return evaluate_field_input(field_input, config=config, output_dir=output_dir)

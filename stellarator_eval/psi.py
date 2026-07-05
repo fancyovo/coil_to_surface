@@ -392,11 +392,19 @@ def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig, field_input=None, current_
         b_sampler = lambda rr, zz, pp: _b_components_gpu(gpu_field, rr, zz, pp)
     normal_eq_backend = cfg.normal_eq_backend.lower()
     normal_eq_precision = cfg.normal_eq_precision.lower()
+    linear_solver = cfg.linear_solver.lower()
     if normal_eq_precision not in {"fp64", "fp32"}:
         raise ValueError("normal_eq_precision must be 'fp64' or 'fp32'")
+    if linear_solver not in {"normal_eq", "qr"}:
+        raise ValueError("linear_solver must be 'normal_eq' or 'qr'")
     if backend == "fullgpu":
-        normal_eq_backend = "gpu_full"
+        if linear_solver == "normal_eq":
+            normal_eq_backend = "gpu_full"
+        else:
+            normal_eq_backend = "gpu_full_qr"
     else:
+        if linear_solver != "normal_eq":
+            raise ValueError("linear_solver='qr' is currently only supported with psi backend 'fullgpu'")
         if normal_eq_backend == "auto":
             normal_eq_backend = "gpu" if backend == "gpu" else "cpu"
         if normal_eq_backend not in {"cpu", "gpu"}:
@@ -433,17 +441,24 @@ def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig, field_input=None, current_
             m_tor=cfg.m_tor,
             ridge=cfg.ridge,
             precision=cfg.normal_eq_precision,
+            solver=linear_solver,
         )
         cond = -1.0
-        assemble_time = float(gpu_fit_stats["assemble_s"] + gpu_fit_stats["normal_eq_s"])
+        assemble_time = float(gpu_fit_stats["assemble_s"] + gpu_fit_stats["linear_prep_s"])
         solve_time = float(gpu_fit_stats["solve_s"])
         assemble_timings = {
             "assemble_interp_s": 0.0,
             "assemble_b_sample_s": 0.0,
             "assemble_basis_s": float(gpu_fit_stats["assemble_s"]),
-            "assemble_normal_eq_s": float(gpu_fit_stats["normal_eq_s"]),
-            "assemble_normal_eq_gpu_s": float(gpu_fit_stats["normal_eq_s"]),
+            "assemble_normal_eq_s": float(gpu_fit_stats["linear_prep_s"]) if linear_solver == "normal_eq" else 0.0,
+            "assemble_normal_eq_gpu_s": float(gpu_fit_stats["linear_prep_s"]) if linear_solver == "normal_eq" else 0.0,
             "assemble_normal_eq_cpu_s": 0.0,
+            "qr_prep_s": float(gpu_fit_stats["linear_prep_s"]) if linear_solver == "qr" else 0.0,
+            "qr_transpose_s": float(gpu_fit_stats["qr_transpose_s"]),
+            "qr_scale_s": float(gpu_fit_stats["qr_scale_s"]),
+            "qr_factor_s": float(gpu_fit_stats["qr_factor_s"]),
+            "qr_apply_qtb_s": float(gpu_fit_stats["qr_apply_qtb_s"]),
+            "qr_tri_s": float(gpu_fit_stats["qr_tri_s"]),
             "fullgpu_copy_in_s": float(gpu_fit_stats["copy_in_s"]),
             "fullgpu_residual_s": float(gpu_fit_stats["residual_s"]),
             "fullgpu_copy_out_s": float(gpu_fit_stats["copy_out_s"]),
@@ -476,6 +491,7 @@ def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig, field_input=None, current_
         fit_info={
             "basis": "cartesian_poly_toroidal_fourier",
             "backend": backend,
+            "linear_solver": linear_solver,
             "normal_eq_backend": normal_eq_backend,
             "normal_eq_precision": normal_eq_precision,
             "fixed_term": "x^2 coefficient = 1",

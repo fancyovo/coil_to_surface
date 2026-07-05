@@ -29,6 +29,7 @@ constexpr int THREADS_PER_BLOCK = WARP_SIZE * WARPS_PER_BLOCK;
 constexpr int SEG_TILE = SGPU_SEG_TILE;
 constexpr int MAX_PSI_DEGREE = 24;
 constexpr int MAX_PSI_MTOR = 32;
+constexpr int SURFACE_THREADS = 64;
 
 thread_local std::string g_last_error;
 
@@ -810,10 +811,89 @@ __global__ void unscale_coeff_kernel(double* coeff, const double* scale, int n) 
     if (i < n) coeff[i] /= scale[i];
 }
 
+__global__ void unscale_coeff_kernel_f32(float* coeff, const double* scale, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) coeff[i] /= static_cast<float>(scale[i]);
+}
+
 template <typename T>
 __global__ void axpy_negative_kernel(const T* x, const T* y, T* out, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) out[i] = x[i] - y[i];
+}
+
+template <typename T>
+__global__ void transpose_rowmajor_to_colmajor_kernel(const T* src, T* dst, int n_rows, int n_cols, int dst_lda) {
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    if (row < n_rows && col < n_cols) {
+        dst[static_cast<size_t>(col) * dst_lda + row] = src[static_cast<size_t>(row) * n_cols + col];
+    }
+}
+
+__global__ void column_norms_kernel_f64(const double* mat, double* scale, int n_rows, int lda, int n_cols) {
+    int col = blockIdx.x;
+    if (col >= n_cols) return;
+    __shared__ double sh[THREADS_PER_BLOCK];
+    double sum = 0.0;
+    const double* col_ptr = mat + static_cast<size_t>(col) * lda;
+    for (int row = threadIdx.x; row < n_rows; row += blockDim.x) {
+        double v = col_ptr[row];
+        sum += v * v;
+    }
+    sh[threadIdx.x] = sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) sh[threadIdx.x] += sh[threadIdx.x + stride];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) scale[col] = sqrt(fmax(sh[0], 1.0e-30));
+}
+
+__global__ void column_norms_kernel_f32(const float* mat, double* scale, int n_rows, int lda, int n_cols) {
+    int col = blockIdx.x;
+    if (col >= n_cols) return;
+    __shared__ double sh[THREADS_PER_BLOCK];
+    double sum = 0.0;
+    const float* col_ptr = mat + static_cast<size_t>(col) * lda;
+    for (int row = threadIdx.x; row < n_rows; row += blockDim.x) {
+        double v = static_cast<double>(col_ptr[row]);
+        sum += v * v;
+    }
+    sh[threadIdx.x] = sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) sh[threadIdx.x] += sh[threadIdx.x + stride];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) scale[col] = sqrt(fmax(sh[0], 1.0e-30));
+}
+
+__global__ void scale_columns_kernel_f64(double* mat, const double* scale, int n_rows, int lda, int n_cols) {
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    if (row < n_rows && col < n_cols) {
+        mat[static_cast<size_t>(col) * lda + row] /= scale[col];
+    }
+}
+
+__global__ void scale_columns_kernel_f32(float* mat, const double* scale, int n_rows, int lda, int n_cols) {
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    if (row < n_rows && col < n_cols) {
+        mat[static_cast<size_t>(col) * lda + row] /= static_cast<float>(scale[col]);
+    }
+}
+
+template <typename T>
+__global__ void set_ridge_tail_kernel(T* mat, int n_rows_data, int lda, int n_cols, T lambda) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int total = n_cols * n_cols;
+    if (idx < total) {
+        int col = idx / n_cols;
+        int tail_row = idx - col * n_cols;
+        mat[static_cast<size_t>(col) * lda + (n_rows_data + tail_row)] = (tail_row == col) ? lambda : static_cast<T>(0);
+    }
 }
 
 __global__ void psi_fill_matrix_kernel_f64(
@@ -1020,14 +1100,191 @@ __global__ void psi_fill_matrix_kernel_f32(
     }
 }
 
+__device__ inline void eval_ray_poly_and_deriv(
+    const double* coeff_deg,
+    int poly_degree,
+    double u,
+    double a_scale,
+    double& psi,
+    double& dpsi
+) {
+    psi = 0.0;
+    dpsi = 0.0;
+    if (poly_degree < 2) return;
+    double u_pow_prev = u;
+    double u_pow = u * u;
+    psi = coeff_deg[2] * u_pow;
+    dpsi = 2.0 * coeff_deg[2] * u_pow_prev / a_scale;
+    for (int deg = 3; deg <= poly_degree; ++deg) {
+        u_pow_prev = u_pow;
+        u_pow *= u;
+        psi += coeff_deg[deg] * u_pow;
+        dpsi += static_cast<double>(deg) * coeff_deg[deg] * u_pow_prev / a_scale;
+    }
+}
+
+__device__ inline double eval_ray_poly_only(
+    const double* coeff_deg,
+    int poly_degree,
+    double u
+) {
+    if (poly_degree < 2) return 0.0;
+    double u_pow = u * u;
+    double psi = coeff_deg[2] * u_pow;
+    for (int deg = 3; deg <= poly_degree; ++deg) {
+        u_pow *= u;
+        psi += coeff_deg[deg] * u_pow;
+    }
+    return psi;
+}
+
+__global__ void surface_build_ray_poly_kernel(
+    const double* __restrict__ coeffs,
+    const int* __restrict__ mode_a,
+    const int* __restrict__ mode_b,
+    const int* __restrict__ mode_m,
+    const int* __restrict__ mode_kind,
+    int n_coeff,
+    int nfp,
+    int poly_degree,
+    int m_tor,
+    int nphi,
+    int ntheta,
+    double* __restrict__ ray_coeff
+) {
+    extern __shared__ double sh[];
+    double* cosv = sh;
+    double* sinv = sh + (MAX_PSI_MTOR + 1);
+    int iphi = blockIdx.x;
+    double phi = (static_cast<double>(iphi) * TWOPI) / (static_cast<double>(nphi) * static_cast<double>(nfp));
+    for (int m = threadIdx.x; m <= m_tor; m += blockDim.x) {
+        if (m == 0) {
+            cosv[m] = 1.0;
+            sinv[m] = 0.0;
+        } else {
+            double arg = static_cast<double>(m * nfp) * phi;
+            cosv[m] = cos(arg);
+            sinv[m] = sin(arg);
+        }
+    }
+    __syncthreads();
+
+    for (int itheta = threadIdx.x; itheta < ntheta; itheta += blockDim.x) {
+        double theta = (static_cast<double>(itheta) * TWOPI) / static_cast<double>(ntheta);
+        double cth = cos(theta);
+        double sth = sin(theta);
+        double xpow[MAX_PSI_DEGREE + 1];
+        double zpow[MAX_PSI_DEGREE + 1];
+        double coeff_deg[MAX_PSI_DEGREE + 1];
+        xpow[0] = 1.0;
+        zpow[0] = 1.0;
+        coeff_deg[0] = 0.0;
+        coeff_deg[1] = 0.0;
+        for (int deg = 2; deg <= poly_degree; ++deg) coeff_deg[deg] = 0.0;
+        for (int deg = 1; deg <= poly_degree; ++deg) {
+            xpow[deg] = xpow[deg - 1] * cth;
+            zpow[deg] = zpow[deg - 1] * sth;
+        }
+        coeff_deg[2] = cth * cth;
+        for (int k = 0; k < n_coeff; ++k) {
+            int ax = mode_a[k];
+            int bz = mode_b[k];
+            int deg = ax + bz;
+            int m = mode_m[k];
+            double trig = (m == 0) ? 1.0 : ((mode_kind[k] == 0) ? cosv[m] : sinv[m]);
+            coeff_deg[deg] += coeffs[k] * xpow[ax] * zpow[bz] * trig;
+        }
+        size_t base = (static_cast<size_t>(iphi) * ntheta + itheta) * static_cast<size_t>(poly_degree + 1);
+        for (int deg = 0; deg <= poly_degree; ++deg) {
+            ray_coeff[base + deg] = coeff_deg[deg];
+        }
+    }
+}
+
+__global__ void surface_newton_from_ray_poly_kernel(
+    const double* __restrict__ ray_coeff,
+    int poly_degree,
+    const double* __restrict__ axis_R,
+    const double* __restrict__ axis_Z,
+    int n_axis,
+    int nfp,
+    double a_scale,
+    int nphi,
+    int ntheta,
+    double psi_level,
+    int maxiter,
+    double tol,
+    double max_radius_scale,
+    double* __restrict__ xyz,
+    double* __restrict__ radii
+) {
+    __shared__ double ra_sh;
+    __shared__ double za_sh;
+    __shared__ double phi_sh;
+    int iphi = blockIdx.x;
+    if (threadIdx.x == 0) {
+        phi_sh = (static_cast<double>(iphi) * TWOPI) / (static_cast<double>(nphi) * static_cast<double>(nfp));
+        double period = TWOPI / static_cast<double>(nfp);
+        ra_sh = periodic_interp_uniform(phi_sh, axis_R, n_axis, period);
+        za_sh = periodic_interp_uniform(phi_sh, axis_Z, n_axis, period);
+    }
+    __syncthreads();
+
+    double max_radius = max_radius_scale * a_scale;
+    double fallback = a_scale * sqrt(fmax(psi_level, 1.0e-16));
+    double cp = cos(phi_sh);
+    double sp = sin(phi_sh);
+    for (int itheta = threadIdx.x; itheta < ntheta; itheta += blockDim.x) {
+        size_t base = (static_cast<size_t>(iphi) * ntheta + itheta) * static_cast<size_t>(poly_degree + 1);
+        const double* coeff_deg = ray_coeff + base;
+        double q = coeff_deg[2];
+        double rho = (q > 1.0e-10) ? (a_scale * sqrt(fmax(psi_level, 0.0) / q)) : fallback;
+        rho = fmin(fmax(rho, 1.0e-12 * a_scale), max_radius);
+        for (int iter = 0; iter < maxiter; ++iter) {
+            double u = rho / a_scale;
+            double psi = 0.0, dpsi = 0.0;
+            eval_ray_poly_and_deriv(coeff_deg, poly_degree, u, a_scale, psi, dpsi);
+            double f = psi - psi_level;
+            if (fabs(f) <= tol) break;
+            double denom = (fabs(dpsi) > 1.0e-14) ? dpsi : copysign(1.0e-14, dpsi == 0.0 ? 1.0 : dpsi);
+            double lim = 0.45 * fmax(fabs(rho), 1.0e-8 * a_scale);
+            double step = f / denom;
+            if (step > lim) step = lim;
+            if (step < -lim) step = -lim;
+            double trial = fmin(fmax(rho - step, 1.0e-12 * a_scale), max_radius);
+            double psi_trial = eval_ray_poly_only(coeff_deg, poly_degree, trial / a_scale);
+            if (fabs(psi_trial - psi_level) <= fabs(f)) {
+                rho = trial;
+            } else {
+                rho = 0.5 * (rho + trial);
+            }
+        }
+        double theta = (static_cast<double>(itheta) * TWOPI) / static_cast<double>(ntheta);
+        double cth = cos(theta);
+        double sth = sin(theta);
+        double R = ra_sh + rho * cth;
+        double Z = za_sh + rho * sth;
+        size_t idx = static_cast<size_t>(iphi) * ntheta + itheta;
+        radii[idx] = rho;
+        xyz[3 * idx + 0] = R * cp;
+        xyz[3 * idx + 1] = R * sp;
+        xyz[3 * idx + 2] = Z;
+    }
+}
+
 struct GpuFitStats {
     double copy_in_s = 0.0;
     double assemble_s = 0.0;
-    double normal_eq_s = 0.0;
+    double linear_prep_s = 0.0;
     double solve_s = 0.0;
     double residual_s = 0.0;
     double copy_out_s = 0.0;
     double total_s = 0.0;
+    double qr_transpose_s = 0.0;
+    double qr_scale_s = 0.0;
+    double qr_factor_s = 0.0;
+    double qr_apply_qtb_s = 0.0;
+    double qr_tri_s = 0.0;
 };
 
 } // namespace
@@ -1336,6 +1593,7 @@ int sgpu_fit_psi_fullgpu(
     int poly_degree,
     int m_tor,
     double ridge,
+    int solver_mode,
     int precision_mode,
     double* coeff_host,
     double* train_rms_out,
@@ -1360,6 +1618,10 @@ int sgpu_fit_psi_fullgpu(
         set_error("n_coeff does not match poly_degree/m_tor");
         return 1;
     }
+    if (solver_mode != 1 && solver_mode != 2) {
+        set_error("solver_mode must be 1 (normal_eq) or 2 (qr)");
+        return 1;
+    }
     if (precision_mode != 1 && precision_mode != 2) {
         set_error("precision_mode must be 1 (fp64) or 2 (fp32)");
         return 1;
@@ -1372,7 +1634,7 @@ int sgpu_fit_psi_fullgpu(
     double *d_R = nullptr, *d_Z = nullptr, *d_phi = nullptr;
     double *d_axis_R = nullptr, *d_axis_Z = nullptr, *d_axis_R_phi = nullptr, *d_axis_Z_phi = nullptr;
     int *d_mode_a = nullptr, *d_mode_b = nullptr, *d_mode_m = nullptr, *d_mode_kind = nullptr;
-    double *d_scale = nullptr, *d_info_rhs = nullptr, *d_ata_d = nullptr, *d_atb_d = nullptr, *d_coeff_pred = nullptr;
+    double *d_scale = nullptr, *d_info_rhs = nullptr, *d_ata_d = nullptr, *d_atb_d = nullptr;
     int *d_info = nullptr, *d_ipiv = nullptr;
     double train_rms = 0.0;
     int h_info = 0;
@@ -1381,16 +1643,23 @@ int sgpu_fit_psi_fullgpu(
     float *d_axis_R_f = nullptr, *d_axis_Z_f = nullptr, *d_axis_R_phi_f = nullptr, *d_axis_Z_phi_f = nullptr;
     float *d_mat_f = nullptr, *d_rhs_f = nullptr, *d_ata_f = nullptr, *d_atb_f = nullptr, *d_coeff_f = nullptr, *d_pred_f = nullptr;
     double *d_mat_d = nullptr, *d_rhs_d = nullptr, *d_pred_d = nullptr;
+    double *d_qr_mat_d = nullptr, *d_qr_rhs_d = nullptr, *d_tau_d = nullptr, *d_work_d = nullptr;
+    float *d_qr_mat_f = nullptr, *d_qr_rhs_f = nullptr, *d_tau_f = nullptr, *d_work_f = nullptr;
+    std::vector<float> coeff_host_f;
+    double* d_coeff_src_d = nullptr;
+    float* d_coeff_src_f = nullptr;
 
     auto cleanup = [&]() {
         cudaFree(d_R); cudaFree(d_Z); cudaFree(d_phi);
         cudaFree(d_axis_R); cudaFree(d_axis_Z); cudaFree(d_axis_R_phi); cudaFree(d_axis_Z_phi);
         cudaFree(d_mode_a); cudaFree(d_mode_b); cudaFree(d_mode_m); cudaFree(d_mode_kind);
-        cudaFree(d_scale); cudaFree(d_info_rhs); cudaFree(d_ata_d); cudaFree(d_atb_d); cudaFree(d_coeff_pred); cudaFree(d_info); cudaFree(d_ipiv);
+        cudaFree(d_scale); cudaFree(d_info_rhs); cudaFree(d_ata_d); cudaFree(d_atb_d); cudaFree(d_info); cudaFree(d_ipiv);
         cudaFree(d_R_f); cudaFree(d_Z_f); cudaFree(d_phi_f);
         cudaFree(d_axis_R_f); cudaFree(d_axis_Z_f); cudaFree(d_axis_R_phi_f); cudaFree(d_axis_Z_phi_f);
         cudaFree(d_mat_f); cudaFree(d_rhs_f); cudaFree(d_ata_f); cudaFree(d_atb_f); cudaFree(d_coeff_f); cudaFree(d_pred_f);
         cudaFree(d_mat_d); cudaFree(d_rhs_d); cudaFree(d_pred_d);
+        cudaFree(d_qr_mat_d); cudaFree(d_qr_rhs_d); cudaFree(d_tau_d); cudaFree(d_work_d);
+        cudaFree(d_qr_mat_f); cudaFree(d_qr_rhs_f); cudaFree(d_tau_f); cudaFree(d_work_f);
     };
 
     auto fail = [&](const char* msg) {
@@ -1494,93 +1763,276 @@ int sgpu_fit_psi_fullgpu(
     }
     stats.assemble_s = std::chrono::duration<double>(clock::now() - t).count();
 
-    t = clock::now();
-    if (precision_mode == 1) {
-        size_t ata_bytes = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(double);
-        size_t atb_bytes = static_cast<size_t>(n_coeff) * sizeof(double);
-        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata_d), ata_bytes), "fit d_ata_d") ||
-            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb_d), atb_bytes), "fit d_atb_d")) {
-            cleanup();
-            return 1;
+    if (solver_mode == 1) {
+        t = clock::now();
+        if (precision_mode == 1) {
+            size_t ata_bytes = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(double);
+            size_t atb_bytes = static_cast<size_t>(n_coeff) * sizeof(double);
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata_d), ata_bytes), "fit d_ata_d") ||
+                cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb_d), atb_bytes), "fit d_atb_d")) {
+                cleanup();
+                return 1;
+            }
+            const double one = 1.0, zero = 0.0;
+            if (cublas_check(cublasDgemm(f->blas, CUBLAS_OP_N, CUBLAS_OP_T, n_coeff, n_coeff, n_points, &one, d_mat_d, n_coeff, d_mat_d, n_coeff, &zero, d_ata_d, n_coeff), "fit dgemm") ||
+                cublas_check(cublasDgemv(f->blas, CUBLAS_OP_N, n_coeff, n_points, &one, d_mat_d, n_coeff, d_rhs_d, 1, &zero, d_atb_d, 1), "fit dgemv") ||
+                cuda_check(cudaDeviceSynchronize(), "fit normal_eq sync d64")) {
+                cleanup();
+                return 1;
+            }
+        } else {
+            size_t ata_bytes_f = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(float);
+            size_t atb_bytes_f = static_cast<size_t>(n_coeff) * sizeof(float);
+            size_t ata_bytes_d = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(double);
+            size_t atb_bytes_d = static_cast<size_t>(n_coeff) * sizeof(double);
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata_f), ata_bytes_f), "fit d_ata_f") ||
+                cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb_f), atb_bytes_f), "fit d_atb_f")) {
+                cleanup();
+                return 1;
+            }
+            const float one = 1.0f, zero = 0.0f;
+            if (cublas_check(cublasSgemm(f->blas, CUBLAS_OP_N, CUBLAS_OP_T, n_coeff, n_coeff, n_points, &one, d_mat_f, n_coeff, d_mat_f, n_coeff, &zero, d_ata_f, n_coeff), "fit sgemm") ||
+                cublas_check(cublasSgemv(f->blas, CUBLAS_OP_N, n_coeff, n_points, &one, d_mat_f, n_coeff, d_rhs_f, 1, &zero, d_atb_f, 1), "fit sgemv")) {
+                cleanup();
+                return 1;
+            }
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata_d), ata_bytes_d), "fit d_ata_d from f") ||
+                cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb_d), atb_bytes_d), "fit d_atb_d from f")) {
+                cleanup();
+                return 1;
+            }
+            convert_float_to_double_kernel<<<(n_coeff * n_coeff + threads - 1) / threads, threads>>>(d_ata_f, d_ata_d, n_coeff * n_coeff);
+            convert_float_to_double_kernel<<<blocks1d_coeff, threads>>>(d_atb_f, d_atb_d, n_coeff);
+            if (cuda_check(cudaGetLastError(), "fit convert ata/atb f32->f64") ||
+                cuda_check(cudaDeviceSynchronize(), "fit normal_eq sync f32")) {
+                cleanup();
+                return 1;
+            }
         }
-        const double one = 1.0, zero = 0.0;
-        if (cublas_check(cublasDgemm(f->blas, CUBLAS_OP_N, CUBLAS_OP_T, n_coeff, n_coeff, n_points, &one, d_mat_d, n_coeff, d_mat_d, n_coeff, &zero, d_ata_d, n_coeff), "fit dgemm") ||
-            cublas_check(cublasDgemv(f->blas, CUBLAS_OP_N, n_coeff, n_points, &one, d_mat_d, n_coeff, d_rhs_d, 1, &zero, d_atb_d, 1), "fit dgemv") ||
-            cuda_check(cudaDeviceSynchronize(), "fit normal_eq sync d64")) {
-            cleanup();
-            return 1;
-        }
-    } else {
-        size_t ata_bytes_f = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(float);
-        size_t atb_bytes_f = static_cast<size_t>(n_coeff) * sizeof(float);
-        size_t ata_bytes_d = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(double);
-        size_t atb_bytes_d = static_cast<size_t>(n_coeff) * sizeof(double);
-        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata_f), ata_bytes_f), "fit d_ata_f") ||
-            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb_f), atb_bytes_f), "fit d_atb_f")) {
-            cleanup();
-            return 1;
-        }
-        const float one = 1.0f, zero = 0.0f;
-        if (cublas_check(cublasSgemm(f->blas, CUBLAS_OP_N, CUBLAS_OP_T, n_coeff, n_coeff, n_points, &one, d_mat_f, n_coeff, d_mat_f, n_coeff, &zero, d_ata_f, n_coeff), "fit sgemm") ||
-            cublas_check(cublasSgemv(f->blas, CUBLAS_OP_N, n_coeff, n_points, &one, d_mat_f, n_coeff, d_rhs_f, 1, &zero, d_atb_f, 1), "fit sgemv")) {
-            cleanup();
-            return 1;
-        }
-        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ata_d), ata_bytes_d), "fit d_ata_d from f") ||
-            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_atb_d), atb_bytes_d), "fit d_atb_d from f")) {
-            cleanup();
-            return 1;
-        }
-        convert_float_to_double_kernel<<<(n_coeff * n_coeff + threads - 1) / threads, threads>>>(d_ata_f, d_ata_d, n_coeff * n_coeff);
-        convert_float_to_double_kernel<<<blocks1d_coeff, threads>>>(d_atb_f, d_atb_d, n_coeff);
-        if (cuda_check(cudaGetLastError(), "fit convert ata/atb f32->f64") ||
-            cuda_check(cudaDeviceSynchronize(), "fit normal_eq sync f32")) {
-            cleanup();
-            return 1;
-        }
-    }
-    stats.normal_eq_s = std::chrono::duration<double>(clock::now() - t).count();
+        stats.linear_prep_s = std::chrono::duration<double>(clock::now() - t).count();
 
-    t = clock::now();
-    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_scale), static_cast<size_t>(n_coeff) * sizeof(double)), "fit d_scale") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_info), sizeof(int)), "fit d_info")) {
-        cleanup();
-        return 1;
+        t = clock::now();
+        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_scale), static_cast<size_t>(n_coeff) * sizeof(double)), "fit d_scale") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_info), sizeof(int)), "fit d_info")) {
+            cleanup();
+            return 1;
+        }
+        extract_scale_kernel<<<blocks1d_coeff, threads>>>(d_ata_d, d_scale, n_coeff);
+        dim3 block2(16, 16);
+        dim3 grid2((n_coeff + block2.x - 1) / block2.x, (n_coeff + block2.y - 1) / block2.y);
+        scale_system_kernel<<<grid2, block2>>>(d_ata_d, d_scale, n_coeff, ridge);
+        scale_rhs_kernel<<<blocks1d_coeff, threads>>>(d_atb_d, d_scale, n_coeff);
+        if (cuda_check(cudaGetLastError(), "fit scale system") || cuda_check(cudaDeviceSynchronize(), "fit scale sync")) {
+            cleanup();
+            return 1;
+        }
+        int lwork = 0;
+        if (cusolver_check(cusolverDnDgetrf_bufferSize(f->solver, n_coeff, n_coeff, d_ata_d, n_coeff, &lwork), "fit getrf buffer") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_info_rhs), static_cast<size_t>(lwork) * sizeof(double)), "fit getrf work") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ipiv), static_cast<size_t>(n_coeff) * sizeof(int)), "fit getrf piv")) {
+            cleanup();
+            return 1;
+        }
+        if (cusolver_check(cusolverDnDgetrf(f->solver, n_coeff, n_coeff, d_ata_d, n_coeff, d_info_rhs, d_ipiv, d_info), "fit getrf") ||
+            cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit getrf info copy")) {
+            cleanup();
+            return 1;
+        }
+        if (h_info != 0) return fail("fit getrf failed");
+        if (cusolver_check(cusolverDnDgetrs(f->solver, CUBLAS_OP_N, n_coeff, 1, d_ata_d, n_coeff, d_ipiv, d_atb_d, n_coeff, d_info), "fit getrs") ||
+            cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit getrs info copy")) {
+            cleanup();
+            return 1;
+        }
+        if (h_info != 0) return fail("fit getrs failed");
+        unscale_coeff_kernel<<<blocks1d_coeff, threads>>>(d_atb_d, d_scale, n_coeff);
+        if (cuda_check(cudaGetLastError(), "fit unscale coeff") || cuda_check(cudaDeviceSynchronize(), "fit solve sync")) {
+            cleanup();
+            return 1;
+        }
+        stats.solve_s = std::chrono::duration<double>(clock::now() - t).count();
+        d_coeff_src_d = d_atb_d;
+    } else {
+        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_scale), static_cast<size_t>(n_coeff) * sizeof(double)), "fit qr d_scale") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_info), sizeof(int)), "fit qr d_info")) {
+            cleanup();
+            return 1;
+        }
+        int qr_rows = n_points + n_coeff;
+        size_t rhs_qr_bytes_d = static_cast<size_t>(qr_rows) * sizeof(double);
+        size_t rhs_qr_bytes_f = static_cast<size_t>(qr_rows) * sizeof(float);
+        dim3 block_t(16, 16);
+        dim3 grid_t((n_coeff + block_t.x - 1) / block_t.x, (n_points + block_t.y - 1) / block_t.y);
+        dim3 block_s(16, 16);
+        dim3 grid_s((n_coeff + block_s.x - 1) / block_s.x, (n_points + block_s.y - 1) / block_s.y);
+        double ridge_lambda = sqrt(fmax(ridge, 0.0));
+
+        auto t_qr = clock::now();
+        if (precision_mode == 1) {
+            size_t mat_qr_bytes_d = static_cast<size_t>(qr_rows) * static_cast<size_t>(n_coeff) * sizeof(double);
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_qr_mat_d), mat_qr_bytes_d), "fit qr d_qr_mat_d") ||
+                cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_qr_rhs_d), rhs_qr_bytes_d), "fit qr d_qr_rhs_d")) {
+                cleanup();
+                return 1;
+            }
+            transpose_rowmajor_to_colmajor_kernel<<<grid_t, block_t>>>(d_mat_d, d_qr_mat_d, n_points, n_coeff, qr_rows);
+            if (cuda_check(cudaGetLastError(), "fit qr transpose d64") ||
+                cuda_check(cudaMemcpy(d_qr_rhs_d, d_rhs_d, point_bytes, cudaMemcpyDeviceToDevice), "fit qr copy rhs d64") ||
+                cuda_check(cudaMemset(d_qr_rhs_d + n_points, 0, static_cast<size_t>(n_coeff) * sizeof(double)), "fit qr zero rhs tail d64") ||
+                cuda_check(cudaDeviceSynchronize(), "fit qr transpose sync d64")) {
+                cleanup();
+                return 1;
+            }
+        } else {
+            size_t mat_qr_bytes_f = static_cast<size_t>(qr_rows) * static_cast<size_t>(n_coeff) * sizeof(float);
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_qr_mat_f), mat_qr_bytes_f), "fit qr d_qr_mat_f") ||
+                cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_qr_rhs_f), rhs_qr_bytes_f), "fit qr d_qr_rhs_f")) {
+                cleanup();
+                return 1;
+            }
+            transpose_rowmajor_to_colmajor_kernel<<<grid_t, block_t>>>(d_mat_f, d_qr_mat_f, n_points, n_coeff, qr_rows);
+            if (cuda_check(cudaGetLastError(), "fit qr transpose f32") ||
+                cuda_check(cudaMemcpy(d_qr_rhs_f, d_rhs_f, static_cast<size_t>(n_points) * sizeof(float), cudaMemcpyDeviceToDevice), "fit qr copy rhs f32") ||
+                cuda_check(cudaMemset(d_qr_rhs_f + n_points, 0, static_cast<size_t>(n_coeff) * sizeof(float)), "fit qr zero rhs tail f32") ||
+                cuda_check(cudaDeviceSynchronize(), "fit qr transpose sync f32")) {
+                cleanup();
+                return 1;
+            }
+        }
+        stats.qr_transpose_s = std::chrono::duration<double>(clock::now() - t_qr).count();
+
+        t_qr = clock::now();
+        if (precision_mode == 1) {
+            column_norms_kernel_f64<<<n_coeff, threads>>>(d_qr_mat_d, d_scale, n_points, qr_rows, n_coeff);
+            scale_columns_kernel_f64<<<grid_s, block_s>>>(d_qr_mat_d, d_scale, n_points, qr_rows, n_coeff);
+            set_ridge_tail_kernel<double><<<(n_coeff * n_coeff + threads - 1) / threads, threads>>>(d_qr_mat_d, n_points, qr_rows, n_coeff, ridge_lambda);
+        } else {
+            column_norms_kernel_f32<<<n_coeff, threads>>>(d_qr_mat_f, d_scale, n_points, qr_rows, n_coeff);
+            scale_columns_kernel_f32<<<grid_s, block_s>>>(d_qr_mat_f, d_scale, n_points, qr_rows, n_coeff);
+            set_ridge_tail_kernel<float><<<(n_coeff * n_coeff + threads - 1) / threads, threads>>>(d_qr_mat_f, n_points, qr_rows, n_coeff, static_cast<float>(ridge_lambda));
+        }
+        if (cuda_check(cudaGetLastError(), "fit qr scale/augment") ||
+            cuda_check(cudaDeviceSynchronize(), "fit qr scale/augment sync")) {
+            cleanup();
+            return 1;
+        }
+        stats.qr_scale_s = std::chrono::duration<double>(clock::now() - t_qr).count();
+        stats.linear_prep_s = stats.qr_transpose_s + stats.qr_scale_s;
+
+        t_qr = clock::now();
+        if (precision_mode == 1) {
+            int lwork_geqrf = 0, lwork_ormqr = 0;
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_tau_d), static_cast<size_t>(n_coeff) * sizeof(double)), "fit qr d_tau_d") ||
+                cusolver_check(cusolverDnDgeqrf_bufferSize(f->solver, qr_rows, n_coeff, d_qr_mat_d, qr_rows, &lwork_geqrf), "fit qr geqrf buffer d64") ||
+                cusolver_check(cusolverDnDormqr_bufferSize(f->solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, n_coeff, d_qr_mat_d, qr_rows, d_tau_d, d_qr_rhs_d, qr_rows, &lwork_ormqr), "fit qr ormqr buffer d64")) {
+                cleanup();
+                return 1;
+            }
+            int lwork = (lwork_geqrf > lwork_ormqr) ? lwork_geqrf : lwork_ormqr;
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_work_d), static_cast<size_t>(lwork) * sizeof(double)), "fit qr d_work_d")) {
+                cleanup();
+                return 1;
+            }
+            if (cusolver_check(cusolverDnDgeqrf(f->solver, qr_rows, n_coeff, d_qr_mat_d, qr_rows, d_tau_d, d_work_d, lwork, d_info), "fit qr geqrf d64") ||
+                cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit qr geqrf info d64")) {
+                cleanup();
+                return 1;
+            }
+            if (h_info != 0) return fail("fit qr geqrf failed");
+        } else {
+            int lwork_geqrf = 0, lwork_ormqr = 0;
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_tau_f), static_cast<size_t>(n_coeff) * sizeof(float)), "fit qr d_tau_f") ||
+                cusolver_check(cusolverDnSgeqrf_bufferSize(f->solver, qr_rows, n_coeff, d_qr_mat_f, qr_rows, &lwork_geqrf), "fit qr geqrf buffer f32") ||
+                cusolver_check(cusolverDnSormqr_bufferSize(f->solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, n_coeff, d_qr_mat_f, qr_rows, d_tau_f, d_qr_rhs_f, qr_rows, &lwork_ormqr), "fit qr ormqr buffer f32")) {
+                cleanup();
+                return 1;
+            }
+            int lwork = (lwork_geqrf > lwork_ormqr) ? lwork_geqrf : lwork_ormqr;
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_work_f), static_cast<size_t>(lwork) * sizeof(float)), "fit qr d_work_f")) {
+                cleanup();
+                return 1;
+            }
+            if (cusolver_check(cusolverDnSgeqrf(f->solver, qr_rows, n_coeff, d_qr_mat_f, qr_rows, d_tau_f, d_work_f, lwork, d_info), "fit qr geqrf f32") ||
+                cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit qr geqrf info f32")) {
+                cleanup();
+                return 1;
+            }
+            if (h_info != 0) return fail("fit qr geqrf failed");
+        }
+        if (cuda_check(cudaDeviceSynchronize(), "fit qr geqrf sync")) {
+            cleanup();
+            return 1;
+        }
+        stats.qr_factor_s = std::chrono::duration<double>(clock::now() - t_qr).count();
+
+        t_qr = clock::now();
+        if (precision_mode == 1) {
+            int lwork_ormqr = 0;
+            if (cusolver_check(cusolverDnDormqr_bufferSize(f->solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, n_coeff, d_qr_mat_d, qr_rows, d_tau_d, d_qr_rhs_d, qr_rows, &lwork_ormqr), "fit qr ormqr buffer2 d64")) {
+                cleanup();
+                return 1;
+            }
+            cudaFree(d_work_d);
+            d_work_d = nullptr;
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_work_d), static_cast<size_t>(lwork_ormqr) * sizeof(double)), "fit qr d_work_d ormqr")) {
+                cleanup();
+                return 1;
+            }
+            if (cusolver_check(cusolverDnDormqr(f->solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, n_coeff, d_qr_mat_d, qr_rows, d_tau_d, d_qr_rhs_d, qr_rows, d_work_d, lwork_ormqr, d_info), "fit qr ormqr d64") ||
+                cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit qr ormqr info d64")) {
+                cleanup();
+                return 1;
+            }
+            if (h_info != 0) return fail("fit qr ormqr failed");
+        } else {
+            int lwork_ormqr = 0;
+            if (cusolver_check(cusolverDnSormqr_bufferSize(f->solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, n_coeff, d_qr_mat_f, qr_rows, d_tau_f, d_qr_rhs_f, qr_rows, &lwork_ormqr), "fit qr ormqr buffer2 f32")) {
+                cleanup();
+                return 1;
+            }
+            cudaFree(d_work_f);
+            d_work_f = nullptr;
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_work_f), static_cast<size_t>(lwork_ormqr) * sizeof(float)), "fit qr d_work_f ormqr")) {
+                cleanup();
+                return 1;
+            }
+            if (cusolver_check(cusolverDnSormqr(f->solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, n_coeff, d_qr_mat_f, qr_rows, d_tau_f, d_qr_rhs_f, qr_rows, d_work_f, lwork_ormqr, d_info), "fit qr ormqr f32") ||
+                cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit qr ormqr info f32")) {
+                cleanup();
+                return 1;
+            }
+            if (h_info != 0) return fail("fit qr ormqr failed");
+        }
+        if (cuda_check(cudaDeviceSynchronize(), "fit qr ormqr sync")) {
+            cleanup();
+            return 1;
+        }
+        stats.qr_apply_qtb_s = std::chrono::duration<double>(clock::now() - t_qr).count();
+
+        t_qr = clock::now();
+        if (precision_mode == 1) {
+            if (cublas_check(cublasDtrsv(f->blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, n_coeff, d_qr_mat_d, qr_rows, d_qr_rhs_d, 1), "fit qr trsv d64")) {
+                cleanup();
+                return 1;
+            }
+            unscale_coeff_kernel<<<blocks1d_coeff, threads>>>(d_qr_rhs_d, d_scale, n_coeff);
+        } else {
+            if (cublas_check(cublasStrsv(f->blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, n_coeff, d_qr_mat_f, qr_rows, d_qr_rhs_f, 1), "fit qr trsv f32")) {
+                cleanup();
+                return 1;
+            }
+            unscale_coeff_kernel_f32<<<blocks1d_coeff, threads>>>(d_qr_rhs_f, d_scale, n_coeff);
+        }
+        if (cuda_check(cudaGetLastError(), "fit qr unscale coeff") ||
+            cuda_check(cudaDeviceSynchronize(), "fit qr trsv sync")) {
+            cleanup();
+            return 1;
+        }
+        stats.qr_tri_s = std::chrono::duration<double>(clock::now() - t_qr).count();
+        stats.solve_s = stats.qr_factor_s + stats.qr_apply_qtb_s + stats.qr_tri_s;
+        if (precision_mode == 1) d_coeff_src_d = d_qr_rhs_d;
+        else d_coeff_src_f = d_qr_rhs_f;
     }
-    extract_scale_kernel<<<blocks1d_coeff, threads>>>(d_ata_d, d_scale, n_coeff);
-    dim3 block2(16, 16);
-    dim3 grid2((n_coeff + block2.x - 1) / block2.x, (n_coeff + block2.y - 1) / block2.y);
-    scale_system_kernel<<<grid2, block2>>>(d_ata_d, d_scale, n_coeff, ridge);
-    scale_rhs_kernel<<<blocks1d_coeff, threads>>>(d_atb_d, d_scale, n_coeff);
-    if (cuda_check(cudaGetLastError(), "fit scale system") || cuda_check(cudaDeviceSynchronize(), "fit scale sync")) {
-        cleanup();
-        return 1;
-    }
-    int lwork = 0;
-    if (cusolver_check(cusolverDnDgetrf_bufferSize(f->solver, n_coeff, n_coeff, d_ata_d, n_coeff, &lwork), "fit getrf buffer") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_info_rhs), static_cast<size_t>(lwork) * sizeof(double)), "fit getrf work") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ipiv), static_cast<size_t>(n_coeff) * sizeof(int)), "fit getrf piv")) {
-        cleanup();
-        return 1;
-    }
-    if (cusolver_check(cusolverDnDgetrf(f->solver, n_coeff, n_coeff, d_ata_d, n_coeff, d_info_rhs, d_ipiv, d_info), "fit getrf") ||
-        cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit getrf info copy")) {
-        cleanup();
-        return 1;
-    }
-    if (h_info != 0) return fail("fit getrf failed");
-    if (cusolver_check(cusolverDnDgetrs(f->solver, CUBLAS_OP_N, n_coeff, 1, d_ata_d, n_coeff, d_ipiv, d_atb_d, n_coeff, d_info), "fit getrs") ||
-        cuda_check(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost), "fit getrs info copy")) {
-        cleanup();
-        return 1;
-    }
-    if (h_info != 0) return fail("fit getrs failed");
-    unscale_coeff_kernel<<<blocks1d_coeff, threads>>>(d_atb_d, d_scale, n_coeff);
-    if (cuda_check(cudaGetLastError(), "fit unscale coeff") || cuda_check(cudaDeviceSynchronize(), "fit solve sync")) {
-        cleanup();
-        return 1;
-    }
-    stats.solve_s = std::chrono::duration<double>(clock::now() - t).count();
 
     t = clock::now();
     if (precision_mode == 1) {
@@ -1589,7 +2041,7 @@ int sgpu_fit_psi_fullgpu(
             return 1;
         }
         const double one = 1.0, zero = 0.0;
-        if (cublas_check(cublasDgemv(f->blas, CUBLAS_OP_T, n_coeff, n_points, &one, d_mat_d, n_coeff, d_atb_d, 1, &zero, d_pred_d, 1), "fit residual gemv d64")) {
+        if (cublas_check(cublasDgemv(f->blas, CUBLAS_OP_T, n_coeff, n_points, &one, d_mat_d, n_coeff, d_coeff_src_d, 1, &zero, d_pred_d, 1), "fit residual gemv d64")) {
             cleanup();
             return 1;
         }
@@ -1603,14 +2055,20 @@ int sgpu_fit_psi_fullgpu(
         }
         train_rms = sqrt(fmax(resid2, 0.0) / static_cast<double>(n_points));
     } else {
-        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_coeff_f), static_cast<size_t>(n_coeff) * sizeof(float)), "fit d_coeff_f") ||
-            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_pred_f), static_cast<size_t>(n_points) * sizeof(float)), "fit d_pred_f")) {
+        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_pred_f), static_cast<size_t>(n_points) * sizeof(float)), "fit d_pred_f")) {
             cleanup();
             return 1;
         }
-        convert_double_to_float_kernel<<<blocks1d_coeff, threads>>>(d_atb_d, d_coeff_f, n_coeff);
+        if (solver_mode == 1) {
+            if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_coeff_f), static_cast<size_t>(n_coeff) * sizeof(float)), "fit d_coeff_f")) {
+                cleanup();
+                return 1;
+            }
+            convert_double_to_float_kernel<<<blocks1d_coeff, threads>>>(d_atb_d, d_coeff_f, n_coeff);
+            d_coeff_src_f = d_coeff_f;
+        }
         const float one = 1.0f, zero = 0.0f;
-        if (cublas_check(cublasSgemv(f->blas, CUBLAS_OP_T, n_coeff, n_points, &one, d_mat_f, n_coeff, d_coeff_f, 1, &zero, d_pred_f, 1), "fit residual gemv f32")) {
+        if (cublas_check(cublasSgemv(f->blas, CUBLAS_OP_T, n_coeff, n_points, &one, d_mat_f, n_coeff, d_coeff_src_f, 1, &zero, d_pred_f, 1), "fit residual gemv f32")) {
             cleanup();
             return 1;
         }
@@ -1627,21 +2085,174 @@ int sgpu_fit_psi_fullgpu(
     stats.residual_s = std::chrono::duration<double>(clock::now() - t).count();
 
     t = clock::now();
-    if (cuda_check(cudaMemcpy(coeff_host, d_atb_d, static_cast<size_t>(n_coeff) * sizeof(double), cudaMemcpyDeviceToHost), "fit copy coeff")) {
-        cleanup();
-        return 1;
+    if (precision_mode == 1) {
+        if (cuda_check(cudaMemcpy(coeff_host, d_coeff_src_d, static_cast<size_t>(n_coeff) * sizeof(double), cudaMemcpyDeviceToHost), "fit copy coeff d64")) {
+            cleanup();
+            return 1;
+        }
+    } else {
+        coeff_host_f.resize(static_cast<size_t>(n_coeff));
+        if (cuda_check(cudaMemcpy(coeff_host_f.data(), d_coeff_src_f, static_cast<size_t>(n_coeff) * sizeof(float), cudaMemcpyDeviceToHost), "fit copy coeff f32")) {
+            cleanup();
+            return 1;
+        }
+        for (int i = 0; i < n_coeff; ++i) coeff_host[i] = static_cast<double>(coeff_host_f[static_cast<size_t>(i)]);
     }
     *train_rms_out = train_rms;
     stats.copy_out_s = std::chrono::duration<double>(clock::now() - t).count();
     stats.total_s = std::chrono::duration<double>(clock::now() - t_total).count();
-    if (stats_out && stats_len >= 7) {
+    if (stats_out && stats_len >= 12) {
         stats_out[0] = stats.copy_in_s;
         stats_out[1] = stats.assemble_s;
-        stats_out[2] = stats.normal_eq_s;
+        stats_out[2] = stats.linear_prep_s;
         stats_out[3] = stats.solve_s;
         stats_out[4] = stats.residual_s;
         stats_out[5] = stats.copy_out_s;
         stats_out[6] = stats.total_s;
+        stats_out[7] = stats.qr_transpose_s;
+        stats_out[8] = stats.qr_scale_s;
+        stats_out[9] = stats.qr_factor_s;
+        stats_out[10] = stats.qr_apply_qtb_s;
+        stats_out[11] = stats.qr_tri_s;
+    }
+    cleanup();
+    set_error("");
+    return 0;
+}
+
+int sgpu_surface_points_from_level(
+    const double* coeff_host,
+    const int* mode_a_host,
+    const int* mode_b_host,
+    const int* mode_m_host,
+    const int* mode_kind_host,
+    int n_coeff,
+    int nfp,
+    double a,
+    int poly_degree,
+    int m_tor,
+    const double* axis_R_host,
+    const double* axis_Z_host,
+    int n_axis,
+    int order,
+    double psi_level,
+    int maxiter,
+    double tol,
+    double max_radius_scale,
+    int device_id,
+    double* xyz_host,
+    double* radii_host,
+    double* stats_out,
+    int stats_len
+) {
+    using clock = std::chrono::steady_clock;
+    if (!coeff_host || !mode_a_host || !mode_b_host || !mode_m_host || !mode_kind_host ||
+        !axis_R_host || !axis_Z_host || !xyz_host || !radii_host || n_coeff <= 0 || nfp <= 0 ||
+        poly_degree < 2 || poly_degree > MAX_PSI_DEGREE || m_tor < 0 || m_tor > MAX_PSI_MTOR ||
+        n_axis <= 1 || order < 1 || maxiter <= 0 || tol <= 0.0 || max_radius_scale <= 0.0) {
+        set_error("invalid surface_points_from_level arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(device_id), "cudaSetDevice")) return 1;
+    int nphi = 2 * order + 1;
+    int ntheta = 2 * order + 1;
+    size_t coeff_bytes = static_cast<size_t>(n_coeff) * sizeof(double);
+    size_t mode_bytes = static_cast<size_t>(n_coeff) * sizeof(int);
+    size_t axis_bytes = static_cast<size_t>(n_axis) * sizeof(double);
+    size_t ray_coeff_bytes = static_cast<size_t>(nphi) * static_cast<size_t>(ntheta) * static_cast<size_t>(poly_degree + 1) * sizeof(double);
+    size_t xyz_bytes = static_cast<size_t>(nphi) * static_cast<size_t>(ntheta) * 3 * sizeof(double);
+    size_t radii_bytes = static_cast<size_t>(nphi) * static_cast<size_t>(ntheta) * sizeof(double);
+
+    double *d_coeff = nullptr, *d_axis_R = nullptr, *d_axis_Z = nullptr, *d_ray_coeff = nullptr, *d_xyz = nullptr, *d_radii = nullptr;
+    int *d_mode_a = nullptr, *d_mode_b = nullptr, *d_mode_m = nullptr, *d_mode_kind = nullptr;
+    auto cleanup = [&]() {
+        cudaFree(d_coeff);
+        cudaFree(d_axis_R);
+        cudaFree(d_axis_Z);
+        cudaFree(d_ray_coeff);
+        cudaFree(d_xyz);
+        cudaFree(d_radii);
+        cudaFree(d_mode_a);
+        cudaFree(d_mode_b);
+        cudaFree(d_mode_m);
+        cudaFree(d_mode_kind);
+    };
+
+    double copy_in_s = 0.0, coeff_build_s = 0.0, newton_s = 0.0, copy_out_s = 0.0;
+    auto t_total = clock::now();
+    auto t = clock::now();
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_coeff), coeff_bytes), "surface d_coeff") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_R), axis_bytes), "surface d_axis_R") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_Z), axis_bytes), "surface d_axis_Z") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_a), mode_bytes), "surface d_mode_a") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_b), mode_bytes), "surface d_mode_b") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_m), mode_bytes), "surface d_mode_m") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_kind), mode_bytes), "surface d_mode_kind") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_ray_coeff), ray_coeff_bytes), "surface d_ray_coeff") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_xyz), xyz_bytes), "surface d_xyz") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_radii), radii_bytes), "surface d_radii") ||
+        cuda_check(cudaMemcpy(d_coeff, coeff_host, coeff_bytes, cudaMemcpyHostToDevice), "surface copy coeff") ||
+        cuda_check(cudaMemcpy(d_axis_R, axis_R_host, axis_bytes, cudaMemcpyHostToDevice), "surface copy axis_R") ||
+        cuda_check(cudaMemcpy(d_axis_Z, axis_Z_host, axis_bytes, cudaMemcpyHostToDevice), "surface copy axis_Z") ||
+        cuda_check(cudaMemcpy(d_mode_a, mode_a_host, mode_bytes, cudaMemcpyHostToDevice), "surface copy mode_a") ||
+        cuda_check(cudaMemcpy(d_mode_b, mode_b_host, mode_bytes, cudaMemcpyHostToDevice), "surface copy mode_b") ||
+        cuda_check(cudaMemcpy(d_mode_m, mode_m_host, mode_bytes, cudaMemcpyHostToDevice), "surface copy mode_m") ||
+        cuda_check(cudaMemcpy(d_mode_kind, mode_kind_host, mode_bytes, cudaMemcpyHostToDevice), "surface copy mode_kind")) {
+        cleanup();
+        return 1;
+    }
+    copy_in_s = std::chrono::duration<double>(clock::now() - t).count();
+
+    t = clock::now();
+    surface_build_ray_poly_kernel<<<nphi, SURFACE_THREADS, static_cast<size_t>(2 * (MAX_PSI_MTOR + 1)) * sizeof(double)>>>(
+        d_coeff, d_mode_a, d_mode_b, d_mode_m, d_mode_kind, n_coeff, nfp, poly_degree, m_tor, nphi, ntheta, d_ray_coeff
+    );
+    if (cuda_check(cudaGetLastError(), "surface_build_ray_poly_kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "surface_build_ray_poly sync")) {
+        cleanup();
+        return 1;
+    }
+    coeff_build_s = std::chrono::duration<double>(clock::now() - t).count();
+
+    t = clock::now();
+    surface_newton_from_ray_poly_kernel<<<nphi, SURFACE_THREADS>>>(
+        d_ray_coeff,
+        poly_degree,
+        d_axis_R,
+        d_axis_Z,
+        n_axis,
+        nfp,
+        a,
+        nphi,
+        ntheta,
+        psi_level,
+        maxiter,
+        tol,
+        max_radius_scale,
+        d_xyz,
+        d_radii
+    );
+    if (cuda_check(cudaGetLastError(), "surface_newton_from_ray_poly_kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "surface_newton_from_ray_poly sync")) {
+        cleanup();
+        return 1;
+    }
+    newton_s = std::chrono::duration<double>(clock::now() - t).count();
+
+    t = clock::now();
+    if (cuda_check(cudaMemcpy(xyz_host, d_xyz, xyz_bytes, cudaMemcpyDeviceToHost), "surface copy xyz") ||
+        cuda_check(cudaMemcpy(radii_host, d_radii, radii_bytes, cudaMemcpyDeviceToHost), "surface copy radii")) {
+        cleanup();
+        return 1;
+    }
+    copy_out_s = std::chrono::duration<double>(clock::now() - t).count();
+
+    if (stats_out && stats_len >= 5) {
+        stats_out[0] = copy_in_s;
+        stats_out[1] = coeff_build_s;
+        stats_out[2] = newton_s;
+        stats_out[3] = copy_out_s;
+        stats_out[4] = std::chrono::duration<double>(clock::now() - t_total).count();
     }
     cleanup();
     set_error("");

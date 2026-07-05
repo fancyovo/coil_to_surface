@@ -6,14 +6,15 @@ from typing import Sequence
 
 @dataclass
 class AxisGAConfig:
-    backend: str = "cpu"
+    method: str = "fixed_point"
+    backend: str = "gpu"
     grid: int = 16
     keep: int = 16
     span: float = 0.5
     z_center: float = 0.0
     rk4_steps: int = 800
     max_generations: int = 32
-    tol: float = 1e-8
+    tol: float = 1e-7
     axis_trace_steps: int = 240
     gpu_lib_path: str = "gpu_backend/build_mixed/libstellarator_gpu.so"
     gpu_segments_per_coil: int = 256
@@ -29,13 +30,25 @@ class AxisGAConfig:
     fine_keep: int = 8
     fine_max_generations: int = 96
     fine_span_min: float = 1e-8
+    fixed_point_grid: int = 48
+    fixed_point_max_candidates: int = 16
+    fixed_point_local_min_candidates: int = 64
+    fixed_point_newton_iters: int = 6
+    fixed_point_fallback_grid: int = 96
+    fixed_point_fallback_max_candidates: int = 96
+    fixed_point_fallback_newton_iters: int = 8
+    fixed_point_verify_top: int = 8
+    fixed_point_r_floor: float = 1e-4
+    fixed_point_fd_rel: float = 2e-4
+    fixed_point_fd_abs: float = 2e-6
 
 
 @dataclass
 class PsiFitConfig:
-    backend: str = "cpu"
+    backend: str = "fullgpu"
+    linear_solver: str = "qr"
     normal_eq_backend: str = "auto"
-    normal_eq_precision: str = "fp64"
+    normal_eq_precision: str = "fp32"
     a: float = 0.05
     rho_min: float = 0.002
     poly_degree: int = 10
@@ -64,7 +77,7 @@ class SurfaceScanConfig:
     max_boozer_candidates: int = 3
     curve_newton_tol: float = 1e-12
     curve_newton_maxiter: int = 20
-    trace_backend: str = "cpu"
+    trace_backend: str = "gpu"
     gpu_lib_path: str = "gpu_backend/build_mixed/libstellarator_gpu.so"
     gpu_segments_per_coil: int = 256
     gpu_device: int = 0
@@ -85,6 +98,9 @@ class BoozerConfig:
     newton_maxiter: int = 30
     newton_tol: float = 1e-12
     qs_sdim: int = 16
+    surface_extract_backend: str = "gpu"
+    gpu_lib_path: str = "gpu_backend/build_mixed/libstellarator_gpu.so"
+    gpu_device: int = 0
 
 
 @dataclass

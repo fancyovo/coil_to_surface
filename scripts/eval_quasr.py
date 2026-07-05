@@ -84,6 +84,15 @@ def make_config(args, eval_params: dict[str, float]) -> EvalConfig:
     cfg.current_unit = "A"
     cfg.omp_threads = args.omp_threads
     cfg.psi.a = float(eval_params["a"])
+    cfg.psi.linear_solver = args.psi_linear_solver
+    cfg.psi.normal_eq_precision = args.psi_normal_eq_precision
+    cfg.psi.n_r = args.psi_n_r
+    cfg.psi.n_z = args.psi_n_z
+    cfg.psi.n_phi = args.psi_n_phi
+    cfg.psi.gpu_device = args.gpu_device
+    cfg.axis.gpu_device = args.gpu_device
+    cfg.scan.gpu_device = args.gpu_device
+    cfg.boozer.gpu_device = args.gpu_device
     cfg.boozer.initial_iota = float(eval_params["initial_iota"])
     cfg.boozer.qs_sdim = args.qs_sdim
     cfg.boozer.surface_order = args.surface_order
@@ -102,6 +111,12 @@ def result_status(result: dict) -> str:
 
 
 def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict) -> dict:
+    psi_fit = ((result.get("psi") or {}).get("fit_info") or {})
+    screen_levels = ((result.get("surface_screen") or {}).get("levels") or [])
+    ok_screen = [x for x in screen_levels if x.get("ok")]
+    finite_dist = [float(x["end_distance_p95"]) for x in screen_levels if x.get("end_distance_p95") is not None]
+    finite_rel = [float(x["rel_end_distance_p95"]) for x in screen_levels if x.get("rel_end_distance_p95") is not None]
+    candidates = result.get("surface_candidates") or []
     row = {
         "ID": int(device_id),
         "status": result_status(result),
@@ -113,6 +128,17 @@ def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict)
         "axis_best_residual": float(result["axis"]["best_residual"]),
         "axis_failure_reason": result["axis"].get("failure_reason", ""),
         "total_time_s": float(result["total_time_s"]),
+        "psi_train_rms": psi_fit.get("train_rms"),
+        "psi_validation_rms": psi_fit.get("validation_rms"),
+        "psi_validation_angle_mean": psi_fit.get("validation_angle_mean"),
+        "psi_validation_angle_p95": psi_fit.get("validation_angle_p95"),
+        "psi_validation_angle_l2": psi_fit.get("validation_angle_l2"),
+        "screen_level_count": len(screen_levels),
+        "screen_ok_count": len(ok_screen),
+        "screen_best_psi_level": max((float(x["psi_level"]) for x in ok_screen), default=None),
+        "screen_min_distance_p95": min(finite_dist) if finite_dist else None,
+        "screen_min_rel_distance_p95": min(finite_rel) if finite_rel else None,
+        "surface_candidate_count": len(candidates),
     }
     if meta:
         for key in ("helicity", "nfp", "nc_per_hp", "mean_iota", "minor_radius", "aspect_ratio", "volume", "qs_error", "Nsurfaces"):
@@ -126,6 +152,19 @@ def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict)
                 "best_surface_iota": best.get("iota"),
                 "best_surface_volume": best.get("volume"),
                 "best_surface_G": best.get("G"),
+            }
+        )
+    if candidates:
+        first = candidates[0]
+        row.update(
+            {
+                "first_candidate_psi_level": first.get("psi_level"),
+                "first_candidate_error": first.get("error"),
+                "first_candidate_initial_residual": first.get("initial_boozer_residual_norm"),
+                "first_candidate_ls_success": first.get("ls_success"),
+                "first_candidate_ls_residual": first.get("ls_residual_norm"),
+                "first_candidate_newton_success": first.get("newton_success"),
+                "first_candidate_newton_residual": first.get("newton_residual_norm"),
             }
         )
     timing = result.get("timing", {})
@@ -237,6 +276,12 @@ def main() -> None:
     parser.add_argument("--qs-sdim", type=int, default=16)
     parser.add_argument("--max-boozer-candidates", type=int, default=3)
     parser.add_argument("--omp-threads", type=int, default=1)
+    parser.add_argument("--gpu-device", type=int, default=0)
+    parser.add_argument("--psi-linear-solver", choices=["qr", "normal_eq"], default="qr")
+    parser.add_argument("--psi-normal-eq-precision", choices=["fp32", "fp64"], default="fp32")
+    parser.add_argument("--psi-n-r", type=int, default=80)
+    parser.add_argument("--psi-n-z", type=int, default=80)
+    parser.add_argument("--psi-n-phi", type=int, default=80)
     parser.add_argument("--export-failures-dir", type=Path, default=Path("examples"))
     parser.add_argument("--export-failure-start", type=int, default=2)
     parser.add_argument("--export-failure-limit", type=int, default=8)

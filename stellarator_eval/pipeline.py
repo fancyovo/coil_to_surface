@@ -36,6 +36,11 @@ def _axis_summary(axis) -> dict:
         "backend": axis.backend,
         "trace_error": axis.trace_error,
         "failure_reason": axis.failure_reason,
+        "topology_class": axis.topology_class,
+        "topology_trace": axis.topology_trace,
+        "topology_det": axis.topology_det,
+        "topology_ellipse_aspect": axis.topology_ellipse_aspect,
+        "topology_time_s": axis.topology_time_s,
         "history": axis.history,
     }
 
@@ -59,6 +64,7 @@ def _timing_summary(*, field_build_s: float = 0.0, axis=None, model=None, screen
         "axis_s": 0.0 if axis is None else float(axis.time_s),
         "axis_search_s": 0.0 if axis is None else float(axis.search_time_s),
         "axis_trace_s": 0.0 if axis is None else float(axis.trace_time_s),
+        "axis_topology_s": 0.0 if axis is None else float(axis.topology_time_s),
         "psi_fit_s": float(fit_info.get("time_s", 0.0)),
         "psi_gpu_create_s": float(fit_info.get("gpu_create_s", 0.0)),
         "psi_training_point_s": float(fit_info.get("training_point_s", 0.0)),

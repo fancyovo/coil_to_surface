@@ -34,6 +34,11 @@ class AxisResult:
     trace_error: str = ""
     failure_reason: str = ""
     search_best_residual: float = float("nan")
+    topology_class: str = ""
+    topology_trace: float = float("nan")
+    topology_det: float = float("nan")
+    topology_ellipse_aspect: float = float("nan")
+    topology_time_s: float = 0.0
 
 
 def b_components(field, r, z, phi):
@@ -332,6 +337,106 @@ def _fixed_point_eval(gpu_field, r, z, nfp: int, cfg: AxisGAConfig, precision: s
     return dr, dz, np.hypot(dr, dz)
 
 
+def _classify_map_topology(trace: float, det: float, margin: float) -> str:
+    if not np.isfinite(trace) or not np.isfinite(det):
+        return "invalid"
+    if det <= 0.0:
+        return "hyperbolic"
+    normalized_trace = trace / math.sqrt(det)
+    if abs(normalized_trace) < 2.0 - margin:
+        return "elliptic"
+    if abs(normalized_trace) > 2.0 + margin:
+        return "hyperbolic"
+    return "parabolic"
+
+
+def _ellipse_aspect_from_jacobian(a: float, b: float, c: float, d: float, det: float) -> tuple[float, list[float]]:
+    if not np.isfinite(det) or det <= 0.0:
+        return float("inf"), [float("nan"), float("nan")]
+    scale = math.sqrt(det)
+    a, b, c, d = a / scale, b / scale, c / scale, d / scale
+    q = np.array([[c, 0.5 * (d - a)], [0.5 * (d - a), -b]], dtype=float)
+    eig = np.linalg.eigvalsh(q)
+    if eig[0] < 0.0 and eig[1] < 0.0:
+        eig = -eig[::-1]
+    if eig[0] <= 0.0 or not np.all(np.isfinite(eig)):
+        return float("inf"), [float(eig[0]), float(eig[1])]
+    return float(math.sqrt(eig[1] / eig[0])), [float(eig[0]), float(eig[1])]
+
+
+def _fixed_point_add_topology(gpu_field, items: list[dict], nfp: int, cfg: AxisGAConfig, domain: dict) -> float:
+    if not items or not cfg.fixed_point_topology_filter:
+        return 0.0
+    span = max(domain["r_max"] - domain["r_min"], domain["z_max"] - domain["z_min"])
+    h = max(cfg.fixed_point_topology_fd_abs, cfg.fixed_point_topology_fd_rel * span)
+    r = np.array([item["best_R"] for item in items], dtype=float)
+    z = np.array([item["best_Z"] for item in items], dtype=float)
+    rp = np.maximum(cfg.fixed_point_r_floor, r + h)
+    rm = np.maximum(cfg.fixed_point_r_floor, r - h)
+    zp = z + h
+    zm = z - h
+    eval_r = np.concatenate([rp, rm, r, r])
+    eval_z = np.concatenate([z, z, zp, zm])
+    t0 = time.perf_counter()
+    fdr, fdz, _ = _fixed_point_eval(gpu_field, eval_r, eval_z, nfp, cfg, cfg.gpu_verify_precision or cfg.gpu_trace_precision)
+    dt = time.perf_counter() - t0
+    n = len(items)
+    pr = eval_r + fdr
+    pz = eval_z + fdz
+    denom_r = np.maximum(rp - rm, 1e-300)
+    dpr_dr = (pr[:n] - pr[n : 2 * n]) / denom_r
+    dpz_dr = (pz[:n] - pz[n : 2 * n]) / denom_r
+    dpr_dz = (pr[2 * n : 3 * n] - pr[3 * n :]) / (2.0 * h)
+    dpz_dz = (pz[2 * n : 3 * n] - pz[3 * n :]) / (2.0 * h)
+    trace = dpr_dr + dpz_dz
+    det = dpr_dr * dpz_dz - dpr_dz * dpz_dr
+    for i, item in enumerate(items):
+        aspect, q_eig = _ellipse_aspect_from_jacobian(
+            float(dpr_dr[i]),
+            float(dpr_dz[i]),
+            float(dpz_dr[i]),
+            float(dpz_dz[i]),
+            float(det[i]),
+        )
+        normalized_trace = float(trace[i] / math.sqrt(det[i])) if np.isfinite(det[i]) and det[i] > 0.0 else float("nan")
+        item["topology_class"] = _classify_map_topology(float(trace[i]), float(det[i]), cfg.fixed_point_topology_margin)
+        item["topology_trace"] = float(trace[i])
+        item["topology_det"] = float(det[i])
+        item["topology_normalized_trace"] = normalized_trace
+        item["topology_fd_h"] = float(h)
+        item["topology_ellipse_aspect"] = aspect
+        item["topology_invariant_q_eig"] = q_eig
+    return dt
+
+
+def _choose_fixed_point_axis(top: list[dict], cfg: AxisGAConfig) -> dict:
+    if not top:
+        raise ValueError("no fixed-point candidates to choose from")
+    if not cfg.fixed_point_topology_filter:
+        return dict(min(top, key=lambda x: x["best_residual"]))
+    eligible = [item for item in top if item["best_residual"] <= cfg.tol and item.get("topology_class") == "elliptic"]
+    if eligible:
+        if cfg.fixed_point_prefer_round_elliptic:
+            chosen = dict(min(eligible, key=lambda x: (x.get("topology_ellipse_aspect", float("inf")), x["best_residual"])))
+        else:
+            chosen = dict(min(eligible, key=lambda x: x["best_residual"]))
+        chosen["topology_accepted"] = True
+        return chosen
+    best = dict(min(top, key=lambda x: x["best_residual"]))
+    best["topology_accepted"] = False
+    return best
+
+
+def _fixed_point_axis_prefer(candidate: dict, incumbent: dict) -> bool:
+    cand_ok = candidate.get("topology_accepted", False)
+    inc_ok = incumbent.get("topology_accepted", False)
+    if cand_ok and not inc_ok:
+        return True
+    if inc_ok and not cand_ok:
+        return False
+    return candidate["best_residual"] < incumbent["best_residual"]
+
+
 def _fixed_point_refine(gpu_field, candidates: list[dict], nfp: int, cfg: AxisGAConfig, domain: dict, *, newton_iters: int):
     if not candidates:
         return [], {"newton_time_s": 0.0, "newton_iterations": 0, "newton_evaluated_points": 0}
@@ -442,17 +547,21 @@ def search_axis_fixed_point_gpu(
             item["verify_end_Z"] = float(zv[i] + vdz[i])
             item["verify_precision"] = cfg.gpu_verify_precision
             item["verify_time_s"] = verify_time
+        topology_time = _fixed_point_add_topology(gpu_field, top, nfp, cfg, domain)
         top.sort(key=lambda x: x["best_residual"])
-        best = dict(top[0])
+        best = _choose_fixed_point_axis(top, cfg)
     else:
         idx = int(np.argmin(residual))
         verify_time = 0.0
+        topology_time = 0.0
         best = {
             "best_R": float(r0[idx]),
             "best_Z": float(z0[idx]),
             "best_residual": float(residual[idx]),
             "search_residual": float(residual[idx]),
             "candidate_kind": "grid_best_no_candidate",
+            "topology_class": "",
+            "topology_accepted": False,
         }
     best["generation"] = 0
     row = {
@@ -466,9 +575,27 @@ def search_axis_fixed_point_gpu(
         "best_residual": float(best["best_residual"]),
         "grid_best_residual": float(np.min(residual)),
         "candidate_count": int(len(candidates)),
-        "time_s": float(grid_time + stats["newton_time_s"] + verify_time),
+        "time_s": float(grid_time + stats["newton_time_s"] + verify_time + topology_time),
         "grid_time_s": float(grid_time),
         "verify_time_s": float(verify_time),
+        "topology_time_s": float(topology_time),
+        "topology_filter_enabled": bool(cfg.fixed_point_topology_filter),
+        "topology_require_elliptic": bool(cfg.fixed_point_require_elliptic),
+        "verified_candidates": [
+            {
+                "rank_by_residual": int(i),
+                "best_R": float(item["best_R"]),
+                "best_Z": float(item["best_Z"]),
+                "best_residual": float(item["best_residual"]),
+                "candidate_kind": item.get("candidate_kind", ""),
+                "topology_class": item.get("topology_class", ""),
+                "topology_trace": float(item.get("topology_trace", float("nan"))),
+                "topology_det": float(item.get("topology_det", float("nan"))),
+                "topology_normalized_trace": float(item.get("topology_normalized_trace", float("nan"))),
+                "topology_ellipse_aspect": float(item.get("topology_ellipse_aspect", float("inf"))),
+            }
+            for i, item in enumerate(top if refined else [])
+        ],
         **stats,
         **domain,
     }
@@ -539,6 +666,11 @@ def find_axis(field, nfp: int, coil_r0: float, cfg: AxisGAConfig) -> AxisResult:
         backend="cpu",
         trace_error=trace_error,
         failure_reason=failure_reason,
+        topology_class=str(best.get("topology_class", "")),
+        topology_trace=float(best.get("topology_trace", float("nan"))),
+        topology_det=float(best.get("topology_det", float("nan"))),
+        topology_ellipse_aspect=float(best.get("topology_ellipse_aspect", float("nan"))),
+        topology_time_s=float(sum(float(row.get("topology_time_s", 0.0)) for row in history)),
     )
 
 
@@ -590,7 +722,13 @@ def find_axis_gpu(field_input, trace_field, nfp: int, coil_r0: float, cfg: AxisG
                 newton_iters=cfg.fixed_point_newton_iters,
                 stage="fast",
             )
-            if best["best_residual"] > cfg.tol:
+            needs_topology_fallback = (
+                cfg.fixed_point_topology_filter
+                and cfg.fixed_point_require_elliptic
+                and best["best_residual"] <= cfg.tol
+                and not best.get("topology_accepted", False)
+            )
+            if best["best_residual"] > cfg.tol or needs_topology_fallback:
                 fb_best, fb_history = search_axis_fixed_point_gpu(
                     gpu_field,
                     field_input,
@@ -603,7 +741,7 @@ def find_axis_gpu(field_input, trace_field, nfp: int, coil_r0: float, cfg: AxisG
                     stage="fallback",
                 )
                 history.extend(fb_history)
-                if fb_best["best_residual"] < best["best_residual"]:
+                if _fixed_point_axis_prefer(fb_best, best):
                     best = fb_best
         else:
             raise ValueError(f"unknown axis search method {cfg.method!r}")
@@ -612,6 +750,10 @@ def find_axis_gpu(field_input, trace_field, nfp: int, coil_r0: float, cfg: AxisG
         gpu_field.close()
     has_axis = bool(best["best_residual"] <= cfg.tol)
     failure_reason = "" if has_axis else "residual_above_tol"
+    if has_axis and cfg.method == "fixed_point" and cfg.fixed_point_topology_filter and cfg.fixed_point_require_elliptic:
+        if best.get("topology_class") != "elliptic" or not best.get("topology_accepted", False):
+            has_axis = False
+            failure_reason = "no_elliptic_axis_candidate"
     phi = np.empty(0, dtype=float)
     R = np.empty(0, dtype=float)
     Z = np.empty(0, dtype=float)
@@ -649,6 +791,11 @@ def find_axis_gpu(field_input, trace_field, nfp: int, coil_r0: float, cfg: AxisG
         backend="gpu",
         trace_error=trace_error,
         failure_reason=failure_reason,
+        topology_class=str(best.get("topology_class", "")),
+        topology_trace=float(best.get("topology_trace", float("nan"))),
+        topology_det=float(best.get("topology_det", float("nan"))),
+        topology_ellipse_aspect=float(best.get("topology_ellipse_aspect", float("nan"))),
+        topology_time_s=float(sum(float(row.get("topology_time_s", 0.0)) for row in history)),
     )
 
 

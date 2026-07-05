@@ -57,6 +57,12 @@ def build_parser():
     p.add_argument("--axis-fp-fallback-max-candidates", type=int, default=96)
     p.add_argument("--axis-fp-fallback-newton-iters", type=int, default=8)
     p.add_argument("--axis-fp-r-floor", type=float, default=1e-4)
+    p.add_argument("--axis-disable-topology-filter", action="store_true")
+    p.add_argument("--axis-allow-non-elliptic", action="store_true")
+    p.add_argument("--axis-topology-fd-rel", type=float, default=2e-4)
+    p.add_argument("--axis-topology-fd-abs", type=float, default=2e-6)
+    p.add_argument("--axis-topology-margin", type=float, default=2e-2)
+    p.add_argument("--axis-residual-first", action="store_true")
 
     p.add_argument("--levels", default="0.001,0.002,0.004,0.008,0.012,0.02,0.04,0.08,0.12,0.16")
     p.add_argument("--screen-n-alpha", type=int, default=256)
@@ -106,6 +112,12 @@ def config_from_args(args) -> EvalConfig:
             fixed_point_fallback_max_candidates=args.axis_fp_fallback_max_candidates,
             fixed_point_fallback_newton_iters=args.axis_fp_fallback_newton_iters,
             fixed_point_r_floor=args.axis_fp_r_floor,
+            fixed_point_topology_filter=not args.axis_disable_topology_filter,
+            fixed_point_require_elliptic=not args.axis_allow_non_elliptic,
+            fixed_point_topology_fd_rel=args.axis_topology_fd_rel,
+            fixed_point_topology_fd_abs=args.axis_topology_fd_abs,
+            fixed_point_topology_margin=args.axis_topology_margin,
+            fixed_point_prefer_round_elliptic=not args.axis_residual_first,
         ),
         psi=PsiFitConfig(
             backend=args.psi_backend,

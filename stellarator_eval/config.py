@@ -41,6 +41,12 @@ class AxisGAConfig:
     fixed_point_r_floor: float = 1e-4
     fixed_point_fd_rel: float = 2e-4
     fixed_point_fd_abs: float = 2e-6
+    fixed_point_topology_filter: bool = True
+    fixed_point_require_elliptic: bool = True
+    fixed_point_topology_fd_rel: float = 2e-4
+    fixed_point_topology_fd_abs: float = 2e-6
+    fixed_point_topology_margin: float = 2e-2
+    fixed_point_prefer_round_elliptic: bool = True
 
 
 @dataclass

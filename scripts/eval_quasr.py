@@ -127,6 +127,8 @@ def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict)
         "axis_has_axis": bool(result["axis"]["has_axis"]),
         "axis_best_residual": float(result["axis"]["best_residual"]),
         "axis_failure_reason": result["axis"].get("failure_reason", ""),
+        "axis_topology_class": result["axis"].get("topology_class", ""),
+        "axis_topology_ellipse_aspect": result["axis"].get("topology_ellipse_aspect"),
         "total_time_s": float(result["total_time_s"]),
         "psi_train_rms": psi_fit.get("train_rms"),
         "psi_validation_rms": psi_fit.get("validation_rms"),
@@ -168,7 +170,27 @@ def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict)
             }
         )
     timing = result.get("timing", {})
-    for key in ("axis_s", "psi_fit_s", "surface_screen_s", "boozer_candidates_s"):
+    for key in (
+        "axis_s",
+        "axis_search_s",
+        "axis_trace_s",
+        "axis_topology_s",
+        "psi_fit_s",
+        "psi_training_point_s",
+        "psi_assemble_s",
+        "psi_qr_factor_s",
+        "psi_solve_s",
+        "psi_validation_s",
+        "surface_screen_s",
+        "surface_screen_curve_newton_s",
+        "surface_screen_fieldline_trace_s",
+        "surface_screen_verify_trace_s",
+        "surface_extract_1d_newton_s",
+        "boozer_ls_s",
+        "boozer_newton_s",
+        "boozer_qs_s",
+        "boozer_candidates_s",
+    ):
         if key in timing:
             row[f"timing_{key}"] = timing[key]
     return row

@@ -50,20 +50,50 @@ def _quadratic_radius(model: PsiModel, psi_level, theta, phi, max_radius):
     return np.clip(rho, 1e-12 * model.a, max_radius)
 
 
+def _radial_poly_coeffs_phi0(model: PsiModel, theta):
+    cth = np.cos(theta)
+    sth = np.sin(theta)
+    degree = max(mode.a + mode.b for mode in model.modes)
+    coeffs = np.zeros((degree + 1, len(theta)))
+    coeffs[2] += cth**2
+    for c, mode in zip(model.coeffs, model.modes):
+        if mode.kind == "sin":
+            continue
+        deg = mode.a + mode.b
+        coeffs[deg] += c * (cth**mode.a) * (sth**mode.b)
+    return coeffs
+
+
+def _eval_radial_poly(coeffs, rho, a_scale):
+    u = rho / a_scale
+    psi = np.zeros_like(u)
+    dpsi = np.zeros_like(u)
+    for deg in range(2, coeffs.shape[0]):
+        c = coeffs[deg]
+        if not np.any(c):
+            continue
+        psi += c * (u**deg)
+        dpsi += c * deg * (u ** (deg - 1)) / a_scale
+    return psi, dpsi
+
+
 def level_curve_phi0(model: PsiModel, psi_level: float, n_alpha: int, cfg: SurfaceScanConfig):
     theta = np.linspace(0.0, TWOPI, n_alpha, endpoint=False)
-    phi = 0.0
     max_radius = cfg.max_radius_scale * model.a
-    rho = _quadratic_radius(model, psi_level, theta, phi, max_radius)
+    poly = _radial_poly_coeffs_phi0(model, theta)
+    q = poly[2]
+    fallback = model.a * np.sqrt(max(psi_level, 1e-16))
+    rho = np.where(q > 1e-10, model.a * np.sqrt(max(psi_level, 0.0) / q), fallback)
+    rho = np.clip(rho, 1e-12 * model.a, max_radius)
     for _ in range(cfg.curve_newton_maxiter):
-        psi, dpsi = psi_ray_value_and_derivative(model, rho, theta, phi)
+        psi, dpsi = _eval_radial_poly(poly, rho, model.a)
         f = psi - psi_level
         if np.max(np.abs(f)) <= cfg.curve_newton_tol:
             break
         denom = np.where(np.abs(dpsi) > 1e-14, dpsi, np.where(dpsi >= 0.0, 1e-14, -1e-14))
         step = np.clip(f / denom, -0.45 * np.maximum(np.abs(rho), 1e-8 * model.a), 0.45 * np.maximum(np.abs(rho), 1e-8 * model.a))
         trial = np.clip(rho - step, 1e-12 * model.a, max_radius)
-        psi_trial, _ = psi_ray_value_and_derivative(model, trial, theta, phi)
+        psi_trial, _ = _eval_radial_poly(poly, trial, model.a)
         take = np.abs(psi_trial - psi_level) <= np.abs(f)
         rho[take] = trial[take]
         rho[~take] = 0.5 * (rho[~take] + trial[~take])

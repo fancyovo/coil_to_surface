@@ -48,47 +48,81 @@ def estimate_coil_r0(cx, cy, cz, samples=512):
     return float(np.mean(vals))
 
 
+def trace_population(field, r, z, nfp, steps, trace_mode, trace_precision, blockline_threads):
+    if trace_mode == "auto":
+        return field.trace_period_blockline_precision(
+            r,
+            z,
+            steps=steps,
+            precision=trace_precision,
+            threads_per_line=blockline_threads,
+            nfp=nfp,
+        )
+    if trace_mode == "warp":
+        return field.trace_period(r, z, steps=steps, nfp=nfp)
+    if trace_mode == "blockline":
+        return field.trace_period_blockline(r, z, steps=steps, threads_per_line=blockline_threads, nfp=nfp)
+    if trace_mode == "blockline_mixed64":
+        return field.trace_period_blockline_mixed(
+            r, z, steps=steps, threads_per_line=blockline_threads, mode="bf32_state64", nfp=nfp
+        )
+    if trace_mode == "blockline_f32":
+        return field.trace_period_blockline_mixed(
+            r, z, steps=steps, threads_per_line=blockline_threads, mode="f32", nfp=nfp
+        )
+    if trace_mode == "blockline_f16state":
+        return field.trace_period_blockline_mixed(
+            r, z, steps=steps, threads_per_line=blockline_threads, mode="f32_state16", nfp=nfp
+        )
+    raise ValueError(f"unknown trace_mode={trace_mode}")
+
+
+def rebuild_population_from_top(r_top, z_top, best_r, best_z, grid, keep, target, local_span):
+    seed_r = r_top[:keep]
+    seed_z = z_top[:keep]
+    r, z = pairwise_midpoints(seed_r, seed_z)
+    r, z = unique_points(r, z)
+    if len(r) < target:
+        rg, zg = initial_grid(best_r, best_z, local_span, grid)
+        r, z = unique_points(np.r_[r, rg], np.r_[z, zg])
+    if len(r) > target:
+        r = r[:target]
+        z = z[:target]
+    return r, z
+
+
 def run_ga(field, r_center, nfp, args):
     r, z = initial_grid(r_center, args.z_center, args.span, args.grid)
     history = []
     best = None
-    for gen in range(args.max_generations + 1):
+    stage = "coarse" if args.staged else "single"
+    stage_generation = 0
+    total_generations = args.max_generations + args.fine_max_generations if args.staged else args.max_generations
+    for gen in range(total_generations + 1):
         t0 = time.perf_counter()
-        if args.trace_mode == "auto":
-            re, ze = field.trace_period_blockline_precision(
-                r,
-                z,
-                steps=args.steps,
-                precision=args.trace_precision,
-                threads_per_line=args.blockline_threads,
-                nfp=nfp,
-            )
-        elif args.trace_mode == "warp":
-            re, ze = field.trace_period(r, z, steps=args.steps, nfp=nfp)
-        elif args.trace_mode == "blockline":
-            re, ze = field.trace_period_blockline(
-                r, z, steps=args.steps, threads_per_line=args.blockline_threads, nfp=nfp
-            )
-        elif args.trace_mode == "blockline_mixed64":
-            re, ze = field.trace_period_blockline_mixed(
-                r, z, steps=args.steps, threads_per_line=args.blockline_threads, mode="bf32_state64", nfp=nfp
-            )
-        elif args.trace_mode == "blockline_f32":
-            re, ze = field.trace_period_blockline_mixed(
-                r, z, steps=args.steps, threads_per_line=args.blockline_threads, mode="f32", nfp=nfp
-            )
-        elif args.trace_mode == "blockline_f16state":
-            re, ze = field.trace_period_blockline_mixed(
-                r, z, steps=args.steps, threads_per_line=args.blockline_threads, mode="f32_state16", nfp=nfp
-            )
-        else:
-            raise ValueError(f"unknown trace_mode={args.trace_mode}")
+        precision = args.coarse_precision if stage == "coarse" else args.fine_precision
+        re, ze = trace_population(
+            field,
+            r,
+            z,
+            nfp,
+            args.steps,
+            args.trace_mode,
+            precision if args.staged else args.trace_precision,
+            args.blockline_threads,
+        )
         dt = time.perf_counter() - t0
         residual = np.sqrt((re - r) ** 2 + (ze - z) ** 2)
         order = np.argsort(residual)
-        top = order[: args.keep]
+        keep = args.fine_keep if stage == "fine" else args.keep
+        grid = args.fine_grid if stage == "fine" else args.grid
+        target = grid * grid
+        top = order[:keep]
         row = {
             "generation": gen,
+            "stage": stage,
+            "stage_generation": stage_generation,
+            "precision": precision if args.staged else args.trace_precision,
             "population": int(len(r)),
             "best_R": float(r[order[0]]),
             "best_Z": float(z[order[0]]),
@@ -101,18 +135,42 @@ def run_ga(field, r_center, nfp, args):
         }
         history.append(row)
         best = row
-        if row["best_residual"] <= args.tol or gen == args.max_generations:
+        if args.staged and stage == "coarse" and row["best_residual"] <= args.switch_tol:
+            stage = "fine"
+            stage_generation = 0
+            local_span = max(
+                row["top_R_span"],
+                row["top_Z_span"],
+                args.fine_span_min,
+                args.span * 2.0 ** (-(gen + 4)),
+            )
+            r, z = rebuild_population_from_top(
+                r[order],
+                z[order],
+                row["best_R"],
+                row["best_Z"],
+                args.fine_grid,
+                args.fine_keep,
+                args.fine_grid * args.fine_grid,
+                local_span,
+            )
+            continue
+        if row["best_residual"] <= args.tol:
+            break
+        if (not args.staged and gen == args.max_generations) or (args.staged and stage == "coarse" and gen == args.max_generations):
+            break
+        if args.staged and stage == "fine" and stage_generation >= args.fine_max_generations:
             break
         r, z = pairwise_midpoints(r[top], z[top])
         r, z = unique_points(r, z)
-        target = args.grid * args.grid
         if len(r) < target:
             local_span = max(row["top_R_span"], row["top_Z_span"], args.span * 2 ** (-(gen + 4)), 1e-10)
-            rg, zg = initial_grid(row["best_R"], row["best_Z"], local_span, args.grid)
+            rg, zg = initial_grid(row["best_R"], row["best_Z"], local_span, grid)
             r, z = unique_points(np.r_[r, rg], np.r_[z, zg])
         if len(r) > target:
             r = r[:target]
             z = z[:target]
+        stage_generation += 1
     return best, history
 
 
@@ -138,6 +196,14 @@ def main():
     )
     p.add_argument("--trace-precision", choices=["mixed64", "fp64", "fp32"], default="mixed64")
     p.add_argument("--blockline-threads", type=int, default=256)
+    p.add_argument("--staged", action="store_true")
+    p.add_argument("--switch-tol", type=float, default=1e-4)
+    p.add_argument("--coarse-precision", choices=["mixed64", "fp64", "fp32"], default="fp32")
+    p.add_argument("--fine-precision", choices=["mixed64", "fp64", "fp32"], default="mixed64")
+    p.add_argument("--fine-grid", type=int, default=8)
+    p.add_argument("--fine-keep", type=int, default=8)
+    p.add_argument("--fine-max-generations", type=int, default=64)
+    p.add_argument("--fine-span-min", type=float, default=1e-8)
     p.add_argument("--output", default="gpu_axis_ga.json")
     args = p.parse_args()
 
@@ -159,6 +225,11 @@ def main():
         "trace_precision": args.trace_precision if args.trace_mode == "auto" else None,
         "effective_trace": args.trace_precision if args.trace_mode == "auto" else args.trace_mode,
         "blockline_threads": args.blockline_threads if args.trace_mode != "warp" else None,
+        "staged": bool(args.staged),
+        "switch_tol": args.switch_tol if args.staged else None,
+        "coarse_precision": args.coarse_precision if args.staged else None,
+        "fine_precision": args.fine_precision if args.staged else None,
+        "fine_population": args.fine_grid * args.fine_grid if args.staged else None,
         "create_time_s": create_time,
         "ga_time_s": total,
         "converged": bool(best["best_residual"] <= args.tol),

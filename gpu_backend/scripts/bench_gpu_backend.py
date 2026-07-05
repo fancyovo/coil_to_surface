@@ -102,6 +102,38 @@ def main():
             "diff_vs_warp_max": float(np.max(err)),
         }
 
+    mixed_results = {}
+    if "256" not in args.blockline_threads.replace(",", " ").split():
+        mixed_threads = [256]
+    else:
+        mixed_threads = [256]
+    ref_r, ref_z = field.trace_period_blockline(R0, Z0, args.steps, threads_per_line=256, nfp=nfp)
+    for mode in ("bf32_state64", "f32", "f32_state16"):
+        for threads in mixed_threads:
+            field.trace_period_blockline_mixed(R0, Z0, args.steps, threads_per_line=threads, mode=mode, nfp=nfp)
+            times = []
+            for _ in range(args.repeat):
+                t0 = time.perf_counter()
+                mr1, mz1 = field.trace_period_blockline_mixed(
+                    R0, Z0, args.steps, threads_per_line=threads, mode=mode, nfp=nfp
+                )
+                times.append(time.perf_counter() - t0)
+            err = np.sqrt((mr1 - ref_r) ** 2 + (mz1 - ref_z) ** 2)
+            key_name = f"{mode}_{threads}"
+            print(
+                f"trace_mixed mode={mode} threads={threads} n={args.lines} steps={args.steps} "
+                f"median={np.median(times):.6f}s diff_vs_f64_block_p95={np.percentile(err,95):.3e}"
+            )
+            mixed_results[key_name] = {
+                "mode": mode,
+                "threads": threads,
+                "times_s": times,
+                "median_s": float(np.median(times)),
+                "line_steps_per_s": float(args.lines * args.steps / np.median(times)),
+                "diff_vs_f64_block_p95": float(np.percentile(err, 95)),
+                "diff_vs_f64_block_max": float(np.max(err)),
+            }
+
     result = {
         "case_file": args.case_file,
         "key": args.key,
@@ -132,6 +164,7 @@ def main():
             "disp_median": float(np.median(disp)),
         },
         "trace_period_blockline": blockline_results,
+        "trace_period_mixed": mixed_results,
     }
     Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
     field.close()

@@ -51,6 +51,19 @@ int sgpu_trace_period_blockline(
     int threads_per_line
 );
 
+int sgpu_trace_period_blockline_mixed(
+    void* handle,
+    const double* R0_host,
+    const double* Z0_host,
+    double* R1_host,
+    double* Z1_host,
+    int n_lines,
+    int nfp,
+    int steps,
+    int threads_per_line,
+    int mode
+);
+
 const char* sgpu_last_error();
 
 }

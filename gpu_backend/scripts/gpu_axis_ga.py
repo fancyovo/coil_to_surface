@@ -60,6 +60,18 @@ def run_ga(field, r_center, nfp, args):
             re, ze = field.trace_period_blockline(
                 r, z, steps=args.steps, threads_per_line=args.blockline_threads, nfp=nfp
             )
+        elif args.trace_mode == "blockline_mixed64":
+            re, ze = field.trace_period_blockline_mixed(
+                r, z, steps=args.steps, threads_per_line=args.blockline_threads, mode="bf32_state64", nfp=nfp
+            )
+        elif args.trace_mode == "blockline_f32":
+            re, ze = field.trace_period_blockline_mixed(
+                r, z, steps=args.steps, threads_per_line=args.blockline_threads, mode="f32", nfp=nfp
+            )
+        elif args.trace_mode == "blockline_f16state":
+            re, ze = field.trace_period_blockline_mixed(
+                r, z, steps=args.steps, threads_per_line=args.blockline_threads, mode="f32_state16", nfp=nfp
+            )
         else:
             raise ValueError(f"unknown trace_mode={args.trace_mode}")
         dt = time.perf_counter() - t0
@@ -109,7 +121,7 @@ def main():
     p.add_argument("--steps", type=int, default=800)
     p.add_argument("--max-generations", type=int, default=32)
     p.add_argument("--tol", type=float, default=1e-8)
-    p.add_argument("--trace-mode", choices=["warp", "blockline"], default="warp")
+    p.add_argument("--trace-mode", choices=["warp", "blockline", "blockline_mixed64", "blockline_f32", "blockline_f16state"], default="warp")
     p.add_argument("--blockline-threads", type=int, default=256)
     p.add_argument("--output", default="gpu_axis_ga.json")
     args = p.parse_args()

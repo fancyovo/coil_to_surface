@@ -14,7 +14,7 @@ target_include_directories(stellarator_gpu PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(stellarator_gpu PUBLIC CUDA::cublas)
+target_link_libraries(stellarator_gpu PUBLIC CUDA::cublas CUDA::cusolver)
 
 set(SGPU_WARPS_PER_BLOCK "8" CACHE STRING "Warps per block for warp-per-line kernels")
 set(SGPU_SEG_TILE "256" CACHE STRING "Segment tile size")

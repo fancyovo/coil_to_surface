@@ -48,6 +48,34 @@ int sgpu_normal_eq_f32(
     int n_cols
 );
 
+int sgpu_fit_psi_fullgpu(
+    void* handle,
+    const double* R_host,
+    const double* Z_host,
+    const double* phi_host,
+    int n_points,
+    const double* axis_R_host,
+    const double* axis_Z_host,
+    const double* axis_R_phi_host,
+    const double* axis_Z_phi_host,
+    int n_axis,
+    const int* mode_a_host,
+    const int* mode_b_host,
+    const int* mode_m_host,
+    const int* mode_kind_host,
+    int n_coeff,
+    int nfp,
+    double a,
+    int poly_degree,
+    int m_tor,
+    double ridge,
+    int precision_mode,
+    double* coeff_host,
+    double* train_rms_out,
+    double* stats_out,
+    int stats_len
+);
+
 int sgpu_trace_period(
     void* handle,
     const double* R0_host,

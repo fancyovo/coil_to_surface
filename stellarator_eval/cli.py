@@ -29,7 +29,7 @@ def build_parser():
     p.add_argument("--psi-n-phi", type=int, default=80)
     p.add_argument("--psi-batch-size", type=int, default=20000)
     p.add_argument("--psi-validation-points", type=int, default=4000)
-    p.add_argument("--psi-backend", choices=["cpu", "gpu"], default="cpu")
+    p.add_argument("--psi-backend", choices=["cpu", "gpu", "fullgpu"], default="cpu")
     p.add_argument("--psi-normal-eq-backend", choices=["auto", "cpu", "gpu"], default="auto")
     p.add_argument("--psi-normal-eq-precision", choices=["fp64", "fp32"], default="fp64")
     p.add_argument("--psi-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")

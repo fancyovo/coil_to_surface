@@ -175,6 +175,16 @@ def _coeff_block(coeffs, idx: int, ax: int, bz_exp: int, m_tor: int):
     return block, idx + width
 
 
+def _mode_arrays(modes: list[PolyMode]):
+    kind = np.array([0 if m.kind == "cos" else 1 for m in modes], dtype=np.int32)
+    return (
+        np.array([m.a for m in modes], dtype=np.int32),
+        np.array([m.b for m in modes], dtype=np.int32),
+        np.array([m.m for m in modes], dtype=np.int32),
+        kind,
+    )
+
+
 def psi_and_gradient(model: PsiModel, R, Z, phi):
     ra, za, rap, zap = model.axis_at(phi)
     X = (R - ra) / model.a
@@ -367,52 +377,92 @@ def validate_model(field, model: PsiModel, cfg: PsiFitConfig, b_sampler=None):
 def fit_psi(field, axis, nfp: int, cfg: PsiFitConfig, field_input=None, current_unit: str = "MA") -> PsiModel:
     t0 = time.perf_counter()
     backend = cfg.backend.lower()
-    if backend not in {"cpu", "gpu"}:
-        raise ValueError(f"unknown psi backend {cfg.backend!r}; use 'cpu' or 'gpu'")
-    if backend == "gpu" and field_input is None:
-        raise ValueError("psi backend 'gpu' requires field_input")
+    if backend not in {"cpu", "gpu", "fullgpu"}:
+        raise ValueError(f"unknown psi backend {cfg.backend!r}; use 'cpu', 'gpu', or 'fullgpu'")
+    if backend in {"gpu", "fullgpu"} and field_input is None:
+        raise ValueError("GPU psi backends require field_input")
     gpu_field = None
     b_sampler = None
     normal_eq_sampler = None
     gpu_create_time = 0.0
-    if backend == "gpu":
+    if backend in {"gpu", "fullgpu"}:
         tg = time.perf_counter()
         gpu_field = _make_gpu_field(field_input, nfp, cfg, current_unit)
         gpu_create_time = time.perf_counter() - tg
         b_sampler = lambda rr, zz, pp: _b_components_gpu(gpu_field, rr, zz, pp)
     normal_eq_backend = cfg.normal_eq_backend.lower()
-    if normal_eq_backend == "auto":
-        normal_eq_backend = "gpu" if backend == "gpu" else "cpu"
-    if normal_eq_backend not in {"cpu", "gpu"}:
-        raise ValueError(f"unknown normal_eq_backend {cfg.normal_eq_backend!r}; use 'auto', 'cpu', or 'gpu'")
+    normal_eq_precision = cfg.normal_eq_precision.lower()
+    if normal_eq_precision not in {"fp64", "fp32"}:
+        raise ValueError("normal_eq_precision must be 'fp64' or 'fp32'")
+    if backend == "fullgpu":
+        normal_eq_backend = "gpu_full"
+    else:
+        if normal_eq_backend == "auto":
+            normal_eq_backend = "gpu" if backend == "gpu" else "cpu"
+        if normal_eq_backend not in {"cpu", "gpu"}:
+            raise ValueError(f"unknown normal_eq_backend {cfg.normal_eq_backend!r}; use 'auto', 'cpu', or 'gpu'")
     if normal_eq_backend == "gpu":
         if gpu_field is None:
             raise ValueError("GPU normal equation requires psi backend 'gpu'")
-        normal_eq_precision = cfg.normal_eq_precision.lower()
-        if normal_eq_precision not in {"fp64", "fp32"}:
-            raise ValueError("normal_eq_precision must be 'fp64' or 'fp32'")
         normal_eq_sampler = lambda mat, rhs: gpu_field.normal_eq(mat, rhs, precision=normal_eq_precision)
     else:
-        normal_eq_precision = "fp64"
+        if normal_eq_backend == "cpu":
+            normal_eq_precision = "fp64"
     t_modes = time.perf_counter()
     modes = build_modes(cfg.poly_degree, cfg.m_tor)
     modes_time = time.perf_counter() - t_modes
     t_points = time.perf_counter()
     R, Z, phi = _make_training_points(axis, nfp, cfg)
     points_time = time.perf_counter() - t_points
-    t_assemble = time.perf_counter()
-    try:
-        ata, atb, rhs_norm2, assemble_timings = _assemble(
-            field, modes, R, Z, phi, axis, nfp, cfg, b_sampler=b_sampler, normal_eq_sampler=normal_eq_sampler
+    if backend == "fullgpu":
+        mode_a, mode_b, mode_m, mode_kind = _mode_arrays(modes)
+        coeffs, train_rms, gpu_fit_stats = gpu_field.fit_psi_fullgpu(
+            R,
+            Z,
+            phi,
+            axis.R,
+            axis.Z,
+            axis.R_phi,
+            axis.Z_phi,
+            mode_a,
+            mode_b,
+            mode_m,
+            mode_kind,
+            a=cfg.a,
+            poly_degree=cfg.poly_degree,
+            m_tor=cfg.m_tor,
+            ridge=cfg.ridge,
+            precision=cfg.normal_eq_precision,
         )
-    finally:
-        pass
-    assemble_time = time.perf_counter() - t_assemble
-    t_solve = time.perf_counter()
-    coeffs, cond = _solve(ata, atb, cfg.ridge)
-    solve_time = time.perf_counter() - t_solve
-    train_resid = float(np.sqrt(abs(coeffs @ (ata @ coeffs) - 2.0 * coeffs @ atb + rhs_norm2)))
-    train_rms = train_resid / np.sqrt(len(R))
+        cond = -1.0
+        assemble_time = float(gpu_fit_stats["assemble_s"] + gpu_fit_stats["normal_eq_s"])
+        solve_time = float(gpu_fit_stats["solve_s"])
+        assemble_timings = {
+            "assemble_interp_s": 0.0,
+            "assemble_b_sample_s": 0.0,
+            "assemble_basis_s": float(gpu_fit_stats["assemble_s"]),
+            "assemble_normal_eq_s": float(gpu_fit_stats["normal_eq_s"]),
+            "assemble_normal_eq_gpu_s": float(gpu_fit_stats["normal_eq_s"]),
+            "assemble_normal_eq_cpu_s": 0.0,
+            "fullgpu_copy_in_s": float(gpu_fit_stats["copy_in_s"]),
+            "fullgpu_residual_s": float(gpu_fit_stats["residual_s"]),
+            "fullgpu_copy_out_s": float(gpu_fit_stats["copy_out_s"]),
+            "fullgpu_total_kernel_s": float(gpu_fit_stats["total_s"]),
+        }
+    else:
+        t_assemble = time.perf_counter()
+        try:
+            ata, atb, rhs_norm2, assemble_timings = _assemble(
+                field, modes, R, Z, phi, axis, nfp, cfg, b_sampler=b_sampler, normal_eq_sampler=normal_eq_sampler
+            )
+        finally:
+            pass
+        assemble_time = time.perf_counter() - t_assemble
+        t_solve = time.perf_counter()
+        coeffs, cond = _solve(ata, atb, cfg.ridge)
+        solve_time = time.perf_counter() - t_solve
+        train_resid = float(np.sqrt(abs(coeffs @ (ata @ coeffs) - 2.0 * coeffs @ atb + rhs_norm2)))
+        train_rms = train_resid / np.sqrt(len(R))
     model = PsiModel(
         coeffs=coeffs,
         modes=modes,

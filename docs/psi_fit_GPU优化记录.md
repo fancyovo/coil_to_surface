@@ -131,3 +131,80 @@ B sampling:      ~0.06 s
 3. 每个 batch 独立分配 GPU buffer。
 
 更进一步可以不显式保存完整 `mat`，而是由 CUDA kernel 直接对 mode pair 分块累计正规方程。
+
+## 6. 全 GPU 训练链路
+
+本轮新增了 `fullgpu` 路径：
+
+```text
+CPU 仅传训练点与磁轴表
+-> GPU 上采样 B
+-> GPU 上组装完整设计矩阵 A 和 rhs
+-> GPU 上做 A^T A / A^T b
+-> GPU 上用 cuSOLVER 解线性方程
+-> CPU 仅接收 coeff 向量与少量标量
+```
+
+当前命令入口：
+
+```bash
+--psi-backend fullgpu
+--psi-normal-eq-precision fp64|fp32
+```
+
+### 6.1 01/raw 全尺寸直接 fit 对比
+
+| 配置 | wall | train RMS | val angle mean | val angle p95 |
+|---|---:|---:|---:|---:|
+| `gpu + CPU normal eq` | `4.19 s` | `4.247e-4` | `1.787e-5` | `5.533e-5` |
+| `fullgpu fp64` | `1.46 s` | `4.247e-4` | `1.787e-5` | `5.533e-5` |
+| `fullgpu fp32` | `0.115 s` | `1.302e-1` | `9.581e-3` | `3.840e-2` |
+
+结论：
+
+- `fullgpu fp64` 已经可用，结果与原路径一致到数值误差范围。
+- `fullgpu fp32` 目前不能用于实际拟合，虽然极快，但误差已经大到失真。
+
+### 6.2 01/raw 全链路
+
+`fullgpu fp64` 端到端：
+
+```text
+total wall                ~5.84 s
+axis                      ~1.08 s
+psi fit                   ~1.43 s
+surface screen            ~0.40 s
+surface extract 1D newton ~0.90 s
+boozer candidate          ~1.92 s
+```
+
+其中 `psi fit` 内部：
+
+```text
+copy_in      0.00086 s
+assemble     1.35864 s
+  basis      0.07258 s
+  A^T A      1.28605 s
+solve        0.01609 s
+residual     0.00328 s
+copy_out     0.00001 s
+```
+
+### 6.3 当前解释
+
+`fullgpu fp64` 已经说明主路径是对的，而且当前 `psi fit` 比先前的 `gpu + CPU normal eq` 再快约 `2.9x`。
+
+`fullgpu fp32` 虽然速度极高，但它把：
+
+```text
+B 采样
+矩阵组装
+A^T A
+残差评估
+```
+
+都压成了单精度路径。对于当前约 `1.56e7` 条件数的系统，这个误差太大，不足以直接用于最终拟合。后续如果要继续做混合精度，应优先尝试：
+
+1. `A` 用 fp32 存储；
+2. `A^T A` 用更高精度累计；
+3. 求解仍保留 fp64。

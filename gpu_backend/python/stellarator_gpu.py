@@ -109,6 +109,34 @@ class CoilFieldGpu:
             ctypes.c_int,
             ctypes.c_int,
         ]
+        self.lib.sgpu_fit_psi_fullgpu.restype = ctypes.c_int
+        self.lib.sgpu_fit_psi_fullgpu.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+        ]
         self.lib.sgpu_trace_period.restype = ctypes.c_int
         self.lib.sgpu_trace_period.argtypes = [
             ctypes.c_void_p,
@@ -214,6 +242,87 @@ class CoilFieldGpu:
             )
         self._check(code)
         return ata.astype(np.float64, copy=False), atb.astype(np.float64, copy=False)
+
+    def fit_psi_fullgpu(
+        self,
+        R,
+        Z,
+        phi,
+        axis_R,
+        axis_Z,
+        axis_R_phi,
+        axis_Z_phi,
+        mode_a,
+        mode_b,
+        mode_m,
+        mode_kind,
+        *,
+        a: float,
+        poly_degree: int,
+        m_tor: int,
+        ridge: float,
+        precision: str = "fp64",
+    ):
+        precision = precision.lower()
+        if precision not in {"fp64", "fp32"}:
+            raise ValueError("fit_psi_fullgpu precision must be 'fp64' or 'fp32'")
+        R = np.ascontiguousarray(R, dtype=np.float64).ravel()
+        Z = np.ascontiguousarray(Z, dtype=np.float64).ravel()
+        phi = np.ascontiguousarray(phi, dtype=np.float64).ravel()
+        axis_R = np.ascontiguousarray(axis_R, dtype=np.float64).ravel()
+        axis_Z = np.ascontiguousarray(axis_Z, dtype=np.float64).ravel()
+        axis_R_phi = np.ascontiguousarray(axis_R_phi, dtype=np.float64).ravel()
+        axis_Z_phi = np.ascontiguousarray(axis_Z_phi, dtype=np.float64).ravel()
+        mode_a = np.ascontiguousarray(mode_a, dtype=np.int32).ravel()
+        mode_b = np.ascontiguousarray(mode_b, dtype=np.int32).ravel()
+        mode_m = np.ascontiguousarray(mode_m, dtype=np.int32).ravel()
+        mode_kind = np.ascontiguousarray(mode_kind, dtype=np.int32).ravel()
+        if not (R.shape == Z.shape == phi.shape):
+            raise ValueError("R/Z/phi shape mismatch")
+        if not (axis_R.shape == axis_Z.shape == axis_R_phi.shape == axis_Z_phi.shape):
+            raise ValueError("axis arrays shape mismatch")
+        if not (mode_a.shape == mode_b.shape == mode_m.shape == mode_kind.shape):
+            raise ValueError("mode arrays shape mismatch")
+        coeff = np.empty(mode_a.size, dtype=np.float64)
+        train_rms = np.empty(1, dtype=np.float64)
+        stats = np.empty(7, dtype=np.float64)
+        code = self.lib.sgpu_fit_psi_fullgpu(
+            self.handle,
+            R.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            Z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            phi.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(R.size),
+            axis_R.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            axis_Z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            axis_R_phi.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            axis_Z_phi.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(axis_R.size),
+            mode_a.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            mode_b.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            mode_m.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            mode_kind.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            ctypes.c_int(mode_a.size),
+            ctypes.c_int(self.nfp),
+            ctypes.c_double(a),
+            ctypes.c_int(poly_degree),
+            ctypes.c_int(m_tor),
+            ctypes.c_double(ridge),
+            ctypes.c_int(1 if precision == "fp64" else 2),
+            coeff.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            train_rms.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            stats.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(stats.size),
+        )
+        self._check(code)
+        return coeff, float(train_rms[0]), {
+            "copy_in_s": float(stats[0]),
+            "assemble_s": float(stats[1]),
+            "normal_eq_s": float(stats[2]),
+            "solve_s": float(stats[3]),
+            "residual_s": float(stats[4]),
+            "copy_out_s": float(stats[5]),
+            "total_s": float(stats[6]),
+        }
 
     def trace_period(self, R0, Z0, steps: int, nfp: int | None = None):
         R0 = np.ascontiguousarray(R0, dtype=np.float64).ravel()

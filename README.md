@@ -4,7 +4,7 @@
 
 ## 快速运行
 
-在 WSL 的项目虚拟环境中运行：
+在 WSL/远端的项目虚拟环境中运行：
 
 ```bash
 cd /mnt/d/Typora/Typ/学习/stellarator/programs/local_surface_evaluator
@@ -26,7 +26,9 @@ cd /mnt/d/Typora/Typ/学习/stellarator/programs/local_surface_evaluator
   --levels 0.001,0.002,0.004,0.008,0.012
 ```
 
-默认会把 `OMP_NUM_THREADS`、`OPENBLAS_NUM_THREADS`、`MKL_NUM_THREADS`、`NUMEXPR_NUM_THREADS` 设为 `1`。这是有意的：当前 `.B()` 调用在批次较小时用多线程通常会被 OpenMP 同步开销拖慢。
+默认会把 `OMP_NUM_THREADS`、`OPENBLAS_NUM_THREADS`、`MKL_NUM_THREADS`、`NUMEXPR_NUM_THREADS` 设为 `1`。这是有意的：当前小批次磁场调用在多线程下通常会被 OpenMP 同步开销拖慢。
+
+默认磁轴搜索使用 GPU fixed-point 网格候选、Newton refinement 和低成本拓扑筛。最终只接受闭合残差达标且局部 Poincare 映射为 `elliptic` 的候选；若存在多个 elliptic 候选，默认优先选择 `topology_ellipse_aspect` 最接近 1 的候选。
 
 ## Python API
 
@@ -74,6 +76,8 @@ x[0:33], y[0:33], z[0:33], current
 
 - `axis.has_axis`
 - `axis.best_residual`
+- `axis.topology_class`
+- `axis.topology_ellipse_aspect`
 - `psi.fit_info`
 - `surface_screen.levels`
 - `best_surface.iota`
@@ -83,7 +87,25 @@ x[0:33], y[0:33], z[0:33], current
 - `best_surface.qs_error_QH_1_1`
 - `best_surface.qs_error_QP_0_1`
 
+## QUASR 批量评估
+
+远端 QUASR 数据集可用 `scripts/eval_quasr.py` 评估。示例：
+
+```bash
+../venv/bin/python scripts/eval_quasr.py \
+  --sample-size 128 \
+  --sample-seed 20260705 \
+  --helicity 1 \
+  --output-dir runs/quasr_qh128 \
+  --gpu-device 0 \
+  --psi-n-r 64 --psi-n-z 64 --psi-n-phi 64 \
+  --qs-sdim 8
+```
+
+批量输出包括 `batch_summary.json`、`batch_summary.csv`、逐样本 `summary.json`，以及失败样本导出的 JSON。
+
 ## 文档
 
 - [计算流程说明](docs/计算流程.md)
 - [性能与优化报告](docs/性能报告.md)
+- [磁轴拓扑筛与圆度优先](docs/磁轴拓扑筛与圆度优先_20260705.md)

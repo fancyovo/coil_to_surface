@@ -18,7 +18,14 @@ from stellarator_eval.field import build_field
 from stellarator_eval.quasr import load_quasr_field_input
 
 
-REMOTE_QUASR_ROOT = Path("/data/zhouyebi/QUASR_08072024")
+QUASR_ROOT_ENV = "QUASR_ROOT"
+
+
+def _env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 def configure_plot_fonts() -> bool:
@@ -360,7 +367,7 @@ def write_report(path: Path, scans: list[dict]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Dense residual heatmaps for QUASR no-axis samples.")
     parser.add_argument("--batch-summary", type=Path, action="append", required=True)
-    parser.add_argument("--quasr-root", type=Path, default=REMOTE_QUASR_ROOT)
+    parser.add_argument("--quasr-root", type=Path, default=_env_path(QUASR_ROOT_ENV))
     parser.add_argument("--grid", type=int, default=128)
     parser.add_argument("--precision", default="mixed64")
     parser.add_argument("--verify-precision", default="fp64")
@@ -371,6 +378,9 @@ def main() -> None:
 
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
         os.environ.setdefault(name, "1")
+
+    if args.quasr_root is None:
+        raise ValueError(f"QUASR root is required; pass --quasr-root or set {QUASR_ROOT_ENV}")
 
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

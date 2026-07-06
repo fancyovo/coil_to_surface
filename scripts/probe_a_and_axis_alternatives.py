@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import time
 from dataclasses import asdict
@@ -36,7 +37,14 @@ from stellarator_eval.serialization import jsonable, write_json
 from stellarator_eval.surface import evaluate_boozer_surface, screen_levels_gpu
 
 
-REMOTE_QUASR_ROOT = Path("/data/zhouyebi/QUASR_08072024")
+QUASR_ROOT_ENV = "QUASR_ROOT"
+
+
+def _env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 def parse_ids(text: str | None) -> list[int]:
@@ -347,7 +355,7 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Probe smaller a and alternative magnetic axes for QUASR failures.")
-    parser.add_argument("--quasr-root", type=Path, default=REMOTE_QUASR_ROOT)
+    parser.add_argument("--quasr-root", type=Path, default=_env_path(QUASR_ROOT_ENV))
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--psi-n", type=int, default=64)
@@ -371,6 +379,8 @@ def main() -> None:
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.quasr_root is None and (args.a_sweep_ids or args.axis_alt_ids):
+        raise ValueError(f"QUASR root is required; pass --quasr-root or set {QUASR_ROOT_ENV}")
     payload = {"config": vars(args), "a_sweep": [], "axis_alternatives": []}
     if args.a_sweep_ids:
         a_rows = run_a_sweep(args)

@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -23,8 +24,15 @@ from stellarator_eval.quasr import load_quasr_field_input, load_quasr_metadata
 from stellarator_eval.serialization import jsonable
 
 
-REMOTE_QUASR_ROOT = Path("/data/zhouyebi/QUASR_08072024")
-REMOTE_PRIVATE_META = Path("/home/cyfan/stellarator_gpu_eval/quasr_private/QUASR_08072024_meta.csv")
+QUASR_ROOT_ENV = "QUASR_ROOT"
+QUASR_METADATA_ENV = "QUASR_METADATA"
+
+
+def _env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 @dataclass
@@ -465,6 +473,8 @@ def load_work_items(args) -> list[tuple[str, FieldInput, str]]:
         items.append((Path(case_file).stem, field_input, unit))
     ids = parse_ids(args.id)
     if args.sample_size:
+        if args.metadata_path is None:
+            raise ValueError(f"--sample-size requires --metadata-path or {QUASR_METADATA_ENV}")
         rows = load_quasr_metadata(args.metadata_path)
         if args.helicity is not None:
             rows = [row for row in rows if int(row.get("helicity", -999)) == int(args.helicity)]
@@ -477,6 +487,8 @@ def load_work_items(args) -> list[tuple[str, FieldInput, str]]:
         ids.extend(int(rows[i]["ID"]) for i in take)
     seen: set[int] = set()
     for device_id in ids:
+        if args.quasr_root is None:
+            raise ValueError(f"QUASR root is required; pass --quasr-root or set {QUASR_ROOT_ENV}")
         if device_id in seen:
             continue
         seen.add(device_id)
@@ -490,8 +502,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--case-file", action="append", default=[], help="JSON case file such as examples/01.json.")
     p.add_argument("--key", default="raw")
     p.add_argument("--current-unit", default=None, choices=[None, "MA", "A"])
-    p.add_argument("--quasr-root", type=Path, default=REMOTE_QUASR_ROOT)
-    p.add_argument("--metadata-path", type=Path, default=REMOTE_PRIVATE_META)
+    p.add_argument("--quasr-root", type=Path, default=_env_path(QUASR_ROOT_ENV))
+    p.add_argument("--metadata-path", type=Path, default=_env_path(QUASR_METADATA_ENV))
     p.add_argument("--id", action="append", default=[], help="QUASR ID, comma list allowed.")
     p.add_argument("--sample-size", type=int, default=0, help="Randomly sample this many QUASR IDs from metadata.")
     p.add_argument("--sample-seed", type=int, default=42)

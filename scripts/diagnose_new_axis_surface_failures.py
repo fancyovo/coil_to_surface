@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -19,8 +20,15 @@ from stellarator_eval.quasr import load_quasr_field_input
 from stellarator_eval.serialization import jsonable, write_json
 
 
-REMOTE_QUASR_ROOT = Path("/data/zhouyebi/QUASR_08072024")
+QUASR_ROOT_ENV = "QUASR_ROOT"
 TWOPI = 2.0 * np.pi
+
+
+def _env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 def parse_ids(text: str) -> list[int]:
@@ -360,7 +368,7 @@ def main() -> None:
     parser.add_argument("--run-dir", type=Path, action="append", required=True)
     parser.add_argument("--ids", required=True, help="Comma/space-separated QUASR IDs.")
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--quasr-root", type=Path, default=REMOTE_QUASR_ROOT)
+    parser.add_argument("--quasr-root", type=Path, default=_env_path(QUASR_ROOT_ENV))
     parser.add_argument("--gpu-device", type=int, default=0)
     parser.add_argument("--closure-grid", type=int, default=96)
     parser.add_argument("--psi-grid", type=int, default=160)
@@ -368,6 +376,8 @@ def main() -> None:
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.quasr_root is None:
+        raise ValueError(f"QUASR root is required; pass --quasr-root or set {QUASR_ROOT_ENV}")
     row_by_id: dict[int, tuple[Path, dict]] = {}
     for run_dir in args.run_dir:
         for device_id, row in load_rows(run_dir).items():

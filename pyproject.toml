@@ -2,7 +2,20 @@
 name = "local-surface-evaluator"
 version = "0.1.0"
 description = "Local stellarator magnetic-axis, psi, Boozer surface, and QS evaluator."
+readme = "README.md"
 requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib"]
+simsopt = ["simsopt"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["stellarator_eval*"]

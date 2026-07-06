@@ -21,8 +21,15 @@ from stellarator_eval.quasr import build_quasr_metadata_index, load_quasr_field_
 from stellarator_eval.serialization import write_json
 
 
-REMOTE_QUASR_ROOT = Path("/data/zhouyebi/QUASR_08072024")
-REMOTE_PRIVATE_META = Path("/home/cyfan/stellarator_gpu_eval/quasr_private/QUASR_08072024_meta.csv")
+QUASR_ROOT_ENV = "QUASR_ROOT"
+QUASR_METADATA_ENV = "QUASR_METADATA"
+
+
+def _env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 def configure_plot_fonts() -> bool:
@@ -498,8 +505,8 @@ def write_report(path: Path, batches: list[dict], axis_rows: list[dict], surface
 def main() -> None:
     parser = argparse.ArgumentParser(description="Diagnose QUASR failure cases from one or more batch runs.")
     parser.add_argument("--batch-summary", type=Path, action="append", required=True, help="Path to batch_summary.json. Repeatable.")
-    parser.add_argument("--quasr-root", type=Path, default=REMOTE_QUASR_ROOT)
-    parser.add_argument("--metadata", type=Path, default=REMOTE_PRIVATE_META)
+    parser.add_argument("--quasr-root", type=Path, default=_env_path(QUASR_ROOT_ENV))
+    parser.add_argument("--metadata", type=Path, default=_env_path(QUASR_METADATA_ENV))
     parser.add_argument("--axis-generations", default="32,64,96,128,192")
     parser.add_argument("--quad-phi-count", type=int, default=36)
     parser.add_argument("--heatmap-phi-count", type=int, default=18)
@@ -512,6 +519,11 @@ def main() -> None:
 
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
         os.environ.setdefault(name, "1")
+
+    if args.quasr_root is None:
+        raise ValueError(f"QUASR root is required; pass --quasr-root or set {QUASR_ROOT_ENV}")
+    if args.metadata is None:
+        raise ValueError(f"metadata is required; pass --metadata or set {QUASR_METADATA_ENV}")
 
     meta_rows = load_quasr_metadata(args.metadata)
     meta_index = build_quasr_metadata_index(meta_rows)

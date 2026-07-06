@@ -4,3 +4,10 @@ __pycache__/
 .mypy_cache/
 runs/
 *.egg-info/
+
+# Keep local research notes and exported failure cases out of the public repo.
+docs/*
+!docs/
+!docs/计算流程.md
+!docs/性能报告.md
+examples/debug_*.json

@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 from collections import Counter
 from pathlib import Path
 import sys
+from typing import Any
 
 import numpy as np
 
@@ -25,28 +27,19 @@ from stellarator_eval.quasr import (
 from stellarator_eval.serialization import jsonable, write_json
 
 
-WINDOWS_QUASR_ROOT = Path(r"D:\FPC\2.4.0\bin\i386-win32\new\ML\lhls\stellarator\quasr\data")
-REMOTE_QUASR_ROOT = Path("/data/zhouyebi/QUASR_08072024")
-REMOTE_PRIVATE_META = Path("/home/cyfan/stellarator_gpu_eval/quasr_private/QUASR_08072024_meta.csv")
+QUASR_ROOT_ENV = "QUASR_ROOT"
+QUASR_METADATA_ENV = "QUASR_METADATA"
 
 
-def default_quasr_root() -> Path:
-    if REMOTE_QUASR_ROOT.exists():
-        return REMOTE_QUASR_ROOT
-    return WINDOWS_QUASR_ROOT
+def _env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 def default_metadata_path() -> Path | None:
-    candidates = [
-        REMOTE_PRIVATE_META,
-        default_quasr_root() / "QUASR_08072024.csv",
-        default_quasr_root() / "data.csv",
-        default_quasr_root() / "QUASR_08072024.pkl",
-    ]
-    for path in candidates:
-        if path.exists():
-            return path
-    return None
+    return _env_path(QUASR_METADATA_ENV)
 
 
 def parse_ids(args) -> list[int]:
@@ -280,7 +273,7 @@ def write_report(path: Path, rows: list[dict], written_failures: list[str]) -> N
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate QUASR devices with the local surface evaluator.")
-    parser.add_argument("--quasr-root", type=Path, default=default_quasr_root())
+    parser.add_argument("--quasr-root", type=Path, default=_env_path(QUASR_ROOT_ENV))
     parser.add_argument("--metadata", type=Path, default=default_metadata_path())
     parser.add_argument("--id", action="append", default=[], help="Single device ID. Can be repeated.")
     parser.add_argument("--ids", help="Comma- or space-separated device IDs.")
@@ -311,6 +304,9 @@ def main() -> None:
 
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.quasr_root is None:
+        raise ValueError(f"QUASR root is required; pass --quasr-root or set {QUASR_ROOT_ENV}")
 
     metadata_rows = None
     metadata_index = {}

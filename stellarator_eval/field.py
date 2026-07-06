@@ -79,6 +79,21 @@ def input_from_flat_vector(values: Any, nfp: int, coeff_count: int = 33, current
     return FieldInput(x, y, z, cur, int(nfp), name=f"flat_{n_base}_coils")
 
 
+def input_from_packed_vector(values: Any, coeff_count: int = 33) -> FieldInput:
+    arr = np.asarray(values, dtype=float).ravel()
+    block = 3 * coeff_count + 1
+    if arr.size < block + 1 or (arr.size - 1) % block != 0:
+        raise ValueError(
+            f"packed vector length must be n_base_coils * {block} + 1, "
+            f"got {arr.size}"
+        )
+    nfp_float = float(arr[-1])
+    nfp = int(round(nfp_float))
+    if not np.isclose(nfp_float, nfp) or nfp <= 0:
+        raise ValueError(f"last packed vector entry must be a positive integer nfp, got {nfp_float}")
+    return input_from_flat_vector(arr[:-1], nfp=nfp, coeff_count=coeff_count)
+
+
 def normalize_currents(currents: np.ndarray, current_unit: str) -> np.ndarray:
     unit = current_unit.lower()
     if unit in {"ma", "megaamp", "megaamps"}:

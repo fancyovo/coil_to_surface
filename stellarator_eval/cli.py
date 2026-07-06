@@ -192,6 +192,9 @@ def main(argv=None):
     best = result.get("best_surface")
     print(f"summary: {Path(args.output_dir) / 'summary.json'}")
     print(f"axis residual: {result['axis']['best_residual']:.3e}, has_axis={result['axis']['has_axis']}")
+    quality = result.get("quality_score")
+    if quality:
+        print(f"quality score: {quality['score']:.2f}, status={quality['status']}")
     if best:
         print(
             "best surface: "

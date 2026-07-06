@@ -5,6 +5,7 @@
 重点特性：
 
 - **从线圈到磁面**：输出磁轴、$\psi$ 模型、候选磁面、$\iota$、volume、$G$ 和 QA/QH/QP QS error。
+- **连续品质分数**：默认输出 `quality_score`，把磁轴、$\psi$、磁面筛选、Boozer/QS 和线圈工程项压缩为 0-100 的可解释分数。
 - **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；单个常规样本在 RTX 5090 级别 GPU 上约 3 秒量级完成评估。
 - **快速失败而不是卡住**：对找不到磁轴、局部 $\psi$ 质量差、没有可信候选磁面或 Boozer 阶段失败的样本，返回结构化失败原因、最好残差和细粒度计时。
 - **诊断图可选导出**：显式加参数后，可以额外导出高分辨率磁轴 residual heatmap 和细粒度 $\psi$ 截面图；默认不导图，避免影响批量测速。
@@ -32,6 +33,7 @@ python -m stellarator_eval.cli
 ```text
 summary: runs/01_raw/summary.json
 axis residual: 1.7e-08, has_axis=True
+quality score: 92.4, status=surface
 best surface: psi=0.12, iota=-2.90768, volume=0.00615026, G=7.63113
 ```
 
@@ -120,25 +122,38 @@ result = evaluate_case_file(
 )
 ```
 
-也可以直接传线圈：
+也可以直接传线圈，并只取压缩后的品质分数：
 
 ```python
-from stellarator_eval import evaluate_coils
+from stellarator_eval import evaluate_coil_quality
 
-result = evaluate_coils(
+out = evaluate_coil_quality(
     coil_coefficients,
     currents,
     nfp=8,
+    output_dir="runs/my_coils",
 )
+print(out["score"], out["status"])
 ```
 
-扁平输入格式按每根基础线圈组织：
+`coil_coefficients` 可以是 `{"x": x, "y": y, "z": z}`，也可以是形状为 `(n_base_coils, 3, n_coeff)` 的数组。扁平输入格式按每根基础线圈组织：
 
 ```text
 x[0:33], y[0:33], z[0:33], current
 ```
 
 因此线圈部分总长度为 `n_base_coils * 100`，`nfp` 作为额外参数传入。
+
+如果你的优化器更方便输出一个 packed vector，也可以把 `nfp` 放在最后一位：
+
+```python
+from stellarator_eval import evaluate_coil_quality
+
+# packed = [coil_0_x/y/z/current, coil_1_x/y/z/current, ..., nfp]
+out = evaluate_coil_quality(packed, output_dir="runs/my_packed_coils")
+score = out["score"]
+components = out["quality_score"]["components"]
+```
 
 ## 输出
 
@@ -163,10 +178,26 @@ x[0:33], y[0:33], z[0:33], current
 - `best_surface.qs_error_QA_1_0`
 - `best_surface.qs_error_QH_1_1`
 - `best_surface.qs_error_QP_0_1`
+- `quality_score.score`
+- `quality_score.components`
+- `quality_score.details`
 - `diagnostics`
 - `timing`
 
 `axis.best_residual` 是一周期追踪后的最好闭合距离；即使 `has_axis=false`，这个值仍会输出，用于判断是“接近但未达阈值”还是“完全没有可用闭合点”。
+
+`quality_score.score` 是 0-100 分，经验解释如下：
+
+| score | 含义 |
+| ---: | --- |
+| `90-100` | 高质量候选，通常全流程成功且 QS/工程项较好。 |
+| `80-90` | 可用候选，但 QS、volume、iota 或线圈工程项至少一项不顶尖。 |
+| `65-80` | 边缘但有诊断价值，可能是较弱 surface 或较好的 no_surface。 |
+| `45-65` | 明显有问题，但通常仍有磁轴或局部 $\psi$ 结构信息。 |
+| `25-45` | 较差，常见于弱闭合、差磁面或扰动后退化样本。 |
+| `0-25` | 基本不可用，通常找不到可靠磁轴。 |
+ 
+该分数不是黑盒拟合模型，而是多个软阈值分量的加权平均。六个主分量为 `axis`、`psi`、`surface`、`boozer`、`physics`、`coil`，其中 `coil` 包含长度、曲率、线圈间距、线圈到轴距离、高阶模能量和电流尺度等工程项。
 
 ## QUASR 批量评估
 

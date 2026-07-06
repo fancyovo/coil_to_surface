@@ -6,6 +6,7 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 from .config import AxisGAConfig, EvalConfig, PsiFitConfig, SurfaceScanConfig, BoozerConfig, DiagnosticsConfig
+from .score import ScoreConfig, coil_geometry_metrics, evaluate_quality_score
 
 
 def evaluate_case_file(*args, **kwargs):
@@ -19,6 +20,12 @@ def evaluate_coils(*args, **kwargs):
 
     return _evaluate_coils(*args, **kwargs)
 
+
+def evaluate_coil_quality(*args, **kwargs):
+    from .pipeline import evaluate_coil_quality as _evaluate_coil_quality
+
+    return _evaluate_coil_quality(*args, **kwargs)
+
 __all__ = [
     "AxisGAConfig",
     "EvalConfig",
@@ -26,6 +33,10 @@ __all__ = [
     "SurfaceScanConfig",
     "BoozerConfig",
     "DiagnosticsConfig",
+    "ScoreConfig",
+    "coil_geometry_metrics",
+    "evaluate_quality_score",
     "evaluate_case_file",
     "evaluate_coils",
+    "evaluate_coil_quality",
 ]

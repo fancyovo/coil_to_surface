@@ -110,11 +110,24 @@ class BoozerConfig:
 
 
 @dataclass
+class DiagnosticsConfig:
+    export_axis_heatmap: bool = False
+    axis_heatmap_grid: int = 256
+    axis_heatmap_filename: str = "axis_residual_heatmap.png"
+    export_psi_slices: bool = False
+    psi_slice_grid: int = 241
+    psi_slice_phi_count: int = 17
+    psi_slice_filename: str = "psi_slices.png"
+    plot_dpi: int = 170
+
+
+@dataclass
 class EvalConfig:
     axis: AxisGAConfig = field(default_factory=AxisGAConfig)
     psi: PsiFitConfig = field(default_factory=PsiFitConfig)
     scan: SurfaceScanConfig = field(default_factory=SurfaceScanConfig)
     boozer: BoozerConfig = field(default_factory=BoozerConfig)
+    diagnostics: DiagnosticsConfig = field(default_factory=DiagnosticsConfig)
     current_unit: str = "MA"
     omp_threads: int = 1
 

@@ -4,7 +4,7 @@ import argparse
 from dataclasses import replace
 from pathlib import Path
 
-from .config import AxisGAConfig, BoozerConfig, EvalConfig, PsiFitConfig, SurfaceScanConfig
+from .config import AxisGAConfig, BoozerConfig, DiagnosticsConfig, EvalConfig, PsiFitConfig, SurfaceScanConfig
 from .pipeline import evaluate_case_file
 from .serialization import jsonable
 
@@ -86,6 +86,15 @@ def build_parser():
     p.add_argument("--ls-maxiter", type=int, default=100)
     p.add_argument("--newton-maxiter", type=int, default=30)
     p.add_argument("--qs-sdim", type=int, default=16)
+
+    p.add_argument("--export-axis-heatmap", action="store_true", help="Export a high-resolution one-period axis residual heatmap.")
+    p.add_argument("--axis-heatmap-grid", type=int, default=256)
+    p.add_argument("--axis-heatmap-file", default="axis_residual_heatmap.png")
+    p.add_argument("--export-psi-slices", action="store_true", help="Export fine local psi slices after psi fitting.")
+    p.add_argument("--psi-slice-grid", type=int, default=241)
+    p.add_argument("--psi-slice-phi-count", type=int, default=17)
+    p.add_argument("--psi-slice-file", default="psi_slices.png")
+    p.add_argument("--plot-dpi", type=int, default=170)
     return p
 
 
@@ -160,6 +169,16 @@ def config_from_args(args) -> EvalConfig:
             ls_maxiter=args.ls_maxiter,
             newton_maxiter=args.newton_maxiter,
             qs_sdim=args.qs_sdim,
+        ),
+        diagnostics=DiagnosticsConfig(
+            export_axis_heatmap=args.export_axis_heatmap,
+            axis_heatmap_grid=args.axis_heatmap_grid,
+            axis_heatmap_filename=args.axis_heatmap_file,
+            export_psi_slices=args.export_psi_slices,
+            psi_slice_grid=args.psi_slice_grid,
+            psi_slice_phi_count=args.psi_slice_phi_count,
+            psi_slice_filename=args.psi_slice_file,
+            plot_dpi=args.plot_dpi,
         ),
         current_unit=args.current_unit,
         omp_threads=args.omp_threads,

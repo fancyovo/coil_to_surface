@@ -1,8 +1,15 @@
 # Local Surface Evaluator
 
-局部磁面评估器。给定线圈 Fourier 系数、电流和 `nfp`，程序会搜索磁轴、拟合局部不变量 $\psi$、筛选可置信等 $\psi$ 面，并在候选磁面上做 Boozer surface / QS 指标评估。
+从线圈到局部磁面的一站式快速评估器。输入线圈 Fourier 系数、电流和 `nfp`，程序会自动搜索磁轴、拟合局部 $\psi$、筛选候选等 $\psi$ 面，并把最大可信候选面接入 Simsopt 的 Boozer surface / QS error 评估。
 
-当前实现主要用于快速筛选和诊断，不替代高精度平衡或长时间磁面验证。默认流程偏向“快速失败”：如果找不到磁轴或局部磁面质量不足，会返回结构化失败原因和最好的残差信息，而不是长时间卡住。
+重点特性：
+
+- **从线圈到磁面**：输出磁轴、$\psi$ 模型、候选磁面、$\iota$、volume、$G$ 和 QA/QH/QP QS error。
+- **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；单个常规样本在 RTX 5090 级别 GPU 上约 3 秒量级完成评估。
+- **快速失败而不是卡住**：对找不到磁轴、局部 $\psi$ 质量差、没有可信候选磁面或 Boozer 阶段失败的样本，返回结构化失败原因、最好残差和细粒度计时。
+- **诊断图可选导出**：显式加参数后，可以额外导出高分辨率磁轴 residual heatmap 和细粒度 $\psi$ 截面图；默认不导图，避免影响批量测速。
+
+当前实现用于快速筛选和诊断，不替代高精度平衡求解或长时间磁面验证。
 
 ## 安装
 
@@ -10,9 +17,67 @@
 python -m pip install -e .
 ```
 
-完整 Boozer/QS 评估需要 `simsopt`。GPU 后端需要先编译 `gpu_backend` 下的 CUDA/C++ 库；没有 GPU 后端时，部分脚本只能运行 CPU 或已有的 Python/Simsopt 路径。
+完整 Boozer/QS 评估需要 `simsopt`。GPU 后端需要先编译 `gpu_backend` 下的 CUDA/C++ 库；没有 GPU 后端时，可以使用 CPU 路径或只运行不依赖 GPU 的后处理工具。
 
-## 快速运行
+## 最小运行示例
+
+不加额外参数即可跑默认 `examples/01.json`，并得到主流程测速和最终结果：
+
+```bash
+python -m stellarator_eval.cli
+```
+
+典型输出：
+
+```text
+summary: runs/01_raw/summary.json
+axis residual: 1.7e-08, has_axis=True
+best surface: psi=0.12, iota=-2.90768, volume=0.00615026, G=7.63113
+```
+
+完整计时在 `runs/01_raw/summary.json` 的 `timing` 和 `total_time_s` 字段中。例如：
+
+```bash
+python - <<'PY'
+import json
+with open("runs/01_raw/summary.json", encoding="utf-8") as f:
+    s = json.load(f)
+print("total_time_s =", s["total_time_s"])
+print("timing =", s["timing"])
+PY
+```
+
+在 RTX 5090 级别 GPU 上，当前默认主链路通常是 3 秒量级；具体数值会随 GPU、CUDA、Simsopt 版本和候选面数量变化。
+
+## 导出诊断图
+
+默认命令不会画图。需要诊断磁轴搜索 landscape 和 $\psi$ 截面时，显式加参数：
+
+```bash
+python -m stellarator_eval.cli \
+  --export-axis-heatmap \
+  --axis-heatmap-grid 512 \
+  --export-psi-slices \
+  --psi-slice-grid 321 \
+  --psi-slice-phi-count 21
+```
+
+这会在 `runs/01_raw/` 中额外生成：
+
+- `axis_residual_heatmap.png`：第一步找磁轴时，一周期闭合 residual 的高分辨率热力图。
+- `psi_slices.png`：沿一个场周期的局部 $\psi$ 截面图，颜色使用 signed-sqrt 缩放以保留小 $\psi$ 区域的可见性。
+
+示例 residual heatmap：
+
+![axis residual heatmap example](docs/assets/axis_residual_heatmap_example.png)
+
+示例 $\psi$ 截面图：
+
+![psi slices example](docs/assets/psi_slices_example.png)
+
+## 常用显式运行
+
+`01` 示例：
 
 ```bash
 python -m stellarator_eval.cli \
@@ -44,6 +109,8 @@ cfg = EvalConfig()
 cfg.psi.a = 0.05
 cfg.psi.poly_degree = 10
 cfg.psi.m_tor = 12
+cfg.diagnostics.export_axis_heatmap = True
+cfg.diagnostics.export_psi_slices = True
 
 result = evaluate_case_file(
     "examples/01.json",
@@ -96,6 +163,7 @@ x[0:33], y[0:33], z[0:33], current
 - `best_surface.qs_error_QA_1_0`
 - `best_surface.qs_error_QH_1_1`
 - `best_surface.qs_error_QP_0_1`
+- `diagnostics`
 - `timing`
 
 `axis.best_residual` 是一周期追踪后的最好闭合距离；即使 `has_axis=false`，这个值仍会输出，用于判断是“接近但未达阈值”还是“完全没有可用闭合点”。

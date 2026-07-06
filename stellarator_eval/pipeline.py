@@ -14,6 +14,7 @@ from .psi import fit_psi, model_to_npz_dict
 from .serialization import write_json
 from .surface import evaluate_boozer_surface, screen_level, screen_levels_gpu
 from .timing import timing_phase, timing_session
+from .visualization import export_axis_residual_heatmap, export_psi_slices
 
 
 def _set_thread_env(threads: int) -> None:
@@ -115,6 +116,7 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
         "nfp": int(field_input.nfp),
         "config": config.to_dict(),
         "warnings": [],
+        "diagnostics": {},
     }
 
     with timing_session() as timings:
@@ -145,6 +147,23 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             best_residual=axis.best_residual,
             nfp=built.nfp,
         )
+        if config.diagnostics.export_axis_heatmap:
+            t_plot = time.perf_counter()
+            try:
+                info = export_axis_residual_heatmap(
+                    field_input,
+                    built,
+                    axis,
+                    config.axis,
+                    config.current_unit,
+                    out / config.diagnostics.axis_heatmap_filename,
+                    grid=config.diagnostics.axis_heatmap_grid,
+                    dpi=config.diagnostics.plot_dpi,
+                )
+                info["time_s"] = float(time.perf_counter() - t_plot)
+                result["diagnostics"]["axis_residual_heatmap"] = info
+            except Exception as exc:
+                result["warnings"].append(f"axis residual heatmap export failed: {exc!r}")
         if not axis.has_axis:
             result["warnings"].append("axis residual did not reach configured tolerance; downstream steps skipped")
             result["timing_b_calls"] = timings.as_dict()
@@ -157,6 +176,21 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             model = fit_psi(built.field, axis, built.nfp, config.psi, field_input=field_input, current_unit=config.current_unit)
         result["psi"] = _psi_summary(model)
         np.savez(out / "psi_model.npz", **model_to_npz_dict(model))
+        if config.diagnostics.export_psi_slices:
+            t_plot = time.perf_counter()
+            try:
+                info = export_psi_slices(
+                    model,
+                    out / config.diagnostics.psi_slice_filename,
+                    levels=config.scan.levels,
+                    grid=config.diagnostics.psi_slice_grid,
+                    phi_count=config.diagnostics.psi_slice_phi_count,
+                    dpi=config.diagnostics.plot_dpi,
+                )
+                info["time_s"] = float(time.perf_counter() - t_plot)
+                result["diagnostics"]["psi_slices"] = info
+            except Exception as exc:
+                result["warnings"].append(f"psi slice export failed: {exc!r}")
 
         screen_results = []
         t_screen = time.perf_counter()

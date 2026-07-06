@@ -135,6 +135,12 @@ def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict)
         "screen_min_rel_distance_p95": min(finite_rel) if finite_rel else None,
         "surface_candidate_count": len(candidates),
     }
+    quality = result.get("quality_score") or {}
+    if quality:
+        row["score"] = quality.get("score")
+        row["score_status"] = quality.get("status")
+        for name, value in (quality.get("components") or {}).items():
+            row[f"score_{name}"] = value
     if meta:
         for key in ("helicity", "nfp", "nc_per_hp", "mean_iota", "minor_radius", "aspect_ratio", "volume", "qs_error", "Nsurfaces"):
             if key in meta:

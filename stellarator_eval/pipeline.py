@@ -9,8 +9,9 @@ import numpy as np
 
 from .axis import find_axis, find_axis_gpu
 from .config import EvalConfig
-from .field import FieldInput, build_field, input_from_flat_vector, load_case_file
+from .field import FieldInput, build_field, input_from_flat_vector, input_from_packed_vector, load_case_file
 from .psi import fit_psi, model_to_npz_dict
+from .score import ScoreConfig, evaluate_quality_score
 from .serialization import write_json
 from .surface import evaluate_boozer_surface, screen_level, screen_levels_gpu
 from .timing import timing_phase, timing_session
@@ -104,7 +105,61 @@ def _timing_summary(*, field_build_s: float = 0.0, axis=None, model=None, screen
     }
 
 
-def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = None, output_dir: str | Path = "runs/eval") -> dict:
+def _field_input_from_any(
+    coil_coefficients: Any,
+    currents: Any | None = None,
+    nfp: int | None = None,
+    *,
+    coeff_count: int = 33,
+) -> FieldInput:
+    if isinstance(coil_coefficients, FieldInput):
+        return coil_coefficients
+    if currents is None:
+        arr = np.asarray(coil_coefficients, dtype=float).ravel()
+        if nfp is None:
+            return input_from_packed_vector(arr, coeff_count=coeff_count)
+        return input_from_flat_vector(arr, nfp=nfp, coeff_count=coeff_count)
+    if nfp is None:
+        raise ValueError("nfp is required when currents are passed separately")
+    if isinstance(coil_coefficients, dict):
+        x, y, z = coil_coefficients["x"], coil_coefficients["y"], coil_coefficients["z"]
+    else:
+        arr = np.asarray(coil_coefficients, dtype=float)
+        if arr.ndim == 3 and arr.shape[1] == 3:
+            x, y, z = arr[:, 0, :], arr[:, 1, :], arr[:, 2, :]
+        else:
+            raise ValueError("coil_coefficients must be FieldInput, flat vector, dict{x,y,z}, or array (ncoil,3,ncoef)")
+    return FieldInput(np.asarray(x, float), np.asarray(y, float), np.asarray(z, float), np.asarray(currents, float), int(nfp))
+
+
+def _attach_quality_score(
+    result: dict,
+    field_input: FieldInput,
+    config: EvalConfig,
+    *,
+    metadata: dict | None = None,
+    target: str | None = None,
+    score_config: ScoreConfig | None = None,
+) -> None:
+    result["quality_score"] = evaluate_quality_score(
+        result,
+        field_input=field_input,
+        current_unit=config.current_unit,
+        metadata=metadata,
+        target=target,
+        config=score_config,
+    )
+
+
+def evaluate_field_input(
+    field_input: FieldInput,
+    config: EvalConfig | None = None,
+    output_dir: str | Path = "runs/eval",
+    *,
+    metadata: dict | None = None,
+    target: str | None = None,
+    score_config: ScoreConfig | None = None,
+) -> dict:
     config = config or EvalConfig()
     _set_thread_env(config.omp_threads)
     out = Path(output_dir)
@@ -169,6 +224,7 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             result["timing_b_calls"] = timings.as_dict()
             result["timing"] = _timing_summary(field_build_s=result["field"]["build_time_s"], axis=axis)
             result["total_time_s"] = time.perf_counter() - t_all
+            _attach_quality_score(result, field_input, config, metadata=metadata, target=target, score_config=score_config)
             write_json(out / "summary.json", result)
             return result
 
@@ -226,6 +282,7 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
             )
             result["timing"]["surface_screen_s"] = result["surface_screen"]["time_s"]
             result["total_time_s"] = time.perf_counter() - t_all
+            _attach_quality_score(result, field_input, config, metadata=metadata, target=target, score_config=score_config)
             write_json(out / "summary.json", result)
             return result
 
@@ -266,12 +323,29 @@ def evaluate_field_input(field_input: FieldInput, config: EvalConfig | None = No
         )
         result["timing"]["surface_screen_s"] = result["surface_screen"]["time_s"]
         result["total_time_s"] = time.perf_counter() - t_all
+        _attach_quality_score(result, field_input, config, metadata=metadata, target=target, score_config=score_config)
         write_json(out / "summary.json", result)
         return result
 
 
-def evaluate_case_file(case_file: str | Path, key: str = "raw", config: EvalConfig | None = None, output_dir: str | Path = "runs/eval") -> dict:
-    return evaluate_field_input(load_case_file(case_file, key), config=config, output_dir=output_dir)
+def evaluate_case_file(
+    case_file: str | Path,
+    key: str = "raw",
+    config: EvalConfig | None = None,
+    output_dir: str | Path = "runs/eval",
+    *,
+    metadata: dict | None = None,
+    target: str | None = None,
+    score_config: ScoreConfig | None = None,
+) -> dict:
+    return evaluate_field_input(
+        load_case_file(case_file, key),
+        config=config,
+        output_dir=output_dir,
+        metadata=metadata,
+        target=target,
+        score_config=score_config,
+    )
 
 
 def evaluate_coils(
@@ -280,23 +354,53 @@ def evaluate_coils(
     nfp: int | None = None,
     config: EvalConfig | None = None,
     output_dir: str | Path = "runs/eval",
+    *,
+    coeff_count: int = 33,
+    metadata: dict | None = None,
+    target: str | None = None,
+    score_config: ScoreConfig | None = None,
 ) -> dict:
-    if isinstance(coil_coefficients, FieldInput):
-        field_input = coil_coefficients
-    elif currents is None:
-        if nfp is None:
-            raise ValueError("nfp is required when coil_coefficients is a flat vector")
-        field_input = input_from_flat_vector(coil_coefficients, nfp=nfp)
-    else:
-        if nfp is None:
-            raise ValueError("nfp is required")
-        if isinstance(coil_coefficients, dict):
-            x, y, z = coil_coefficients["x"], coil_coefficients["y"], coil_coefficients["z"]
-        else:
-            arr = np.asarray(coil_coefficients, dtype=float)
-            if arr.ndim == 3 and arr.shape[1] == 3:
-                x, y, z = arr[:, 0, :], arr[:, 1, :], arr[:, 2, :]
-            else:
-                raise ValueError("coil_coefficients must be FieldInput, flat vector, dict{x,y,z}, or array (ncoil,3,ncoef)")
-        field_input = FieldInput(np.asarray(x, float), np.asarray(y, float), np.asarray(z, float), np.asarray(currents, float), int(nfp))
-    return evaluate_field_input(field_input, config=config, output_dir=output_dir)
+    field_input = _field_input_from_any(coil_coefficients, currents, nfp, coeff_count=coeff_count)
+    return evaluate_field_input(
+        field_input,
+        config=config,
+        output_dir=output_dir,
+        metadata=metadata,
+        target=target,
+        score_config=score_config,
+    )
+
+
+def evaluate_coil_quality(
+    coil_coefficients: Any,
+    currents: Any | None = None,
+    nfp: int | None = None,
+    config: EvalConfig | None = None,
+    output_dir: str | Path = "runs/eval",
+    *,
+    coeff_count: int = 33,
+    metadata: dict | None = None,
+    target: str | None = None,
+    score_config: ScoreConfig | None = None,
+    include_result: bool = True,
+) -> dict:
+    result = evaluate_coils(
+        coil_coefficients,
+        currents,
+        nfp,
+        config=config,
+        output_dir=output_dir,
+        coeff_count=coeff_count,
+        metadata=metadata,
+        target=target,
+        score_config=score_config,
+    )
+    quality = result["quality_score"]
+    out = {
+        "score": quality["score"],
+        "status": quality["status"],
+        "quality_score": quality,
+    }
+    if include_result:
+        out["result"] = result
+    return out

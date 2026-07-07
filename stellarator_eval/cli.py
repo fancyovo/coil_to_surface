@@ -83,6 +83,7 @@ def build_parser():
     p.add_argument("--surface-gpu-lib", default="gpu_backend/build_mixed/libstellarator_gpu.so")
     p.add_argument("--surface-gpu-device", type=int, default=0)
     p.add_argument("--initial-iota", type=float, default=-2.0)
+    p.add_argument("--disable-auto-iota", action="store_true", help="Do not replace the default initial iota using the cheap field-line estimate.")
     p.add_argument("--ls-maxiter", type=int, default=100)
     p.add_argument("--newton-maxiter", type=int, default=30)
     p.add_argument("--qs-sdim", type=int, default=16)
@@ -166,6 +167,7 @@ def config_from_args(args) -> EvalConfig:
             gpu_lib_path=args.surface_gpu_lib,
             gpu_device=args.surface_gpu_device,
             initial_iota=args.initial_iota,
+            auto_initial_iota=not args.disable_auto_iota,
             ls_maxiter=args.ls_maxiter,
             newton_maxiter=args.newton_maxiter,
             qs_sdim=args.qs_sdim,

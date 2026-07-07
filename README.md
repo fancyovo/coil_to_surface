@@ -6,6 +6,7 @@
 
 - **从线圈到磁面**：输出磁轴、$\psi$ 模型、候选磁面、$\iota$、volume、$G$ 和 QA/QH/QP QS error。
 - **连续品质分数**：默认输出 `quality_score`，把磁轴、$\psi$、磁面筛选、Boozer/QS 和线圈工程项压缩为 0-100 的可解释分数。
+- **Boozer 初值自动估计**：如果没有提供推荐 `initial_iota`，程序会从 $\psi_0$ 筛选阶段已有的一周期磁力线端点中便宜估计 $\iota$，避免默认 `-2` 把 Boozer LS 带入慢分支。
 - **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；单个常规样本在 RTX 5090 级别 GPU 上约 3 秒量级完成评估。
 - **快速失败而不是卡住**：对找不到磁轴、局部 $\psi$ 质量差、没有可信候选磁面或 Boozer 阶段失败的样本，返回结构化失败原因、最好残差和细粒度计时。
 - **诊断图可选导出**：显式加参数后，可以额外导出高分辨率磁轴 residual heatmap 和细粒度 $\psi$ 截面图；默认不导图，避免影响批量测速。
@@ -101,6 +102,12 @@ python -m stellarator_eval.cli \
 ```
 
 默认会把 `OMP_NUM_THREADS`、`OPENBLAS_NUM_THREADS`、`MKL_NUM_THREADS`、`NUMEXPR_NUM_THREADS` 设为 `1`。这是有意的：当前很多小批量磁场计算在多线程下会被同步开销拖慢。
+
+默认还会启用 `auto_initial_iota`：当 Boozer 初值仍是默认 `-2` 时，程序会用 field-line screen 中估计出的 `iota_estimate` 替代它；如果你显式传入其它 `--initial-iota`，则不会覆盖。需要强制使用 `-2` 或其它配置值时，可加：
+
+```bash
+python -m stellarator_eval.cli --disable-auto-iota
+```
 
 ## Python API
 

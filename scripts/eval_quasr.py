@@ -87,6 +87,7 @@ def make_config(args, eval_params: dict[str, float]) -> EvalConfig:
     cfg.scan.gpu_device = args.gpu_device
     cfg.boozer.gpu_device = args.gpu_device
     cfg.boozer.initial_iota = float(eval_params["initial_iota"])
+    cfg.boozer.auto_initial_iota = not args.disable_auto_iota
     cfg.boozer.qs_sdim = args.qs_sdim
     cfg.boozer.surface_order = args.surface_order
     cfg.scan.max_boozer_candidates = args.max_boozer_candidates
@@ -135,6 +136,9 @@ def flatten_record(device_id: int, meta: dict | None, adapt: dict, result: dict)
         "screen_min_rel_distance_p95": min(finite_rel) if finite_rel else None,
         "surface_candidate_count": len(candidates),
     }
+    if result.get("boozer_initial_iota"):
+        for key, value in result["boozer_initial_iota"].items():
+            row[f"boozer_{key}"] = value
     quality = result.get("quality_score") or {}
     if quality:
         row["score"] = quality.get("score")
@@ -292,6 +296,7 @@ def main() -> None:
     parser.add_argument("--default-a", type=float, default=0.05)
     parser.add_argument("--a-minor-fraction", type=float, default=0.9)
     parser.add_argument("--initial-iota", type=float, default=None)
+    parser.add_argument("--disable-auto-iota", action="store_true", help="Do not replace fallback initial iota using the cheap field-line estimate.")
     parser.add_argument("--levels", type=parse_levels, default=None)
     parser.add_argument("--surface-order", type=int, default=6)
     parser.add_argument("--qs-sdim", type=int, default=16)

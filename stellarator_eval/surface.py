@@ -33,6 +33,8 @@ class LevelScreen:
     end_distance_p95: float
     rel_end_distance_p95: float
     trace_time_s: float
+    iota_estimate: float | None = None
+    iota_estimate_std: float | None = None
 
 
 def _quadratic_radius(model: PsiModel, psi_level, theta, phi, max_radius):
@@ -102,12 +104,26 @@ def level_curve_phi0(model: PsiModel, psi_level: float, n_alpha: int, cfg: Surfa
     return theta, ra + rho * np.cos(theta), za + rho * np.sin(theta), rho
 
 
+def estimate_iota_from_endpoint(model: PsiModel, theta0, Re, Ze) -> tuple[float, float]:
+    phi_end = np.full_like(Re, TWOPI / model.nfp)
+    ra, za, _, _ = model.axis_at(phi_end)
+    theta1 = np.arctan2(Ze - za, Re - ra)
+    delta = np.angle(np.exp(1j * (theta1 - theta0)))
+    mean_phase = np.angle(np.mean(np.exp(1j * delta)))
+    residual = np.angle(np.exp(1j * (delta - mean_phase)))
+    scale = TWOPI / model.nfp
+    # The local geometric angle used here has the opposite orientation from the
+    # Boozer theta convention used by Simsopt's BoozerSurface.
+    return float(-mean_phase / scale), float(np.std(residual) / scale)
+
+
 def screen_level(field, model: PsiModel, psi_level: float, cfg: SurfaceScanConfig) -> LevelScreen:
     t_curve = time.perf_counter()
     theta, R, Z, rho = level_curve_phi0(model, psi_level, cfg.n_alpha, cfg)
     curve_time = time.perf_counter() - t_curve
     t0 = time.perf_counter()
     Re, Ze = rk4_one_period(field, R, Z, model.nfp, cfg.trace_steps)
+    iota_estimate, iota_estimate_std = estimate_iota_from_endpoint(model, theta, Re, Ze)
     trace_time = time.perf_counter() - t0
     phi_end = np.full_like(Re, TWOPI / model.nfp)
     psi_end, gr, gz, gp = psi_and_gradient(model, Re, Ze, phi_end)
@@ -129,10 +145,23 @@ def screen_level(field, model: PsiModel, psi_level: float, cfg: SurfaceScanConfi
         end_distance_p95=p95,
         rel_end_distance_p95=float(rel),
         trace_time_s=trace_time,
+        iota_estimate=iota_estimate,
+        iota_estimate_std=iota_estimate_std,
     )
 
 
-def _level_screen_from_endpoint(model: PsiModel, psi_level: float, rho, Re, Ze, cfg: SurfaceScanConfig, trace_time: float, curve_time: float, reason_ok="ok"):
+def _level_screen_from_endpoint(
+    model: PsiModel,
+    psi_level: float,
+    rho,
+    Re,
+    Ze,
+    cfg: SurfaceScanConfig,
+    trace_time: float,
+    curve_time: float,
+    reason_ok="ok",
+    theta0=None,
+):
     phi_end = np.full_like(Re, TWOPI / model.nfp)
     psi_end, gr, gz, gp = psi_and_gradient(model, Re, Ze, phi_end)
     grad_norm = np.sqrt(gr**2 + gz**2 + (gp / Re) ** 2)
@@ -141,6 +170,10 @@ def _level_screen_from_endpoint(model: PsiModel, psi_level: float, rho, Re, Ze, 
     radius_mean = float(np.mean(rho))
     rel = p95 / max(radius_mean, 1e-14)
     ok = bool((p95 <= cfg.drift_abs_tol) and (rel <= cfg.drift_rel_tol) and np.max(rho) < cfg.max_radius_scale * model.a * 0.999)
+    iota_estimate = None
+    iota_estimate_std = None
+    if theta0 is not None:
+        iota_estimate, iota_estimate_std = estimate_iota_from_endpoint(model, theta0, Re, Ze)
     return LevelScreen(
         psi_level=float(psi_level),
         ok=ok,
@@ -152,6 +185,8 @@ def _level_screen_from_endpoint(model: PsiModel, psi_level: float, rho, Re, Ze, 
         end_distance_p95=p95,
         rel_end_distance_p95=float(rel),
         trace_time_s=trace_time,
+        iota_estimate=iota_estimate,
+        iota_estimate_std=iota_estimate_std,
     )
 
 
@@ -173,6 +208,7 @@ def screen_levels_gpu(field_input, model: PsiModel, levels, cfg: SurfaceScanConf
         curves.append(
             {
                 "psi_level": float(level),
+                "theta": theta,
                 "R": R,
                 "Z": Z,
                 "rho": rho,
@@ -231,6 +267,7 @@ def screen_levels_gpu(field_input, model: PsiModel, levels, cfg: SurfaceScanConf
                 cfg,
                 trace_time=per_line_time * (offsets[i + 1] - offsets[i]),
                 curve_time=curve["curve_time"],
+                theta0=curve["theta"],
             ).__dict__
             screen["trace_backend"] = "gpu"
             screen["trace_precision"] = cfg.gpu_trace_precision
@@ -269,6 +306,7 @@ def screen_levels_gpu(field_input, model: PsiModel, levels, cfg: SurfaceScanConf
                     trace_time=verify_time / max(len(verify_indices), 1),
                     curve_time=curves[i]["curve_time"],
                     reason_ok="ok_verified",
+                    theta0=curves[i]["theta"],
                 ).__dict__
                 results[i]["verify_precision"] = cfg.gpu_verify_precision
                 results[i]["verify_trace_time_s"] = verify_time / max(len(verify_indices), 1)

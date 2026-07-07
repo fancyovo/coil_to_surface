@@ -98,6 +98,9 @@ class BoozerConfig:
     surface_order: int = 6
     stellsym: bool = True
     initial_iota: float = -2.0
+    auto_initial_iota: bool = True
+    auto_initial_iota_default_only: bool = True
+    auto_initial_iota_default_value: float = -2.0
     constraint_weight: float = 1.0
     ls_maxiter: int = 100
     ls_tol: float = 1e-10

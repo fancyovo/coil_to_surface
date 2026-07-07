@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import numpy as np
 
 from .axis import find_axis, find_axis_gpu
 from .config import EvalConfig
+from .config import BoozerConfig
 from .field import FieldInput, build_field, input_from_flat_vector, input_from_packed_vector, load_case_file
 from .psi import fit_psi, model_to_npz_dict
 from .score import ScoreConfig, evaluate_quality_score
@@ -151,6 +153,44 @@ def _attach_quality_score(
     )
 
 
+def _auto_boozer_config(base: BoozerConfig, ok_levels: list[dict]) -> tuple[BoozerConfig, dict]:
+    info = {
+        "initial_iota_config": float(base.initial_iota),
+        "initial_iota_used": float(base.initial_iota),
+        "initial_iota_source": "config",
+    }
+    if not base.auto_initial_iota:
+        return base, info
+    if base.auto_initial_iota_default_only and abs(float(base.initial_iota) - float(base.auto_initial_iota_default_value)) > 1e-12:
+        return base, info
+    candidates = []
+    for item in ok_levels:
+        value = item.get("iota_estimate")
+        spread = item.get("iota_estimate_std")
+        try:
+            value_f = float(value)
+            spread_f = float(spread)
+        except Exception:
+            continue
+        if not (np.isfinite(value_f) and np.isfinite(spread_f)):
+            continue
+        candidates.append((float(item.get("psi_level", 0.0)), value_f, spread_f))
+    if not candidates:
+        info["initial_iota_source"] = "config_no_screen_estimate"
+        return base, info
+    candidates.sort(key=lambda x: (x[0], -x[2]), reverse=True)
+    level, estimate, spread = candidates[0]
+    info.update(
+        {
+            "initial_iota_used": estimate,
+            "initial_iota_source": "screen_fieldline_estimate",
+            "initial_iota_estimate_level": level,
+            "initial_iota_estimate_std": spread,
+        }
+    )
+    return replace(base, initial_iota=estimate), info
+
+
 def evaluate_field_input(
     field_input: FieldInput,
     config: EvalConfig | None = None,
@@ -286,6 +326,9 @@ def evaluate_field_input(
             write_json(out / "summary.json", result)
             return result
 
+        boozer_cfg, iota_info = _auto_boozer_config(config.boozer, ok_levels)
+        result["boozer_initial_iota"] = iota_info
+
         surface_results = []
         for item in ok_levels[: config.scan.max_boozer_candidates]:
             level = float(item["psi_level"])
@@ -298,7 +341,7 @@ def evaluate_field_input(
                         model,
                         level,
                         config.scan,
-                        config.boozer,
+                        boozer_cfg,
                         out_npz=level_dir / "boozer_surface.npz",
                     )
             except Exception as exc:

@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import inspect
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -510,14 +511,16 @@ def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: 
     boozer = BoozerSurface(field, surf, volume, target_volume)
     try:
         t0 = time.perf_counter()
-        ls = boozer.minimize_boozer_penalty_constraints_ls(
-            tol=boozer_cfg.ls_tol,
-            maxiter=boozer_cfg.ls_maxiter,
-            iota=boozer_cfg.initial_iota,
-            G=g0,
-            constraint_weight=boozer_cfg.constraint_weight,
-            weight_inv_modB=True,
-        )
+        ls_kwargs = {
+            "tol": boozer_cfg.ls_tol,
+            "maxiter": boozer_cfg.ls_maxiter,
+            "iota": boozer_cfg.initial_iota,
+            "G": g0,
+            "constraint_weight": boozer_cfg.constraint_weight,
+        }
+        if "weight_inv_modB" in inspect.signature(boozer.minimize_boozer_penalty_constraints_ls).parameters:
+            ls_kwargs["weight_inv_modB"] = True
+        ls = boozer.minimize_boozer_penalty_constraints_ls(**ls_kwargs)
         result["ls_time_s"] = time.perf_counter() - t0
         result["ls_success"] = bool(ls.get("success", False))
         result["ls_iota"] = float(ls["iota"])

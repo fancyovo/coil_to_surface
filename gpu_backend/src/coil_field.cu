@@ -773,6 +773,72 @@ __device__ inline float periodic_interp_uniform_f32(float phi, const float* valu
     return values[i0] * (1.0f - t) + values[i1] * t;
 }
 
+__device__ inline void periodic_hermite_uniform(
+    double phi,
+    const double* values,
+    const double* derivatives,
+    int n,
+    double period,
+    double& value,
+    double& derivative
+) {
+    double p = fmod(phi, period);
+    if (p < 0.0) p += period;
+    double pos = p * static_cast<double>(n) / period;
+    int i0 = static_cast<int>(floor(pos));
+    double t = pos - static_cast<double>(i0);
+    if (i0 >= n) i0 = 0;
+    int i1 = (i0 + 1 == n) ? 0 : (i0 + 1);
+    double h = period / static_cast<double>(n);
+    double t2 = t * t;
+    double t3 = t2 * t;
+    double y0 = values[i0];
+    double y1 = values[i1];
+    double d0 = derivatives[i0];
+    double d1 = derivatives[i1];
+    value = (2.0 * t3 - 3.0 * t2 + 1.0) * y0
+          + (t3 - 2.0 * t2 + t) * h * d0
+          + (-2.0 * t3 + 3.0 * t2) * y1
+          + (t3 - t2) * h * d1;
+    derivative = (6.0 * t2 - 6.0 * t) * y0 / h
+               + (3.0 * t2 - 4.0 * t + 1.0) * d0
+               + (-6.0 * t2 + 6.0 * t) * y1 / h
+               + (3.0 * t2 - 2.0 * t) * d1;
+}
+
+__device__ inline void periodic_hermite_uniform_f32(
+    float phi,
+    const float* values,
+    const float* derivatives,
+    int n,
+    float period,
+    float& value,
+    float& derivative
+) {
+    float p = fmodf(phi, period);
+    if (p < 0.0f) p += period;
+    float pos = p * static_cast<float>(n) / period;
+    int i0 = static_cast<int>(floorf(pos));
+    float t = pos - static_cast<float>(i0);
+    if (i0 >= n) i0 = 0;
+    int i1 = (i0 + 1 == n) ? 0 : (i0 + 1);
+    float h = period / static_cast<float>(n);
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float y0 = values[i0];
+    float y1 = values[i1];
+    float d0 = derivatives[i0];
+    float d1 = derivatives[i1];
+    value = (2.0f * t3 - 3.0f * t2 + 1.0f) * y0
+          + (t3 - 2.0f * t2 + t) * h * d0
+          + (-2.0f * t3 + 3.0f * t2) * y1
+          + (t3 - t2) * h * d1;
+    derivative = (6.0f * t2 - 6.0f * t) * y0 / h
+               + (3.0f * t2 - 4.0f * t + 1.0f) * d0
+               + (-6.0f * t2 + 6.0f * t) * y1 / h
+               + (3.0f * t2 - 2.0f * t) * d1;
+}
+
 __global__ void convert_double_to_float_kernel(const double* src, float* dst, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) dst[i] = static_cast<float>(src[i]);
@@ -947,10 +1013,9 @@ __global__ void psi_fill_matrix_kernel_f64(
 
     if (threadIdx.x == 0) {
         double period = TWOPI / static_cast<double>(nfp);
-        double ra = periodic_interp_uniform(phii, axis_R, n_axis, period);
-        double za = periodic_interp_uniform(phii, axis_Z, n_axis, period);
-        double rap = periodic_interp_uniform(phii, axis_R_phi, n_axis, period);
-        double zap = periodic_interp_uniform(phii, axis_Z_phi, n_axis, period);
+        double ra, za, rap, zap;
+        periodic_hermite_uniform(phii, axis_R, axis_R_phi, n_axis, period, ra, rap);
+        periodic_hermite_uniform(phii, axis_Z, axis_Z_phi, n_axis, period, za, zap);
         double X = (Ri - ra) / a;
         double Zc = (Zi - za) / a;
         double br = bx * cp + by * sp;
@@ -1049,10 +1114,9 @@ __global__ void psi_fill_matrix_kernel_f32(
 
     if (threadIdx.x == 0) {
         float period = static_cast<float>(TWOPI) / static_cast<float>(nfp);
-        float ra = periodic_interp_uniform_f32(phii, axis_R, n_axis, period);
-        float za = periodic_interp_uniform_f32(phii, axis_Z, n_axis, period);
-        float rap = periodic_interp_uniform_f32(phii, axis_R_phi, n_axis, period);
-        float zap = periodic_interp_uniform_f32(phii, axis_Z_phi, n_axis, period);
+        float ra, za, rap, zap;
+        periodic_hermite_uniform_f32(phii, axis_R, axis_R_phi, n_axis, period, ra, rap);
+        periodic_hermite_uniform_f32(phii, axis_Z, axis_Z_phi, n_axis, period, za, zap);
         float X = (Ri - ra) / a;
         float Zc = (Zi - za) / a;
         float br = bx * cp + by * sp;

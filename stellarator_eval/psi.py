@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .axis import b_components, interp_periodic
+from .axis import b_components, interp_periodic_hermite
 from .config import PsiFitConfig
 
 TWOPI = 2.0 * np.pi
@@ -34,12 +34,13 @@ class PsiModel:
     fit_info: dict
 
     def axis_at(self, phi):
-        return (
-            interp_periodic(phi, self.phi_axis, self.R_axis, self.nfp),
-            interp_periodic(phi, self.phi_axis, self.Z_axis, self.nfp),
-            interp_periodic(phi, self.phi_axis, self.R_axis_phi, self.nfp),
-            interp_periodic(phi, self.phi_axis, self.Z_axis_phi, self.nfp),
+        ra, rap = interp_periodic_hermite(
+            phi, self.phi_axis, self.R_axis, self.R_axis_phi, self.nfp
         )
+        za, zap = interp_periodic_hermite(
+            phi, self.phi_axis, self.Z_axis, self.Z_axis_phi, self.nfp
+        )
+        return ra, za, rap, zap
 
 
 def build_modes(poly_degree: int, m_tor: int) -> list[PolyMode]:
@@ -304,10 +305,8 @@ def _assemble(field, modes, R, Z, phi, axis, nfp: int, cfg: PsiFitConfig, b_samp
         zz = Z[start:stop]
         pp = phi[start:stop]
         t = time.perf_counter()
-        ra = interp_periodic(pp, axis.phi, axis.R, nfp)
-        za = interp_periodic(pp, axis.phi, axis.Z, nfp)
-        rap = interp_periodic(pp, axis.phi, axis.R_phi, nfp)
-        zap = interp_periodic(pp, axis.phi, axis.Z_phi, nfp)
+        ra, rap = interp_periodic_hermite(pp, axis.phi, axis.R, axis.R_phi, nfp)
+        za, zap = interp_periodic_hermite(pp, axis.phi, axis.Z, axis.Z_phi, nfp)
         X = (rr - ra) / cfg.a
         Zc = (zz - za) / cfg.a
         timings["assemble_interp_s"] += time.perf_counter() - t

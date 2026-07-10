@@ -80,6 +80,45 @@ def rk4_one_period(field, r0, z0, nfp: int, steps: int):
     return r, z
 
 
+def rk4_period_samples(field, r0, z0, nfp: int, *, n_zeta: int, steps: int):
+    """Trace one field period and retain uniformly spaced intermediate states."""
+    period = TWOPI / nfp
+    steps = int(max(steps, n_zeta))
+    h = period / steps
+    r = np.asarray(r0, dtype=float).copy()
+    z = np.asarray(z0, dtype=float).copy()
+    store_steps = np.floor(np.linspace(0, steps, n_zeta, endpoint=False)).astype(int)
+    store_lookup = {int(step): idx for idx, step in enumerate(store_steps)}
+    r_hist = np.empty((len(r), n_zeta))
+    z_hist = np.empty((len(r), n_zeta))
+    phi_hist = np.empty(n_zeta)
+
+    def rhs(phi, rr, zz):
+        br, bphi, bz = b_components(field, rr, zz, phi)
+        tiny = 1e-14
+        denom = np.where(
+            np.abs(bphi) < tiny,
+            np.where(bphi >= 0.0, tiny, -tiny),
+            bphi,
+        )
+        return rr * br / denom, rr * bz / denom
+
+    for step in range(steps):
+        if step in store_lookup:
+            idx = store_lookup[step]
+            r_hist[:, idx] = r
+            z_hist[:, idx] = z
+            phi_hist[idx] = step * h
+        phi = step * h
+        k1r, k1z = rhs(phi, r, z)
+        k2r, k2z = rhs(phi + 0.5 * h, r + 0.5 * h * k1r, z + 0.5 * h * k1z)
+        k3r, k3z = rhs(phi + 0.5 * h, r + 0.5 * h * k2r, z + 0.5 * h * k2z)
+        k4r, k4z = rhs(phi + h, r + h * k3r, z + h * k3z)
+        r += (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r)
+        z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z)
+    return phi_hist, r_hist, z_hist, r, z
+
+
 def _initial_grid(rc, zc, span, grid):
     rs = np.linspace(rc - span, rc + span, grid)
     zs = np.linspace(zc - span, zc + span, grid)
@@ -618,9 +657,15 @@ def trace_axis(field, r0: float, z0: float, nfp: int, steps: int):
         raise RuntimeError(f"axis trace failed: {sol.message}")
     R = sol.y[0]
     Z = sol.y[1]
-    dphi = phi[1] - phi[0]
-    R_phi = np.gradient(R, dphi, edge_order=2)
-    Z_phi = np.gradient(Z, dphi, edge_order=2)
+    br, bphi, bz = b_components(field, R, Z, phi)
+    tiny = 1e-14
+    denom = np.where(
+        np.abs(bphi) > tiny,
+        bphi,
+        np.copysign(tiny, np.where(bphi != 0.0, bphi, 1.0)),
+    )
+    R_phi = R * br / denom
+    Z_phi = R * bz / denom
     return phi, R, Z, R_phi, Z_phi
 
 
@@ -805,3 +850,45 @@ def interp_periodic(phi, phi_axis, values, nfp: int):
     x = np.r_[phi_axis, period]
     y = np.r_[values, values[0]]
     return np.interp(p, x, y)
+
+
+def interp_periodic_hermite(phi, phi_axis, values, derivatives, nfp: int):
+    """Interpolate a periodic value and its derivative consistently."""
+    phi_axis = np.asarray(phi_axis, dtype=float)
+    values = np.asarray(values, dtype=float)
+    derivatives = np.asarray(derivatives, dtype=float)
+    if not (phi_axis.ndim == values.ndim == derivatives.ndim == 1):
+        raise ValueError("periodic Hermite inputs must be one-dimensional")
+    if not (len(phi_axis) == len(values) == len(derivatives)) or len(phi_axis) < 2:
+        raise ValueError("periodic Hermite inputs must have matching lengths >= 2")
+
+    period = TWOPI / nfp
+    p = np.mod(np.asarray(phi, dtype=float), period)
+    idx = np.searchsorted(phi_axis, p, side="right") - 1
+    idx = np.where(idx < 0, len(phi_axis) - 1, idx)
+    next_idx = (idx + 1) % len(phi_axis)
+    x0 = phi_axis[idx]
+    x1 = np.where(next_idx == 0, period + phi_axis[0], phi_axis[next_idx])
+    p_local = np.where(p < x0, p + period, p)
+    h = x1 - x0
+    t = (p_local - x0) / h
+
+    y0 = values[idx]
+    y1 = values[next_idx]
+    d0 = derivatives[idx]
+    d1 = derivatives[next_idx]
+    t2 = t * t
+    t3 = t2 * t
+    value = (
+        (2.0 * t3 - 3.0 * t2 + 1.0) * y0
+        + (t3 - 2.0 * t2 + t) * h * d0
+        + (-2.0 * t3 + 3.0 * t2) * y1
+        + (t3 - t2) * h * d1
+    )
+    derivative = (
+        (6.0 * t2 - 6.0 * t) * y0 / h
+        + (3.0 * t2 - 4.0 * t + 1.0) * d0
+        + (-6.0 * t2 + 6.0 * t) * y1 / h
+        + (3.0 * t2 - 2.0 * t) * d1
+    )
+    return value, derivative

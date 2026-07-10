@@ -155,11 +155,46 @@ $$
 
 $$
 \lambda
-=\sum_{lmn}c^{(c)}_{lmn}R_l^m(\rho)
+=\sum_{lmn}c^{(c)}_{lmn}\mathcal R_l^m(\rho)
 \cos(m\theta-nN_{\rm FP}\phi)
-+\sum_{lmn}c^{(s)}_{lmn}R_l^m(\rho)
++\sum_{lmn}c^{(s)}_{lmn}\mathcal R_l^m(\rho)
 \sin(m\theta-nN_{\rm FP}\phi).
 $$
+
+这里的 $\mathcal R_l^m(\rho)$ 是**标准 Zernike 径向多项式**，不是物理柱坐标中的
+大半径 $R$。为避免与物理坐标 $R$ 混淆，本报告用花体 $\mathcal R$ 表示它；代码中
+对应 `zernike_radial(rho, l, m)`。其显式定义为
+
+$$
+\mathcal R_l^m(\rho)
+=\sum_{k=0}^{(l-m)/2}
+(-1)^k
+\frac{(l-k)!}
+{k!\left(\frac{l+m}{2}-k\right)!\left(\frac{l-m}{2}-k\right)!}
+\rho^{l-2k},
+$$
+
+其中只保留
+
+$$
+l\ge m\ge0,
+\qquad
+l-m\ \text{为偶数}
+$$
+
+的模式；不满足条件时该径向模式不存在。这里 $l$ 是径向阶数，$m$ 是极向 Fourier
+模数，$n$ 是环向 Fourier 模数。例如
+
+$$
+\mathcal R_1^1(\rho)=\rho,
+\qquad
+\mathcal R_2^0(\rho)=2\rho^2-1,
+\qquad
+\mathcal R_3^1(\rho)=3\rho^3-2\rho.
+$$
+
+这种选择使 $m>0$ 的模式在磁轴附近至少按 $\rho^m$ 消失，从而满足极坐标轴附近的
+正则性；不同允许的 $l$ 则描述同一极向模数 $m$ 下不同的径向变化。
 
 纯磁通函数 $m=n=0$ 被删除，以固定 gauge。iota 使用
 

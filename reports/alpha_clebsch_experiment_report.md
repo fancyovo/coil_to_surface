@@ -501,3 +501,233 @@ $$
 - `desc_solve_summary.json`
 
 测试结果：alpha 新测试与相关既有回归测试合计 9 项全部通过。
+
+## 12. 补充实验：固定磁面直接评估 Simsopt Boozer residual
+
+### 12.1 这个诊断是否合理
+
+这个诊断合理，但需要区分“直场线坐标”和“完整 Boozer 坐标”。对于当前真空线圈场
+且无等离子体环向电流的例子，Simsopt 使用的 Boozer 曲面残差为
+
+$$
+\boldsymbol r_B
+=G\boldsymbol B
+-B^2\left(\boldsymbol x_\phi+\iota\boldsymbol x_\theta\right).
+$$
+
+令
+
+$$
+\boldsymbol t
+=\boldsymbol x_\phi+\iota\boldsymbol x_\theta.
+$$
+
+完整 Boozer 条件同时要求：
+
+1. $\boldsymbol t$ 与 $\boldsymbol B$ 平行，即磁力线在坐标中是直线；
+2. 沿场参数速度满足
+
+   $$
+   \boldsymbol t=\frac{G}{B^2}\boldsymbol B;
+   $$
+
+3. 同一磁面上的 $G$ 是常数。
+
+当前 alpha 拟合直接解决的是第 1 条。由于仍把几何环向角 $\phi$ 当作环向坐标，
+第 2、3 条并不会自动满足。因此“经过 lambda 后方向 residual 应很小”是正确的，
+但“完整 Simsopt Boozer residual 也必然很小”还缺少一个环向坐标修正。
+
+### 12.2 实验流程
+
+该实验严格冻结磁面，不调用 Simsopt 的 Boozer LS、Newton 或任何曲面优化：
+
+1. 取 $\rho=0.12,0.2,\ldots,1.0$ 共 10 个 $s$ 等值面；
+2. 每个面先由当前 psi 模型直接提取 $49\times49$ 个物理点；
+3. 分别使用未修正的顺时针几何角和
+
+   $$
+   \vartheta=\theta+\lambda
+   $$
+
+   对同一个几何磁面重新参数化；
+4. 只做 `SurfaceXYZTensorFourier` 的有限阶谱投影，测试曲面阶数 6 和 12；
+5. 在与投影格点错开的独立角网格上计算 residual；
+6. 曲面系数和 alpha 拟合给出的 $\iota$ 都保持冻结，只对标量 $G$ 做线性最小二乘；
+7. 另对 $\iota,G$ 做一次两列线性最小二乘，作为该固定曲面能达到的辅助下界，
+   但不把重新拟合的 $\iota$ 当作物理结果，也不用于主图和主表。
+
+第 6、7 步都不是曲面优化。固定 $\iota$ 时，$G$ 的最优值是一列线性最小二乘；
+辅助下界所用方程
+
+$$
+G\boldsymbol B-\iota B^2\boldsymbol x_\theta
+=B^2\boldsymbol x_\phi
+$$
+
+对 $G$ 和 $\iota$ 是一个只有两列的线性最小二乘问题。辅助下界与固定 $\iota$
+结果只相差约 $10^{-5}$ 到 $5\times10^{-4}$，不影响下面的物理判断。
+
+为去除磁场量纲，图中完整 residual 定义为
+
+$$
+\epsilon_B
+=\frac{
+\left\|\boldsymbol r_B/|B|\right\|_2
+}{
+|G|\sqrt{N}
+}.
+$$
+
+同时单独报告：
+
+- $\boldsymbol t$ 与 $\boldsymbol B$ 的方向夹角 p95；
+- 局部速度量
+
+  $$
+  G_{\rm local}=\boldsymbol B\cdot\boldsymbol t
+  $$
+
+  的相对标准差。
+
+### 12.3 径向扫描结果
+
+![固定磁面的 Boozer residual 径向扫描](alpha_clebsch_experiment/boozer_residual_vs_rho.png)
+
+12 阶曲面的代表数据如下：
+
+| rho | 几何角方向 p95 | alpha 方向 p95 | alpha 完整 residual | alpha 的 $\operatorname{std}(G_{\rm local})/|\langle G_{\rm local}\rangle|$ |
+|---:|---:|---:|---:|---:|
+| 0.12 | 0.206 deg | 0.106 deg | 0.14093 | 0.14092 |
+| 0.30 | 0.512 deg | 0.075 deg | 0.14110 | 0.14110 |
+| 0.50 | 0.856 deg | 0.058 deg | 0.14149 | 0.14149 |
+| 0.80 | 1.382 deg | 0.038 deg | 0.14240 | 0.14240 |
+| 1.00 | 1.744 deg | 0.395 deg | 0.14326 | 0.14322 |
+
+这里可以看到：
+
+1. alpha 对直场线方向的修正非常有效。除最外层受有限阶曲面投影影响外，方向
+   p95 基本在 $0.04^\circ$ 到 $0.1^\circ$；
+2. 未修正几何角的方向误差随半径增长，外层达到约 $1.7^\circ$；
+3. 完整 Boozer residual 只从几何参数化的约 14.1%-14.4% 降到
+   alpha 参数化的约 14.1%-14.3%；
+4. 完整 residual 几乎等于 $G_{\rm local}$ 的相对起伏，说明剩余误差由 Boozer
+   环向角速度主导，而不是磁力线仍然不直；
+5. alpha 面上的法向场角正弦 p95 约为
+   $1.7\times10^{-4}$ 到 $7.5\times10^{-4}$，说明这些面仍是良好的近似磁面。
+
+### 12.4 是否出现预期的“内高外低”
+
+没有在**完整 Boozer residual** 上出现内高外低。完整 residual 从内向外略微增加，
+原因是所有半径都共同受到约 14% 的环向速度误差控制。
+
+这与第 4.1 节的体点结果并不矛盾。第 4.1 节测量的是
+
+$$
+\nabla\psi_T\times\nabla\alpha
+$$
+
+对完整磁场矢量大小和方向的三维重构，其中近轴归一化、采样占比和坐标奇点会造成
+明显的内层误差；本节测量的是每个固定曲面上场线切向方向以及 Boozer 参数速度。
+两者不是同一个 residual。
+
+因此原判断应修正为：
+
+- 若画三维 Clebsch 磁场重构 residual，确实内高外低；
+- 若画磁力线方向误差，alpha 后各层都已经很低；
+- 若画完整 Simsopt Boozer residual，则当前由未修正的环向角主导，不呈内高外低。
+
+### 12.5 与旧 Simsopt 优化曲面的对照
+
+旧 `boozer_surface.npz` 在独立于 Newton 配点的网格上得到：
+
+$$
+\epsilon_B=1.24\times10^{-3},
+$$
+
+方向 p95 约 $0.090^\circ$，$G_{\rm local}$ 相对标准差约
+$8.80\times10^{-4}$。单看这些数字，它已经接近完整 Boozer 参数化。
+
+但它不是目标 $s=0.16$ 外层面的有效参考。把该曲面的 66,049 个物理点代回当前
+$s(R,Z,\phi)$ 后得到
+
+$$
+\langle s\rangle=0.03234,
+\qquad
+s_{\max}=0.03398,
+$$
+
+而不是文件标记的 $s=0.16$。由
+
+$$
+d_s\simeq\frac{|s-s_{\rm edge}|}{|\nabla s|}
+$$
+
+估计的法向距离均值为 17.1 mm，p95 为 22.6 mm。该曲面的环向拓扑绕数仍为
+1，带符号体积也仍为 $0.006024\,\mathrm{m}^3$。因此按当前拟合的 $s$ 模型判断，
+旧优化在“固定体积”约束下跳到了另一个几何分支，而不是简单发生多重环向绕行。
+
+这解释了此前三个同时出现的异常：
+
+1. Newton 配点 residual 极小；
+2. 文件 iota 与长场线 iota 不一致；
+3. DESC 使用该边界时行为异常。
+
+因此不能用旧优化 Boozer 曲面来否定当前 alpha 面，也不能把其
+$\iota=-0.486970$ 当作目标外层面的真值。
+
+### 12.6 当前离完整 Boozer 坐标还有多远
+
+可以用两句话概括：
+
+1. **离直场线坐标已经很近：**方向误差通常只有 $0.04^\circ$ 到 $0.1^\circ$；
+2. **离完整 Boozer 坐标还差一个约 14% 的环向速度修正：**当前
+   $G_{\rm local}$ 在磁面上还不是常数。
+
+这个缺口不要求退回 Simsopt 做自由曲面非线性优化。可以引入一个周期环向修正
+$\nu$：
+
+$$
+\phi_B=\phi+\nu,
+\qquad
+\theta_B=\vartheta+\iota\nu.
+$$
+
+这样
+
+$$
+\theta_B-\iota\phi_B
+=\vartheta-\iota\phi
+=\alpha,
+$$
+
+所以已经求好的场线标签 alpha 完全不变。令
+
+$$
+D=\partial_\phi+\iota\partial_\vartheta,
+$$
+
+则新环向角沿场的变化率为 $1+D\nu$，而新的切向量为
+
+$$
+\boldsymbol t_B
+=\frac{\boldsymbol t}{1+D\nu}.
+$$
+
+要求 $\boldsymbol B\cdot\boldsymbol t_B=G$，得到
+
+$$
+D\nu
+=\frac{G_{\rm local}}{G}-1.
+$$
+
+这是一条沿已拉直磁力线方向的**线性磁微分方程**。因此最自然的下一步不是对磁面
+做非线性 Boozer 优化，而是在每个固定 $s$ 面上继续用稠密线性最小二乘求 $\nu$，
+再用 $(\theta_B,\phi_B)$ 重新评估 Simsopt residual。若该步成功，约 14% 的主导速度
+误差应显著下降，同时保留当前 alpha 已经获得的直场线性质。
+
+本节新增可复现实验：
+
+- `scripts/diagnose_alpha_boozer_residual.py`
+- `scripts/diagnose_saved_boozer_psi_distance.py`
+- `alpha_clebsch_experiment/alpha_boozer_residual_summary.json`
+- `alpha_clebsch_experiment/saved_boozer_psi_distance.json`

@@ -731,3 +731,224 @@ $$
 - `scripts/diagnose_saved_boozer_psi_distance.py`
 - `alpha_clebsch_experiment/alpha_boozer_residual_summary.json`
 - `alpha_clebsch_experiment/saved_boozer_psi_distance.json`
+
+## 13. 环向坐标修正及修正后的 Simsopt residual
+
+### 13.1 实验目标和配置
+
+本节实现第 12.6 节提出的周期环向修正 $\nu$。实验继续使用上一节完全相同的
+常数旋转变换拟合：
+
+$$
+\iota=-0.5652282746569637.
+$$
+
+磁面几何保持冻结，不调用 Simsopt Boozer LS、Newton 或任何曲面自由度优化。
+对每个 $\rho$ 的计算流程为：
+
+1. 从 $s=s_{\rm edge}\rho^2$ 提取物理磁面；
+2. 使用已有 $\lambda$ 得到直场线角 $\vartheta=\theta+\lambda$；
+3. 把该固定磁面投影为 12 阶 `SurfaceXYZTensorFourier`；
+4. 在 $65\times67$ 均匀网格上求 $\nu$；
+5. 反解坐标映射，把同一个物理磁面改写为 $(\phi_B,\theta_B)$ 参数化；
+6. 再投影为 12 阶 Simsopt 曲面；
+7. 在错开的 $57\times59$ 独立网格上计算
+   `boozer_surface_residual`。
+
+扫描了 $\nu$ 的 Fourier 阶数 4、8 和 12，并以 12 阶作为主结果。整个过程只改变
+磁面的参数化，不主动移动磁面。
+
+### 13.2 线性最小二乘的具体形式
+
+首先在每个固定磁面上定义
+
+$$
+G_{\rm local}
+=\boldsymbol B\cdot
+\left(\boldsymbol x_\phi+\iota\boldsymbol x_\vartheta\right),
+\qquad
+G=\langle G_{\rm local}\rangle,
+$$
+
+以及
+
+$$
+h=\frac{G_{\rm local}}{G}-1.
+$$
+
+这个选择保证 $\langle h\rangle=0$，满足周期磁微分方程的兼容条件。需要求解
+
+$$
+D\nu=h,
+\qquad
+D=\partial_\phi+\iota\partial_\vartheta.
+$$
+
+代码内部使用与 Simsopt 一致的“圈数”坐标
+
+$$
+\hat\phi=\frac{\phi}{2\pi},
+\qquad
+\hat\vartheta=\frac{\vartheta}{2\pi},
+\qquad
+\hat\nu=\frac{\nu}{2\pi}.
+$$
+
+展开为
+
+$$
+\hat\nu
+=\sum_{m,n}
+\left[
+a_{mn}\cos 2\pi(m\hat\vartheta-nN_{\rm fp}\hat\phi)
++b_{mn}\sin 2\pi(m\hat\vartheta-nN_{\rm fp}\hat\phi)
+\right].
+$$
+
+在归一化坐标中令
+
+$$
+\hat D
+=\partial_{\hat\phi}
++\iota\partial_{\hat\vartheta}.
+$$
+
+因为 $D\nu=\hat D\hat\nu$，方程本身不变。每个模在 $\hat D$ 下只乘以常数
+
+$$
+k_{mn}=2\pi(m\iota-nN_{\rm fp})
+$$
+
+并在正弦和余弦之间互换。因此在完整均匀周期网格上，Fourier 投影就是该线性
+最小二乘问题的正交闭式解，不需要非线性迭代。本次 4、8、12 阶扫描没有跳过任何
+共振模，也没有使用正则化。
+
+### 13.3 坐标映射和独立验证
+
+求得 $\nu$ 后定义
+
+$$
+\phi_B=\phi+\nu,
+\qquad
+\theta_B=\vartheta+\iota\nu.
+$$
+
+这严格保持
+
+$$
+\theta_B-\iota\phi_B
+=\vartheta-\iota\phi
+=\alpha.
+$$
+
+为了在规则的 $(\phi_B,\theta_B)$ 网格上重新采样同一个磁面，代码利用 alpha 不变性，
+对每个目标点只需求解一维方程
+
+$$
+F(\hat\phi)
+=\hat\phi
++\hat\nu(\hat\alpha+\iota\hat\phi,\hat\phi)
+-\hat\phi_B
+=0.
+$$
+
+其导数正是
+
+$$
+F'(\hat\phi)=1+D\nu.
+$$
+
+所有磁面的映射均保持可逆：
+
+$$
+0.7435
+\le 1+D\nu
+\le 1.2054.
+$$
+
+一维 Newton 的最大反解残差为 $5.6\times10^{-17}$ 圈。$\nu$ 的最大绝对幅度从
+内层约 $4.00^\circ$ 平滑增加到边界约 $5.02^\circ$，不是一个接近折叠的大变换。
+
+本节同时计算两个修正后 residual：
+
+解析修正直接使用
+
+$$
+\boldsymbol t_B
+=\frac{\boldsymbol t}{1+D\nu}
+$$
+
+计算 residual。Simsopt 修正则完成坐标反解和 12 阶曲面重投影后，直接调用
+`boozer_surface_residual`。
+
+两者若一致，说明 residual 的下降不是手工公式与 Simsopt 接口定义不一致造成的。
+
+### 13.4 径向扫描结果
+
+![环向修正后的 Boozer residual](alpha_clebsch_experiment/toroidal_correction_vs_rho.png)
+
+12 阶 $\nu$ 的代表结果如下：
+
+| $\rho$ | alpha-only residual | alpha+$\nu$ Simsopt residual | 降低倍数 | 修正后方向 p95 | 修正后 $G_{\rm local}$ 相对标准差 |
+|---:|---:|---:|---:|---:|---:|
+| 0.12 | 0.14093 | 0.001100 | 128 | $0.1075^\circ$ | $4.13\times10^{-5}$ |
+| 0.20 | 0.14098 | 0.000999 | 141 | $0.0998^\circ$ | $3.21\times10^{-5}$ |
+| 0.30 | 0.14110 | 0.000698 | 202 | $0.0796^\circ$ | $1.70\times10^{-5}$ |
+| 0.50 | 0.14149 | 0.000473 | 299 | $0.0616^\circ$ | $2.39\times10^{-5}$ |
+| 0.80 | 0.14240 | 0.000352 | 404 | $0.0360^\circ$ | $3.49\times10^{-5}$ |
+| 1.00 | 0.14326 | 0.003311 | 43 | $0.4015^\circ$ | $2.80\times10^{-4}$ |
+
+主要结论为：
+
+1. 对 $0.12\le\rho\le0.9$，完整 Simsopt residual 从约 14.1%-14.3% 降到
+   0.035%-0.110%，降低 128-404 倍；
+2. 边界 $\rho=1$ 也从 14.33% 降到 0.331%，降低约 43 倍；
+3. 对 $\rho\le0.9$，$G_{\rm local}$ 的相对起伏已从约 14% 降到
+   $1.7\times10^{-5}$ 至 $4.6\times10^{-5}$；
+4. 解析修正与重新投影后的 Simsopt residual 通常只相差 $10^{-5}$ 到
+   $3\times10^{-5}$，边界也只相差约 $5\times10^{-5}$，说明坐标反解和 Simsopt
+   接口是自洽的；
+5. 重投影 RMS 在 $\rho\le0.9$ 时约为 $0.7$-2.1 微米，边界为 13.4 微米。
+
+### 13.5 谱阶数扫描
+
+![环向修正谱收敛](alpha_clebsch_experiment/toroidal_correction_order_scan.png)
+
+$\nu$ 从 4 阶升到 8 阶时有明显收益，8 阶升到 12 阶后完整 residual 已接近平台。
+例如在 $\rho=0.5$：
+
+| $\nu$ 阶数 | $\|D\nu-h\|/\|h\|$ | Simsopt residual |
+|---:|---:|---:|
+| 4 | $5.92\times10^{-3}$ | $9.54\times10^{-4}$ |
+| 8 | $8.91\times10^{-4}$ | $4.87\times10^{-4}$ |
+| 12 | $1.64\times10^{-4}$ | $4.73\times10^{-4}$ |
+
+继续降低磁微分方程拟合误差已经不能同比降低完整 residual，因为此时主导项已不再是
+$G_{\rm local}$ 的速度起伏，而是 alpha 坐标原有的场线方向误差。
+
+### 13.6 物理结论和剩余问题
+
+第 12.6 节提出的判断得到验证：此前约 14% 的完整 Simsopt residual 确实主要缺少
+一个环向 Boozer 坐标修正，而不是磁面几何本身离 Boozer 面很远。$\nu$ 是稳定的
+线性问题，求解后中间大部分磁面已经达到 $10^{-4}$ 到 $10^{-3}$ 量级的完整
+Boozer residual。
+
+纯环向修正不会改变场线方向，只会改变沿场参数速度。因此修正后 residual 的下限
+由 alpha-only 的方向误差决定。边界 $\rho=1$ 的 residual 明显高于内层，正对应其
+方向 p95 约 $0.40^\circ$ 的既有尖峰；此时 $G_{\rm local}$ 起伏已经只有
+$2.8\times10^{-4}$，继续增加 $\nu$ 阶数不能解决该问题。下一步若要进一步降低
+边界 residual，应改进最外层的 $\lambda$/alpha 表示或 R/Z 谱投影，而不是继续调整
+环向速度方程。
+
+与旧 Simsopt 优化面相比，本方法没有移动磁面，也没有固定体积下的分支跳转风险。
+因此当前结果可以概括为：**目标 $s$ 分支上的直场线坐标已经基本补全为 Boozer
+坐标；内层和中层误差已很小，最外层仍受 alpha 方向拟合误差限制。**
+
+本节新增实现和原始结果：
+
+- `stellarator_eval/toroidal_correction.py`
+- `scripts/diagnose_alpha_toroidal_correction.py`
+- `tests/test_toroidal_correction.py`
+- `alpha_clebsch_experiment/alpha_toroidal_correction_summary.json`
+- `alpha_clebsch_experiment/toroidal_correction_vs_rho.png`
+- `alpha_clebsch_experiment/toroidal_correction_order_scan.png`

@@ -133,7 +133,7 @@ struct SgpuScoreResult {
     std::int32_t status;
     std::int32_t stage_completed;
     std::int32_t device_id;
-    std::int32_t reserved_i32;
+    std::int32_t flux_attempt_count;
 
     double score;
     double components[SGPU_SCORE_COMPONENT_COUNT];

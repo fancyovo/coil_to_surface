@@ -20,6 +20,7 @@ TRACE_PRECISION_ALIASES = {
 }
 
 _UTILITY_LIB_CACHE: dict[str, ctypes.CDLL] = {}
+_NATIVE_SCORE_LIB_CACHE: dict[str, ctypes.CDLL] = {}
 
 
 class GpuError(RuntimeError):
@@ -147,7 +148,7 @@ class _SgpuScoreResult(ctypes.Structure):
         ("status", ctypes.c_int32),
         ("stage_completed", ctypes.c_int32),
         ("device_id", ctypes.c_int32),
-        ("reserved_i32", ctypes.c_int32),
+        ("flux_attempt_count", ctypes.c_int32),
         ("score", ctypes.c_double),
         ("components", ctypes.c_double * 6),
         ("timings", ctypes.c_double * 16),
@@ -233,8 +234,12 @@ def score_coils_native(
     config_overrides: dict | None = None,
 ) -> dict:
     """Call the all-native coil-to-score pipeline as a single black box."""
-    lib = ctypes.CDLL(str(lib_path))
-    _bind_native_score(lib)
+    path = str(Path(lib_path).resolve())
+    lib = _NATIVE_SCORE_LIB_CACHE.get(path)
+    if lib is None:
+        lib = ctypes.CDLL(path)
+        _bind_native_score(lib)
+        _NATIVE_SCORE_LIB_CACHE[path] = lib
     config = _SgpuScoreConfig()
     _check_lib_code(lib, lib.sgpu_default_score_config(ctypes.byref(config)))
     config.device_id = int(device_id)

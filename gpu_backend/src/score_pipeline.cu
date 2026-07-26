@@ -708,8 +708,10 @@ bool find_axis_native(
     int n_coeff,
     int nfp,
     const SgpuScoreConfig& config,
-    AxisData& axis
+    AxisData& axis,
+    double& trace_time
 ) {
+    trace_time = 0.0;
     const AxisDomain domain = build_axis_domain(
         coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff, config
     );
@@ -751,10 +753,13 @@ bool find_axis_native(
     axis.Z.resize(config.axis_sample_count);
     axis.R_phi.resize(config.axis_sample_count);
     axis.Z_phi.resize(config.axis_sample_count);
-    if (sgpu_trace_axis_samples(
+    const auto trace_started = Clock::now();
+    const int trace_code = sgpu_trace_axis_samples(
             field, axis.selected.R, axis.selected.Z, nfp,
             config.axis_trace_steps, config.axis_sample_count,
-            axis.R.data(), axis.Z.data(), axis.R_phi.data(), axis.Z_phi.data())) {
+            axis.R.data(), axis.Z.data(), axis.R_phi.data(), axis.Z_phi.data());
+    trace_time = seconds_since(trace_started);
+    if (trace_code) {
         return false;
     }
     return true;
@@ -2884,6 +2889,7 @@ bool run_downstream_gpu(
     const SurfaceScreen* selected_surface = nullptr;
     bool flux_ok = false;
     for (const SurfaceScreen* candidate : candidates) {
+        ++result.flux_attempt_count;
         FluxCalibrationNative trial;
         const bool trial_ok = calibrate_flux_native(
             field, device_psi, axis, psi, nfp, candidate->level, config, trial, result
@@ -3151,13 +3157,16 @@ int sgpu_score_coils(
     do {
         AxisData axis;
         stage_started = Clock::now();
+        double axis_trace_time = 0.0;
         if (!find_axis_native(
                 field, coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff,
-                nfp, *config, axis)) {
+                nfp, *config, axis, axis_trace_time)) {
             return_code = fail_from_backend(result, "axis search");
             break;
         }
-        result->timings[SGPU_SCORE_TIME_AXIS_SEARCH] = seconds_since(stage_started);
+        result->timings[SGPU_SCORE_TIME_AXIS_TRACE] = axis_trace_time;
+        result->timings[SGPU_SCORE_TIME_AXIS_SEARCH] =
+            std::max(0.0, seconds_since(stage_started) - axis_trace_time);
         result->axis_candidate_count = axis.candidate_count;
         if (axis.R.empty()) {
             result->status = SGPU_SCORE_NO_AXIS;

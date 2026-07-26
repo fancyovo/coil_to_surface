@@ -16,9 +16,7 @@ target_include_directories(stellarator_gpu PUBLIC
 )
 
 target_link_libraries(stellarator_gpu PUBLIC CUDA::cublas CUDA::cusolver)
-target_link_options(stellarator_gpu PRIVATE
-    $<$<LINK_LANGUAGE:CUDA>:-Xcompiler=-static-libstdc++,-static-libgcc>
-)
+target_link_options(stellarator_gpu PRIVATE -static-libstdc++ -static-libgcc)
 
 set(SGPU_WARPS_PER_BLOCK "8" CACHE STRING "Warps per block for warp-per-line kernels")
 set(SGPU_SEG_TILE "256" CACHE STRING "Segment tile size")

@@ -1465,7 +1465,7 @@ __global__ void solve_boundary_radii_kernel(
         : a_scale * sqrtf(fmaxf(level, 1.0e-16f));
     const float maximum = max_radius_scale * a_scale;
     radius = fminf(maximum, fmaxf(1.0e-12f * a_scale, radius));
-    float final_residual = CUDART_INF_F;
+    float final_residual = INFINITY;
     for (int iteration = 0; iteration < iterations; ++iteration) {
         const float u = radius / a_scale;
         float value = 0.0f;

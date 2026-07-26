@@ -76,6 +76,8 @@ struct SgpuScoreConfig {
     std::int32_t psi_n_z;
     std::int32_t psi_n_phi;
     std::int32_t psi_validation_points;
+    std::int32_t psi_solver_mode;
+    std::int32_t psi_precision_mode;
     double psi_a;
     double psi_rho_min;
     double psi_ridge;

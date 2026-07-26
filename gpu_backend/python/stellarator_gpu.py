@@ -92,6 +92,8 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("psi_n_z", ctypes.c_int32),
         ("psi_n_phi", ctypes.c_int32),
         ("psi_validation_points", ctypes.c_int32),
+        ("psi_solver_mode", ctypes.c_int32),
+        ("psi_precision_mode", ctypes.c_int32),
         ("psi_a", ctypes.c_double),
         ("psi_rho_min", ctypes.c_double),
         ("psi_ridge", ctypes.c_double),

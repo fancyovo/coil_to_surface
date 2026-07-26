@@ -891,7 +891,8 @@ bool fit_psi_native(
         psi.modes.a.data(), psi.modes.b.data(), psi.modes.m.data(), psi.modes.kind.data(),
         static_cast<int>(psi.modes.a.size()), nfp, config.psi_a,
         config.psi_poly_degree, config.psi_m_tor, config.psi_ridge,
-        2, 2, psi.coeffs.data(), &psi.train_rms, stats.data(), static_cast<int>(stats.size())
+        config.psi_solver_mode, config.psi_precision_mode,
+        psi.coeffs.data(), &psi.train_rms, stats.data(), static_cast<int>(stats.size())
     );
     fit_time = seconds_since(started);
     return code == 0;
@@ -1134,6 +1135,8 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.axis_grid < 8 || config.axis_fallback_grid < config.axis_grid ||
         config.axis_sample_count < 16 || config.psi_poly_degree < 2 ||
         config.psi_poly_degree > 24 || config.psi_m_tor < 0 || config.psi_m_tor > 32 ||
+        (config.psi_solver_mode != 1 && config.psi_solver_mode != 2) ||
+        (config.psi_precision_mode != 1 && config.psi_precision_mode != 2) ||
         config.surface_level_count <= 0 ||
         config.surface_level_count > SGPU_SCORE_MAX_SURFACE_LEVELS ||
         config.surface_theta_count < 16 || config.volume_point_count <= 0 ||
@@ -1506,6 +1509,16 @@ __global__ void solve_boundary_radii_kernel(
         const float limit = 0.4f * fmaxf(radius, 1.0e-10f);
         const float step = fminf(limit, fmaxf(-limit, final_residual / denominator));
         radius = fminf(maximum, fmaxf(1.0e-12f * a_scale, radius - step));
+    }
+    {
+        const float u = radius / a_scale;
+        float value = 0.0f;
+        float power = u * u;
+        for (int degree_now = 2; degree_now <= degree; ++degree_now) {
+            if (degree_now > 2) power *= u;
+            value += polynomial[degree_now] * power;
+        }
+        final_residual = value - level;
     }
     radii[index] = radius;
     residuals[index] = fabsf(final_residual);
@@ -2767,11 +2780,6 @@ bool run_downstream_gpu(
     );
     result.timings[SGPU_SCORE_TIME_FLUX] = seconds_since(started);
     if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
-    if (!flux_ok) {
-        result.status = SGPU_SCORE_FLUX_REJECTED;
-        result.stage_completed = SCORE_STAGE_FLUX;
-        return false;
-    }
     result.flux_edge = flux.edge_flux;
     result.flux_fit_relative_rms = flux.fit_relative_rms;
     result.flux_section_relative_std_edge = flux.section_relative_std_edge;
@@ -2783,6 +2791,10 @@ bool run_downstream_gpu(
     result.surface_inverse_aspect_ratio = flux.effective_minor_radius /
         std::max(flux.major_radius, 1.0e-30);
     result.stage_completed = SCORE_STAGE_FLUX;
+    if (!flux_ok) {
+        result.status = SGPU_SCORE_FLUX_REJECTED;
+        return false;
+    }
 
     DeviceVolumePoints points;
     started = Clock::now();
@@ -2896,6 +2908,8 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->psi_n_z = 80;
     config->psi_n_phi = 80;
     config->psi_validation_points = 4000;
+    config->psi_solver_mode = 1;
+    config->psi_precision_mode = 2;
     config->psi_a = 0.05;
     config->psi_rho_min = 0.002;
     config->psi_ridge = 1.0e-6;
@@ -2914,7 +2928,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->flux_theta_count = 256;
     config->flux_radial_quadrature = 24;
     config->flux_polynomial_degree = 4;
-    config->flux_boundary_tolerance = 1.0e-9;
+    config->flux_boundary_tolerance = 2.0e-6;
     config->flux_section_relative_std_tolerance = 0.02;
     config->volume_point_count = 100000;
     config->volume_phi_count = 96;
@@ -2935,7 +2949,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_surface_inverse_aspect_scale = 0.04;
     config->score_surface_drift_scale = 0.02;
     config->score_flux_section_std_scale = 0.01;
-    config->score_flux_boundary_residual_scale = 1.0e-9;
+    config->score_flux_boundary_residual_scale = 2.0e-6;
     config->score_alpha_normal_B_scale = 1.0e-4;
     config->score_alpha_relative_l2_scale = 0.25;
     config->score_qs_global_scale = 0.05;

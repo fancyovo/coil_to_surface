@@ -109,6 +109,7 @@ struct SgpuScoreConfig {
     std::int32_t alpha_toroidal_order;
     std::int32_t iota_degree;
     std::int32_t radial_bin_count;
+    std::int32_t alpha_solver_mode;
     double volume_rho_min;
     double alpha_ridge;
 

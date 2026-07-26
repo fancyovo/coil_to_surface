@@ -1141,7 +1141,8 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.surface_level_count > SGPU_SCORE_MAX_SURFACE_LEVELS ||
         config.surface_theta_count < 16 || config.volume_point_count <= 0 ||
         config.alpha_fit_point_count <= 0 ||
-        config.alpha_fit_point_count > config.volume_point_count) {
+        config.alpha_fit_point_count > config.volume_point_count ||
+        (config.alpha_solver_mode != 1 && config.alpha_solver_mode != 2)) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -2545,53 +2546,118 @@ bool fit_alpha_native(
         fail_result(&result, "alpha cuBLAS/cuSOLVER initialization failed");
         return false;
     }
-    int geqrf_work = 0;
-    int ormqr_work = 0;
-    cusolverStatus_t solver_status = cusolverDnSgeqrf_bufferSize(
-        solver, qr_rows, column_count, d_matrix.data(), qr_rows, &geqrf_work
-    );
-    if (solver_status == CUSOLVER_STATUS_SUCCESS) {
-        solver_status = cusolverDnSormqr_bufferSize(
-            solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, column_count,
-            d_matrix.data(), qr_rows, d_tau.data(), d_rhs.data(), qr_rows, &ormqr_work
-        );
-    }
-    DeviceBuffer<float> d_work(std::max(geqrf_work, ormqr_work));
     int info = 0;
-    if (solver_status != CUSOLVER_STATUS_SUCCESS || !d_work.data()) {
-        cublasDestroy(blas);
-        cusolverDnDestroy(solver);
-        fail_result(&result, "alpha QR workspace query failed");
-        return false;
-    }
-    solver_status = cusolverDnSgeqrf(
-        solver, qr_rows, column_count, d_matrix.data(), qr_rows,
-        d_tau.data(), d_work.data(), static_cast<int>(d_work.size()), d_info.data()
-    );
-    cudaMemcpy(&info, d_info.data(), sizeof(int), cudaMemcpyDeviceToHost);
-    if (solver_status == CUSOLVER_STATUS_SUCCESS && info == 0) {
-        solver_status = cusolverDnSormqr(
-            solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, column_count,
-            d_matrix.data(), qr_rows, d_tau.data(), d_rhs.data(), qr_rows,
-            d_work.data(), static_cast<int>(d_work.size()), d_info.data()
+    cublasStatus_t blas_status = CUBLAS_STATUS_SUCCESS;
+    cusolverStatus_t solver_status = CUSOLVER_STATUS_SUCCESS;
+    float* d_scaled_solution = nullptr;
+    DeviceBuffer<float> d_normal_matrix;
+    DeviceBuffer<float> d_normal_rhs;
+    DeviceBuffer<float> d_normal_work;
+    if (config.alpha_solver_mode == 1) {
+        if (!d_normal_matrix.allocate(static_cast<size_t>(column_count) * column_count) ||
+            !d_normal_rhs.allocate(column_count)) {
+            cublasDestroy(blas);
+            cusolverDnDestroy(solver);
+            fail_result(&result, "alpha normal-equation allocation failed");
+            return false;
+        }
+        const float one = 1.0f;
+        const float zero = 0.0f;
+        blas_status = cublasSgemm(
+            blas, CUBLAS_OP_T, CUBLAS_OP_N, column_count, column_count, qr_rows,
+            &one, d_matrix.data(), qr_rows, d_matrix.data(), qr_rows,
+            &zero, d_normal_matrix.data(), column_count
+        );
+        if (blas_status == CUBLAS_STATUS_SUCCESS) {
+            blas_status = cublasSgemv(
+                blas, CUBLAS_OP_T, qr_rows, column_count, &one,
+                d_matrix.data(), qr_rows, d_rhs.data(), 1,
+                &zero, d_normal_rhs.data(), 1
+            );
+        }
+        int work_size = 0;
+        if (blas_status == CUBLAS_STATUS_SUCCESS) {
+            solver_status = cusolverDnSpotrf_bufferSize(
+                solver, CUBLAS_FILL_MODE_LOWER, column_count,
+                d_normal_matrix.data(), column_count, &work_size
+            );
+        }
+        if (solver_status == CUSOLVER_STATUS_SUCCESS && !d_normal_work.allocate(work_size)) {
+            solver_status = CUSOLVER_STATUS_ALLOC_FAILED;
+        }
+        if (solver_status == CUSOLVER_STATUS_SUCCESS && blas_status == CUBLAS_STATUS_SUCCESS) {
+            solver_status = cusolverDnSpotrf(
+                solver, CUBLAS_FILL_MODE_LOWER, column_count,
+                d_normal_matrix.data(), column_count, d_normal_work.data(), work_size,
+                d_info.data()
+            );
+            cudaMemcpy(&info, d_info.data(), sizeof(int), cudaMemcpyDeviceToHost);
+        }
+        if (solver_status == CUSOLVER_STATUS_SUCCESS && info == 0) {
+            solver_status = cusolverDnSpotrs(
+                solver, CUBLAS_FILL_MODE_LOWER, column_count, 1,
+                d_normal_matrix.data(), column_count, d_normal_rhs.data(), column_count,
+                d_info.data()
+            );
+            cudaMemcpy(&info, d_info.data(), sizeof(int), cudaMemcpyDeviceToHost);
+        }
+        if (solver_status != CUSOLVER_STATUS_SUCCESS || info != 0 ||
+            blas_status != CUBLAS_STATUS_SUCCESS) {
+            cublasDestroy(blas);
+            cusolverDnDestroy(solver);
+            fail_result(&result, "alpha FP32 Cholesky normal-equation solve failed");
+            return false;
+        }
+        d_scaled_solution = d_normal_rhs.data();
+    } else {
+        int geqrf_work = 0;
+        int ormqr_work = 0;
+        solver_status = cusolverDnSgeqrf_bufferSize(
+            solver, qr_rows, column_count, d_matrix.data(), qr_rows, &geqrf_work
+        );
+        if (solver_status == CUSOLVER_STATUS_SUCCESS) {
+            solver_status = cusolverDnSormqr_bufferSize(
+                solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, column_count,
+                d_matrix.data(), qr_rows, d_tau.data(), d_rhs.data(), qr_rows, &ormqr_work
+            );
+        }
+        DeviceBuffer<float> d_work(std::max(geqrf_work, ormqr_work));
+        if (solver_status != CUSOLVER_STATUS_SUCCESS || !d_work.data()) {
+            cublasDestroy(blas);
+            cusolverDnDestroy(solver);
+            fail_result(&result, "alpha QR workspace query failed");
+            return false;
+        }
+        solver_status = cusolverDnSgeqrf(
+            solver, qr_rows, column_count, d_matrix.data(), qr_rows,
+            d_tau.data(), d_work.data(), static_cast<int>(d_work.size()), d_info.data()
         );
         cudaMemcpy(&info, d_info.data(), sizeof(int), cudaMemcpyDeviceToHost);
-    }
-    cublasStatus_t blas_status = CUBLAS_STATUS_SUCCESS;
-    if (solver_status == CUSOLVER_STATUS_SUCCESS && info == 0) {
-        blas_status = cublasStrsv(
-            blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
-            column_count, d_matrix.data(), qr_rows, d_rhs.data(), 1
-        );
-    }
-    if (solver_status != CUSOLVER_STATUS_SUCCESS || info != 0 || blas_status != CUBLAS_STATUS_SUCCESS) {
-        cublasDestroy(blas);
-        cusolverDnDestroy(solver);
-        fail_result(&result, "alpha FP32 QR solve failed");
-        return false;
+        if (solver_status == CUSOLVER_STATUS_SUCCESS && info == 0) {
+            solver_status = cusolverDnSormqr(
+                solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, qr_rows, 1, column_count,
+                d_matrix.data(), qr_rows, d_tau.data(), d_rhs.data(), qr_rows,
+                d_work.data(), static_cast<int>(d_work.size()), d_info.data()
+            );
+            cudaMemcpy(&info, d_info.data(), sizeof(int), cudaMemcpyDeviceToHost);
+        }
+        if (solver_status == CUSOLVER_STATUS_SUCCESS && info == 0) {
+            blas_status = cublasStrsv(
+                blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
+                column_count, d_matrix.data(), qr_rows, d_rhs.data(), 1
+            );
+        }
+        if (solver_status != CUSOLVER_STATUS_SUCCESS || info != 0 ||
+            blas_status != CUBLAS_STATUS_SUCCESS) {
+            cublasDestroy(blas);
+            cusolverDnDestroy(solver);
+            fail_result(&result, "alpha FP32 QR solve failed");
+            return false;
+        }
+        d_scaled_solution = d_rhs.data();
     }
     unscale_alpha_solution_kernel<<<(column_count + threads - 1) / threads, threads>>>(
-        d_rhs.data(), d_scales.data(), column_count, d_solution.data()
+        d_scaled_solution, d_scales.data(), column_count, d_solution.data()
     );
     DeviceBuffer<float> d_prediction(fit_count);
     if (!d_prediction.data()) {
@@ -2605,7 +2671,7 @@ bool fit_alpha_native(
     const float minus_one = -1.0f;
     blas_status = cublasSgemv(
         blas, CUBLAS_OP_N, fit_count, column_count, &one,
-        d_matrix_reference.data(), fit_count, d_rhs.data(), 1, &zero, d_prediction.data(), 1
+        d_matrix_reference.data(), fit_count, d_scaled_solution, 1, &zero, d_prediction.data(), 1
     );
     if (blas_status == CUBLAS_STATUS_SUCCESS) {
         blas_status = cublasSaxpy(
@@ -2939,6 +3005,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->alpha_toroidal_order = 12;
     config->iota_degree = 0;
     config->radial_bin_count = 10;
+    config->alpha_solver_mode = 1;
     config->volume_rho_min = 0.08;
     config->alpha_ridge = 1.0e-7;
     const double weights[] = {18.0, 18.0, 18.0, 14.0, 20.0, 12.0};

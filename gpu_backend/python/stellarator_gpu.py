@@ -49,7 +49,7 @@ SGPU_SCORE_TIMING_NAMES = (
     "volume_points_s",
     "field_volume_s",
     "alpha_assemble_s",
-    "alpha_qr_s",
+    "alpha_solve_s",
     "qs_metrics_s",
     "score_s",
 )
@@ -122,6 +122,7 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("alpha_toroidal_order", ctypes.c_int32),
         ("iota_degree", ctypes.c_int32),
         ("radial_bin_count", ctypes.c_int32),
+        ("alpha_solver_mode", ctypes.c_int32),
         ("volume_rho_min", ctypes.c_double),
         ("alpha_ridge", ctypes.c_double),
         ("score_weights", ctypes.c_double * 6),

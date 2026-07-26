@@ -19,7 +19,7 @@ project=/home/scc/pb24511935/local_surface_evaluator
 case_dir=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases
 metadata=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/metadata_selected.json
 workers=${WORKERS:-1}
-samples_per_worker=${SAMPLES_PER_WORKER:-4}
+total_samples=${TOTAL_SAMPLES:-24}
 output_dir="$project/runs/native_score/concurrency_${workers}_${SLURM_JOB_ID}"
 children=()
 
@@ -59,7 +59,7 @@ for ((worker=0; worker<workers; ++worker)); do
         --output "$output_dir/worker_${worker}.jsonl" \
         --worker-index "$worker" \
         --worker-count "$workers" \
-        --limit "$samples_per_worker" \
+        --total-limit "$total_samples" \
         --warmup \
         > "$output_dir/worker_${worker}.summary.json" &
     children+=("$!")
@@ -71,8 +71,8 @@ for child in "${children[@]}"; do
 done
 children=()
 finished=$(date +%s.%N)
-printf '{"workers":%d,"samples_per_worker":%d,"wall_started":%s,"wall_finished":%s}\n' \
-    "$workers" "$samples_per_worker" "$started" "$finished" > "$output_dir/job.json"
+printf '{"workers":%d,"total_samples":%d,"wall_started":%s,"wall_finished":%s}\n' \
+    "$workers" "$total_samples" "$started" "$finished" > "$output_dir/job.json"
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
     --format=csv,noheader,nounits > "$output_dir/gpu_postflight.csv"
 exit "$status"

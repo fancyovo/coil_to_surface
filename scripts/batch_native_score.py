@@ -117,6 +117,7 @@ def main() -> None:
     parser.add_argument("--alpha-solver-mode", type=int, choices=(1, 2), default=1)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
+    parser.add_argument("--total-limit", type=int)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--warmup", action="store_true")
     args = parser.parse_args()
@@ -124,6 +125,8 @@ def main() -> None:
     if args.worker_count <= 0 or not 0 <= args.worker_index < args.worker_count:
         raise ValueError("worker-index must be in [0, worker-count)")
     paths = select_paths(args.case_dir, args.metadata, args.split)
+    if args.total_limit is not None:
+        paths = paths[: args.total_limit]
     paths = paths[args.worker_index :: args.worker_count]
     if args.limit is not None:
         paths = paths[: args.limit]

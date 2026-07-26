@@ -187,6 +187,68 @@ def _cartesian_gradient(radial, toroidal, vertical, phi, R):
     ])
 
 
+def _surface_radius_on_rays(
+    model: PsiModel,
+    level: float,
+    theta,
+    phi,
+    *,
+    max_radius: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Solve the fitted polynomial surface on independent (theta, phi) rays."""
+    theta, phi = np.broadcast_arrays(np.asarray(theta, float), np.asarray(phi, float))
+    theta = theta.ravel()
+    phi = phi.ravel()
+    cosine = np.cos(theta)
+    sine = np.sin(theta)
+    degree = max(mode.a + mode.b for mode in model.modes)
+    coefficients = np.zeros((degree + 1, len(theta)), dtype=float)
+    coefficients[2] = cosine * cosine
+    for coefficient, mode in zip(model.coeffs, model.modes):
+        argument = mode.m * model.nfp * phi
+        trig = np.cos(argument) if mode.kind == "cos" else np.sin(argument)
+        coefficients[mode.a + mode.b] += (
+            coefficient * cosine**mode.a * sine**mode.b * trig
+        )
+    limit = model.a if max_radius is None else min(float(max_radius), model.a)
+    quadratic = coefficients[2]
+    safe_quadratic = np.where(quadratic > 1e-10, quadratic, 1.0)
+    radius = np.where(
+        quadratic > 1e-10,
+        model.a * np.sqrt(max(float(level), 0.0) / safe_quadratic),
+        model.a * np.sqrt(max(float(level), 1e-16)),
+    )
+    radius = np.clip(radius, 1e-12 * model.a, limit)
+    residual = np.full_like(radius, np.inf)
+    for _ in range(30):
+        normalized = radius / model.a
+        value = np.zeros_like(radius)
+        derivative = np.zeros_like(radius)
+        for power in range(2, degree + 1):
+            value += coefficients[power] * normalized**power
+            derivative += (
+                power
+                * coefficients[power]
+                * normalized ** (power - 1)
+                / model.a
+            )
+        residual = value - level
+        if float(np.max(np.abs(residual))) <= 1e-12:
+            break
+        denominator = np.where(
+            np.abs(derivative) > 1e-14,
+            derivative,
+            np.where(derivative >= 0.0, 1e-14, -1e-14),
+        )
+        step = np.clip(
+            residual / denominator,
+            -0.4 * np.maximum(radius, 1e-10),
+            0.4 * np.maximum(radius, 1e-10),
+        )
+        radius = np.clip(radius - step, 1e-12 * model.a, limit)
+    return radius, np.abs(residual)
+
+
 def sample_volume_points(
     model: PsiModel,
     config: VolumeQSConfig,
@@ -195,30 +257,69 @@ def sample_volume_points(
     extent: float | None = None,
 ) -> dict[str, np.ndarray]:
     extent = model.a if extent is None else min(float(extent), model.a)
-    dr = -extent + (np.arange(config.grid_xy) + 0.371) * (2.0 * extent / config.grid_xy)
-    dz = -extent + (np.arange(config.grid_xy) + 0.613) * (2.0 * extent / config.grid_xy)
-    phi_values = (np.arange(config.grid_phi) + 0.417) * (TWOPI / (model.nfp * config.grid_phi))
-    dr_grid, dz_grid, phi = np.meshgrid(dr, dz, phi_values, indexing="ij")
-    dr_flat = dr_grid.ravel()
-    dz_flat = dz_grid.ravel()
-    phi_flat = phi.ravel()
-    disk = dr_flat * dr_flat + dz_flat * dz_flat <= extent * extent
-    dr_flat = dr_flat[disk]
-    dz_flat = dz_flat[disk]
-    phi_flat = phi_flat[disk]
-    ra, za, _, _ = model.axis_at(phi_flat)
-    R = ra + dr_flat
-    Z = za + dz_flat
-    s, grad_R, grad_Z, grad_phi_coordinate = evaluate_psi_tensor_torch(
-        model, R, Z, phi_flat, device=device, precision=config.precision
-    )
     lower = config.s_edge * config.rho_min**2
-    keep = np.isfinite(s) & (s >= lower) & (s <= config.s_edge) & (R > 0.0)
-    available = int(np.sum(keep))
-    if available < config.point_count:
+    oversample = 1.18
+    for attempt in range(4):
+        candidate_target = int(np.ceil(config.point_count * oversample))
+        n_phi = max(8, int(config.grid_phi))
+        per_phi = int(np.ceil(candidate_target / n_phi))
+        n_theta = max(16, int(np.ceil(np.sqrt(per_phi))))
+        n_radial = int(np.ceil(per_phi / n_theta))
+        p_index, t_index, r_index = np.meshgrid(
+            np.arange(n_phi),
+            np.arange(n_theta),
+            np.arange(n_radial),
+            indexing="ij",
+        )
+        phi_flat = (
+            (p_index.ravel() + 0.417) * TWOPI / (model.nfp * n_phi)
+        )
+        geometric_theta = TWOPI * (
+            (
+                t_index.ravel()
+                + 0.613
+                + 0.38196601125 * r_index.ravel()
+                + 0.217 * p_index.ravel()
+            )
+            % n_theta
+        ) / n_theta
+        boundary_radius, boundary_residual = _surface_radius_on_rays(
+            model,
+            config.s_edge,
+            geometric_theta,
+            phi_flat,
+            max_radius=extent,
+        )
+        radial_fraction = np.sqrt(
+            config.rho_min**2
+            + (1.0 - config.rho_min**2)
+            * (r_index.ravel() + 0.371)
+            / n_radial
+        )
+        radius = boundary_radius * radial_fraction
+        dr_flat = radius * np.cos(geometric_theta)
+        dz_flat = radius * np.sin(geometric_theta)
+        ra, za, _, _ = model.axis_at(phi_flat)
+        R = ra + dr_flat
+        Z = za + dz_flat
+        s, grad_R, grad_Z, grad_phi_coordinate = evaluate_psi_tensor_torch(
+            model, R, Z, phi_flat, device=device, precision=config.precision
+        )
+        keep = (
+            np.isfinite(s)
+            & (s >= lower)
+            & (s <= config.s_edge)
+            & (R > 0.0)
+            & (boundary_residual <= config.flux_boundary_tolerance)
+        )
+        available = int(np.sum(keep))
+        if available >= config.point_count:
+            break
+        oversample *= max(1.5, 1.1 * config.point_count / max(available, 1))
+    else:
         raise RuntimeError(
-            f"volume lattice produced {available} points, fewer than requested {config.point_count}; "
-            "increase grid_xy/grid_phi or radial_extent_factor"
+            f"surface-volume sampler produced {available} valid points, fewer than "
+            f"requested {config.point_count} after four bounded attempts"
         )
     indices = np.flatnonzero(keep)
     if available > config.point_count:
@@ -256,7 +357,7 @@ def sample_volume_points(
         "grad_phi": grad_phi,
         "volume_weight": R,
         "nfp": np.asarray(model.nfp),
-        "candidate_count": np.asarray([len(dr_flat)]),
+        "candidate_count": np.asarray([len(phi_flat)]),
         "available_count": np.asarray([available]),
     }
 

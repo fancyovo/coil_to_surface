@@ -8,6 +8,7 @@ from stellarator_eval.volume_qs import (
     calibrate_toroidal_flux_gpu,
     compute_f_c,
     evaluate_psi_tensor_numpy,
+    _surface_radius_on_rays,
 )
 
 
@@ -61,6 +62,34 @@ def test_flux_scale_polynomial_integrates_derivative():
     s = np.linspace(0.0, 0.4, 1000)
     numerical = np.gradient(fit.evaluate(s), s)
     np.testing.assert_allclose(numerical[1:-1], fit.derivative(s)[1:-1], rtol=2e-6, atol=2e-6)
+
+
+def test_surface_radius_solver_lands_on_requested_level():
+    phi_axis = np.linspace(0.0, 2.0 * np.pi / 3.0, 32, endpoint=False)
+    model = PsiModel(
+        coeffs=np.asarray([1.0]),
+        modes=[PolyMode(0, 2, 0, "cos")],
+        nfp=3,
+        a=0.2,
+        phi_axis=phi_axis,
+        R_axis=np.ones_like(phi_axis),
+        Z_axis=np.zeros_like(phi_axis),
+        R_axis_phi=np.zeros_like(phi_axis),
+        Z_axis_phi=np.zeros_like(phi_axis),
+        fit_info={},
+    )
+    theta = np.linspace(0.0, 2.0 * np.pi, 257, endpoint=False)
+    phi = np.linspace(0.0, 2.0 * np.pi / model.nfp, len(theta), endpoint=False)
+    radius, residual = _surface_radius_on_rays(model, 0.04, theta, phi)
+    ra, za, _, _ = model.axis_at(phi)
+    values, *_ = evaluate_psi_tensor_numpy(
+        model,
+        ra + radius * np.cos(theta),
+        za + radius * np.sin(theta),
+        phi,
+    )
+    assert np.max(residual) < 1e-10
+    np.testing.assert_allclose(values, 0.04, rtol=0.0, atol=1e-10)
 
 
 def test_batched_flux_calibration_for_circular_surfaces():

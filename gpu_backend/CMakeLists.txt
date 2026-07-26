@@ -8,6 +8,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(stellarator_gpu SHARED
     src/coil_field.cu
+    src/score_pipeline.cu
 )
 
 target_include_directories(stellarator_gpu PUBLIC

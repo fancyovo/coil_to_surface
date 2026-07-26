@@ -1,4 +1,5 @@
 #include "coil_field.h"
+#include "coil_field_internal.h"
 
 #include <cublas_v2.h>
 #include <cusolverDn.h>
@@ -771,6 +772,52 @@ __device__ inline float periodic_interp_uniform_f32(float phi, const float* valu
     if (i0 >= n) i0 = 0;
     int i1 = (i0 + 1 == n) ? 0 : (i0 + 1);
     return values[i0] * (1.0f - t) + values[i1] * t;
+}
+
+__global__ void trace_axis_samples_mixed_kernel(
+    const float* __restrict__ seg_x,
+    const float* __restrict__ seg_y,
+    const float* __restrict__ seg_z,
+    const float* __restrict__ seg_wx,
+    const float* __restrict__ seg_wy,
+    const float* __restrict__ seg_wz,
+    int nseg,
+    double R0,
+    double Z0,
+    int nfp,
+    int substeps_per_sample,
+    int n_samples,
+    double* __restrict__ R_out,
+    double* __restrict__ Z_out,
+    double* __restrict__ R_phi_out,
+    double* __restrict__ Z_phi_out
+) {
+    extern __shared__ unsigned char shmem_axis[];
+    float* sh = reinterpret_cast<float*>(shmem_axis);
+    double R = R0;
+    double Z = Z0;
+    const int total_steps = n_samples * substeps_per_sample;
+    const double period = TWOPI / static_cast<double>(nfp);
+    const double h = period / static_cast<double>(total_steps);
+    for (int sample = 0; sample < n_samples; ++sample) {
+        for (int substep = 0; substep < substeps_per_sample; ++substep) {
+            const int step = sample * substeps_per_sample + substep;
+            const double phi = h * static_cast<double>(step);
+            double k1r, k1z, k2r, k2z, k3r, k3z, k4r, k4z;
+            rhs_cyl_block_bf32_state64(R, Z, phi, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k1r, k1z);
+            if (substep == 0 && threadIdx.x == 0) {
+                R_out[sample] = R;
+                Z_out[sample] = Z;
+                R_phi_out[sample] = k1r;
+                Z_phi_out[sample] = k1z;
+            }
+            rhs_cyl_block_bf32_state64(R + 0.5 * h * k1r, Z + 0.5 * h * k1z, phi + 0.5 * h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k2r, k2z);
+            rhs_cyl_block_bf32_state64(R + 0.5 * h * k2r, Z + 0.5 * h * k2z, phi + 0.5 * h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k3r, k3z);
+            rhs_cyl_block_bf32_state64(R + h * k3r, Z + h * k3z, phi + h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k4r, k4z);
+            R += (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r);
+            Z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z);
+        }
+    }
 }
 
 template <typename T>
@@ -2736,6 +2783,101 @@ int sgpu_trace_period_blockline_mixed(void* handle, const double* R0_host, const
     cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
     set_error("");
     return 0;
+}
+
+int sgpu_trace_axis_samples(
+    void* handle,
+    double R0,
+    double Z0,
+    int nfp,
+    int integration_steps,
+    int n_samples,
+    double* R_host,
+    double* Z_host,
+    double* R_phi_host,
+    double* Z_phi_host
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !R_host || !Z_host || !R_phi_host || !Z_phi_host ||
+        nfp <= 0 || integration_steps <= 0 || n_samples <= 1) {
+        set_error("invalid trace_axis_samples arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "trace axis cudaSetDevice")) return 1;
+    double *d_R = nullptr, *d_Z = nullptr, *d_R_phi = nullptr, *d_Z_phi = nullptr;
+    const size_t bytes = static_cast<size_t>(n_samples) * sizeof(double);
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R), bytes), "trace axis d_R") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z), bytes), "trace axis d_Z") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R_phi), bytes), "trace axis d_R_phi") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z_phi), bytes), "trace axis d_Z_phi")) {
+        cudaFree(d_R); cudaFree(d_Z); cudaFree(d_R_phi); cudaFree(d_Z_phi);
+        return 1;
+    }
+    const int substeps = (integration_steps + n_samples - 1) / n_samples;
+    const int threads = 256;
+    const size_t shmem = static_cast<size_t>(SEG_TILE * 6 + threads * 3) * sizeof(float);
+    trace_axis_samples_mixed_kernel<<<1, threads, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, R0, Z0, nfp, substeps, n_samples,
+        d_R, d_Z, d_R_phi, d_Z_phi
+    );
+    if (cuda_check(cudaGetLastError(), "trace axis kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "trace axis sync") ||
+        cuda_check(cudaMemcpy(R_host, d_R, bytes, cudaMemcpyDeviceToHost), "trace axis copy R") ||
+        cuda_check(cudaMemcpy(Z_host, d_Z, bytes, cudaMemcpyDeviceToHost), "trace axis copy Z") ||
+        cuda_check(cudaMemcpy(R_phi_host, d_R_phi, bytes, cudaMemcpyDeviceToHost), "trace axis copy R_phi") ||
+        cuda_check(cudaMemcpy(Z_phi_host, d_Z_phi, bytes, cudaMemcpyDeviceToHost), "trace axis copy Z_phi")) {
+        cudaFree(d_R); cudaFree(d_Z); cudaFree(d_R_phi); cudaFree(d_Z_phi);
+        return 1;
+    }
+    cudaFree(d_R); cudaFree(d_Z); cudaFree(d_R_phi); cudaFree(d_Z_phi);
+    set_error("");
+    return 0;
+}
+
+int sgpu_internal_eval_B_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    int n_points
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_device || !B_device || n_points < 0) {
+        set_error("invalid internal eval_B_f32_device arguments");
+        return 1;
+    }
+    const int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_only_kernel<float><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, xyz_device, B_device, n_points
+    );
+    return cuda_check(cudaGetLastError(), "internal eval_B_f32_device kernel");
+}
+
+int sgpu_internal_eval_B_grad_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    float* grad_B_device,
+    int n_points
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_device || !B_device || !grad_B_device || n_points < 0) {
+        set_error("invalid internal eval_B_grad_f32_device arguments");
+        return 1;
+    }
+    const int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_grad_kernel<float><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, xyz_device, B_device, grad_B_device, n_points
+    );
+    return cuda_check(cudaGetLastError(), "internal eval_B_grad_f32_device kernel");
+}
+
+void sgpu_internal_set_error(const char* message) {
+    set_error(message);
 }
 
 const char* sgpu_last_error() {

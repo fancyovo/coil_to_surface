@@ -18,7 +18,10 @@ set -euo pipefail
 project=/home/scc/pb24511935/local_surface_evaluator
 case_dir=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases
 source_run=${SOURCE_RUN:-runs/native_score/calibration_1000_27717}
-output_dir="$project/runs/native_score/axis_fallback64_${SLURM_JOB_ID}"
+fallback_grid=${FALLBACK_GRID:-64}
+fallback_candidates=${FALLBACK_CANDIDATES:-48}
+fallback_newton=${FALLBACK_NEWTON:-6}
+output_dir="$project/runs/native_score/axis_fallback${fallback_grid}_${SLURM_JOB_ID}"
 
 cd "$project"
 mapfile -t compute_processes < <(
@@ -57,8 +60,8 @@ python scripts/batch_native_score.py \
     --case-dir "$case_dir" \
     --case-id-file "$output_dir/case_ids.txt" \
     --output "$output_dir/worker_0.jsonl" \
-    --axis-fallback-grid 64 \
-    --axis-fallback-max-candidates 48 \
-    --axis-fallback-newton-iters 6 \
+    --axis-fallback-grid "$fallback_grid" \
+    --axis-fallback-max-candidates "$fallback_candidates" \
+    --axis-fallback-newton-iters "$fallback_newton" \
     --warmup \
     > "$output_dir/worker_0.summary.json"

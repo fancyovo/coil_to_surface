@@ -2,12 +2,12 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=bench-native-score
+#SBATCH --job-name=native-score-1000
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --gres=gpu:RTX5090:1
-#SBATCH --mem=48G
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:RTX5090:4
+#SBATCH --mem=128G
 #SBATCH --time=01:00:00
 #SBATCH --exclude=anode02
 #SBATCH --output=logs/%x-%j.out
@@ -18,11 +18,10 @@ set -euo pipefail
 project=/home/scc/pb24511935/local_surface_evaluator
 case_dir=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases
 metadata=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/metadata_selected.json
-workers=${WORKERS:-1}
-total_samples=${TOTAL_SAMPLES:-24}
-psi_solver_mode=${PSI_SOLVER_MODE:-1}
-alpha_solver_mode=${ALPHA_SOLVER_MODE:-1}
-output_dir="$project/runs/native_score/concurrency_${workers}_${SLURM_JOB_ID}"
+split=${SPLIT:-calibration}
+total_samples=${TOTAL_SAMPLES:-1000}
+workers=4
+output_dir="$project/runs/native_score/${split}_${total_samples}_${SLURM_JOB_ID}"
 children=()
 
 cleanup() {
@@ -39,7 +38,7 @@ mapfile -t compute_processes < <(
         sed '/^[[:space:]]*$/d'
 )
 if (( ${#compute_processes[@]} != 0 )); then
-    printf 'allocated GPU is not idle; compute PIDs: %s\n' "${compute_processes[*]}" >&2
+    printf 'an allocated GPU is not idle; compute PIDs: %s\n' "${compute_processes[*]}" >&2
     exit 42
 fi
 
@@ -57,13 +56,12 @@ for ((worker=0; worker<workers; ++worker)); do
     python scripts/batch_native_score.py \
         --case-dir "$case_dir" \
         --metadata "$metadata" \
-        --split calibration \
+        --split "$split" \
         --output "$output_dir/worker_${worker}.jsonl" \
+        --device "$worker" \
         --worker-index "$worker" \
         --worker-count "$workers" \
         --total-limit "$total_samples" \
-        --psi-solver-mode "$psi_solver_mode" \
-        --alpha-solver-mode "$alpha_solver_mode" \
         --warmup \
         > "$output_dir/worker_${worker}.summary.json" &
     children+=("$!")
@@ -75,9 +73,8 @@ for child in "${children[@]}"; do
 done
 children=()
 finished=$(date +%s.%N)
-printf '{"workers":%d,"total_samples":%d,"psi_solver_mode":%d,"alpha_solver_mode":%d,"wall_started":%s,"wall_finished":%s}\n' \
-    "$workers" "$total_samples" "$psi_solver_mode" "$alpha_solver_mode" \
-    "$started" "$finished" > "$output_dir/job.json"
+printf '{"workers":%d,"total_samples":%d,"split":"%s","wall_started":%s,"wall_finished":%s}\n' \
+    "$workers" "$total_samples" "$split" "$started" "$finished" > "$output_dir/job.json"
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
     --format=csv,noheader,nounits > "$output_dir/gpu_postflight.csv"
 exit "$status"

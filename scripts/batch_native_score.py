@@ -66,7 +66,8 @@ def select_paths(case_dir: Path, metadata_path: Path | None, split: str | None) 
         groups.append(dispersed(group))
     ordered = []
     for index in range(max(map(len, groups), default=0)):
-        for group in groups:
+        group_order = groups if (index // 2) % 2 == 0 else reversed(groups)
+        for group in group_order:
             if index < len(group):
                 ordered.append(case_dir / f"id_{int(group[index]['ID']):07d}.json")
     missing = [path for path in ordered if not path.is_file()]

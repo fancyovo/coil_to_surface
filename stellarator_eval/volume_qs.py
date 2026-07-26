@@ -483,6 +483,18 @@ def calibrate_toroidal_flux_gpu(
     section_std = np.std(psi_sections, axis=0)
     section_relative_std = section_std / np.maximum(np.abs(psi_mean), 1e-30)
     boundary_residual_by_level = np.max(boundary_residual, axis=(0, 2))
+    edge_radius = boundary_radius[:, -1, :]
+    edge_axis_R = axis_R[:, None]
+    edge_integrand = (
+        0.5 * edge_axis_R * edge_radius**2
+        + np.cos(theta)[None, :] * edge_radius**3 / 3.0
+    )
+    edge_cross_section_area = np.pi * np.mean(edge_radius**2, axis=1)
+    edge_volume = TWOPI * TWOPI * float(np.mean(edge_integrand))
+    axis_major_radius = float(np.mean(axis_R))
+    effective_minor_radius = np.sqrt(
+        max(edge_volume, 0.0) / max(2.0 * np.pi**2 * axis_major_radius, 1e-30)
+    )
     diagnostics = {
         "time_s": float(time.perf_counter() - start),
         "geometry_s": float(geometry_s),
@@ -501,6 +513,13 @@ def calibrate_toroidal_flux_gpu(
         "boundary_residual_by_level": boundary_residual_by_level.tolist(),
         "boundary_radius_max": float(np.max(boundary_radius)),
         "boundary_radius_edge_max": float(np.max(boundary_radius[:, -1, :])),
+        "boundary_cross_section_area_edge_mean": float(np.mean(edge_cross_section_area)),
+        "boundary_volume_edge": float(edge_volume),
+        "boundary_axis_major_radius_mean": axis_major_radius,
+        "boundary_effective_minor_radius_edge": float(effective_minor_radius),
+        "boundary_effective_inverse_aspect_ratio": float(
+            effective_minor_radius / max(axis_major_radius, 1e-30)
+        ),
         "derivative_min": float(np.min(derivative_grid)),
         "derivative_max": float(np.max(derivative_grid)),
         "monotone": bool(np.all(derivative_grid * np.sign(fitted[-1]) > 0.0)),

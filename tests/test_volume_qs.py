@@ -93,6 +93,13 @@ def test_batched_flux_calibration_for_circular_surfaces():
         calibration.psi_edge, expected_derivative * config.s_edge, rtol=2e-6
     )
     assert calibration.diagnostics["section_relative_std_max"] < 1e-12
+    expected_volume = 2.0 * np.pi**2 * 1.0 * 0.1**2
+    np.testing.assert_allclose(
+        calibration.diagnostics["boundary_volume_edge"], expected_volume, rtol=2e-6
+    )
+    np.testing.assert_allclose(
+        calibration.diagnostics["boundary_effective_minor_radius_edge"], 0.1, rtol=2e-6
+    )
 
 
 def test_compute_f_c_matches_direct_formula():

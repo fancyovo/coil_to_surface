@@ -78,7 +78,15 @@ def evaluate_coils_to_volume_qs(
             "best_R": float(axis.best_R),
             "best_Z": float(axis.best_Z),
             "best_residual": float(axis.best_residual),
+            "search_best_residual": float(axis.search_best_residual),
+            "generation": int(axis.generation),
+            "backend": axis.backend,
+            "trace_error": axis.trace_error,
             "failure_reason": axis.failure_reason,
+            "topology_class": axis.topology_class,
+            "topology_trace": axis.topology_trace,
+            "topology_det": axis.topology_det,
+            "topology_ellipse_aspect": axis.topology_ellipse_aspect,
         },
     }
     if not axis.has_axis:
@@ -97,6 +105,7 @@ def evaluate_coils_to_volume_qs(
         current_unit=config.current_unit,
     )
     timing["psi_fit_s"] = float(time.perf_counter() - psi_start)
+    result["psi"] = {"a": float(model.a), "fit_info": model.fit_info}
 
     screen_start = time.perf_counter()
     screen_results = []

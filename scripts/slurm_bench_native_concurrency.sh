@@ -17,6 +17,7 @@ set -euo pipefail
 
 project=/home/scc/pb24511935/local_surface_evaluator
 case_dir=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases
+metadata=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/metadata_selected.json
 workers=${WORKERS:-1}
 samples_per_worker=${SAMPLES_PER_WORKER:-4}
 output_dir="$project/runs/native_score/concurrency_${workers}_${SLURM_JOB_ID}"
@@ -53,6 +54,8 @@ started=$(date +%s.%N)
 for ((worker=0; worker<workers; ++worker)); do
     python scripts/batch_native_score.py \
         --case-dir "$case_dir" \
+        --metadata "$metadata" \
+        --split calibration \
         --output "$output_dir/worker_${worker}.jsonl" \
         --worker-index "$worker" \
         --worker-count "$workers" \

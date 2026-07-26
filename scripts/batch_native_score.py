@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -43,7 +44,38 @@ def case_id(path: Path) -> int:
     return int(match.group(1))
 
 
-def evaluate(path: Path, lib: Path, device: int) -> dict:
+def dispersed(items: list[dict]) -> list[dict]:
+    if len(items) < 2:
+        return items
+    step = len(items) // 2 + 1
+    while math.gcd(step, len(items)) != 1:
+        step += 1
+    return [items[(index * step) % len(items)] for index in range(len(items))]
+
+
+def select_paths(case_dir: Path, metadata_path: Path | None, split: str | None) -> list[Path]:
+    if metadata_path is None:
+        return sorted(case_dir.glob("*.json"), key=case_id)
+    rows = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if split:
+        rows = [row for row in rows if row.get("_split") == split]
+    groups = []
+    for helicity in (0, 1):
+        group = [row for row in rows if int(row["helicity"]) == helicity]
+        group.sort(key=lambda row: float(row["qs_error"]))
+        groups.append(dispersed(group))
+    ordered = []
+    for index in range(max(map(len, groups), default=0)):
+        for group in groups:
+            if index < len(group):
+                ordered.append(case_dir / f"id_{int(group[index]['ID']):07d}.json")
+    missing = [path for path in ordered if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"metadata references missing case {missing[0]}")
+    return ordered
+
+
+def evaluate(path: Path, lib: Path, device: int, config_overrides: dict | None = None) -> dict:
     coeffs_x, coeffs_y, coeffs_z, currents_a, nfp, metadata = load_coil_arrays(path)
     helicity = int(metadata.get("helicity", 0))
     started = time.perf_counter()
@@ -56,6 +88,7 @@ def evaluate(path: Path, lib: Path, device: int) -> dict:
         nfp,
         device_id=device,
         target_helicity=(1, 0 if helicity == 0 else nfp),
+        config_overrides=config_overrides,
     )
     return {
         "case_id": case_id(path),
@@ -71,6 +104,8 @@ def evaluate(path: Path, lib: Path, device: int) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--case-dir", type=Path, required=True)
+    parser.add_argument("--metadata", type=Path)
+    parser.add_argument("--split", choices=("calibration", "validation"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--lib",
@@ -78,6 +113,8 @@ def main() -> None:
         default=REPO_ROOT / "gpu_backend" / "build_native_score" / "libstellarator_gpu.so",
     )
     parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--psi-solver-mode", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--alpha-solver-mode", type=int, choices=(1, 2), default=1)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
     parser.add_argument("--limit", type=int)
@@ -86,7 +123,7 @@ def main() -> None:
 
     if args.worker_count <= 0 or not 0 <= args.worker_index < args.worker_count:
         raise ValueError("worker-index must be in [0, worker-count)")
-    paths = sorted(args.case_dir.glob("*.json"), key=case_id)
+    paths = select_paths(args.case_dir, args.metadata, args.split)
     paths = paths[args.worker_index :: args.worker_count]
     if args.limit is not None:
         paths = paths[: args.limit]
@@ -94,12 +131,16 @@ def main() -> None:
         raise ValueError("worker has no input cases")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    config_overrides = {
+        "psi_solver_mode": args.psi_solver_mode,
+        "alpha_solver_mode": args.alpha_solver_mode,
+    }
     if args.warmup:
-        evaluate(paths[0], args.lib, args.device)
+        evaluate(paths[0], args.lib, args.device, config_overrides)
     batch_started = time.perf_counter()
     with args.output.open("w", encoding="utf-8") as stream:
         for path in paths:
-            row = evaluate(path, args.lib, args.device)
+            row = evaluate(path, args.lib, args.device, config_overrides)
             stream.write(json.dumps(row, allow_nan=True, separators=(",", ":")) + "\n")
             stream.flush()
     summary = {

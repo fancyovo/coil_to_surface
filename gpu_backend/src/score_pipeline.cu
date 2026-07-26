@@ -1249,6 +1249,25 @@ bool cuda_stage_ok(cudaError_t error, SgpuScoreResult& result, const char* stage
     return false;
 }
 
+__device__ inline double atomic_add_double(double* address, double value) {
+#if __CUDA_ARCH__ >= 600
+    return atomicAdd(address, value);
+#else
+    auto* integer_address = reinterpret_cast<unsigned long long int*>(address);
+    unsigned long long int old = *integer_address;
+    unsigned long long int assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(
+            integer_address,
+            assumed,
+            __double_as_longlong(value + __longlong_as_double(assumed))
+        );
+    } while (assumed != old);
+    return __longlong_as_double(old);
+#endif
+}
+
 template <typename T>
 bool copy_to_device(DeviceBuffer<T>& destination, const std::vector<T>& source) {
     return destination.allocate(source.size()) &&
@@ -2289,9 +2308,9 @@ __global__ void alpha_prepare_kernel(
     rho[index] = radial;
     theta[index] = source_theta[point];
     phi[index] = source_phi[point];
-    atomicAdd(diagnostics, static_cast<double>(weight) * weight);
-    atomicAdd(diagnostics + 1, static_cast<double>(normal_norm2));
-    atomicAdd(diagnostics + 2, static_cast<double>(field_norm2));
+    atomic_add_double(diagnostics, static_cast<double>(weight) * weight);
+    atomic_add_double(diagnostics + 1, static_cast<double>(normal_norm2));
+    atomic_add_double(diagnostics + 2, static_cast<double>(field_norm2));
 }
 
 __global__ void normalize_alpha_weights_kernel(
@@ -2665,14 +2684,14 @@ __global__ void compute_qs_metric_kernel(
     const double f_c = (helicity_M * static_cast<double>(iota) - helicity_N) * A -
                        helicity_M * G * C;
     const double normalized = f_c /
-        std::max(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
+        fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
     const double weight = volume_weight[point];
     absolute_normalized[point] = static_cast<float>(fabs(normalized));
-    atomicAdd(sums, weight);
-    atomicAdd(sums + 1, weight * normalized * normalized);
+    atomic_add_double(sums, weight);
+    atomic_add_double(sums + 1, weight * normalized * normalized);
     if (rho[point] >= edge_rho_threshold) {
-        atomicAdd(sums + 2, weight);
-        atomicAdd(sums + 3, weight * normalized * normalized);
+        atomic_add_double(sums + 2, weight);
+        atomic_add_double(sums + 3, weight * normalized * normalized);
     }
 }
 

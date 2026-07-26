@@ -26,6 +26,264 @@ class GpuError(RuntimeError):
     pass
 
 
+SGPU_SCORE_ABI_VERSION = 1
+SGPU_SCORE_COMPONENT_NAMES = (
+    "axis",
+    "psi",
+    "surface",
+    "coordinate",
+    "volume_qs",
+    "coil",
+)
+SGPU_SCORE_TIMING_NAMES = (
+    "total_s",
+    "field_create_s",
+    "coil_geometry_s",
+    "axis_search_s",
+    "axis_trace_s",
+    "psi_points_s",
+    "psi_fit_s",
+    "psi_validate_s",
+    "surface_screen_s",
+    "flux_s",
+    "volume_points_s",
+    "field_volume_s",
+    "alpha_assemble_s",
+    "alpha_qr_s",
+    "qs_metrics_s",
+    "score_s",
+)
+SGPU_SCORE_STATUS_NAMES = {
+    0: "ok",
+    1: "no_axis",
+    2: "no_surface",
+    3: "drift_rejected",
+    4: "flux_rejected",
+    5: "alpha_failed",
+    100: "internal_error",
+}
+
+
+class _SgpuScoreConfig(ctypes.Structure):
+    _fields_ = [
+        ("abi_version", ctypes.c_uint32),
+        ("struct_size", ctypes.c_uint32),
+        ("device_id", ctypes.c_int32),
+        ("segments_per_coil", ctypes.c_int32),
+        ("target_M", ctypes.c_int32),
+        ("target_N", ctypes.c_int32),
+        ("axis_grid", ctypes.c_int32),
+        ("axis_fallback_grid", ctypes.c_int32),
+        ("axis_max_candidates", ctypes.c_int32),
+        ("axis_fallback_max_candidates", ctypes.c_int32),
+        ("axis_newton_iters", ctypes.c_int32),
+        ("axis_fallback_newton_iters", ctypes.c_int32),
+        ("axis_trace_steps", ctypes.c_int32),
+        ("axis_sample_count", ctypes.c_int32),
+        ("axis_span", ctypes.c_double),
+        ("axis_tolerance", ctypes.c_double),
+        ("axis_r_floor", ctypes.c_double),
+        ("axis_fd_relative", ctypes.c_double),
+        ("axis_fd_absolute", ctypes.c_double),
+        ("axis_topology_margin", ctypes.c_double),
+        ("psi_poly_degree", ctypes.c_int32),
+        ("psi_m_tor", ctypes.c_int32),
+        ("psi_n_r", ctypes.c_int32),
+        ("psi_n_z", ctypes.c_int32),
+        ("psi_n_phi", ctypes.c_int32),
+        ("psi_validation_points", ctypes.c_int32),
+        ("psi_a", ctypes.c_double),
+        ("psi_rho_min", ctypes.c_double),
+        ("psi_ridge", ctypes.c_double),
+        ("surface_level_count", ctypes.c_int32),
+        ("surface_theta_count", ctypes.c_int32),
+        ("surface_trace_steps", ctypes.c_int32),
+        ("surface_newton_iters", ctypes.c_int32),
+        ("surface_levels", ctypes.c_double * 16),
+        ("surface_newton_tolerance", ctypes.c_double),
+        ("surface_max_radius_scale", ctypes.c_double),
+        ("surface_drift_relative_tolerance", ctypes.c_double),
+        ("surface_drift_absolute_tolerance", ctypes.c_double),
+        ("flux_level_count", ctypes.c_int32),
+        ("flux_phi_count", ctypes.c_int32),
+        ("flux_theta_count", ctypes.c_int32),
+        ("flux_radial_quadrature", ctypes.c_int32),
+        ("flux_polynomial_degree", ctypes.c_int32),
+        ("flux_boundary_tolerance", ctypes.c_double),
+        ("flux_section_relative_std_tolerance", ctypes.c_double),
+        ("volume_point_count", ctypes.c_int32),
+        ("volume_phi_count", ctypes.c_int32),
+        ("volume_theta_count", ctypes.c_int32),
+        ("alpha_fit_point_count", ctypes.c_int32),
+        ("alpha_radial_order", ctypes.c_int32),
+        ("alpha_poloidal_order", ctypes.c_int32),
+        ("alpha_toroidal_order", ctypes.c_int32),
+        ("iota_degree", ctypes.c_int32),
+        ("radial_bin_count", ctypes.c_int32),
+        ("volume_rho_min", ctypes.c_double),
+        ("alpha_ridge", ctypes.c_double),
+        ("score_weights", ctypes.c_double * 6),
+        ("score_axis_residual_scale", ctypes.c_double),
+        ("score_psi_angle_p95_scale", ctypes.c_double),
+        ("score_psi_angle_l2_scale", ctypes.c_double),
+        ("score_surface_inverse_aspect_scale", ctypes.c_double),
+        ("score_surface_drift_scale", ctypes.c_double),
+        ("score_flux_section_std_scale", ctypes.c_double),
+        ("score_flux_boundary_residual_scale", ctypes.c_double),
+        ("score_alpha_normal_B_scale", ctypes.c_double),
+        ("score_alpha_relative_l2_scale", ctypes.c_double),
+        ("score_qs_global_scale", ctypes.c_double),
+        ("score_qs_edge_scale", ctypes.c_double),
+    ]
+
+
+class _SgpuScoreResult(ctypes.Structure):
+    _fields_ = [
+        ("abi_version", ctypes.c_uint32),
+        ("struct_size", ctypes.c_uint32),
+        ("status", ctypes.c_int32),
+        ("stage_completed", ctypes.c_int32),
+        ("device_id", ctypes.c_int32),
+        ("reserved_i32", ctypes.c_int32),
+        ("score", ctypes.c_double),
+        ("components", ctypes.c_double * 6),
+        ("timings", ctypes.c_double * 16),
+        ("axis_R", ctypes.c_double),
+        ("axis_Z", ctypes.c_double),
+        ("axis_residual", ctypes.c_double),
+        ("axis_topology_trace", ctypes.c_double),
+        ("axis_topology_det", ctypes.c_double),
+        ("axis_ellipse_aspect", ctypes.c_double),
+        ("psi_train_rms", ctypes.c_double),
+        ("psi_angle_mean", ctypes.c_double),
+        ("psi_angle_p95", ctypes.c_double),
+        ("psi_angle_l2", ctypes.c_double),
+        ("surface_level", ctypes.c_double),
+        ("surface_drift_relative_p95", ctypes.c_double),
+        ("surface_effective_minor_radius", ctypes.c_double),
+        ("surface_inverse_aspect_ratio", ctypes.c_double),
+        ("surface_volume", ctypes.c_double),
+        ("flux_edge", ctypes.c_double),
+        ("flux_fit_relative_rms", ctypes.c_double),
+        ("flux_section_relative_std_edge", ctypes.c_double),
+        ("flux_boundary_residual_max", ctypes.c_double),
+        ("flux_derivative_min", ctypes.c_double),
+        ("flux_derivative_max", ctypes.c_double),
+        ("alpha_relative_l2", ctypes.c_double),
+        ("alpha_normal_B_relative_l2", ctypes.c_double),
+        ("iota_min", ctypes.c_double),
+        ("iota_max", ctypes.c_double),
+        ("qs_global_error", ctypes.c_double),
+        ("qs_edge_error", ctypes.c_double),
+        ("qs_abs_p95", ctypes.c_double),
+        ("coil_length_mean", ctypes.c_double),
+        ("coil_curvature_p95", ctypes.c_double),
+        ("coil_curvature_max", ctypes.c_double),
+        ("coil_min_intercoil_distance", ctypes.c_double),
+        ("coil_min_axis_distance", ctypes.c_double),
+        ("coil_high_mode_energy_fraction", ctypes.c_double),
+        ("coil_current_abs_max_a", ctypes.c_double),
+        ("axis_candidate_count", ctypes.c_int32),
+        ("stable_surface_count", ctypes.c_int32),
+        ("volume_point_count", ctypes.c_int32),
+        ("alpha_column_count", ctypes.c_int32),
+        ("error_message", ctypes.c_char * 256),
+    ]
+
+
+def _bind_native_score(lib: ctypes.CDLL) -> None:
+    lib.sgpu_score_config_size.restype = ctypes.c_size_t
+    lib.sgpu_score_config_size.argtypes = []
+    lib.sgpu_score_result_size.restype = ctypes.c_size_t
+    lib.sgpu_score_result_size.argtypes = []
+    lib.sgpu_default_score_config.restype = ctypes.c_int
+    lib.sgpu_default_score_config.argtypes = [ctypes.POINTER(_SgpuScoreConfig)]
+    lib.sgpu_score_coils.restype = ctypes.c_int
+    lib.sgpu_score_coils.argtypes = [
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(_SgpuScoreConfig),
+        ctypes.POINTER(_SgpuScoreResult),
+    ]
+    lib.sgpu_last_error.restype = ctypes.c_char_p
+    if lib.sgpu_score_config_size() != ctypes.sizeof(_SgpuScoreConfig):
+        raise GpuError("native score config ABI size mismatch")
+    if lib.sgpu_score_result_size() != ctypes.sizeof(_SgpuScoreResult):
+        raise GpuError("native score result ABI size mismatch")
+
+
+def score_coils_native(
+    lib_path: str | Path,
+    coeffs_x,
+    coeffs_y,
+    coeffs_z,
+    currents_a,
+    nfp: int,
+    *,
+    device_id: int = 0,
+    target_helicity: tuple[int, int] = (1, 0),
+    config_overrides: dict | None = None,
+) -> dict:
+    """Call the all-native coil-to-score pipeline as a single black box."""
+    lib = ctypes.CDLL(str(lib_path))
+    _bind_native_score(lib)
+    config = _SgpuScoreConfig()
+    _check_lib_code(lib, lib.sgpu_default_score_config(ctypes.byref(config)))
+    config.device_id = int(device_id)
+    config.target_M = int(target_helicity[0])
+    config.target_N = int(target_helicity[1])
+    for name, value in (config_overrides or {}).items():
+        if not hasattr(config, name):
+            raise ValueError(f"unknown native score config field {name!r}")
+        setattr(config, name, value)
+
+    coeffs_x = np.ascontiguousarray(np.atleast_2d(coeffs_x), dtype=np.float64)
+    coeffs_y = np.ascontiguousarray(np.atleast_2d(coeffs_y), dtype=np.float64)
+    coeffs_z = np.ascontiguousarray(np.atleast_2d(coeffs_z), dtype=np.float64)
+    currents_a = np.ascontiguousarray(currents_a, dtype=np.float64).ravel()
+    if not (coeffs_x.shape == coeffs_y.shape == coeffs_z.shape):
+        raise ValueError("coeffs_x/y/z must have the same shape")
+    if currents_a.size != coeffs_x.shape[0]:
+        raise ValueError("currents size must equal n_base_coils")
+    result = _SgpuScoreResult()
+    code = lib.sgpu_score_coils(
+        coeffs_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        coeffs_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        coeffs_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        currents_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_int(coeffs_x.shape[0]),
+        ctypes.c_int(coeffs_x.shape[1]),
+        ctypes.c_int(int(nfp)),
+        ctypes.byref(config),
+        ctypes.byref(result),
+    )
+    _check_lib_code(lib, code)
+    diagnostics = {
+        name: getattr(result, name)
+        for name, _ in _SgpuScoreResult._fields_
+        if name not in {"components", "timings", "error_message"}
+    }
+    diagnostics["error_message"] = bytes(result.error_message).split(b"\0", 1)[0].decode("utf-8", "replace")
+    return {
+        "score": float(result.score),
+        "status": SGPU_SCORE_STATUS_NAMES.get(int(result.status), f"unknown_{result.status}"),
+        "components": {
+            name: float(result.components[index])
+            for index, name in enumerate(SGPU_SCORE_COMPONENT_NAMES)
+        },
+        "timing": {
+            name: float(result.timings[index])
+            for index, name in enumerate(SGPU_SCORE_TIMING_NAMES)
+        },
+        "diagnostics": diagnostics,
+    }
+
+
 def _check_lib_code(lib: ctypes.CDLL, code: int):
     if code:
         msg = lib.sgpu_last_error()

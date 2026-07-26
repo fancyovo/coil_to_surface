@@ -189,6 +189,9 @@ extern "C" {
 
 int sgpu_default_score_config(SgpuScoreConfig* config);
 
+std::size_t sgpu_score_config_size();
+std::size_t sgpu_score_result_size();
+
 int sgpu_score_coils(
     const double* coeffs_x,
     const double* coeffs_y,

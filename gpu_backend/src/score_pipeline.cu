@@ -2856,6 +2856,14 @@ bool run_downstream_gpu(
 
 extern "C" {
 
+std::size_t sgpu_score_config_size() {
+    return sizeof(SgpuScoreConfig);
+}
+
+std::size_t sgpu_score_result_size() {
+    return sizeof(SgpuScoreResult);
+}
+
 int sgpu_default_score_config(SgpuScoreConfig* config) {
     if (!config) {
         sgpu_internal_set_error("score config pointer is null");

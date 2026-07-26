@@ -335,6 +335,7 @@ def main() -> None:
     batch_started = time.perf_counter()
     new_rows = []
     ctx = mp.get_context("spawn")
+    os.chdir(REPO_ROOT)
     pool = ctx.Pool(
         processes=worker_count,
         initializer=_worker_init,

@@ -9,6 +9,7 @@ from stellarator_eval.volume_qs import (
     compute_f_c,
     evaluate_psi_tensor_numpy,
     _surface_radius_on_rays,
+    _budget_flux_levels,
 )
 
 
@@ -90,6 +91,13 @@ def test_surface_radius_solver_lands_on_requested_level():
     )
     assert np.max(residual) < 1e-10
     np.testing.assert_allclose(values, 0.04, rtol=0.0, atol=1e-10)
+
+
+def test_flux_level_budget_keeps_outer_neighbors_and_spaced_fallbacks():
+    levels = [0.001, 0.002, 0.004, 0.008, 0.012, 0.02, 0.04, 0.08, 0.12, 0.16,
+              0.25, 0.36, 0.49, 0.64, 0.81]
+    selected = _budget_flux_levels(levels)
+    assert selected == [0.81, 0.64, 0.36, 0.16, 0.08]
 
 
 def test_batched_flux_calibration_for_circular_surfaces():

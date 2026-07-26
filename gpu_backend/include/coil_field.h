@@ -28,6 +28,29 @@ int sgpu_eval_B(
     int n_points
 );
 
+int sgpu_eval_B_f32(
+    void* handle,
+    const float* xyz_host,
+    float* B_host,
+    int n_points
+);
+
+int sgpu_eval_B_grad(
+    void* handle,
+    const double* xyz_host,
+    double* B_host,
+    double* grad_B_host,
+    int n_points
+);
+
+int sgpu_eval_B_grad_f32(
+    void* handle,
+    const float* xyz_host,
+    float* B_host,
+    float* grad_B_host,
+    int n_points
+);
+
 int sgpu_normal_eq(
     void* handle,
     const double* mat_host,

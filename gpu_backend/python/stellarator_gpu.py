@@ -207,6 +207,35 @@ class CoilFieldGpu:
             ctypes.POINTER(ctypes.c_double),
             ctypes.c_int,
         ]
+        self.has_eval_B_f32 = hasattr(self.lib, "sgpu_eval_B_f32")
+        if self.has_eval_B_f32:
+            self.lib.sgpu_eval_B_f32.restype = ctypes.c_int
+            self.lib.sgpu_eval_B_f32.argtypes = [
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.c_int,
+            ]
+        self.has_eval_B_grad = hasattr(self.lib, "sgpu_eval_B_grad") and hasattr(
+            self.lib, "sgpu_eval_B_grad_f32"
+        )
+        if self.has_eval_B_grad:
+            self.lib.sgpu_eval_B_grad.restype = ctypes.c_int
+            self.lib.sgpu_eval_B_grad.argtypes = [
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_double),
+                ctypes.POINTER(ctypes.c_double),
+                ctypes.POINTER(ctypes.c_double),
+                ctypes.c_int,
+            ]
+            self.lib.sgpu_eval_B_grad_f32.restype = ctypes.c_int
+            self.lib.sgpu_eval_B_grad_f32.argtypes = [
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.c_int,
+            ]
         self.lib.sgpu_normal_eq.restype = ctypes.c_int
         self.lib.sgpu_normal_eq.argtypes = [
             ctypes.c_void_p,
@@ -314,17 +343,47 @@ class CoilFieldGpu:
         except Exception:
             pass
 
-    def eval_B(self, xyz):
-        pts = np.ascontiguousarray(xyz, dtype=np.float64).reshape(-1, 3)
+    def eval_B(self, xyz, precision: str = "fp64"):
+        precision = precision.lower()
+        if precision not in {"fp32", "fp64"}:
+            raise ValueError("eval_B precision must be 'fp32' or 'fp64'")
+        if precision == "fp32" and not self.has_eval_B_f32:
+            raise GpuError("this GPU backend library does not provide FP32 B evaluation")
+        dtype = np.float32 if precision == "fp32" else np.float64
+        pts = np.ascontiguousarray(xyz, dtype=dtype).reshape(-1, 3)
         out = np.empty_like(pts)
-        code = self.lib.sgpu_eval_B(
+        pointer = ctypes.POINTER(ctypes.c_float) if precision == "fp32" else ctypes.POINTER(ctypes.c_double)
+        function = self.lib.sgpu_eval_B_f32 if precision == "fp32" else self.lib.sgpu_eval_B
+        code = function(
             self.handle,
-            pts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-            out.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            pts.ctypes.data_as(pointer),
+            out.ctypes.data_as(pointer),
             ctypes.c_int(len(pts)),
         )
         self._check(code)
         return out
+
+    def eval_B_grad(self, xyz, precision: str = "fp32"):
+        if not self.has_eval_B_grad:
+            raise GpuError("this GPU backend library does not provide B-gradient evaluation")
+        precision = precision.lower()
+        if precision not in {"fp32", "fp64"}:
+            raise ValueError("eval_B_grad precision must be 'fp32' or 'fp64'")
+        dtype = np.float32 if precision == "fp32" else np.float64
+        points = np.ascontiguousarray(xyz, dtype=dtype).reshape(-1, 3)
+        field = np.empty_like(points)
+        gradient = np.empty((len(points), 3, 3), dtype=dtype)
+        pointer = ctypes.POINTER(ctypes.c_float) if precision == "fp32" else ctypes.POINTER(ctypes.c_double)
+        function = self.lib.sgpu_eval_B_grad_f32 if precision == "fp32" else self.lib.sgpu_eval_B_grad
+        code = function(
+            self.handle,
+            points.ctypes.data_as(pointer),
+            field.ctypes.data_as(pointer),
+            gradient.ctypes.data_as(pointer),
+            ctypes.c_int(len(points)),
+        )
+        self._check(code)
+        return field, gradient
 
     def normal_eq(self, mat, rhs, precision: str = "fp64"):
         precision = precision.lower()
@@ -625,3 +684,34 @@ def eval_B_segments_cpu(points, seg_pos, seg_wdl):
         invr3 = 1.0 / np.maximum(r2, 1e-300) ** 1.5
         out[i] = 1e-7 * np.sum(np.cross(seg_wdl, r) * invr3[:, None], axis=0)
     return out
+
+
+def eval_B_grad_segments_cpu(points, seg_pos, seg_wdl):
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    seg_pos = np.asarray(seg_pos, dtype=np.float64).reshape(-1, 3)
+    seg_wdl = np.asarray(seg_wdl, dtype=np.float64).reshape(-1, 3)
+    field = np.zeros_like(points)
+    gradient = np.zeros((len(points), 3, 3), dtype=np.float64)
+    identity_cross = np.empty((len(seg_pos), 3, 3), dtype=np.float64)
+    identity_cross[:, 0, :] = np.column_stack(
+        [np.zeros(len(seg_pos)), -seg_wdl[:, 2], seg_wdl[:, 1]]
+    )
+    identity_cross[:, 1, :] = np.column_stack(
+        [seg_wdl[:, 2], np.zeros(len(seg_pos)), -seg_wdl[:, 0]]
+    )
+    identity_cross[:, 2, :] = np.column_stack(
+        [-seg_wdl[:, 1], seg_wdl[:, 0], np.zeros(len(seg_pos))]
+    )
+    for index, point in enumerate(points):
+        displacement = point[None, :] - seg_pos
+        radius2 = np.sum(displacement * displacement, axis=1)
+        invr3 = 1.0 / np.maximum(radius2, 1e-300) ** 1.5
+        invr5 = invr3 / np.maximum(radius2, 1e-300)
+        cross = np.cross(seg_wdl, displacement)
+        field[index] = 1e-7 * np.sum(cross * invr3[:, None], axis=0)
+        gradient[index] = 1e-7 * np.sum(
+            identity_cross * invr3[:, None, None]
+            - 3.0 * cross[:, :, None] * displacement[:, None, :] * invr5[:, None, None],
+            axis=0,
+        )
+    return field, gradient

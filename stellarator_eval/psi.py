@@ -235,8 +235,12 @@ def _make_training_points(axis, nfp: int, cfg: PsiFitConfig):
     phi = pg.ravel()
     rho = np.sqrt(dr**2 + dz**2)
     keep = (rho >= cfg.rho_min) & (rho <= cfg.a)
-    ra = interp_periodic(phi[keep], axis.phi, axis.R, nfp)
-    za = interp_periodic(phi[keep], axis.phi, axis.Z, nfp)
+    ra, _ = interp_periodic_hermite(
+        phi[keep], axis.phi, axis.R, axis.R_phi, nfp
+    )
+    za, _ = interp_periodic_hermite(
+        phi[keep], axis.phi, axis.Z, axis.Z_phi, nfp
+    )
     return ra + dr[keep], za + dz[keep], phi[keep]
 
 

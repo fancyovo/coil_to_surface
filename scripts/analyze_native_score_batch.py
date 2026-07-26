@@ -108,6 +108,10 @@ def main() -> None:
             for status in STATUS_ORDER
             if status in statuses
         },
+        "components": {
+            name: statistics(row["native_score"]["components"][name] for row in rows)
+            for name in ("axis", "psi", "surface", "coordinate", "volume_qs", "coil")
+        },
         "by_helicity": {},
         "correlation": {
             "score_vs_minus_log10_metadata_qs_spearman": spearman(scores, quality),
@@ -149,6 +153,14 @@ def main() -> None:
     summary["flux_attempt_count"] = statistics(
         row["native_score"]["diagnostics"]["flux_attempt_count"] for row in rows
     )
+    summary["correlation"]["ok_score_vs_minus_log10_native_qs_spearman"] = spearman(
+        [row["native_score"]["score"] for row in ok_rows],
+        [-math.log10(max(row["native_score"]["diagnostics"]["qs_global_error"], 1.0e-300)) for row in ok_rows],
+    )
+    summary["correlation"]["ok_score_vs_surface_size_spearman"] = spearman(
+        [row["native_score"]["score"] for row in ok_rows],
+        [row["native_score"]["diagnostics"]["surface_inverse_aspect_ratio"] for row in ok_rows],
+    )
 
     timing_names = list(rows[0]["native_score"]["timing"]) if rows else []
     summary["timing"] = {
@@ -185,9 +197,6 @@ def main() -> None:
         "case_ids": [int(row["case_id"]) for row in top],
     }
 
-    (args.output_dir / "summary.json").write_text(
-        json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
-    )
     with (args.output_dir / "rows.csv").open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=(
             "case_id", "helicity", "nfp", "status", "score", "wall_s",
@@ -288,6 +297,13 @@ def main() -> None:
     deciles = np.arange(1, 11)
     decile_scores = [np.median([row["native_score"]["score"] for row in decile_rows[index]]) for index in range(10)]
     decile_ok = [np.mean([row["native_score"]["status"] == "ok" for row in decile_rows[index]]) for index in range(10)]
+    summary["metadata_qs_deciles_worst_to_best"] = {
+        "median_score": [float(value) for value in decile_scores],
+        "ok_fraction": [float(value) for value in decile_ok],
+    }
+    (args.output_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
+    )
     figure, axis = plt.subplots(figsize=(8.5, 5.2))
     axis.plot(deciles, decile_scores, marker="o", color="#146c94", label="Median score")
     axis.set(xlabel="Metadata QS decile (1 worst, 10 best)", ylabel="Median native score", xticks=deciles)

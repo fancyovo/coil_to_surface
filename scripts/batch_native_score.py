@@ -107,6 +107,7 @@ def main() -> None:
     parser.add_argument("--case-dir", type=Path, required=True)
     parser.add_argument("--metadata", type=Path)
     parser.add_argument("--split", choices=("calibration", "validation"))
+    parser.add_argument("--case-id-file", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--lib",
@@ -116,6 +117,9 @@ def main() -> None:
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--psi-solver-mode", type=int, choices=(1, 2), default=2)
     parser.add_argument("--alpha-solver-mode", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--axis-fallback-grid", type=int)
+    parser.add_argument("--axis-fallback-max-candidates", type=int)
+    parser.add_argument("--axis-fallback-newton-iters", type=int)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
     parser.add_argument("--total-limit", type=int)
@@ -125,7 +129,11 @@ def main() -> None:
 
     if args.worker_count <= 0 or not 0 <= args.worker_index < args.worker_count:
         raise ValueError("worker-index must be in [0, worker-count)")
-    paths = select_paths(args.case_dir, args.metadata, args.split)
+    if args.case_id_file:
+        ids = [int(line) for line in args.case_id_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+        paths = [args.case_dir / f"id_{case_id_value:07d}.json" for case_id_value in ids]
+    else:
+        paths = select_paths(args.case_dir, args.metadata, args.split)
     if args.total_limit is not None:
         paths = paths[: args.total_limit]
     paths = paths[args.worker_index :: args.worker_count]
@@ -139,6 +147,14 @@ def main() -> None:
         "psi_solver_mode": args.psi_solver_mode,
         "alpha_solver_mode": args.alpha_solver_mode,
     }
+    for name in (
+        "axis_fallback_grid",
+        "axis_fallback_max_candidates",
+        "axis_fallback_newton_iters",
+    ):
+        value = getattr(args, name)
+        if value is not None:
+            config_overrides[name] = value
     if args.warmup:
         evaluate(paths[0], args.lib, args.device, config_overrides)
     batch_started = time.perf_counter()

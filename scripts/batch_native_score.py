@@ -114,8 +114,8 @@ def main() -> None:
         default=REPO_ROOT / "gpu_backend" / "build_native_score" / "libstellarator_gpu.so",
     )
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--psi-solver-mode", type=int, choices=(1, 2), default=1)
-    parser.add_argument("--alpha-solver-mode", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--psi-solver-mode", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--alpha-solver-mode", type=int, choices=(1, 2), default=2)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
     parser.add_argument("--total-limit", type=int)

@@ -20,8 +20,8 @@ case_dir=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cas
 metadata=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/metadata_selected.json
 workers=${WORKERS:-1}
 total_samples=${TOTAL_SAMPLES:-24}
-psi_solver_mode=${PSI_SOLVER_MODE:-1}
-alpha_solver_mode=${ALPHA_SOLVER_MODE:-1}
+psi_solver_mode=${PSI_SOLVER_MODE:-2}
+alpha_solver_mode=${ALPHA_SOLVER_MODE:-2}
 output_dir="$project/runs/native_score/concurrency_${workers}_${SLURM_JOB_ID}"
 children=()
 

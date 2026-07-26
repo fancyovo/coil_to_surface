@@ -3050,7 +3050,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->psi_n_z = 80;
     config->psi_n_phi = 80;
     config->psi_validation_points = 4000;
-    config->psi_solver_mode = 1;
+    config->psi_solver_mode = 2;
     config->psi_precision_mode = 2;
     config->psi_a = 0.05;
     config->psi_rho_min = 0.002;
@@ -3084,7 +3084,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->alpha_toroidal_order = 12;
     config->iota_degree = 0;
     config->radial_bin_count = 10;
-    config->alpha_solver_mode = 1;
+    config->alpha_solver_mode = 2;
     config->volume_rho_min = 0.08;
     config->alpha_ridge = 1.0e-7;
     const double weights[] = {18.0, 18.0, 18.0, 14.0, 20.0, 12.0};

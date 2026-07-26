@@ -16,5 +16,7 @@
 set -euo pipefail
 
 cd /home/scc/pb24511935/local_surface_evaluator
-cmake -S gpu_backend -B gpu_backend/build_native_score -DCMAKE_BUILD_TYPE=Release
+cmake -S gpu_backend -B gpu_backend/build_native_score \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build gpu_backend/build_native_score --parallel 4

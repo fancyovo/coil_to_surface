@@ -79,12 +79,43 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->status = SGPU_SCORE_INTERNAL_ERROR;
     result->stage_completed = SCORE_STAGE_NONE;
     result->device_id = device_id;
-    result->score = std::numeric_limits<double>::quiet_NaN();
-    double* first_nan = &result->axis_R;
-    double* last_nan = &result->coil_current_abs_max_a;
-    for (double* ptr = first_nan; ptr <= last_nan; ++ptr) {
-        *ptr = std::numeric_limits<double>::quiet_NaN();
-    }
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    result->score = nan;
+    result->axis_R = nan;
+    result->axis_Z = nan;
+    result->axis_residual = nan;
+    result->axis_topology_trace = nan;
+    result->axis_topology_det = nan;
+    result->axis_ellipse_aspect = nan;
+    result->psi_train_rms = nan;
+    result->psi_angle_mean = nan;
+    result->psi_angle_p95 = nan;
+    result->psi_angle_l2 = nan;
+    result->surface_level = nan;
+    result->surface_drift_relative_p95 = nan;
+    result->surface_effective_minor_radius = nan;
+    result->surface_inverse_aspect_ratio = nan;
+    result->surface_volume = nan;
+    result->flux_edge = nan;
+    result->flux_fit_relative_rms = nan;
+    result->flux_section_relative_std_edge = nan;
+    result->flux_boundary_residual_max = nan;
+    result->flux_derivative_min = nan;
+    result->flux_derivative_max = nan;
+    result->alpha_relative_l2 = nan;
+    result->alpha_normal_B_relative_l2 = nan;
+    result->iota_min = nan;
+    result->iota_max = nan;
+    result->qs_global_error = nan;
+    result->qs_edge_error = nan;
+    result->qs_abs_p95 = nan;
+    result->coil_length_mean = nan;
+    result->coil_curvature_p95 = nan;
+    result->coil_curvature_max = nan;
+    result->coil_min_intercoil_distance = nan;
+    result->coil_min_axis_distance = nan;
+    result->coil_high_mode_energy_fraction = nan;
+    result->coil_current_abs_max_a = nan;
 }
 
 int fail_result(SgpuScoreResult* result, const char* message) {
@@ -965,6 +996,7 @@ struct SurfaceScreen {
     double radius_max = std::numeric_limits<double>::quiet_NaN();
     bool stable = false;
     bool strict = false;
+    bool verified = false;
 };
 
 void ray_polynomial_phi0(
@@ -1084,7 +1116,7 @@ bool screen_surfaces_native(
     }
 
     std::vector<int> verify_indices;
-    for (int index = levels - 1; index >= 0 && verify_indices.size() < 3; --index) {
+    for (int index = levels - 1; index >= 0 && verify_indices.size() < 6; --index) {
         if (screens[index].strict) verify_indices.push_back(index);
     }
     if (!verify_indices.empty()) {
@@ -1121,6 +1153,7 @@ bool screen_surfaces_native(
                 screens[level_index].radius_max < config.surface_max_radius_scale * config.psi_a * 0.999;
             screens[level_index].strict = screens[level_index].stable &&
                 screens[level_index].relative_drift_p95 <= config.surface_drift_relative_tolerance;
+            screens[level_index].verified = true;
         }
     }
     return true;
@@ -1181,7 +1214,7 @@ void fill_early_components(
 
 void finalize_score(const SgpuScoreConfig& config, SgpuScoreResult& result) {
     if (result.status == SGPU_SCORE_INTERNAL_ERROR) return;
-    if (result.stage_completed < SCORE_STAGE_FLUX) {
+    if (result.stage_completed < SCORE_STAGE_ALPHA) {
         result.components[SGPU_SCORE_COMPONENT_COORDINATE] = 0.08;
     }
     if (result.stage_completed < SCORE_STAGE_QS) {
@@ -2830,7 +2863,7 @@ bool run_downstream_gpu(
     int nfp,
     const AxisData& axis,
     const PsiData& psi,
-    const SurfaceScreen& surface,
+    const std::vector<SurfaceScreen>& screens,
     const SgpuScoreConfig& config,
     SgpuScoreResult& result
 ) {
@@ -2839,13 +2872,39 @@ bool run_downstream_gpu(
         fail_result(&result, "psi/axis upload for downstream pipeline failed");
         return false;
     }
+    std::vector<const SurfaceScreen*> candidates;
+    for (const auto& screen : screens) {
+        if (screen.strict && screen.verified) candidates.push_back(&screen);
+    }
+    std::sort(candidates.begin(), candidates.end(), [](const auto* lhs, const auto* rhs) {
+        return lhs->level > rhs->level;
+    });
     auto started = Clock::now();
     FluxCalibrationNative flux;
-    const bool flux_ok = calibrate_flux_native(
-        field, device_psi, axis, psi, nfp, surface.level, config, flux, result
-    );
+    const SurfaceScreen* selected_surface = nullptr;
+    bool flux_ok = false;
+    for (const SurfaceScreen* candidate : candidates) {
+        FluxCalibrationNative trial;
+        const bool trial_ok = calibrate_flux_native(
+            field, device_psi, axis, psi, nfp, candidate->level, config, trial, result
+        );
+        if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
+        if (!selected_surface || trial_ok) {
+            selected_surface = candidate;
+            flux = std::move(trial);
+        }
+        if (trial_ok) {
+            flux_ok = true;
+            break;
+        }
+    }
     result.timings[SGPU_SCORE_TIME_FLUX] = seconds_since(started);
-    if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
+    if (!selected_surface) {
+        result.status = SGPU_SCORE_DRIFT_REJECTED;
+        return false;
+    }
+    result.surface_level = selected_surface->level;
+    result.surface_drift_relative_p95 = selected_surface->relative_drift_p95;
     result.flux_edge = flux.edge_flux;
     result.flux_fit_relative_rms = flux.fit_relative_rms;
     result.flux_section_relative_std_edge = flux.section_relative_std_edge;
@@ -2891,9 +2950,20 @@ bool run_downstream_gpu(
     }
     result.alpha_relative_l2 = alpha.relative_l2;
     result.alpha_normal_B_relative_l2 = alpha.normal_B_relative_l2;
-    result.iota_min = *std::min_element(alpha.iota_coefficients.begin(), alpha.iota_coefficients.end());
-    result.iota_max = *std::max_element(alpha.iota_coefficients.begin(), alpha.iota_coefficients.end());
-    if (config.iota_degree == 0) result.iota_max = result.iota_min;
+    result.iota_min = std::numeric_limits<double>::infinity();
+    result.iota_max = -std::numeric_limits<double>::infinity();
+    const double u_min = config.volume_rho_min * config.volume_rho_min;
+    for (int sample = 0; sample <= 256; ++sample) {
+        const double u = u_min + (1.0 - u_min) * sample / 256.0;
+        double iota = 0.0;
+        double power = 1.0;
+        for (float coefficient : alpha.iota_coefficients) {
+            iota += coefficient * power;
+            power *= u;
+        }
+        result.iota_min = std::min(result.iota_min, iota);
+        result.iota_max = std::max(result.iota_max, iota);
+    }
     result.stage_completed = SCORE_STAGE_ALPHA;
     started = Clock::now();
     if (!compute_qs_metric_native(
@@ -2979,7 +3049,10 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->psi_a = 0.05;
     config->psi_rho_min = 0.002;
     config->psi_ridge = 1.0e-6;
-    const double default_levels[] = {0.001, 0.002, 0.004, 0.008, 0.012, 0.02, 0.04, 0.08, 0.12, 0.16};
+    const double default_levels[] = {
+        0.001, 0.002, 0.004, 0.008, 0.02, 0.04, 0.08,
+        0.16, 0.25, 0.36, 0.49, 0.64, 0.81,
+    };
     config->surface_level_count = static_cast<int>(sizeof(default_levels) / sizeof(default_levels[0]));
     std::copy(default_levels, default_levels + config->surface_level_count, config->surface_levels);
     config->surface_theta_count = 256;
@@ -3128,7 +3201,8 @@ int sgpu_score_coils(
         }
         result->timings[SGPU_SCORE_TIME_SURFACE_SCREEN] = seconds_since(stage_started);
         const auto best_strict = std::max_element(screens.begin(), screens.end(), [](const auto& lhs, const auto& rhs) {
-            return (lhs.strict ? lhs.level : -1.0) < (rhs.strict ? rhs.level : -1.0);
+            return (lhs.strict && lhs.verified ? lhs.level : -1.0) <
+                   (rhs.strict && rhs.verified ? rhs.level : -1.0);
         });
         result->stable_surface_count = static_cast<int>(std::count_if(screens.begin(), screens.end(), [](const auto& screen) {
             return screen.stable;
@@ -3139,16 +3213,14 @@ int sgpu_score_coils(
             fill_early_components(*config, coil, axis, psi, screens, *result);
             break;
         }
-        if (best_strict == screens.end() || !best_strict->strict) {
+        if (best_strict == screens.end() || !best_strict->strict || !best_strict->verified) {
             result->status = SGPU_SCORE_DRIFT_REJECTED;
             fill_early_components(*config, coil, axis, psi, screens, *result);
             break;
         }
-        result->surface_level = best_strict->level;
-        result->surface_drift_relative_p95 = best_strict->relative_drift_p95;
         const bool downstream_ok = run_downstream_gpu(
                 field, currents_a, n_base_coils, nfp, axis, psi,
-                *best_strict, *config, *result);
+                screens, *config, *result);
         fill_early_components(*config, coil, axis, psi, screens, *result);
         if (!downstream_ok) {
             if (result->status == SGPU_SCORE_INTERNAL_ERROR) return_code = 1;

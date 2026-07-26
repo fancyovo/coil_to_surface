@@ -3238,7 +3238,9 @@ int sgpu_score_coils(
     } while (false);
 
     sgpu_destroy_field(field);
+    stage_started = Clock::now();
     finalize_score(*config, *result);
+    result->timings[SGPU_SCORE_TIME_SCORE] = seconds_since(stage_started);
     result->timings[SGPU_SCORE_TIME_TOTAL] = seconds_since(total_started);
     return return_code;
 }

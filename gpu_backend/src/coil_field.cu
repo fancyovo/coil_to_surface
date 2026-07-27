@@ -1,4 +1,5 @@
 #include "coil_field.h"
+#include "coil_field_internal.h"
 
 #include <cublas_v2.h>
 #include <cusolverDn.h>
@@ -773,6 +774,292 @@ __device__ inline float periodic_interp_uniform_f32(float phi, const float* valu
     return values[i0] * (1.0f - t) + values[i1] * t;
 }
 
+__global__ void trace_axis_samples_mixed_kernel(
+    const float* __restrict__ seg_x,
+    const float* __restrict__ seg_y,
+    const float* __restrict__ seg_z,
+    const float* __restrict__ seg_wx,
+    const float* __restrict__ seg_wy,
+    const float* __restrict__ seg_wz,
+    int nseg,
+    double R0,
+    double Z0,
+    int nfp,
+    int substeps_per_sample,
+    int n_samples,
+    double* __restrict__ R_out,
+    double* __restrict__ Z_out,
+    double* __restrict__ R_phi_out,
+    double* __restrict__ Z_phi_out
+) {
+    extern __shared__ unsigned char shmem_axis[];
+    float* sh = reinterpret_cast<float*>(shmem_axis);
+    double R = R0;
+    double Z = Z0;
+    const int total_steps = n_samples * substeps_per_sample;
+    const double period = TWOPI / static_cast<double>(nfp);
+    const double h = period / static_cast<double>(total_steps);
+    for (int sample = 0; sample < n_samples; ++sample) {
+        for (int substep = 0; substep < substeps_per_sample; ++substep) {
+            const int step = sample * substeps_per_sample + substep;
+            const double phi = h * static_cast<double>(step);
+            double k1r, k1z, k2r, k2z, k3r, k3z, k4r, k4z;
+            rhs_cyl_block_bf32_state64(R, Z, phi, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k1r, k1z);
+            if (substep == 0 && threadIdx.x == 0) {
+                R_out[sample] = R;
+                Z_out[sample] = Z;
+                R_phi_out[sample] = k1r;
+                Z_phi_out[sample] = k1z;
+            }
+            rhs_cyl_block_bf32_state64(R + 0.5 * h * k1r, Z + 0.5 * h * k1z, phi + 0.5 * h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k2r, k2z);
+            rhs_cyl_block_bf32_state64(R + 0.5 * h * k2r, Z + 0.5 * h * k2z, phi + 0.5 * h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k3r, k3z);
+            rhs_cyl_block_bf32_state64(R + h * k3r, Z + h * k3z, phi + h, seg_x, seg_y, seg_z, seg_wx, seg_wy, seg_wz, nseg, sh, k4r, k4z);
+            R += (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r);
+            Z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z);
+        }
+    }
+}
+
+template <typename T>
+__device__ T warp_sum_t(T value) {
+    unsigned mask = 0xffffffffu;
+    for (int offset = 16; offset > 0; offset >>= 1) {
+        value += __shfl_down_sync(mask, value, offset);
+    }
+    return value;
+}
+
+template <typename T>
+__global__ void eval_B_only_kernel(
+    const T* __restrict__ seg_x,
+    const T* __restrict__ seg_y,
+    const T* __restrict__ seg_z,
+    const T* __restrict__ seg_wx,
+    const T* __restrict__ seg_wy,
+    const T* __restrict__ seg_wz,
+    int nseg,
+    const T* __restrict__ xyz,
+    T* __restrict__ B,
+    int npoints
+) {
+    extern __shared__ unsigned char shared_raw[];
+    T* sx = reinterpret_cast<T*>(shared_raw);
+    T* sy = sx + SEG_TILE;
+    T* sz = sy + SEG_TILE;
+    T* swx = sz + SEG_TILE;
+    T* swy = swx + SEG_TILE;
+    T* swz = swy + SEG_TILE;
+
+    int tid = threadIdx.x;
+    int lane = tid & 31;
+    int point = blockIdx.x * WARPS_PER_BLOCK + tid / WARP_SIZE;
+    bool valid = point < npoints;
+    T px = valid ? xyz[3 * point + 0] : T(0);
+    T py = valid ? xyz[3 * point + 1] : T(0);
+    T pz = valid ? xyz[3 * point + 2] : T(0);
+    T accum[3] = {};
+
+    for (int base = 0; base < nseg; base += SEG_TILE) {
+        int count = min(SEG_TILE, nseg - base);
+        for (int j = tid; j < count; j += blockDim.x) {
+            int index = base + j;
+            sx[j] = seg_x[index];
+            sy[j] = seg_y[index];
+            sz[j] = seg_z[index];
+            swx[j] = seg_wx[index];
+            swy[j] = seg_wy[index];
+            swz[j] = seg_wz[index];
+        }
+        __syncthreads();
+        if (valid) {
+            for (int j = lane; j < count; j += WARP_SIZE) {
+                T rx = px - sx[j];
+                T ry = py - sy[j];
+                T rz = pz - sz[j];
+                T invr = T(1) / sqrt(rx * rx + ry * ry + rz * rz + T(1.0e-30));
+                T invr3 = invr * invr * invr;
+                T wx = swx[j];
+                T wy = swy[j];
+                T wz = swz[j];
+                accum[0] += (wy * rz - wz * ry) * invr3;
+                accum[1] += (wz * rx - wx * rz) * invr3;
+                accum[2] += (wx * ry - wy * rx) * invr3;
+            }
+        }
+        __syncthreads();
+    }
+    for (int component = 0; component < 3; ++component) {
+        accum[component] = warp_sum_t(accum[component]) * T(MU0_OVER_4PI);
+    }
+    if (valid && lane == 0) {
+        B[3 * point + 0] = accum[0];
+        B[3 * point + 1] = accum[1];
+        B[3 * point + 2] = accum[2];
+    }
+}
+
+template <typename T>
+__global__ void eval_B_grad_kernel(
+    const T* __restrict__ seg_x,
+    const T* __restrict__ seg_y,
+    const T* __restrict__ seg_z,
+    const T* __restrict__ seg_wx,
+    const T* __restrict__ seg_wy,
+    const T* __restrict__ seg_wz,
+    int nseg,
+    const T* __restrict__ xyz,
+    T* __restrict__ B,
+    T* __restrict__ grad_B,
+    int npoints
+) {
+    extern __shared__ unsigned char shared_raw[];
+    T* sx = reinterpret_cast<T*>(shared_raw);
+    T* sy = sx + SEG_TILE;
+    T* sz = sy + SEG_TILE;
+    T* swx = sz + SEG_TILE;
+    T* swy = swx + SEG_TILE;
+    T* swz = swy + SEG_TILE;
+
+    int tid = threadIdx.x;
+    int lane = tid & 31;
+    int warp_id = tid / WARP_SIZE;
+    int point = blockIdx.x * WARPS_PER_BLOCK + warp_id;
+    bool valid = point < npoints;
+    T px = valid ? xyz[3 * point + 0] : T(0);
+    T py = valid ? xyz[3 * point + 1] : T(0);
+    T pz = valid ? xyz[3 * point + 2] : T(0);
+
+    T accum[12] = {};
+    for (int base = 0; base < nseg; base += SEG_TILE) {
+        int count = min(SEG_TILE, nseg - base);
+        for (int j = tid; j < count; j += blockDim.x) {
+            int index = base + j;
+            sx[j] = seg_x[index];
+            sy[j] = seg_y[index];
+            sz[j] = seg_z[index];
+            swx[j] = seg_wx[index];
+            swy[j] = seg_wy[index];
+            swz[j] = seg_wz[index];
+        }
+        __syncthreads();
+
+        if (valid) {
+            for (int j = lane; j < count; j += WARP_SIZE) {
+                T rx = px - sx[j];
+                T ry = py - sy[j];
+                T rz = pz - sz[j];
+                T r2 = rx * rx + ry * ry + rz * rz + T(1.0e-30);
+                T invr = T(1) / sqrt(r2);
+                T invr2 = invr * invr;
+                T invr3 = invr * invr2;
+                T invr5 = invr3 * invr2;
+                T wx = swx[j];
+                T wy = swy[j];
+                T wz = swz[j];
+                T ux = wy * rz - wz * ry;
+                T uy = wz * rx - wx * rz;
+                T uz = wx * ry - wy * rx;
+
+                accum[0] += ux * invr3;
+                accum[1] += uy * invr3;
+                accum[2] += uz * invr3;
+
+                T common_x = T(-3) * rx * invr5;
+                T common_y = T(-3) * ry * invr5;
+                T common_z = T(-3) * rz * invr5;
+                accum[3] += ux * common_x;
+                accum[4] += -wz * invr3 + ux * common_y;
+                accum[5] += wy * invr3 + ux * common_z;
+                accum[6] += wz * invr3 + uy * common_x;
+                accum[7] += uy * common_y;
+                accum[8] += -wx * invr3 + uy * common_z;
+                accum[9] += -wy * invr3 + uz * common_x;
+                accum[10] += wx * invr3 + uz * common_y;
+                accum[11] += uz * common_z;
+            }
+        }
+        __syncthreads();
+    }
+
+    for (int component = 0; component < 12; ++component) {
+        accum[component] = warp_sum_t(accum[component]) * T(MU0_OVER_4PI);
+    }
+    if (valid && lane == 0) {
+        B[3 * point + 0] = accum[0];
+        B[3 * point + 1] = accum[1];
+        B[3 * point + 2] = accum[2];
+        for (int component = 0; component < 9; ++component) {
+            grad_B[9 * point + component] = accum[3 + component];
+        }
+    }
+}
+
+__device__ inline void periodic_hermite_uniform(
+    double phi,
+    const double* values,
+    const double* derivatives,
+    int n,
+    double period,
+    double& value,
+    double& derivative
+) {
+    double p = fmod(phi, period);
+    if (p < 0.0) p += period;
+    double pos = p * static_cast<double>(n) / period;
+    int i0 = static_cast<int>(floor(pos));
+    double t = pos - static_cast<double>(i0);
+    if (i0 >= n) i0 = 0;
+    int i1 = (i0 + 1 == n) ? 0 : (i0 + 1);
+    double h = period / static_cast<double>(n);
+    double t2 = t * t;
+    double t3 = t2 * t;
+    double y0 = values[i0];
+    double y1 = values[i1];
+    double d0 = derivatives[i0];
+    double d1 = derivatives[i1];
+    value = (2.0 * t3 - 3.0 * t2 + 1.0) * y0
+          + (t3 - 2.0 * t2 + t) * h * d0
+          + (-2.0 * t3 + 3.0 * t2) * y1
+          + (t3 - t2) * h * d1;
+    derivative = (6.0 * t2 - 6.0 * t) * y0 / h
+               + (3.0 * t2 - 4.0 * t + 1.0) * d0
+               + (-6.0 * t2 + 6.0 * t) * y1 / h
+               + (3.0 * t2 - 2.0 * t) * d1;
+}
+
+__device__ inline void periodic_hermite_uniform_f32(
+    float phi,
+    const float* values,
+    const float* derivatives,
+    int n,
+    float period,
+    float& value,
+    float& derivative
+) {
+    float p = fmodf(phi, period);
+    if (p < 0.0f) p += period;
+    float pos = p * static_cast<float>(n) / period;
+    int i0 = static_cast<int>(floorf(pos));
+    float t = pos - static_cast<float>(i0);
+    if (i0 >= n) i0 = 0;
+    int i1 = (i0 + 1 == n) ? 0 : (i0 + 1);
+    float h = period / static_cast<float>(n);
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float y0 = values[i0];
+    float y1 = values[i1];
+    float d0 = derivatives[i0];
+    float d1 = derivatives[i1];
+    value = (2.0f * t3 - 3.0f * t2 + 1.0f) * y0
+          + (t3 - 2.0f * t2 + t) * h * d0
+          + (-2.0f * t3 + 3.0f * t2) * y1
+          + (t3 - t2) * h * d1;
+    derivative = (6.0f * t2 - 6.0f * t) * y0 / h
+               + (3.0f * t2 - 4.0f * t + 1.0f) * d0
+               + (-6.0f * t2 + 6.0f * t) * y1 / h
+               + (3.0f * t2 - 2.0f * t) * d1;
+}
+
 __global__ void convert_double_to_float_kernel(const double* src, float* dst, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) dst[i] = static_cast<float>(src[i]);
@@ -947,10 +1234,9 @@ __global__ void psi_fill_matrix_kernel_f64(
 
     if (threadIdx.x == 0) {
         double period = TWOPI / static_cast<double>(nfp);
-        double ra = periodic_interp_uniform(phii, axis_R, n_axis, period);
-        double za = periodic_interp_uniform(phii, axis_Z, n_axis, period);
-        double rap = periodic_interp_uniform(phii, axis_R_phi, n_axis, period);
-        double zap = periodic_interp_uniform(phii, axis_Z_phi, n_axis, period);
+        double ra, za, rap, zap;
+        periodic_hermite_uniform(phii, axis_R, axis_R_phi, n_axis, period, ra, rap);
+        periodic_hermite_uniform(phii, axis_Z, axis_Z_phi, n_axis, period, za, zap);
         double X = (Ri - ra) / a;
         double Zc = (Zi - za) / a;
         double br = bx * cp + by * sp;
@@ -1049,10 +1335,9 @@ __global__ void psi_fill_matrix_kernel_f32(
 
     if (threadIdx.x == 0) {
         float period = static_cast<float>(TWOPI) / static_cast<float>(nfp);
-        float ra = periodic_interp_uniform_f32(phii, axis_R, n_axis, period);
-        float za = periodic_interp_uniform_f32(phii, axis_Z, n_axis, period);
-        float rap = periodic_interp_uniform_f32(phii, axis_R_phi, n_axis, period);
-        float zap = periodic_interp_uniform_f32(phii, axis_Z_phi, n_axis, period);
+        float ra, za, rap, zap;
+        periodic_hermite_uniform_f32(phii, axis_R, axis_R_phi, n_axis, period, ra, rap);
+        periodic_hermite_uniform_f32(phii, axis_Z, axis_Z_phi, n_axis, period, za, zap);
         float X = (Ri - ra) / a;
         float Zc = (Zi - za) / a;
         float br = bx * cp + by * sp;
@@ -1400,6 +1685,117 @@ int sgpu_eval_B(void* handle, const double* xyz_host, double* B_host, int n_poin
     if (cuda_check(cudaMemcpy(B_host, d_B, xyz_bytes, cudaMemcpyDeviceToHost), "copy B")) { cudaFree(d_xyz); cudaFree(d_B); return 1; }
     cudaFree(d_xyz);
     cudaFree(d_B);
+    set_error("");
+    return 0;
+}
+
+int sgpu_eval_B_f32(void* handle, const float* xyz_host, float* B_host, int n_points) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_host || !B_host || n_points < 0) {
+        set_error("invalid eval_B_f32 arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "cudaSetDevice")) return 1;
+    float *d_xyz = nullptr, *d_B = nullptr;
+    size_t xyz_bytes = static_cast<size_t>(n_points) * 3 * sizeof(float);
+    if (cuda_check(cudaMalloc(&d_xyz, xyz_bytes), "eval_B_f32 d_xyz") ||
+        cuda_check(cudaMalloc(&d_B, xyz_bytes), "eval_B_f32 d_B")) {
+        cudaFree(d_xyz); cudaFree(d_B);
+        return 1;
+    }
+    if (cuda_check(cudaMemcpy(d_xyz, xyz_host, xyz_bytes, cudaMemcpyHostToDevice), "eval_B_f32 copy xyz")) {
+        cudaFree(d_xyz); cudaFree(d_B);
+        return 1;
+    }
+    int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_only_kernel<float><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, d_xyz, d_B, n_points
+    );
+    if (cuda_check(cudaGetLastError(), "eval_B_f32 kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "eval_B_f32 sync") ||
+        cuda_check(cudaMemcpy(B_host, d_B, xyz_bytes, cudaMemcpyDeviceToHost), "eval_B_f32 copy B")) {
+        cudaFree(d_xyz); cudaFree(d_B);
+        return 1;
+    }
+    cudaFree(d_xyz); cudaFree(d_B);
+    set_error("");
+    return 0;
+}
+
+int sgpu_eval_B_grad(void* handle, const double* xyz_host, double* B_host, double* grad_B_host, int n_points) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_host || !B_host || !grad_B_host || n_points < 0) {
+        set_error("invalid eval_B_grad arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "cudaSetDevice")) return 1;
+    double *d_xyz = nullptr, *d_B = nullptr, *d_grad_B = nullptr;
+    size_t xyz_bytes = static_cast<size_t>(n_points) * 3 * sizeof(double);
+    size_t grad_bytes = static_cast<size_t>(n_points) * 9 * sizeof(double);
+    if (cuda_check(cudaMalloc(&d_xyz, xyz_bytes), "eval_B_grad d_xyz") ||
+        cuda_check(cudaMalloc(&d_B, xyz_bytes), "eval_B_grad d_B") ||
+        cuda_check(cudaMalloc(&d_grad_B, grad_bytes), "eval_B_grad d_grad_B")) {
+        cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+        return 1;
+    }
+    if (cuda_check(cudaMemcpy(d_xyz, xyz_host, xyz_bytes, cudaMemcpyHostToDevice), "eval_B_grad copy xyz")) {
+        cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+        return 1;
+    }
+    int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(double);
+    eval_B_grad_kernel<double><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x, f->d_y, f->d_z, f->d_wx, f->d_wy, f->d_wz,
+        f->n_segments, d_xyz, d_B, d_grad_B, n_points
+    );
+    if (cuda_check(cudaGetLastError(), "eval_B_grad kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "eval_B_grad sync") ||
+        cuda_check(cudaMemcpy(B_host, d_B, xyz_bytes, cudaMemcpyDeviceToHost), "eval_B_grad copy B") ||
+        cuda_check(cudaMemcpy(grad_B_host, d_grad_B, grad_bytes, cudaMemcpyDeviceToHost), "eval_B_grad copy grad")) {
+        cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+        return 1;
+    }
+    cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+    set_error("");
+    return 0;
+}
+
+int sgpu_eval_B_grad_f32(void* handle, const float* xyz_host, float* B_host, float* grad_B_host, int n_points) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_host || !B_host || !grad_B_host || n_points < 0) {
+        set_error("invalid eval_B_grad_f32 arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "cudaSetDevice")) return 1;
+    float *d_xyz = nullptr, *d_B = nullptr, *d_grad_B = nullptr;
+    size_t xyz_bytes = static_cast<size_t>(n_points) * 3 * sizeof(float);
+    size_t grad_bytes = static_cast<size_t>(n_points) * 9 * sizeof(float);
+    if (cuda_check(cudaMalloc(&d_xyz, xyz_bytes), "eval_B_grad_f32 d_xyz") ||
+        cuda_check(cudaMalloc(&d_B, xyz_bytes), "eval_B_grad_f32 d_B") ||
+        cuda_check(cudaMalloc(&d_grad_B, grad_bytes), "eval_B_grad_f32 d_grad_B")) {
+        cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+        return 1;
+    }
+    if (cuda_check(cudaMemcpy(d_xyz, xyz_host, xyz_bytes, cudaMemcpyHostToDevice), "eval_B_grad_f32 copy xyz")) {
+        cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+        return 1;
+    }
+    int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_grad_kernel<float><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, d_xyz, d_B, d_grad_B, n_points
+    );
+    if (cuda_check(cudaGetLastError(), "eval_B_grad_f32 kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "eval_B_grad_f32 sync") ||
+        cuda_check(cudaMemcpy(B_host, d_B, xyz_bytes, cudaMemcpyDeviceToHost), "eval_B_grad_f32 copy B") ||
+        cuda_check(cudaMemcpy(grad_B_host, d_grad_B, grad_bytes, cudaMemcpyDeviceToHost), "eval_B_grad_f32 copy grad")) {
+        cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+        return 1;
+    }
+    cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
     set_error("");
     return 0;
 }
@@ -2387,6 +2783,101 @@ int sgpu_trace_period_blockline_mixed(void* handle, const double* R0_host, const
     cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
     set_error("");
     return 0;
+}
+
+int sgpu_trace_axis_samples(
+    void* handle,
+    double R0,
+    double Z0,
+    int nfp,
+    int integration_steps,
+    int n_samples,
+    double* R_host,
+    double* Z_host,
+    double* R_phi_host,
+    double* Z_phi_host
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !R_host || !Z_host || !R_phi_host || !Z_phi_host ||
+        nfp <= 0 || integration_steps <= 0 || n_samples <= 1) {
+        set_error("invalid trace_axis_samples arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(f->device_id), "trace axis cudaSetDevice")) return 1;
+    double *d_R = nullptr, *d_Z = nullptr, *d_R_phi = nullptr, *d_Z_phi = nullptr;
+    const size_t bytes = static_cast<size_t>(n_samples) * sizeof(double);
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R), bytes), "trace axis d_R") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z), bytes), "trace axis d_Z") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R_phi), bytes), "trace axis d_R_phi") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z_phi), bytes), "trace axis d_Z_phi")) {
+        cudaFree(d_R); cudaFree(d_Z); cudaFree(d_R_phi); cudaFree(d_Z_phi);
+        return 1;
+    }
+    const int substeps = (integration_steps + n_samples - 1) / n_samples;
+    const int threads = 256;
+    const size_t shmem = static_cast<size_t>(SEG_TILE * 6 + threads * 3) * sizeof(float);
+    trace_axis_samples_mixed_kernel<<<1, threads, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, R0, Z0, nfp, substeps, n_samples,
+        d_R, d_Z, d_R_phi, d_Z_phi
+    );
+    if (cuda_check(cudaGetLastError(), "trace axis kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "trace axis sync") ||
+        cuda_check(cudaMemcpy(R_host, d_R, bytes, cudaMemcpyDeviceToHost), "trace axis copy R") ||
+        cuda_check(cudaMemcpy(Z_host, d_Z, bytes, cudaMemcpyDeviceToHost), "trace axis copy Z") ||
+        cuda_check(cudaMemcpy(R_phi_host, d_R_phi, bytes, cudaMemcpyDeviceToHost), "trace axis copy R_phi") ||
+        cuda_check(cudaMemcpy(Z_phi_host, d_Z_phi, bytes, cudaMemcpyDeviceToHost), "trace axis copy Z_phi")) {
+        cudaFree(d_R); cudaFree(d_Z); cudaFree(d_R_phi); cudaFree(d_Z_phi);
+        return 1;
+    }
+    cudaFree(d_R); cudaFree(d_Z); cudaFree(d_R_phi); cudaFree(d_Z_phi);
+    set_error("");
+    return 0;
+}
+
+int sgpu_internal_eval_B_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    int n_points
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_device || !B_device || n_points < 0) {
+        set_error("invalid internal eval_B_f32_device arguments");
+        return 1;
+    }
+    const int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_only_kernel<float><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, xyz_device, B_device, n_points
+    );
+    return cuda_check(cudaGetLastError(), "internal eval_B_f32_device kernel");
+}
+
+int sgpu_internal_eval_B_grad_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    float* grad_B_device,
+    int n_points
+) {
+    CoilField* f = reinterpret_cast<CoilField*>(handle);
+    if (!f || !xyz_device || !B_device || !grad_B_device || n_points < 0) {
+        set_error("invalid internal eval_B_grad_f32_device arguments");
+        return 1;
+    }
+    const int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shmem = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_grad_kernel<float><<<blocks, THREADS_PER_BLOCK, shmem>>>(
+        f->d_x_f, f->d_y_f, f->d_z_f, f->d_wx_f, f->d_wy_f, f->d_wz_f,
+        f->n_segments, xyz_device, B_device, grad_B_device, n_points
+    );
+    return cuda_check(cudaGetLastError(), "internal eval_B_grad_f32_device kernel");
+}
+
+void sgpu_internal_set_error(const char* message) {
+    set_error(message);
 }
 
 const char* sgpu_last_error() {

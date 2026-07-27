@@ -125,12 +125,42 @@ class DiagnosticsConfig:
 
 
 @dataclass
+class VolumeQSConfig:
+    s_edge: float = 0.16
+    rho_min: float = 0.08
+    point_count: int = 100000
+    alpha_fit_point_count: int = 30000
+    grid_xy: int = 144
+    grid_phi: int = 96
+    radial_extent_factor: float = 1.65
+    alpha_radial_order: int = 12
+    alpha_poloidal_order: int = 12
+    alpha_toroidal_order: int = 12
+    iota_degree: int = 0
+    alpha_ridge: float = 1e-7
+    flux_level_count: int = 11
+    flux_phi_count: int = 8
+    flux_theta_count: int = 256
+    flux_radial_quadrature: int = 24
+    flux_boundary_tolerance: float = 1e-9
+    flux_section_relative_std_tolerance: float = 0.02
+    screen_relative_drift_tolerance: float = 0.05
+    flux_degree: int = 3
+    radial_bins: int = 10
+    precision: str = "fp32"
+    gpu_device: int = 0
+    gpu_lib_path: str = "gpu_backend/build_volume_qs/libstellarator_gpu.so"
+    gpu_segments_per_coil: int = 256
+
+
+@dataclass
 class EvalConfig:
     axis: AxisGAConfig = field(default_factory=AxisGAConfig)
     psi: PsiFitConfig = field(default_factory=PsiFitConfig)
     scan: SurfaceScanConfig = field(default_factory=SurfaceScanConfig)
     boozer: BoozerConfig = field(default_factory=BoozerConfig)
     diagnostics: DiagnosticsConfig = field(default_factory=DiagnosticsConfig)
+    volume_qs: VolumeQSConfig = field(default_factory=VolumeQSConfig)
     current_unit: str = "MA"
     omp_threads: int = 1
 

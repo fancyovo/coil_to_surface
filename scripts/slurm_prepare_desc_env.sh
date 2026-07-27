@@ -14,19 +14,25 @@
 set -euo pipefail
 
 project=/home/scc/pb24511935/local_surface_evaluator
+archive=/home/scc/pb24511935/local_surface_evaluator_data/desc_wheelhouse_linux.tar
+wheelhouse=$project/.wheelhouse-desc016
 bootstrap=$project/.virtualenv-bootstrap
 environment=$project/.venv-desc016-py312
 
 cd "$project"
+if [[ ! -d "$wheelhouse" ]]; then
+    mkdir -p "$wheelhouse"
+    tar -xf "$archive" -C "$wheelhouse"
+fi
 if [[ ! -x "$environment/bin/python" ]]; then
     /home/scc/pb24511935/coil/.venv/bin/python -m pip install \
-        --target "$bootstrap" --only-binary=:all: virtualenv
+        --no-index --find-links "$wheelhouse" --target "$bootstrap" virtualenv
     PYTHONPATH="$bootstrap" /home/scc/pb24511935/coil/.venv/bin/python \
         -m virtualenv "$environment"
 fi
 source "$environment/bin/activate"
-python -m pip install --upgrade pip
-python -m pip install --only-binary=:all: "desc-opt==0.16.0" "simsopt==1.10.6"
+python -m pip install --no-index --find-links "$wheelhouse" \
+    "desc-opt==0.16.0" "simsopt==1.10.6"
 python - <<'PY'
 import desc
 import simsopt

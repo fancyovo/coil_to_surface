@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 from dataclasses import replace
 import json
 import math
@@ -56,6 +57,96 @@ def rotate_z(points: np.ndarray, angle: float) -> np.ndarray:
     return out
 
 
+def write_image_html(image_path: Path, output_path: Path, title: str) -> None:
+    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    output_path.write_text(
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        f"<title>{title}</title>"
+        "<style>html,body{margin:0;background:#f5f5f3;color:#171717;font-family:Georgia,serif}"
+        "main{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}"
+        "img{display:block;max-width:100%;max-height:calc(100vh - 48px);box-shadow:0 8px 30px #0002}"
+        "</style></head><body><main>"
+        f"<img src='data:image/png;base64,{encoded}' alt='{title}'>"
+        "</main></body></html>",
+        encoding="utf-8",
+    )
+
+
+def write_three_geometry_html(
+    *,
+    output_path: Path,
+    xyz: np.ndarray,
+    colors: np.ndarray,
+    coils: list[np.ndarray],
+    nfp: int,
+    b_min: float,
+    b_max: float,
+) -> None:
+    nphi, ntheta, _ = xyz.shape
+    triangles: list[int] = []
+    for i in range(nphi):
+        i_next = (i + 1) % nphi
+        for j in range(ntheta):
+            j_next = (j + 1) % ntheta
+            a = i * ntheta + j
+            b = i_next * ntheta + j
+            c = i_next * ntheta + j_next
+            d = i * ntheta + j_next
+            triangles.extend((a, b, d, b, c, d))
+
+    payload = {
+        "positions": np.asarray(xyz, dtype=np.float32).reshape(-1).tolist(),
+        "colors": np.asarray(colors, dtype=np.float32).reshape(-1).tolist(),
+        "indices": triangles,
+        "coils": [np.asarray(coil, dtype=np.float32).reshape(-1).tolist() for coil in coils],
+        "nfp": nfp,
+        "bMin": b_min,
+        "bMax": b_max,
+    }
+    data = json.dumps(payload, separators=(",", ":"), allow_nan=False)
+    template = """<!doctype html>
+<html><head><meta charset="utf-8"><title>Optimized coils and Boozer surface</title>
+<style>
+html,body,#view{width:100%;height:100%;margin:0;overflow:hidden;background:#f4f4f0}
+#label{position:fixed;left:16px;top:14px;padding:9px 11px;background:#fffffff0;border:1px solid #2223;
+font:14px/1.35 Georgia,serif;color:#171717;z-index:2}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+</head><body><div id="view"></div><div id="label">Full device<br>|B|: __BMIN__ to __BMAX__ T</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const data=__DATA__;
+const root=document.getElementById('view');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xf4f4f0);
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.001,100);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace; root.appendChild(renderer.domElement);
+const geometry=new THREE.BufferGeometry();
+geometry.setAttribute('position',new THREE.Float32BufferAttribute(data.positions,3));
+geometry.setAttribute('color',new THREE.Float32BufferAttribute(data.colors,3));
+geometry.setIndex(data.indices); geometry.computeVertexNormals();
+const material=new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:0.72,metalness:0.02,transparent:true,opacity:0.88});
+for(let p=0;p<data.nfp;p++){const mesh=new THREE.Mesh(geometry,material);mesh.rotation.z=2*Math.PI*p/data.nfp;scene.add(mesh);}
+const coilMaterial=new THREE.LineBasicMaterial({color:0x111111});
+for(const values of data.coils){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(values,3));scene.add(new THREE.LineLoop(g,coilMaterial));}
+scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2.2));
+const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(2,-3,4);scene.add(key);
+const bounds=new THREE.Box3().setFromObject(scene);const center=bounds.getCenter(new THREE.Vector3());const size=bounds.getSize(new THREE.Vector3()).length();
+camera.position.set(center.x+0.95*size,center.y-1.25*size,center.z+0.8*size);camera.near=size/1000;camera.far=size*20;camera.updateProjectionMatrix();
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.copy(center);controls.enableDamping=true;
+function draw(){controls.update();renderer.render(scene,camera);requestAnimationFrame(draw)} draw();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>"""
+    output_path.write_text(
+        template.replace("__DATA__", data)
+        .replace("__BMIN__", f"{b_min:.5g}")
+        .replace("__BMAX__", f"{b_max:.5g}"),
+        encoding="utf-8",
+    )
+
+
 def render_boozer_and_geometry(
     *,
     case_file: Path,
@@ -68,7 +159,6 @@ def render_boozer_and_geometry(
 
     matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
-    import plotly.graph_objects as go
 
     from scripts.desc_psi_volume_initial_guess_experiment import make_xyz_surface
     from scripts.plot_poincare_validation import plot_poincare_from_dofs
@@ -101,60 +191,54 @@ def render_boozer_and_geometry(
     fig.savefig(output_dir / "boozer_b.png", dpi=190)
     plt.close(fig)
 
-    heatmap = go.Figure(
-        data=go.Heatmap(
-            x=zeta,
-            y=theta,
-            z=b_abs.T,
-            colorscale="Turbo",
-            colorbar={"title": "|B| [T]"},
-        )
-    )
-    heatmap.update_layout(
-        title="|B| on largest Boozer-solvable surface",
-        xaxis_title="NFP phi",
-        yaxis_title="Boozer theta",
-    )
-    heatmap.write_html(output_dir / "boozer_b.html", include_plotlyjs="cdn")
+    write_image_html(output_dir / "boozer_b.png", output_dir / "boozer_b.html", "Boozer |B|")
 
-    scene = go.Figure()
-    for period in range(field_input.nfp):
-        angle = 2.0 * np.pi * period / field_input.nfp
-        gamma = rotate_z(xyz, angle)
-        scene.add_trace(
-            go.Surface(
-                x=gamma[..., 0],
-                y=gamma[..., 1],
-                z=gamma[..., 2],
-                surfacecolor=b_abs,
-                colorscale="Turbo",
-                cmin=float(np.min(b_abs)),
-                cmax=float(np.max(b_abs)),
-                showscale=period == 0,
-                colorbar={"title": "|B| [T]"},
-                opacity=0.86,
-                name="Boozer surface",
-            )
-        )
-    for index, coil in enumerate(built.field.coils):
-        gamma = np.asarray(coil.curve.gamma(), dtype=float)
-        scene.add_trace(
-            go.Scatter3d(
-                x=gamma[:, 0],
-                y=gamma[:, 1],
-                z=gamma[:, 2],
-                mode="lines",
-                line={"color": "#222222", "width": 5},
-                name="coils" if index == 0 else None,
-                showlegend=index == 0,
-            )
-        )
-    scene.update_layout(
-        title="Optimized coils and largest Boozer-solvable surface",
-        scene={"aspectmode": "data", "xaxis_title": "x", "yaxis_title": "y", "zaxis_title": "z"},
-        margin={"l": 0, "r": 0, "t": 45, "b": 0},
+    b_min = float(np.min(b_abs))
+    b_max = float(np.max(b_abs))
+    color_scale = plt.get_cmap("turbo")((b_abs - b_min) / max(b_max - b_min, 1.0e-30))[..., :3]
+    coil_points = [np.asarray(coil.curve.gamma(), dtype=float) for coil in built.field.coils]
+    write_three_geometry_html(
+        output_path=output_dir / "coils_surface.html",
+        xyz=xyz,
+        colors=color_scale,
+        coils=coil_points,
+        nfp=field_input.nfp,
+        b_min=b_min,
+        b_max=b_max,
     )
-    scene.write_html(output_dir / "coils_surface.html", include_plotlyjs="cdn")
+
+    figure = plt.figure(figsize=(8.0, 7.2))
+    axis_3d = figure.add_subplot(111, projection="3d")
+    stride_phi = max(1, xyz.shape[0] // 36)
+    stride_theta = max(1, xyz.shape[1] // 72)
+    for period in range(field_input.nfp):
+        gamma = rotate_z(xyz, 2.0 * np.pi * period / field_input.nfp)
+        axis_3d.plot_surface(
+            gamma[..., 0],
+            gamma[..., 1],
+            gamma[..., 2],
+            facecolors=color_scale,
+            rstride=stride_phi,
+            cstride=stride_theta,
+            linewidth=0,
+            antialiased=False,
+            shade=False,
+            alpha=0.82,
+        )
+    for gamma in coil_points:
+        axis_3d.plot(gamma[:, 0], gamma[:, 1], gamma[:, 2], color="#161616", linewidth=1.4)
+    all_points = np.concatenate([xyz.reshape(-1, 3), *coil_points], axis=0)
+    center = 0.5 * (all_points.min(axis=0) + all_points.max(axis=0))
+    extent = float(np.max(np.ptp(all_points, axis=0))) * 0.55
+    axis_3d.set_xlim(center[0] - extent, center[0] + extent)
+    axis_3d.set_ylim(center[1] - extent, center[1] + extent)
+    axis_3d.set_zlim(center[2] - extent, center[2] + extent)
+    axis_3d.set_box_aspect((1, 1, 1))
+    axis_3d.set_axis_off()
+    axis_3d.view_init(elev=27, azim=-48)
+    figure.tight_layout(pad=0)
+    figure.savefig(output_dir / "coils_surface.png", dpi=190, bbox_inches="tight", pad_inches=0.02)
+    plt.close(figure)
 
     surface_data = np.load(surface_npz)
     coil_dofs = np.concatenate(
@@ -176,13 +260,14 @@ def render_boozer_and_geometry(
     )
     return {
         "surface_meta": surface_meta,
-        "b_abs_min": float(np.min(b_abs)),
+        "b_abs_min": b_min,
         "b_abs_mean": float(np.mean(b_abs)),
-        "b_abs_max": float(np.max(b_abs)),
+        "b_abs_max": b_max,
         "poincare": poincare,
         "boozer_b_png": str(output_dir / "boozer_b.png"),
         "boozer_b_html": str(output_dir / "boozer_b.html"),
         "coils_surface_html": str(output_dir / "coils_surface.html"),
+        "coils_surface_png": str(output_dir / "coils_surface.png"),
     }
 
 
@@ -350,6 +435,22 @@ def main() -> None:
     total_started = time.perf_counter()
     for a_value in a_values:
         run_dir = args.output_dir / f"a_{a_value:.4g}".replace(".", "p")
+        summary_path = run_dir / "summary.json"
+        if summary_path.exists():
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            row = {
+                "a": a_value,
+                "run_dir": str(run_dir),
+                "best_surface": summary.get("best_surface"),
+                "quality_score": summary.get("quality_score"),
+                "warnings": summary.get("warnings"),
+                "total_time_s": 0.0,
+                "reused": True,
+            }
+            rows.append(row)
+            write_json(args.output_dir / "sweep_progress.json", {"rows": rows})
+            print(json.dumps(row, separators=(",", ":"), allow_nan=True), flush=True)
+            continue
         base = EvalConfig(current_unit="A")
         config = replace(
             base,

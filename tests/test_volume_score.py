@@ -116,6 +116,12 @@ def test_qa_does_not_apply_qh_iota_gate():
     assert qa["details"]["volume_qs_iota_factor"] == 1.0
 
 
+def test_qp_does_not_apply_qh_iota_gate():
+    qp = evaluate_volume_quality_score(_result(iota=0.1, target=(0, 3)))
+    assert qp["components"]["iota"] == 100.0
+    assert qp["details"]["volume_qs_iota_factor"] == 1.0
+
+
 def test_volume_score_penalizes_worse_qs_at_fixed_surface():
     good_result = _result(qs_error=0.005)
     bad_result = deepcopy(good_result)

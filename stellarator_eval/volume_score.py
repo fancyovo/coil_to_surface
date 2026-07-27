@@ -212,7 +212,7 @@ def _iota_score(result: dict, cfg: VolumeScoreConfig) -> tuple[float, dict[str, 
     target = volume.get("target_helicity") or [1, 0]
     alpha = ((volume.get("alpha") or {}).get("diagnostics") or {})
     minimum = _minimum_absolute_iota(alpha.get("iota_min"), alpha.get("iota_max"))
-    is_qh = len(target) >= 2 and int(target[1]) != 0
+    is_qh = len(target) >= 2 and int(target[0]) != 0 and int(target[1]) != 0
     score = (
         _clip01(minimum / cfg.qh_iota_threshold) ** cfg.qh_iota_power
         if is_qh
@@ -249,7 +249,7 @@ def _volume_qs_score(
     )
     size_factor = cfg.volume_qs_size_floor + (1.0 - cfg.volume_qs_size_floor) * size_score
     target = volume.get("target_helicity") or [1, 0]
-    is_qh = len(target) >= 2 and int(target[1]) != 0
+    is_qh = len(target) >= 2 and int(target[0]) != 0 and int(target[1]) != 0
     iota_factor = (
         cfg.volume_qs_iota_floor + (1.0 - cfg.volume_qs_iota_floor) * iota_score
         if is_qh

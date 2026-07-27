@@ -3047,7 +3047,8 @@ bool run_downstream_gpu(
     result.components[SGPU_SCORE_COMPONENT_COORDINATE] = blend({
         {0.35, flux_score}, {0.35, normal_score}, {0.20, alpha_score}, {0.10, 1.0},
     });
-    const double iota_score = config.target_N == 0 ? 1.0 : std::pow(
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    const double iota_score = !qh_target ? 1.0 : std::pow(
         clip01(minimum_absolute_iota(result.iota_min, result.iota_max) /
                config.score_qh_iota_threshold),
         config.score_qh_iota_power
@@ -3071,7 +3072,7 @@ bool run_downstream_gpu(
     );
     const double size_factor = config.score_volume_qs_size_floor +
         (1.0 - config.score_volume_qs_size_floor) * size_score;
-    const double iota_factor = config.target_N == 0 ? 1.0 :
+    const double iota_factor = !qh_target ? 1.0 :
         config.score_volume_qs_iota_floor +
         (1.0 - config.score_volume_qs_iota_floor) * iota_score;
     result.score_surface_size = size_score;

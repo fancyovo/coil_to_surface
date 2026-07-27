@@ -1,7 +1,7 @@
 # GPU 原生线圈到体 QS score：实现与 2000 样本验证报告
 
-更新日期：2026-07-27  
-代码分支：`gpu-native-score`  
+更新日期：2026-07-27<br>
+代码分支：`gpu-native-score`<br>
 生产接口：C ABI v2，`sgpu_score_coils(...)`
 
 ## 1. 结论先行

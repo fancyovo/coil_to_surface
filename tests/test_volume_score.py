@@ -108,7 +108,7 @@ def test_qh_iota_below_one_is_penalized_monotonically():
     assert enough["components"]["iota"] == high["components"]["iota"] == 100.0
     assert very_low["components"]["volume_qs"] < low["components"]["volume_qs"]
     assert very_low["score"] < low["score"] < enough["score"]
-    assert very_low["details"]["score_qh_total_iota_factor"] == 0.109
+    assert np.isclose(very_low["details"]["score_qh_total_iota_factor"], 0.109)
     assert enough["details"]["score_qh_total_iota_factor"] == 1.0
 
 

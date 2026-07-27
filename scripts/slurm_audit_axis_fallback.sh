@@ -21,6 +21,7 @@ source_run=${SOURCE_RUN:-runs/native_score/calibration_1000_27717}
 fallback_grid=${FALLBACK_GRID:-64}
 fallback_candidates=${FALLBACK_CANDIDATES:-48}
 fallback_newton=${FALLBACK_NEWTON:-6}
+nfp_min=${NFP_MIN:-0}
 output_dir="$project/runs/native_score/axis_fallback${fallback_grid}_${SLURM_JOB_ID}"
 
 cd "$project"
@@ -39,7 +40,7 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 mkdir -p "$output_dir"
-python - "$project/$source_run" "$output_dir/case_ids.txt" <<'PY'
+python - "$project/$source_run" "$output_dir/case_ids.txt" "$nfp_min" <<'PY'
 import glob
 import json
 from pathlib import Path
@@ -52,6 +53,7 @@ ids = sorted(
     int(row["case_id"])
     for row in rows
     if row["native_score"]["diagnostics"]["axis_candidate_count"] == 16
+    and int(row["nfp"]) >= int(sys.argv[3])
 )
 Path(sys.argv[2]).write_text("".join(f"{case_id}\n" for case_id in ids), encoding="utf-8")
 PY

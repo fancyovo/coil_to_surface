@@ -8,6 +8,7 @@ from stellarator_eval.volume_qs import (
     calibrate_toroidal_flux_gpu,
     compute_f_c,
     evaluate_psi_tensor_numpy,
+    _physical_volume_weights,
     _surface_radius_on_rays,
     _budget_flux_levels,
 )
@@ -26,6 +27,13 @@ class UniformToroidalField:
         return self.magnitude * np.column_stack(
             [-np.sin(phi), np.cos(phi), np.zeros_like(phi)]
         )
+
+
+def test_star_shaped_volume_weights_include_boundary_radius_squared():
+    major_radius = np.asarray([0.8, 1.0, 1.2])
+    boundary_radius = np.asarray([0.1, 0.2, 0.3])
+    weights = _physical_volume_weights(major_radius, boundary_radius)
+    np.testing.assert_allclose(weights, major_radius * boundary_radius**2)
 
 
 def make_model():

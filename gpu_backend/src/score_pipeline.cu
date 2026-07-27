@@ -109,6 +109,9 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->qs_global_error = nan;
     result->qs_edge_error = nan;
     result->qs_abs_p95 = nan;
+    result->volume_valid_fraction = nan;
+    result->volume_weight_effective_fraction = nan;
+    result->edge_weight_effective_fraction = nan;
     result->coil_length_mean = nan;
     result->coil_curvature_p95 = nan;
     result->coil_curvature_max = nan;
@@ -1943,12 +1946,14 @@ struct DeviceVolumePoints {
 
 __global__ void generate_volume_candidates_kernel(
     const float* __restrict__ boundary_radii,
+    const float* __restrict__ boundary_residuals,
     int n_phi,
     int n_theta,
     int n_radial,
     int nfp,
     float rho_min,
     float edge_level,
+    float boundary_tolerance,
     const float* __restrict__ flux_coefficients,
     int flux_degree,
     float edge_flux,
@@ -2056,11 +2061,12 @@ __global__ void generate_volume_candidates_kernel(
     theta_out[index] = -geometric_theta;
     phi_out[index] = phi;
     R_out[index] = R;
-    volume_weight[index] = R;
+    volume_weight[index] = R * boundary * boundary;
     flux_derivative_out[index] = flux_derivative;
     const float lower = edge_level * rho_min * rho_min;
     valid[index] = static_cast<unsigned char>(
         isfinite(s_value) && isfinite(physical_rho) && R > 0.0f &&
+        boundary_residuals[ray] <= boundary_tolerance &&
         s_value >= lower && s_value <= edge_level * (1.0f + 2.0e-5f) &&
         physical_rho <= 1.0001f
     );
@@ -2142,6 +2148,7 @@ bool build_volume_points_native(
     const int candidate_target = static_cast<int>(std::ceil(config.volume_point_count * 1.25));
     const int n_radial = (candidate_target + ray_count - 1) / ray_count;
     const int candidate_count = ray_count * n_radial;
+    result.volume_candidate_count = candidate_count;
     std::vector<float> edge_level{static_cast<float>(flux.edge_level)};
     DeviceBuffer<float> d_edge_level, d_flux_coefficients;
     DeviceBuffer<float> d_ray_coefficients(static_cast<size_t>(ray_count) * (config.psi_poly_degree + 1));
@@ -2173,8 +2180,9 @@ bool build_volume_points_native(
         d_boundary_radii.data(), d_boundary_residuals.data()
     );
     generate_volume_candidates_kernel<<<(candidate_count + threads - 1) / threads, threads>>>(
-        d_boundary_radii.data(), n_phi, n_theta, n_radial, nfp,
+        d_boundary_radii.data(), d_boundary_residuals.data(), n_phi, n_theta, n_radial, nfp,
         static_cast<float>(config.volume_rho_min), static_cast<float>(flux.edge_level),
+        static_cast<float>(config.flux_boundary_tolerance),
         d_flux_coefficients.data(), static_cast<int>(flux.coefficients.size()),
         static_cast<float>(flux.edge_flux), device_psi.coeffs.data(),
         device_psi.mode_a.data(), device_psi.mode_b.data(), device_psi.mode_m.data(),
@@ -2207,6 +2215,9 @@ bool build_volume_points_native(
     if (!cuda_stage_ok(cudaMemcpy(&available_count, d_available_count.data(), sizeof(int), cudaMemcpyDeviceToHost), result, "volume valid count")) {
         return false;
     }
+    result.volume_available_count = available_count;
+    result.volume_valid_fraction = static_cast<double>(available_count) /
+        std::max(candidate_count, 1);
     const int minimum_count = std::max(
         config.alpha_fit_point_count,
         static_cast<int>(std::ceil(0.6 * config.volume_point_count))
@@ -2811,9 +2822,12 @@ __global__ void compute_qs_metric_kernel(
     absolute_normalized[point] = static_cast<float>(fabs(normalized));
     atomic_add_double(sums, weight);
     atomic_add_double(sums + 1, weight * normalized * normalized);
+    atomic_add_double(sums + 4, weight * weight);
     if (rho[point] >= edge_rho_threshold) {
         atomic_add_double(sums + 2, weight);
         atomic_add_double(sums + 3, weight * normalized * normalized);
+        atomic_add_double(sums + 5, weight * weight);
+        atomic_add_double(sums + 6, 1.0);
     }
 }
 
@@ -2830,7 +2844,7 @@ bool compute_qs_metric_native(
 ) {
     DeviceBuffer<float> d_iota;
     DeviceBuffer<float> d_absolute(points.count);
-    DeviceBuffer<double> d_sums(4);
+    DeviceBuffer<double> d_sums(7);
     if (!copy_to_device(d_iota, alpha.iota_coefficients) || !d_absolute.data() || !d_sums.data() ||
         !cuda_stage_ok(cudaMemset(d_sums.data(), 0, d_sums.size() * sizeof(double)), result, "QS reduction clear")) {
         if (result.status != SGPU_SCORE_INTERNAL_ERROR) fail_result(&result, "QS allocation failed");
@@ -2855,13 +2869,17 @@ bool compute_qs_metric_native(
     thrust::sort(begin, begin + points.count);
     const int percentile_index = std::min(points.count - 1, static_cast<int>(std::floor(0.95 * (points.count - 1))));
     float p95 = 0.0f;
-    std::array<double, 4> sums{};
+    std::array<double, 7> sums{};
     if (!cuda_stage_ok(cudaMemcpy(&p95, d_absolute.data() + percentile_index, sizeof(float), cudaMemcpyDeviceToHost), result, "QS p95 copy") ||
         !cuda_stage_ok(cudaMemcpy(sums.data(), d_sums.data(), sizeof(sums), cudaMemcpyDeviceToHost), result, "QS sums copy")) {
         return false;
     }
     result.qs_global_error = std::sqrt(sums[1] / std::max(sums[0], 1.0e-300));
     result.qs_edge_error = std::sqrt(sums[3] / std::max(sums[2], 1.0e-300));
+    result.volume_weight_effective_fraction =
+        sums[0] * sums[0] / std::max(points.count * sums[4], 1.0e-300);
+    result.edge_weight_effective_fraction =
+        sums[2] * sums[2] / std::max(sums[6] * sums[5], 1.0e-300);
     result.qs_abs_p95 = p95;
     return true;
 }

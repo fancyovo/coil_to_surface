@@ -324,6 +324,7 @@ def sample_volume_points(
     if available > config.point_count:
         selection = np.floor(np.linspace(0, available, config.point_count, endpoint=False)).astype(int)
         indices = indices[selection]
+    selected_boundary_radius = boundary_radius[indices]
     R = R[indices]
     Z = Z[indices]
     phi = phi_flat[indices]
@@ -354,11 +355,15 @@ def sample_volume_points(
         "grad_s": grad_s,
         "grad_theta": grad_theta,
         "grad_phi": grad_phi,
-        "volume_weight": R,
+        "volume_weight": _physical_volume_weights(R, selected_boundary_radius),
         "nfp": np.asarray(model.nfp),
         "candidate_count": np.asarray([len(phi_flat)]),
         "available_count": np.asarray([available]),
     }
+
+
+def _physical_volume_weights(R, boundary_radius):
+    return np.asarray(R) * np.asarray(boundary_radius) ** 2
 
 
 def _budget_flux_levels(candidate_levels, maximum_attempts: int = 5) -> list[float]:
@@ -899,6 +904,13 @@ def summarize_volume_qs(points: dict, fields: dict, radial_bins: int) -> dict:
     normalized = np.asarray(fields["f_C_over_B3"])
     raw = np.asarray(fields["f_C"])
 
+    def effective_fraction(selected):
+        selected_weight = weight[selected]
+        return float(
+            np.sum(selected_weight) ** 2
+            / max(len(selected_weight) * np.sum(selected_weight**2), 1e-300)
+        )
+
     def weighted_rms(value, selected):
         selected_weight = weight[selected]
         return float(np.sqrt(np.sum(selected_weight * value[selected] ** 2) / np.sum(selected_weight)))
@@ -925,6 +937,7 @@ def summarize_volume_qs(points: dict, fields: dict, radial_bins: int) -> dict:
         "f_C_rms_T3": weighted_rms(raw, selected),
         "f_C_over_B3_rms": weighted_rms(normalized, selected),
         "f_C_over_B3_abs_p95": float(np.percentile(np.abs(normalized), 95)),
+        "volume_weight_effective_fraction": effective_fraction(selected),
         "cancellation_ratio_median": float(np.median(cancellation)),
         "radial_bins": bins,
     }

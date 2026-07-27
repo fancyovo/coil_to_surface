@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 2u
+#define SGPU_SCORE_ABI_VERSION 3u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 6
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -173,6 +173,9 @@ struct SgpuScoreResult {
     double qs_global_error;
     double qs_edge_error;
     double qs_abs_p95;
+    double volume_valid_fraction;
+    double volume_weight_effective_fraction;
+    double edge_weight_effective_fraction;
 
     double coil_length_mean;
     double coil_curvature_p95;
@@ -184,6 +187,8 @@ struct SgpuScoreResult {
 
     std::int32_t axis_candidate_count;
     std::int32_t stable_surface_count;
+    std::int32_t volume_candidate_count;
+    std::int32_t volume_available_count;
     std::int32_t volume_point_count;
     std::int32_t alpha_column_count;
     char error_message[256];

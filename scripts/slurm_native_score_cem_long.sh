@@ -25,6 +25,7 @@ iterations=${ITERATIONS:-96}
 popsize=${POPSIZE:-160}
 gpu_ids=${GPU_IDS:-0,0,1,1,2,2,3,3}
 batch_timeout_s=${BATCH_TIMEOUT_S:-900}
+n_base_coils=${N_BASE_COILS:-3}
 children=()
 
 cleanup() {
@@ -64,8 +65,8 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
 started=$(date +%s.%N)
-printf '{"target":"%s","seed":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s}\n' \
-    "$target" "$seed" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" \
+printf '{"target":"%s","seed":%d,"n_base_coils":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s}\n' \
+    "$target" "$seed" "$n_base_coils" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" \
     > "$run_root/job.json"
 
 case "$target" in
@@ -78,7 +79,7 @@ python scripts/optimize_native_score_cem.py \
     --out-dir "$run_root/${target,,}" \
     --target "$target" \
     --nfp 3 \
-    --n-base-coils 1 \
+    --n-base-coils "$n_base_coils" \
     --iterations "$iterations" \
     --popsize "$popsize" \
     --elite $((popsize / 4)) \
@@ -90,6 +91,6 @@ wait "${children[0]}"
 children=()
 
 finished=$(date +%s.%N)
-printf '{"target":"%s","seed":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s,"finished":%s}\n' \
-    "$target" "$seed" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" "$finished" \
+printf '{"target":"%s","seed":%d,"n_base_coils":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s,"finished":%s}\n' \
+    "$target" "$seed" "$n_base_coils" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" "$finished" \
     > "$run_root/job.json"

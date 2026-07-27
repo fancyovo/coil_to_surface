@@ -23,6 +23,7 @@ targets=${TARGETS:-QH,QA}
 iterations=${ITERATIONS:-8}
 popsize=${POPSIZE:-32}
 gpu_ids=${GPU_IDS:-0,1,2,3}
+n_base_coils=${N_BASE_COILS:-3}
 
 cleanup() {
     status=$?
@@ -74,7 +75,7 @@ for target in "${target_list[@]}"; do
         --out-dir "$run_root/${target,,}" \
         --target "$target" \
         --nfp 3 \
-        --n-base-coils 1 \
+        --n-base-coils "$n_base_coils" \
         --iterations "$iterations" \
         --popsize "$popsize" \
         --elite $((popsize / 4)) \

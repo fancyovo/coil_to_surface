@@ -2999,8 +2999,17 @@ bool run_downstream_gpu(
     result.components[SGPU_SCORE_COMPONENT_COORDINATE] = blend({
         {0.35, flux_score}, {0.35, normal_score}, {0.20, alpha_score}, {0.10, 1.0},
     });
-    const double global_score = q_down(result.qs_global_error, config.score_qs_global_scale, 0.9);
-    const double edge_score = q_down(result.qs_edge_error, config.score_qs_edge_scale, 0.9, global_score);
+    // f_C is linear in the helicity pair, so score its magnitude per unit (M, N).
+    const double helicity_norm = std::max(
+        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
+        1.0
+    );
+    const double global_score = q_down(
+        result.qs_global_error, config.score_qs_global_scale * helicity_norm, 0.9
+    );
+    const double edge_score = q_down(
+        result.qs_edge_error, config.score_qs_edge_scale * helicity_norm, 0.9, global_score
+    );
     const double residual_score = blend({{0.80, global_score}, {0.20, edge_score}});
     const double size_score = q_up(
         result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_scale, 2.0

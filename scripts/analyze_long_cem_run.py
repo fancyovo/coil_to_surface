@@ -184,10 +184,136 @@ def plot_pareto(rows: list[dict], selected: dict[str, dict], output: Path) -> No
     plt.close(figure)
 
 
+def audit_full_evaluation(full: dict) -> dict:
+    rows = []
+    surface_keys = (
+        "psi_level",
+        "radius_min",
+        "radius_mean",
+        "radius_max",
+        "initial_volume",
+        "initial_boozer_residual_norm",
+        "ls_time_s",
+        "ls_success",
+        "ls_iota",
+        "ls_residual_norm",
+        "newton_time_s",
+        "newton_success",
+        "newton_iter",
+        "iota",
+        "volume",
+        "newton_residual_norm",
+        "qs_error_QA_1_0",
+        "qs_error_QH_1_1",
+        "qs_error_QP_0_1",
+        "total_time_s",
+    )
+    for row in full["rows"]:
+        compact = {
+            "a": row["a"],
+            "total_time_s": row["total_time_s"],
+            "reused": row.get("reused", False),
+        }
+        if row.get("best_surface"):
+            compact["best_surface"] = {
+                key: row["best_surface"].get(key) for key in surface_keys
+            }
+        else:
+            compact["best_surface"] = None
+            compact["error"] = row.get("error")
+        rows.append(compact)
+
+    visualization = full["visualization"]
+    desc = full["desc"]
+    desc_keys = (
+        "toroidal_flux",
+        "nested_initial",
+        "initial_force_compute_success",
+        "initial_force_compute_time_s",
+        "initial_force_mean_abs_normalized",
+        "initial_force_p95_abs_normalized",
+        "initial_force_max_abs_normalized",
+        "solve_call_success",
+        "optimizer_success",
+        "optimizer_message",
+        "optimizer_cost",
+        "optimizer_nit",
+        "optimizer_nfev",
+        "optimizer_njev",
+        "optimizer_optimality",
+        "solve_time_s",
+        "nested_final",
+        "final_force_compute_success",
+        "final_force_compute_time_s",
+        "final_force_mean_abs_normalized",
+        "final_force_p95_abs_normalized",
+        "final_force_max_abs_normalized",
+    )
+    return {
+        "target": full["target"],
+        "status": full["status"],
+        "rows": rows,
+        "selected_largest_surface_a": full["best"]["a"],
+        "total_sweep_time_s": full["total_sweep_time_s"],
+        "total_time_s": full["total_time_s"],
+        "visualization": {
+            "surface_meta": visualization["surface_meta"],
+            "b_abs_min": visualization["b_abs_min"],
+            "b_abs_mean": visualization["b_abs_mean"],
+            "b_abs_max": visualization["b_abs_max"],
+            "poincare_hit_counts": visualization["poincare"]["hit_counts"],
+        },
+        "desc": {key: desc.get(key) for key in desc_keys},
+    }
+
+
+def plot_surface_sweep(full: dict, output: Path) -> None:
+    rows = [row for row in full["rows"] if row.get("best_surface")]
+    a_values = np.asarray([row["a"] for row in rows])
+    volumes = np.asarray([row["best_surface"]["volume"] for row in rows])
+    levels = np.asarray([row["best_surface"]["psi_level"] for row in rows])
+
+    figure, axes = plt.subplots(1, 2, figsize=(11.2, 4.4))
+    axes[0].plot(a_values, volumes, "o-", color="#277c83", linewidth=2.1)
+    for a_value, volume, level in zip(a_values, volumes, levels, strict=True):
+        axes[0].annotate(
+            f"psi={level:g}",
+            (a_value, volume),
+            xytext=(0, 7),
+            textcoords="offset points",
+            ha="center",
+            fontsize=8,
+        )
+    axes[0].set_xlabel("psi fit radius parameter a [m]")
+    axes[0].set_ylabel("largest Boozer-solvable volume [m$^3$]")
+    axes[0].set_xlim(a_values.min() - 0.015, a_values.max() + 0.015)
+    axes[0].set_ylim(0.0, volumes.max() * 1.14)
+
+    for label, key, color in (
+        ("QA", "qs_error_QA_1_0", "#277c83"),
+        ("QH", "qs_error_QH_1_1", "#b43b2f"),
+        ("QP", "qs_error_QP_0_1", "#6a4c93"),
+    ):
+        values = 100.0 * np.asarray([row["best_surface"][key] for row in rows])
+        axes[1].plot(a_values, values, "o-", linewidth=1.8, color=color, label=label)
+    axes[1].set_xlabel("psi fit radius parameter a [m]")
+    axes[1].set_ylabel("Simsopt single-surface QS error [%]")
+    axes[1].legend()
+
+    for axis in axes:
+        axis.grid(alpha=0.2)
+    figure.suptitle("Independent stable-path surface sweep")
+    figure.tight_layout()
+    figure.savefig(output, dpi=190, bbox_inches="tight")
+    plt.close(figure)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audit a long native-score CEM run.")
     parser.add_argument("--summary", type=Path, required=True)
     parser.add_argument("--candidates", type=Path, required=True)
+    parser.add_argument("--best-case", type=Path)
+    parser.add_argument("--full-summary", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 
@@ -217,11 +343,60 @@ def main() -> None:
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.best_case:
+        best_case = load_json(args.best_case)
+        manifest = best_case["cem"]["manifest"]
+        public_manifest_keys = (
+            "target",
+            "nfp",
+            "n_base_coils",
+            "latent_dim_per_coil",
+            "seed",
+            "iterations",
+            "popsize",
+            "elite",
+            "sigma",
+            "smoothing",
+            "latent_limit",
+            "current_l1_a",
+            "pca_sha256",
+            "native_lib_sha256",
+            "gpu_ids",
+        )
+        public_case = {
+            "nfp": best_case["nfp"],
+            "raw": best_case["raw"],
+            "cem": {
+                **{
+                    key: value
+                    for key, value in best_case["cem"].items()
+                    if key != "manifest"
+                },
+                "manifest": {
+                    key: manifest[key]
+                    for key in public_manifest_keys
+                    if key in manifest
+                },
+            },
+        }
+        audit["best_native_timing"] = best_case["cem"]["native_score"]["timing"]
+        (args.output_dir / "best_case.json").write_text(
+            json.dumps(public_case, indent=2, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
     (args.output_dir / "long_cem_audit.json").write_text(
         json.dumps(audit, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )
     plot_convergence(summary, champions, args.output_dir / "long_cem_convergence.png")
     plot_pareto(successful, selected, args.output_dir / "long_cem_pareto.png")
+    if args.full_summary:
+        full = load_json(args.full_summary)
+        full_audit = audit_full_evaluation(full)
+        (args.output_dir / "full_evaluation_audit.json").write_text(
+            json.dumps(full_audit, indent=2, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
+        plot_surface_sweep(full, args.output_dir / "full_surface_sweep.png")
 
 
 if __name__ == "__main__":

@@ -60,6 +60,18 @@ double q_up(double value, double scale, double power, double fallback = 0.0) {
     return 1.0 / (1.0 + std::pow(scale / value, power));
 }
 
+double q_saturating_up(double value, double saturation, double fallback = 0.0) {
+    if (!std::isfinite(value) || value <= 0.0 || !(saturation > 0.0)) return fallback;
+    const double x = clip01(value / saturation);
+    return x * x * (3.0 - 2.0 * x);
+}
+
+double minimum_absolute_iota(double iota_min, double iota_max) {
+    if (!std::isfinite(iota_min) || !std::isfinite(iota_max)) return 0.0;
+    if (iota_min <= 0.0 && iota_max >= 0.0) return 0.0;
+    return std::min(std::abs(iota_min), std::abs(iota_max));
+}
+
 double blend(std::initializer_list<std::pair<double, double>> values) {
     double total = 0.0;
     double weighted = 0.0;
@@ -106,6 +118,11 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->alpha_normal_B_relative_l2 = nan;
     result->iota_min = nan;
     result->iota_max = nan;
+    result->score_surface_size = nan;
+    result->score_iota = nan;
+    result->score_qs_residual = nan;
+    result->score_volume_qs_size_factor = nan;
+    result->score_volume_qs_iota_factor = nan;
     result->qs_global_error = nan;
     result->qs_edge_error = nan;
     result->qs_abs_p95 = nan;
@@ -1188,7 +1205,14 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.surface_theta_count < 16 || config.volume_point_count <= 0 ||
         config.alpha_fit_point_count <= 0 ||
         config.alpha_fit_point_count > config.volume_point_count ||
-        (config.alpha_solver_mode != 1 && config.alpha_solver_mode != 2)) {
+        (config.alpha_solver_mode != 1 && config.alpha_solver_mode != 2) ||
+        !(config.score_surface_inverse_aspect_saturation > 0.0) ||
+        !(config.score_qh_iota_threshold > 0.0) ||
+        !(config.score_qh_iota_power > 0.0) ||
+        config.score_volume_qs_size_floor < 0.0 ||
+        config.score_volume_qs_size_floor > 1.0 ||
+        config.score_volume_qs_iota_floor < 0.0 ||
+        config.score_volume_qs_iota_floor > 1.0) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -1218,7 +1242,10 @@ void fill_early_components(
         if (std::isfinite(screen.relative_drift_p95)) minimum_drift = std::min(minimum_drift, screen.relative_drift_p95);
         if (screen.strict) ++strict_count;
     }
-    const double size = q_up(result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_scale, 2.0);
+    const double size = q_saturating_up(
+        result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_saturation
+    );
+    result.score_surface_size = size;
     const double drift = q_down(minimum_drift, config.score_surface_drift_scale, 1.0, 0.15);
     const double count = q_up(strict_count, 2.0, 1.0);
     result.components[SGPU_SCORE_COMPONENT_SURFACE] = blend({{0.65, size}, {0.25, drift}, {0.10, count}});
@@ -1232,6 +1259,9 @@ void finalize_score(const SgpuScoreConfig& config, SgpuScoreResult& result) {
     }
     if (result.stage_completed < SCORE_STAGE_QS) {
         result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] = 0.04;
+    }
+    if (result.stage_completed < SCORE_STAGE_ALPHA) {
+        result.components[SGPU_SCORE_COMPONENT_IOTA] = 0.04;
     }
     double total_weight = 0.0;
     double weighted_score = 0.0;
@@ -3017,6 +3047,13 @@ bool run_downstream_gpu(
     result.components[SGPU_SCORE_COMPONENT_COORDINATE] = blend({
         {0.35, flux_score}, {0.35, normal_score}, {0.20, alpha_score}, {0.10, 1.0},
     });
+    const double iota_score = config.target_N == 0 ? 1.0 : std::pow(
+        clip01(minimum_absolute_iota(result.iota_min, result.iota_max) /
+               config.score_qh_iota_threshold),
+        config.score_qh_iota_power
+    );
+    result.score_iota = iota_score;
+    result.components[SGPU_SCORE_COMPONENT_IOTA] = iota_score;
     // f_C is linear in the helicity pair, so score its magnitude per unit (M, N).
     const double helicity_norm = std::max(
         std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
@@ -3029,10 +3066,20 @@ bool run_downstream_gpu(
         result.qs_edge_error, config.score_qs_edge_scale * helicity_norm, 0.9, global_score
     );
     const double residual_score = blend({{0.80, global_score}, {0.20, edge_score}});
-    const double size_score = q_up(
-        result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_scale, 2.0
+    const double size_score = q_saturating_up(
+        result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_saturation
     );
-    result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] = residual_score * (0.35 + 0.65 * size_score);
+    const double size_factor = config.score_volume_qs_size_floor +
+        (1.0 - config.score_volume_qs_size_floor) * size_score;
+    const double iota_factor = config.target_N == 0 ? 1.0 :
+        config.score_volume_qs_iota_floor +
+        (1.0 - config.score_volume_qs_iota_floor) * iota_score;
+    result.score_surface_size = size_score;
+    result.score_qs_residual = residual_score;
+    result.score_volume_qs_size_factor = size_factor;
+    result.score_volume_qs_iota_factor = iota_factor;
+    result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] =
+        residual_score * size_factor * iota_factor;
     result.status = SGPU_SCORE_OK;
     result.stage_completed = SCORE_STAGE_QS;
     return true;
@@ -3120,12 +3167,12 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->alpha_solver_mode = 2;
     config->volume_rho_min = 0.08;
     config->alpha_ridge = 1.0e-7;
-    const double weights[] = {18.0, 18.0, 18.0, 14.0, 20.0, 12.0};
+    const double weights[] = {10.0, 10.0, 10.0, 10.0, 42.0, 10.0, 8.0};
     std::copy(weights, weights + SGPU_SCORE_COMPONENT_COUNT, config->score_weights);
     config->score_axis_residual_scale = 1.0e-5;
     config->score_psi_angle_p95_scale = 3.0e-3;
     config->score_psi_angle_l2_scale = 1.0e-3;
-    config->score_surface_inverse_aspect_scale = 0.04;
+    config->score_surface_inverse_aspect_saturation = 0.03;
     config->score_surface_drift_scale = 0.02;
     config->score_flux_section_std_scale = 0.01;
     config->score_flux_boundary_residual_scale = 2.0e-6;
@@ -3133,6 +3180,10 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_alpha_relative_l2_scale = 0.25;
     config->score_qs_global_scale = 0.05;
     config->score_qs_edge_scale = 0.07;
+    config->score_qh_iota_threshold = 1.0;
+    config->score_qh_iota_power = 2.0;
+    config->score_volume_qs_size_floor = 0.65;
+    config->score_volume_qs_iota_floor = 0.50;
     sgpu_internal_set_error("");
     return 0;
 }

@@ -24,7 +24,7 @@ class VolumeScoreConfig:
     """Scales and weights for the stable coil-to-volume-QS score."""
 
     base: ScoreConfig = field(default_factory=ScoreConfig)
-    surface_inverse_aspect_scale: float = 0.04
+    surface_inverse_aspect_saturation: float = 0.03
     surface_drift_scale: float = 0.02
     flux_section_std_scale: float = 0.01
     flux_boundary_residual_scale: float = 1e-9
@@ -32,18 +32,41 @@ class VolumeScoreConfig:
     alpha_relative_l2_scale: float = 0.25
     qs_global_scale: float = 0.05
     qs_edge_scale: float = 0.07
+    qh_iota_threshold: float = 1.0
+    qh_iota_power: float = 2.0
+    volume_qs_size_floor: float = 0.65
+    volume_qs_iota_floor: float = 0.50
     missing_coordinate_score: float = 0.08
     missing_volume_qs_score: float = 0.04
     weights: dict[str, float] = field(
         default_factory=lambda: {
-            "axis": 18.0,
-            "psi": 18.0,
-            "surface": 18.0,
-            "coordinate": 14.0,
-            "volume_qs": 20.0,
-            "coil": 12.0,
+            "axis": 10.0,
+            "psi": 10.0,
+            "surface": 10.0,
+            "coordinate": 10.0,
+            "volume_qs": 42.0,
+            "iota": 10.0,
+            "coil": 8.0,
         }
     )
+
+
+def _q_saturating_up(value: Any, saturation: float, default: float = 0.0) -> float:
+    value = _finite(value, np.nan)
+    if not np.isfinite(value) or value <= 0.0 or saturation <= 0.0:
+        return default
+    x = _clip01(value / saturation)
+    return float(x * x * (3.0 - 2.0 * x))
+
+
+def _minimum_absolute_iota(iota_min: Any, iota_max: Any) -> float:
+    low = _finite(iota_min, np.nan)
+    high = _finite(iota_max, np.nan)
+    if not np.isfinite(low) or not np.isfinite(high):
+        return 0.0
+    if low <= 0.0 <= high:
+        return 0.0
+    return float(min(abs(low), abs(high)))
 
 
 def _surface_stats(result: dict) -> dict[str, float]:
@@ -87,10 +110,9 @@ def _surface_stats(result: dict) -> dict[str, float]:
 
 def _surface_score(result: dict, cfg: VolumeScoreConfig) -> tuple[float, dict[str, float]]:
     stats = _surface_stats(result)
-    size = _q_up(
+    size = _q_saturating_up(
         stats["surface_inverse_aspect_ratio"],
-        cfg.surface_inverse_aspect_scale,
-        2.0,
+        cfg.surface_inverse_aspect_saturation,
     )
     drift = _q_down(
         stats["screen_min_rel_distance_p95"], cfg.surface_drift_scale, 1.0, default=0.15
@@ -185,7 +207,27 @@ def _edge_qs_error(metric: dict) -> float:
     return float("nan")
 
 
-def _volume_qs_score(result: dict, cfg: VolumeScoreConfig) -> tuple[float, dict[str, Any]]:
+def _iota_score(result: dict, cfg: VolumeScoreConfig) -> tuple[float, dict[str, Any]]:
+    volume = result.get("volume_qs") or {}
+    target = volume.get("target_helicity") or [1, 0]
+    alpha = ((volume.get("alpha") or {}).get("diagnostics") or {})
+    minimum = _minimum_absolute_iota(alpha.get("iota_min"), alpha.get("iota_max"))
+    is_qh = len(target) >= 2 and int(target[1]) != 0
+    score = (
+        _clip01(minimum / cfg.qh_iota_threshold) ** cfg.qh_iota_power
+        if is_qh
+        else 1.0
+    )
+    return float(score), {
+        "iota_score": float(score),
+        "iota_minimum_absolute": minimum,
+        "iota_qh_gate_enabled": is_qh,
+    }
+
+
+def _volume_qs_score(
+    result: dict, cfg: VolumeScoreConfig, iota_score: float
+) -> tuple[float, dict[str, Any]]:
     volume = result.get("volume_qs") or {}
     target = ((volume.get("metrics") or {}).get("target") or {})
     global_error = _finite(target.get("f_C_over_B3_rms"), np.nan)
@@ -201,17 +243,26 @@ def _volume_qs_score(result: dict, cfg: VolumeScoreConfig) -> tuple[float, dict[
     edge_score = _q_down(edge_error, cfg.qs_edge_scale, 0.9, default=global_score)
     residual_score = _blend([(0.80, global_score), (0.20, edge_score)])
     size_stats = _surface_stats(result)
-    size_score = _q_up(
+    size_score = _q_saturating_up(
         size_stats["surface_inverse_aspect_ratio"],
-        cfg.surface_inverse_aspect_scale,
-        2.0,
+        cfg.surface_inverse_aspect_saturation,
     )
-    useful_score = residual_score * (0.35 + 0.65 * size_score)
+    size_factor = cfg.volume_qs_size_floor + (1.0 - cfg.volume_qs_size_floor) * size_score
+    target = volume.get("target_helicity") or [1, 0]
+    is_qh = len(target) >= 2 and int(target[1]) != 0
+    iota_factor = (
+        cfg.volume_qs_iota_floor + (1.0 - cfg.volume_qs_iota_floor) * iota_score
+        if is_qh
+        else 1.0
+    )
+    useful_score = residual_score * size_factor * iota_factor
     return useful_score, {
         "volume_qs_global_score": global_score,
         "volume_qs_edge_score": edge_score,
         "volume_qs_residual_score": residual_score,
-        "volume_qs_size_factor": 0.35 + 0.65 * size_score,
+        "volume_qs_size_score": size_score,
+        "volume_qs_size_factor": size_factor,
+        "volume_qs_iota_factor": iota_factor,
         "volume_qs_global_error": global_error,
         "volume_qs_edge_error": edge_error,
     }
@@ -245,7 +296,8 @@ def evaluate_volume_quality_score(
     psi_score, psi_parts = _psi_score(result, cfg.base)
     surface_score, surface_parts = _surface_score(result, cfg)
     coordinate_score, coordinate_parts = _coordinate_score(result, cfg)
-    qs_score, qs_parts = _volume_qs_score(result, cfg)
+    iota_score, iota_parts = _iota_score(result, cfg)
+    qs_score, qs_parts = _volume_qs_score(result, cfg, iota_score)
     coil_metrics = (
         coil_geometry_metrics(field_input, current_unit=current_unit)
         if field_input is not None
@@ -258,6 +310,7 @@ def evaluate_volume_quality_score(
         "surface": surface_score,
         "coordinate": coordinate_score,
         "volume_qs": qs_score,
+        "iota": iota_score,
         "coil": coil_score,
     }
     unknown = set(cfg.weights) ^ set(components)
@@ -268,7 +321,15 @@ def evaluate_volume_quality_score(
         raise ValueError("score weights must have a positive sum")
     unit_score = sum(cfg.weights[name] * value for name, value in components.items()) / total_weight
     details: dict[str, Any] = {}
-    for part in (axis_parts, psi_parts, surface_parts, coordinate_parts, qs_parts, coil_parts):
+    for part in (
+        axis_parts,
+        psi_parts,
+        surface_parts,
+        coordinate_parts,
+        qs_parts,
+        iota_parts,
+        coil_parts,
+    ):
         details.update(part)
     return {
         "score": float(100.0 * _clip01(unit_score)),

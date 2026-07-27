@@ -311,9 +311,10 @@ def sample_volume_points(
         & (boundary_residual <= config.flux_boundary_tolerance)
     )
     available = int(np.sum(keep))
-    minimum_count = max(
-        int(config.alpha_fit_point_count),
-        int(np.ceil(0.6 * config.point_count)),
+    minimum_count = _minimum_volume_sample_count(
+        point_count=config.point_count,
+        alpha_fit_point_count=config.alpha_fit_point_count,
+        candidate_count=len(phi_flat),
     )
     if available < minimum_count:
         raise RuntimeError(
@@ -364,6 +365,14 @@ def sample_volume_points(
 
 def _physical_volume_weights(R, boundary_radius):
     return np.asarray(R) * np.asarray(boundary_radius) ** 2
+
+
+def _minimum_volume_sample_count(point_count, alpha_fit_point_count, candidate_count):
+    return max(
+        int(alpha_fit_point_count),
+        int(point_count),
+        int(np.ceil(0.95 * candidate_count)),
+    )
 
 
 def _budget_flux_levels(candidate_levels, maximum_attempts: int = 5) -> list[float]:

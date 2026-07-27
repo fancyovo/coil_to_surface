@@ -8,6 +8,7 @@ from stellarator_eval.volume_qs import (
     calibrate_toroidal_flux_gpu,
     compute_f_c,
     evaluate_psi_tensor_numpy,
+    _minimum_volume_sample_count,
     _physical_volume_weights,
     _surface_radius_on_rays,
     _budget_flux_levels,
@@ -34,6 +35,11 @@ def test_star_shaped_volume_weights_include_boundary_radius_squared():
     boundary_radius = np.asarray([0.1, 0.2, 0.3])
     weights = _physical_volume_weights(major_radius, boundary_radius)
     np.testing.assert_allclose(weights, major_radius * boundary_radius**2)
+
+
+def test_volume_sampler_requires_fixed_budget_and_95_percent_validity():
+    assert _minimum_volume_sample_count(100_000, 30_000, 125_952) == 119_655
+    assert _minimum_volume_sample_count(200_000, 30_000, 201_000) == 200_000
 
 
 def make_model():

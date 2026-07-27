@@ -13,7 +13,7 @@ import numpy as np
 
 
 MILESTONE_GENERATIONS = (1, 8, 16, 32, 48, 64, 80, 94, 96)
-LARGE_SURFACE_THRESHOLD = 0.06
+LARGE_SURFACE_THRESHOLD = 0.03
 
 
 def load_json(path: Path) -> dict:
@@ -31,6 +31,8 @@ def compact_candidate(row: dict) -> dict:
         "components": native["components"],
         "qs_global_error": diagnostics["qs_global_error"],
         "qs_edge_error": diagnostics["qs_edge_error"],
+        "iota": 0.5 * (diagnostics["iota_min"] + diagnostics["iota_max"]),
+        "iota_score": diagnostics.get("score_iota"),
         "surface_inverse_aspect_ratio": diagnostics[
             "surface_inverse_aspect_ratio"
         ],
@@ -66,8 +68,10 @@ def select_cases(rows: list[dict]) -> dict[str, dict]:
             rows, key=lambda row: row["components"]["volume_qs"]
         ),
         "minimum_raw_qs": min(rows, key=lambda row: row["qs_global_error"]),
-        "minimum_raw_qs_large_surface": min(
-            large_rows, key=lambda row: row["qs_global_error"]
+        "minimum_raw_qs_large_surface": (
+            min(large_rows, key=lambda row: row["qs_global_error"])
+            if large_rows
+            else None
         ),
     }
 
@@ -81,7 +85,12 @@ def generation_champions(rows: list[dict]) -> dict[int, dict]:
     return champions
 
 
-def plot_convergence(summary: dict, champions: dict[int, dict], output: Path) -> None:
+def plot_convergence(
+    summary: dict,
+    champions: dict[int, dict],
+    output: Path,
+    quasr_reference_score: float,
+) -> None:
     generations = summary["generations"]
     x = np.asarray([row["generation"] for row in generations])
     best = np.asarray([row["best_score"] for row in generations])
@@ -95,7 +104,12 @@ def plot_convergence(summary: dict, champions: dict[int, dict], output: Path) ->
     figure, axes = plt.subplots(2, 2, figsize=(11.4, 7.6))
     axes[0, 0].plot(x, best, color="#b43b2f", linewidth=2.2, label="best so far")
     axes[0, 0].plot(x, median, color="#277c83", linewidth=1.6, label="generation median")
-    axes[0, 0].axhline(78.0207, color="#555555", linestyle=":", label="QUASR-1000 max")
+    axes[0, 0].axhline(
+        quasr_reference_score,
+        color="#555555",
+        linestyle=":",
+        label="QUASR QH reference max",
+    )
     axes[0, 0].axvline(8, color="#888888", linestyle="--", linewidth=1.0)
     axes[0, 0].set_ylabel("native score")
     axes[0, 0].legend(fontsize=8)
@@ -113,6 +127,7 @@ def plot_convergence(summary: dict, champions: dict[int, dict], output: Path) ->
         "surface": "#227c9d",
         "coordinate": "#17a398",
         "volume_qs": "#d95d39",
+        "iota": "#e09f3e",
         "coil": "#6a4c93",
     }
     for component, color in component_colors.items():
@@ -155,7 +170,7 @@ def plot_pareto(rows: list[dict], selected: dict[str, dict], output: Path) -> No
     axes[1].set_xlabel("raw differential QH error (lower is better)")
     axes[1].set_ylabel("total score")
     for label, row in selected.items():
-        if label == "minimum_raw_qs":
+        if label == "minimum_raw_qs" or row is None:
             continue
         axes[0].scatter(
             row["surface_inverse_aspect_ratio"],
@@ -178,7 +193,7 @@ def plot_pareto(rows: list[dict], selected: dict[str, dict], output: Path) -> No
     figure.colorbar(axes[1].collections[0], ax=axes[1], label="surface inverse aspect ratio")
     for axis in axes:
         axis.grid(alpha=0.2)
-    figure.suptitle("Size-QS tradeoff across 13,751 successful candidates")
+    figure.suptitle(f"Size-QS tradeoff across {len(rows):,} successful candidates")
     figure.tight_layout()
     figure.savefig(output, dpi=190, bbox_inches="tight")
     plt.close(figure)
@@ -314,6 +329,7 @@ def main() -> None:
     parser.add_argument("--candidates", type=Path, required=True)
     parser.add_argument("--best-case", type=Path)
     parser.add_argument("--full-summary", type=Path)
+    parser.add_argument("--quasr-reference-score", type=float, default=74.00629662106351)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 
@@ -329,7 +345,16 @@ def main() -> None:
     audit = {
         "configuration": {
             key: summary["manifest"][key]
-            for key in ("target", "nfp", "seed", "iterations", "popsize", "elite", "gpu_ids")
+            for key in (
+                "target",
+                "nfp",
+                "n_base_coils",
+                "seed",
+                "iterations",
+                "popsize",
+                "elite",
+                "gpu_ids",
+            )
         },
         "total_candidates": sum(statuses.values()),
         "successful_candidates": len(successful),
@@ -387,7 +412,12 @@ def main() -> None:
     (args.output_dir / "long_cem_audit.json").write_text(
         json.dumps(audit, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )
-    plot_convergence(summary, champions, args.output_dir / "long_cem_convergence.png")
+    plot_convergence(
+        summary,
+        champions,
+        args.output_dir / "long_cem_convergence.png",
+        args.quasr_reference_score,
+    )
     plot_pareto(successful, selected, args.output_dir / "long_cem_pareto.png")
     if args.full_summary:
         full = load_json(args.full_summary)

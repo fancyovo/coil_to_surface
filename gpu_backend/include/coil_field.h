@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 4u
+#define SGPU_SCORE_ABI_VERSION 5u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -131,6 +131,7 @@ struct SgpuScoreConfig {
     double score_qh_iota_power;
     double score_volume_qs_size_floor;
     double score_volume_qs_iota_floor;
+    double score_qh_total_iota_floor;
 };
 
 struct SgpuScoreResult {
@@ -179,6 +180,8 @@ struct SgpuScoreResult {
     double score_qs_residual;
     double score_volume_qs_size_factor;
     double score_volume_qs_iota_factor;
+    double score_before_qh_iota_gate;
+    double score_qh_total_iota_factor;
 
     double qs_global_error;
     double qs_edge_error;

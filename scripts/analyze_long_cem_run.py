@@ -33,6 +33,8 @@ def compact_candidate(row: dict) -> dict:
         "qs_edge_error": diagnostics["qs_edge_error"],
         "iota": 0.5 * (diagnostics["iota_min"] + diagnostics["iota_max"]),
         "iota_score": diagnostics.get("score_iota"),
+        "score_before_qh_iota_gate": diagnostics.get("score_before_qh_iota_gate"),
+        "score_qh_total_iota_factor": diagnostics.get("score_qh_total_iota_factor"),
         "surface_inverse_aspect_ratio": diagnostics[
             "surface_inverse_aspect_ratio"
         ],

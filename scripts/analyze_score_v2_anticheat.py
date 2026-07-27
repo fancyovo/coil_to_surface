@@ -161,6 +161,7 @@ def main() -> None:
     parser.add_argument("--degenerate-old", type=Path, required=True)
     parser.add_argument("--degenerate-new", type=Path, required=True)
     parser.add_argument("--quasr-metadata", type=Path)
+    parser.add_argument("--qh-total-iota-floor", type=float)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 
@@ -175,7 +176,16 @@ def main() -> None:
             continue
         row = dict(new)
         row["old_score"] = old["score"]
-        row["new_score"] = new["score"]
+        score_before_gate = number(new, "score")
+        if args.qh_total_iota_floor is None:
+            total_iota_factor = 1.0
+        else:
+            total_iota_factor = args.qh_total_iota_floor + (
+                1.0 - args.qh_total_iota_floor
+            ) * number(new, "iota_score")
+        row["score_before_qh_iota_gate"] = score_before_gate
+        row["score_qh_total_iota_factor"] = total_iota_factor
+        row["new_score"] = score_before_gate * total_iota_factor
         rows.append(row)
     if not rows:
         raise RuntimeError("no matched successful QH rows")
@@ -188,9 +198,17 @@ def main() -> None:
     size = [number(row, "inverse_aspect_ratio") for row in rows]
     old_degenerate = extract_native_score(args.degenerate_old)
     new_degenerate = extract_native_score(args.degenerate_new)
-    new_degenerate_score = float(new_degenerate["score"])
+    degenerate_factor = (
+        1.0
+        if args.qh_total_iota_floor is None
+        else args.qh_total_iota_floor
+        + (1.0 - args.qh_total_iota_floor)
+        * float(new_degenerate["diagnostics"]["score_iota"])
+    )
+    new_degenerate_score = float(new_degenerate["score"]) * degenerate_factor
     summary = {
         "matched_successful_qh_count": len(rows),
+        "qh_total_iota_floor": args.qh_total_iota_floor,
         "score": {"old": statistics(old_scores), "v2": statistics(new_scores)},
         "spearman": {
             "old_score_vs_metadata_qs_quality": spearman(old_scores, quality),
@@ -212,6 +230,8 @@ def main() -> None:
         "degenerate_case": {
             "old_score": float(old_degenerate["score"]),
             "v2_score": new_degenerate_score,
+            "score_before_qh_iota_gate": float(new_degenerate["score"]),
+            "qh_total_iota_factor": degenerate_factor,
             "v2_quasr_percentile": float(100.0 * np.mean(np.asarray(new_scores) <= new_degenerate_score)),
             "v2_components": new_degenerate["components"],
             "v2_iota": float(new_degenerate["diagnostics"]["iota_min"]),

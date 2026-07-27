@@ -36,6 +36,7 @@ class VolumeScoreConfig:
     qh_iota_power: float = 2.0
     volume_qs_size_floor: float = 0.65
     volume_qs_iota_floor: float = 0.50
+    qh_total_iota_floor: float = 0.50
     missing_coordinate_score: float = 0.08
     missing_volume_qs_score: float = 0.04
     weights: dict[str, float] = field(
@@ -319,7 +320,15 @@ def evaluate_volume_quality_score(
     total_weight = sum(float(value) for value in cfg.weights.values())
     if total_weight <= 0.0:
         raise ValueError("score weights must have a positive sum")
-    unit_score = sum(cfg.weights[name] * value for name, value in components.items()) / total_weight
+    unit_score_before_gate = (
+        sum(cfg.weights[name] * value for name, value in components.items()) / total_weight
+    )
+    qh_total_iota_factor = (
+        cfg.qh_total_iota_floor + (1.0 - cfg.qh_total_iota_floor) * iota_score
+        if iota_parts["iota_qh_gate_enabled"]
+        else 1.0
+    )
+    unit_score = unit_score_before_gate * qh_total_iota_factor
     details: dict[str, Any] = {}
     for part in (
         axis_parts,
@@ -331,6 +340,8 @@ def evaluate_volume_quality_score(
         coil_parts,
     ):
         details.update(part)
+    details["score_before_qh_iota_gate"] = float(100.0 * _clip01(unit_score_before_gate))
+    details["score_qh_total_iota_factor"] = float(qh_total_iota_factor)
     return {
         "score": float(100.0 * _clip01(unit_score)),
         "score_unit_interval": float(_clip01(unit_score)),

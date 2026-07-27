@@ -108,18 +108,22 @@ def test_qh_iota_below_one_is_penalized_monotonically():
     assert enough["components"]["iota"] == high["components"]["iota"] == 100.0
     assert very_low["components"]["volume_qs"] < low["components"]["volume_qs"]
     assert very_low["score"] < low["score"] < enough["score"]
+    assert very_low["details"]["score_qh_total_iota_factor"] == 0.505
+    assert enough["details"]["score_qh_total_iota_factor"] == 1.0
 
 
 def test_qa_does_not_apply_qh_iota_gate():
     qa = evaluate_volume_quality_score(_result(iota=0.1, target=(1, 0)))
     assert qa["components"]["iota"] == 100.0
     assert qa["details"]["volume_qs_iota_factor"] == 1.0
+    assert qa["details"]["score_qh_total_iota_factor"] == 1.0
 
 
 def test_qp_does_not_apply_qh_iota_gate():
     qp = evaluate_volume_quality_score(_result(iota=0.1, target=(0, 3)))
     assert qp["components"]["iota"] == 100.0
     assert qp["details"]["volume_qs_iota_factor"] == 1.0
+    assert qp["details"]["score_qh_total_iota_factor"] == 1.0
 
 
 def test_volume_score_penalizes_worse_qs_at_fixed_surface():

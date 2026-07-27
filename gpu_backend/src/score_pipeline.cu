@@ -123,6 +123,8 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->score_qs_residual = nan;
     result->score_volume_qs_size_factor = nan;
     result->score_volume_qs_iota_factor = nan;
+    result->score_before_qh_iota_gate = nan;
+    result->score_qh_total_iota_factor = nan;
     result->qs_global_error = nan;
     result->qs_edge_error = nan;
     result->qs_abs_p95 = nan;
@@ -1212,7 +1214,9 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.score_volume_qs_size_floor < 0.0 ||
         config.score_volume_qs_size_floor > 1.0 ||
         config.score_volume_qs_iota_floor < 0.0 ||
-        config.score_volume_qs_iota_floor > 1.0) {
+        config.score_volume_qs_iota_floor > 1.0 ||
+        config.score_qh_total_iota_floor < 0.0 ||
+        config.score_qh_total_iota_floor > 1.0) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -1265,13 +1269,21 @@ void finalize_score(const SgpuScoreConfig& config, SgpuScoreResult& result) {
     }
     double total_weight = 0.0;
     double weighted_score = 0.0;
+    const double iota_score = clip01(result.components[SGPU_SCORE_COMPONENT_IOTA]);
     for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
         const double value = clip01(result.components[component]);
         total_weight += std::max(config.score_weights[component], 0.0);
         weighted_score += std::max(config.score_weights[component], 0.0) * value;
         result.components[component] = 100.0 * value;
     }
-    result.score = total_weight > 0.0 ? 100.0 * clip01(weighted_score / total_weight) : 0.0;
+    result.score_before_qh_iota_gate =
+        total_weight > 0.0 ? 100.0 * clip01(weighted_score / total_weight) : 0.0;
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    result.score_qh_total_iota_factor = qh_target
+        ? config.score_qh_total_iota_floor +
+            (1.0 - config.score_qh_total_iota_floor) * iota_score
+        : 1.0;
+    result.score = result.score_before_qh_iota_gate * result.score_qh_total_iota_factor;
     if (result.status == SGPU_SCORE_OK) result.stage_completed = SCORE_STAGE_COMPLETE;
 }
 
@@ -3185,6 +3197,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_qh_iota_power = 2.0;
     config->score_volume_qs_size_floor = 0.65;
     config->score_volume_qs_iota_floor = 0.50;
+    config->score_qh_total_iota_floor = 0.50;
     sgpu_internal_set_error("");
     return 0;
 }

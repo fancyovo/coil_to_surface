@@ -49,7 +49,10 @@ nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total 
 
 eval_env=${EVAL_ENV:-/home/scc/pb24511935/coil/.venv}
 source "$eval_env/bin/activate"
-export OMP_NUM_THREADS=16
+export CUDA_HOME=/public/app/cuda/13.0
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-16}
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1

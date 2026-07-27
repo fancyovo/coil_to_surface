@@ -31,6 +31,10 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cd "$project"
+module load cuda/13.0 2>/dev/null || true
+export CUDA_HOME=/public/app/cuda/13.0
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
 mkdir -p "$(dirname "$output")"
 mapfile -t compute_processes < <(
     nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits |

@@ -27,7 +27,7 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 1
+SGPU_SCORE_ABI_VERSION = 2
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",
@@ -81,6 +81,7 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("axis_fallback_newton_iters", ctypes.c_int32),
         ("axis_trace_steps", ctypes.c_int32),
         ("axis_sample_count", ctypes.c_int32),
+        ("axis_fallback_max_nfp", ctypes.c_int32),
         ("axis_span", ctypes.c_double),
         ("axis_tolerance", ctypes.c_double),
         ("axis_r_floor", ctypes.c_double),

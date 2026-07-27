@@ -728,6 +728,10 @@ bool find_axis_native(
         return eligible(candidate, config.axis_tolerance);
     });
     if (!has_eligible) {
+        if (nfp > config.axis_fallback_max_nfp) {
+            axis.candidate_count = static_cast<int>(candidates.size());
+            return true;
+        }
         std::vector<AxisCandidate> fallback;
         if (!search_axis_grid(
                 field, domain, nfp, config, config.axis_fallback_grid,
@@ -1171,6 +1175,7 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
     }
     if (config.device_id < 0 || config.segments_per_coil <= 0 ||
         config.axis_grid < 8 || config.axis_fallback_grid < config.axis_grid ||
+        config.axis_fallback_max_nfp < 1 ||
         config.axis_sample_count < 16 || config.psi_poly_degree < 2 ||
         config.psi_poly_degree > 24 || config.psi_m_tor < 0 || config.psi_m_tor > 32 ||
         (config.psi_solver_mode != 1 && config.psi_solver_mode != 2) ||
@@ -3031,13 +3036,14 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->target_M = 1;
     config->target_N = 0;
     config->axis_grid = 48;
-    config->axis_fallback_grid = 96;
+    config->axis_fallback_grid = 64;
     config->axis_max_candidates = 16;
-    config->axis_fallback_max_candidates = 96;
+    config->axis_fallback_max_candidates = 48;
     config->axis_newton_iters = 6;
-    config->axis_fallback_newton_iters = 8;
+    config->axis_fallback_newton_iters = 6;
     config->axis_trace_steps = 960;
     config->axis_sample_count = 240;
+    config->axis_fallback_max_nfp = 7;
     config->axis_span = 0.5;
     config->axis_tolerance = 1.0e-7;
     config->axis_r_floor = 1.0e-4;

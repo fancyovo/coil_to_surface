@@ -120,6 +120,7 @@ def main() -> None:
     parser.add_argument("--axis-fallback-grid", type=int)
     parser.add_argument("--axis-fallback-max-candidates", type=int)
     parser.add_argument("--axis-fallback-newton-iters", type=int)
+    parser.add_argument("--axis-fallback-max-nfp", type=int)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
     parser.add_argument("--total-limit", type=int)
@@ -151,6 +152,7 @@ def main() -> None:
         "axis_fallback_grid",
         "axis_fallback_max_candidates",
         "axis_fallback_newton_iters",
+        "axis_fallback_max_nfp",
     ):
         value = getattr(args, name)
         if value is not None:

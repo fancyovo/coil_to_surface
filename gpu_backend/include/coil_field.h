@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 1u
+#define SGPU_SCORE_ABI_VERSION 2u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 6
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -63,6 +63,7 @@ struct SgpuScoreConfig {
     std::int32_t axis_fallback_newton_iters;
     std::int32_t axis_trace_steps;
     std::int32_t axis_sample_count;
+    std::int32_t axis_fallback_max_nfp;
     double axis_span;
     double axis_tolerance;
     double axis_r_floor;

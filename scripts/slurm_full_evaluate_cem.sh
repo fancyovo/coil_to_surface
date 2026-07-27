@@ -47,7 +47,8 @@ fi
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
     --format=csv,noheader,nounits > "$output_dir/gpu_preflight.csv"
 
-source /home/scc/pb24511935/coil/.venv/bin/activate
+eval_env=${EVAL_ENV:-/home/scc/pb24511935/coil/.venv}
+source "$eval_env/bin/activate"
 export OMP_NUM_THREADS=16
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1

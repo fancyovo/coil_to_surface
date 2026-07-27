@@ -112,6 +112,8 @@ def plot_audit(
     output: Path,
     quasr_groups: dict[str, dict[str, list[float]]],
     cem_qh: dict[str, Any],
+    quasr_qh_median: float,
+    cem_qh_best: float,
 ) -> None:
     figure, axes = plt.subplots(1, 3, figsize=(13.2, 4.1))
     figure.patch.set_facecolor("#f6f5f1")
@@ -138,8 +140,14 @@ def plot_audit(
     axes[1].semilogx(error, [q_down(value, 0.05) for value in error], color="#397c8c", label="old / QA")
     qh_scale = 0.05 * math.sqrt(10.0)
     axes[1].semilogx(error, [q_down(value, qh_scale) for value in error], color="#b14c3d", label="QH, NFP=3 norm")
-    axes[1].axvline(0.1387, color="#777777", linestyle=":", linewidth=1.2, label="QUASR QH median")
-    axes[1].axvline(1.0246, color="#222222", linestyle="--", linewidth=1.2, label="best saved CEM QH")
+    axes[1].axvline(
+        quasr_qh_median, color="#777777", linestyle=":", linewidth=1.2,
+        label="QUASR QH median",
+    )
+    axes[1].axvline(
+        cem_qh_best, color="#222222", linestyle="--", linewidth=1.2,
+        label="best saved CEM QH",
+    )
     axes[1].set_xlabel(r"raw differential $\epsilon_{C,V}$")
     axes[1].set_ylabel("residual soft score")
     axes[1].set_title("Soft-scale response")
@@ -213,7 +221,13 @@ def main() -> None:
         "cem": {"QH": cem_qh, "QA": cem_qa},
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    plot_audit(args.output_dir / "qs_score_scale_audit.png", component_values, cem_qh)
+    plot_audit(
+        args.output_dir / "qs_score_scale_audit.png",
+        component_values,
+        cem_qh,
+        float(np.median([float(row["qs_global_error"]) for row in groups["QH"]])),
+        float(cem_qh["corrected_best_within_saved_candidates"]["qs_global_error"]),
+    )
     for target in summary["cem"].values():
         target.pop("old_component_values")
         target.pop("corrected_component_values")

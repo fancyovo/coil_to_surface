@@ -69,6 +69,24 @@ def component(row: dict) -> float:
     return float(row["native_score"]["components"]["volume_qs"])
 
 
+def q_down(value: float, scale: float, power: float = 0.9) -> float:
+    return 1.0 / (1.0 + (max(float(value), 0.0) / scale) ** power)
+
+
+def q_up(value: float, scale: float = 0.04, power: float = 2.0) -> float:
+    return 1.0 / (1.0 + (scale / max(float(value), 1.0e-300)) ** power)
+
+
+def score_factors(row: dict) -> tuple[float, float]:
+    diag = diagnostics(row)
+    helicity_norm = math.hypot(1.0, float(row["nfp"])) if int(row["helicity"]) == 1 else 1.0
+    global_score = q_down(diag["qs_global_error"], 0.05 * helicity_norm)
+    edge_score = q_down(diag["qs_edge_error"], 0.07 * helicity_norm)
+    residual_score = 0.8 * global_score + 0.2 * edge_score
+    size_factor = 0.35 + 0.65 * q_up(diag["surface_inverse_aspect_ratio"])
+    return residual_score, size_factor
+
+
 def group_audit(rows: list[dict]) -> dict:
     raw_qs = np.asarray([diagnostics(row)["qs_global_error"] for row in rows])
     volume_component = np.asarray([component(row) for row in rows])
@@ -76,20 +94,36 @@ def group_audit(rows: list[dict]) -> dict:
     valid = np.asarray([diagnostics(row)["volume_valid_fraction"] for row in rows])
     ess = np.asarray([diagnostics(row)["volume_weight_effective_fraction"] for row in rows])
     points = np.asarray([diagnostics(row)["volume_point_count"] for row in rows])
+    residual_score = np.asarray([score_factors(row)[0] for row in rows])
+    size_factor = np.asarray([score_factors(row)[1] for row in rows])
+    effective_points = ess * points
+    metadata_qs = np.asarray([row["metadata_qs_error"] for row in rows], dtype=float)
     quality = -np.log10(np.maximum(raw_qs, 1.0e-300))
+    metadata_quality = -np.log10(np.maximum(metadata_qs, 1.0e-300))
     return {
         "count": len(rows),
         "raw_qs_global_error": statistics(raw_qs),
+        "metadata_qs_error": statistics(metadata_qs),
         "volume_qs_component": statistics(volume_component),
         "surface_inverse_aspect_ratio": statistics(size),
         "volume_valid_fraction": statistics(valid),
         "volume_weight_effective_fraction": statistics(ess),
+        "volume_weight_effective_point_count": statistics(effective_points),
         "volume_point_count": statistics(points),
+        "residual_soft_score": statistics(residual_score),
+        "surface_size_factor": statistics(size_factor),
         "spearman": {
             "component_vs_minus_log10_raw_qs": spearman(volume_component, quality),
+            "raw_qs_vs_metadata_qs": spearman(raw_qs, metadata_qs),
+            "component_vs_minus_log10_metadata_qs": spearman(
+                volume_component, metadata_quality
+            ),
+            "component_vs_residual_soft_score": spearman(volume_component, residual_score),
+            "component_vs_surface_size_factor": spearman(volume_component, size_factor),
             "component_vs_surface_size": spearman(volume_component, size),
             "component_vs_weight_ess": spearman(volume_component, ess),
             "raw_qs_vs_weight_ess": spearman(raw_qs, ess),
+            "residual_soft_score_vs_weight_ess": spearman(residual_score, ess),
             "component_vs_valid_fraction": spearman(volume_component, valid),
             "component_vs_point_count": spearman(volume_component, points),
         },
@@ -134,10 +168,101 @@ def top_audit(rows: list[dict], key, count: int = 20) -> dict:
     }
 
 
+def convergence_audit(path: Path) -> tuple[dict, list[dict]]:
+    by_case: dict[int, dict[int, dict]] = {}
+    for worker in sorted(path.glob("points_*.jsonl")):
+        point_count = int(worker.stem.rsplit("_", 1)[1])
+        with worker.open(encoding="utf-8") as stream:
+            for line in stream:
+                if line.strip():
+                    row = json.loads(line)
+                    by_case.setdefault(int(row["case_id"]), {})[point_count] = row
+
+    details = []
+    for case_id, variants in sorted(by_case.items()):
+        reference_count = max(variants)
+        reference_qs = diagnostics(variants[reference_count])["qs_global_error"]
+        reference_component = component(variants[reference_count])
+        for point_count, row in sorted(variants.items()):
+            native = row["native_score"]
+            qs = diagnostics(row)["qs_global_error"]
+            details.append({
+                "case_id": case_id,
+                "helicity": int(row["helicity"]),
+                "point_count": point_count,
+                "reference_point_count": reference_count,
+                "status": native["status"],
+                "qs_global_error": qs,
+                "qs_relative_to_reference": qs / reference_qs - 1.0,
+                "volume_qs_component": component(row),
+                "component_delta_to_reference": component(row) - reference_component,
+                "weight_effective_fraction": diagnostics(row)[
+                    "volume_weight_effective_fraction"
+                ],
+            })
+
+    non_reference = [row for row in details if row["point_count"] != row["reference_point_count"]]
+    return {
+        "case_count": len(by_case),
+        "evaluation_count": len(details),
+        "all_status_ok": all(row["status"] == "ok" for row in details),
+        "maximum_absolute_qs_relative_change": max(
+            abs(row["qs_relative_to_reference"]) for row in non_reference
+        ),
+        "maximum_absolute_component_change": max(
+            abs(row["component_delta_to_reference"]) for row in non_reference
+        ),
+        "by_point_count": {
+            str(point_count): {
+                "maximum_absolute_qs_relative_change": max(
+                    abs(row["qs_relative_to_reference"])
+                    for row in details if row["point_count"] == point_count
+                ),
+                "maximum_absolute_component_change": max(
+                    abs(row["component_delta_to_reference"])
+                    for row in details if row["point_count"] == point_count
+                ),
+            }
+            for point_count in sorted({row["point_count"] for row in details})
+        },
+        "cases": details,
+    }, details
+
+
+def plot_convergence(output: Path, details: list[dict]) -> None:
+    figure, axes = plt.subplots(1, 2, figsize=(10.5, 4.3))
+    for case_id in sorted({row["case_id"] for row in details}):
+        group = sorted(
+            (row for row in details if row["case_id"] == case_id),
+            key=lambda row: row["point_count"],
+        )
+        label = f"{case_id} ({'QA' if group[0]['helicity'] == 0 else 'QH'})"
+        axes[0].plot(
+            [row["point_count"] for row in group],
+            [100.0 * row["qs_relative_to_reference"] for row in group],
+            marker="o", label=label,
+        )
+        axes[1].plot(
+            [row["point_count"] for row in group],
+            [row["component_delta_to_reference"] for row in group],
+            marker="o", label=label,
+        )
+    axes[0].set(xlabel="Volume point count", ylabel="Raw QS change vs 200k [%]")
+    axes[1].set(xlabel="Volume point count", ylabel="QS component change vs 200k")
+    for axis in axes:
+        axis.axhline(0.0, color="#555555", linewidth=1.0)
+        axis.grid(alpha=0.2)
+        axis.legend(frameon=False, fontsize=8)
+    figure.tight_layout()
+    figure.savefig(output, dpi=180)
+    plt.close(figure)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("current_dir", type=Path)
     parser.add_argument("--previous-dir", type=Path)
+    parser.add_argument("--convergence-dir", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 
@@ -158,6 +283,11 @@ def main() -> None:
     }
     if args.previous_dir:
         summary["previous_comparison"] = compare_runs(load_rows(args.previous_dir), current)
+    convergence_details = None
+    if args.convergence_dir:
+        summary["point_count_convergence"], convergence_details = convergence_audit(
+            args.convergence_dir
+        )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "qs_sampling_audit.json").write_text(
@@ -197,6 +327,8 @@ def main() -> None:
     figure.tight_layout()
     figure.savefig(args.output_dir / "qs_sampling_audit.png", dpi=180)
     plt.close(figure)
+    if convergence_details:
+        plot_convergence(args.output_dir / "qs_sampling_convergence.png", convergence_details)
 
 
 if __name__ == "__main__":

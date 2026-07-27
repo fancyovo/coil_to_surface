@@ -36,7 +36,7 @@ class VolumeScoreConfig:
     qh_iota_power: float = 2.0
     volume_qs_size_floor: float = 0.65
     volume_qs_iota_floor: float = 0.50
-    qh_total_iota_floor: float = 0.50
+    qh_total_iota_floor: float = 0.10
     missing_coordinate_score: float = 0.08
     missing_volume_qs_score: float = 0.04
     weights: dict[str, float] = field(

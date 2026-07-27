@@ -3197,7 +3197,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_qh_iota_power = 2.0;
     config->score_volume_qs_size_floor = 0.65;
     config->score_volume_qs_iota_floor = 0.50;
-    config->score_qh_total_iota_floor = 0.50;
+    config->score_qh_total_iota_floor = 0.10;
     sgpu_internal_set_error("");
     return 0;
 }

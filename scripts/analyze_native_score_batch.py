@@ -150,6 +150,17 @@ def main() -> None:
     summary["ok_surface_inverse_aspect_ratio"] = statistics(
         row["native_score"]["diagnostics"]["surface_inverse_aspect_ratio"] for row in ok_rows
     )
+    for name in (
+        "volume_valid_fraction",
+        "volume_weight_effective_fraction",
+        "edge_weight_effective_fraction",
+        "volume_candidate_count",
+        "volume_available_count",
+        "volume_point_count",
+    ):
+        summary[f"ok_{name}"] = statistics(
+            row["native_score"]["diagnostics"][name] for row in ok_rows
+        )
     summary["flux_attempt_count"] = statistics(
         row["native_score"]["diagnostics"]["flux_attempt_count"] for row in rows
     )
@@ -164,6 +175,14 @@ def main() -> None:
     summary["correlation"]["ok_volume_component_vs_minus_log10_native_qs_spearman"] = spearman(
         [row["native_score"]["components"]["volume_qs"] for row in ok_rows],
         [-math.log10(max(row["native_score"]["diagnostics"]["qs_global_error"], 1.0e-300)) for row in ok_rows],
+    )
+    summary["correlation"]["ok_volume_component_vs_volume_weight_ess_spearman"] = spearman(
+        [row["native_score"]["components"]["volume_qs"] for row in ok_rows],
+        [row["native_score"]["diagnostics"]["volume_weight_effective_fraction"] for row in ok_rows],
+    )
+    summary["correlation"]["ok_native_qs_vs_volume_weight_ess_spearman"] = spearman(
+        [row["native_score"]["diagnostics"]["qs_global_error"] for row in ok_rows],
+        [row["native_score"]["diagnostics"]["volume_weight_effective_fraction"] for row in ok_rows],
     )
     summary["component_p90_p10_spread"] = {
         name: values.get("p90", float("nan")) - values.get("p10", float("nan"))
@@ -216,6 +235,12 @@ def main() -> None:
         "minimum_volume_qs_component": float(min(
             row["native_score"]["components"]["volume_qs"] for row in top
         )),
+        "minimum_volume_valid_fraction": float(min(
+            row["native_score"]["diagnostics"]["volume_valid_fraction"] for row in top
+        )),
+        "minimum_volume_weight_effective_fraction": float(min(
+            row["native_score"]["diagnostics"]["volume_weight_effective_fraction"] for row in top
+        )),
         "case_ids": [int(row["case_id"]) for row in top],
     } if top and all(row["native_score"]["status"] == "ok" for row in top) else {
         "all_top20_ok": False,
@@ -227,7 +252,9 @@ def main() -> None:
             "case_id", "helicity", "nfp", "status", "score", "wall_s",
             "metadata_qs_error", "metadata_mean_iota", "surface_level",
             "inverse_aspect_ratio", "iota", "qs_global_error", "qs_edge_error",
-            "flux_attempt_count",
+            "flux_attempt_count", "volume_valid_fraction",
+            "volume_weight_effective_fraction", "edge_weight_effective_fraction",
+            "volume_candidate_count", "volume_available_count", "volume_point_count",
         ))
         writer.writeheader()
         for row in sorted(rows, key=lambda item: int(item["case_id"])):
@@ -248,6 +275,12 @@ def main() -> None:
                 "qs_global_error": diagnostics["qs_global_error"],
                 "qs_edge_error": diagnostics["qs_edge_error"],
                 "flux_attempt_count": diagnostics["flux_attempt_count"],
+                "volume_valid_fraction": diagnostics["volume_valid_fraction"],
+                "volume_weight_effective_fraction": diagnostics["volume_weight_effective_fraction"],
+                "edge_weight_effective_fraction": diagnostics["edge_weight_effective_fraction"],
+                "volume_candidate_count": diagnostics["volume_candidate_count"],
+                "volume_available_count": diagnostics["volume_available_count"],
+                "volume_point_count": diagnostics["volume_point_count"],
             })
 
     colors = plt.get_cmap("tab10")

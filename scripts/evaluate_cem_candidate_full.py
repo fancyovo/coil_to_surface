@@ -57,6 +57,37 @@ def rotate_z(points: np.ndarray, angle: float) -> np.ndarray:
     return out
 
 
+def build_full_period_surface_mesh(
+    xyz: np.ndarray,
+    colors: np.ndarray,
+    nfp: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    xyz = np.asarray(xyz, dtype=float)
+    colors = np.asarray(colors, dtype=float)
+    if xyz.ndim != 3 or xyz.shape[-1] != 3 or colors.shape != xyz.shape:
+        raise ValueError("xyz and colors must have matching (nphi, ntheta, 3) shapes")
+    if nfp <= 0:
+        raise ValueError("nfp must be positive")
+
+    full_xyz = np.concatenate(
+        [rotate_z(xyz, 2.0 * np.pi * period / nfp) for period in range(nfp)],
+        axis=0,
+    )
+    full_colors = np.concatenate([colors] * nfp, axis=0)
+    nphi, ntheta, _ = full_xyz.shape
+    triangles: list[int] = []
+    for i in range(nphi):
+        i_next = (i + 1) % nphi
+        for j in range(ntheta):
+            j_next = (j + 1) % ntheta
+            a = i * ntheta + j
+            b = i_next * ntheta + j
+            c = i_next * ntheta + j_next
+            d = i * ntheta + j_next
+            triangles.extend((a, b, d, b, c, d))
+    return full_xyz, full_colors, np.asarray(triangles, dtype=np.uint32)
+
+
 def write_image_html(image_path: Path, output_path: Path, title: str) -> None:
     encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
     output_path.write_text(
@@ -82,22 +113,12 @@ def write_three_geometry_html(
     b_min: float,
     b_max: float,
 ) -> None:
-    nphi, ntheta, _ = xyz.shape
-    triangles: list[int] = []
-    for i in range(nphi):
-        i_next = (i + 1) % nphi
-        for j in range(ntheta):
-            j_next = (j + 1) % ntheta
-            a = i * ntheta + j
-            b = i_next * ntheta + j
-            c = i_next * ntheta + j_next
-            d = i * ntheta + j_next
-            triangles.extend((a, b, d, b, c, d))
+    full_xyz, full_colors, triangles = build_full_period_surface_mesh(xyz, colors, nfp)
 
     payload = {
-        "positions": np.asarray(xyz, dtype=np.float32).reshape(-1).tolist(),
-        "colors": np.asarray(colors, dtype=np.float32).reshape(-1).tolist(),
-        "indices": triangles,
+        "positions": np.asarray(full_xyz, dtype=np.float32).reshape(-1).tolist(),
+        "colors": np.asarray(full_colors, dtype=np.float32).reshape(-1).tolist(),
+        "indices": triangles.tolist(),
         "coils": [np.asarray(coil, dtype=np.float32).reshape(-1).tolist() for coil in coils],
         "nfp": nfp,
         "bMin": b_min,
@@ -128,7 +149,7 @@ geometry.setAttribute('position',new THREE.Float32BufferAttribute(data.positions
 geometry.setAttribute('color',new THREE.Float32BufferAttribute(data.colors,3));
 geometry.setIndex(data.indices); geometry.computeVertexNormals();
 const material=new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:0.72,metalness:0.02,transparent:true,opacity:0.88});
-for(let p=0;p<data.nfp;p++){const mesh=new THREE.Mesh(geometry,material);mesh.rotation.z=2*Math.PI*p/data.nfp;scene.add(mesh);}
+scene.add(new THREE.Mesh(geometry,material));
 const coilMaterial=new THREE.LineBasicMaterial({color:0x111111});
 for(const values of data.coils){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(values,3));scene.add(new THREE.LineLoop(g,coilMaterial));}
 scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2.2));

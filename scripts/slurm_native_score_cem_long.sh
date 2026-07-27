@@ -19,8 +19,9 @@ project=/home/scc/pb24511935/local_surface_evaluator
 pca=/home/scc/pb24511935/coil/checkpoints/pca_ae/pca_ae.pt
 lib="$project/gpu_backend/build_native_score/libstellarator_gpu.so"
 run_root="$project/runs/native_score_cem_long/${SLURM_JOB_ID}"
-targets=${TARGETS:-QH,QA}
-iterations=${ITERATIONS:-32}
+target=${TARGET:-QH}
+seed=${SEED:-2026072801}
+iterations=${ITERATIONS:-64}
 popsize=${POPSIZE:-128}
 gpu_ids=${GPU_IDS:-0,0,1,1,2,2,3,3}
 batch_timeout_s=${BATCH_TIMEOUT_S:-900}
@@ -63,36 +64,32 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
 started=$(date +%s.%N)
-printf '{"targets":"%s","iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s}\n' \
-    "$targets" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" \
+printf '{"target":"%s","seed":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s}\n' \
+    "$target" "$seed" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" \
     > "$run_root/job.json"
 
-IFS=',' read -r -a target_list <<< "$targets"
-for target in "${target_list[@]}"; do
-    case "$target" in
-        QH) seed=${SEED_QH:-2026072801} ;;
-        QA) seed=${SEED_QA:-2026072802} ;;
-        *) printf 'unsupported target: %s\n' "$target" >&2; exit 2 ;;
-    esac
-    python scripts/optimize_native_score_cem.py \
-        --pca "$pca" \
-        --lib "$lib" \
-        --out-dir "$run_root/${target,,}" \
-        --target "$target" \
-        --nfp 3 \
-        --n-base-coils 1 \
-        --iterations "$iterations" \
-        --popsize "$popsize" \
-        --elite $((popsize / 4)) \
-        --gpus "$gpu_ids" \
-        --batch-timeout-s "$batch_timeout_s" \
-        --seed "$seed" &
-    children=("$!")
-    wait "${children[0]}"
-    children=()
-done
+case "$target" in
+    QH|QA) ;;
+    *) printf 'unsupported target: %s\n' "$target" >&2; exit 2 ;;
+esac
+python scripts/optimize_native_score_cem.py \
+    --pca "$pca" \
+    --lib "$lib" \
+    --out-dir "$run_root/${target,,}" \
+    --target "$target" \
+    --nfp 3 \
+    --n-base-coils 1 \
+    --iterations "$iterations" \
+    --popsize "$popsize" \
+    --elite $((popsize / 4)) \
+    --gpus "$gpu_ids" \
+    --batch-timeout-s "$batch_timeout_s" \
+    --seed "$seed" &
+children=("$!")
+wait "${children[0]}"
+children=()
 
 finished=$(date +%s.%N)
-printf '{"targets":"%s","iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s,"finished":%s}\n' \
-    "$targets" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" "$finished" \
+printf '{"target":"%s","seed":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s,"finished":%s}\n' \
+    "$target" "$seed" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" "$finished" \
     > "$run_root/job.json"

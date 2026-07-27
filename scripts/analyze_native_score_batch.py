@@ -161,6 +161,19 @@ def main() -> None:
         [row["native_score"]["score"] for row in ok_rows],
         [row["native_score"]["diagnostics"]["surface_inverse_aspect_ratio"] for row in ok_rows],
     )
+    summary["correlation"]["ok_volume_component_vs_minus_log10_native_qs_spearman"] = spearman(
+        [row["native_score"]["components"]["volume_qs"] for row in ok_rows],
+        [-math.log10(max(row["native_score"]["diagnostics"]["qs_global_error"], 1.0e-300)) for row in ok_rows],
+    )
+    summary["component_p90_p10_spread"] = {
+        name: values.get("p90", float("nan")) - values.get("p10", float("nan"))
+        for name, values in summary["components"].items()
+    }
+    one_point_bins = Counter(min(99, max(0, int(math.floor(score)))) for score in scores if math.isfinite(score))
+    summary["largest_one_point_score_bin"] = {
+        "count": max(one_point_bins.values(), default=0),
+        "fraction": max(one_point_bins.values(), default=0) / max(len(scores), 1),
+    }
 
     timing_names = list(rows[0]["native_score"]["timing"]) if rows else []
     summary["timing"] = {
@@ -169,6 +182,18 @@ def main() -> None:
     }
     summary["wall_s"] = statistics(row["wall_s"] for row in rows)
     summary["under_10s_fraction"] = float(np.mean([row["wall_s"] < 10.0 for row in rows])) if rows else 0.0
+    summary["runtime_over_10s"] = [
+        {
+            "case_id": int(row["case_id"]),
+            "helicity": int(row["helicity"]),
+            "nfp": int(row["nfp"]),
+            "status": row["native_score"]["status"],
+            "wall_s": float(row["wall_s"]),
+            "axis_search_s": float(row["native_score"]["timing"]["axis_search_s"]),
+        }
+        for row in sorted(rows, key=lambda item: item["wall_s"], reverse=True)
+        if row["wall_s"] >= 10.0
+    ]
     job_file = args.input_dir / "job.json"
     if job_file.is_file():
         job = json.loads(job_file.read_text(encoding="utf-8"))
@@ -301,6 +326,39 @@ def main() -> None:
         "median_score": [float(value) for value in decile_scores],
         "ok_fraction": [float(value) for value in decile_ok],
     }
+    score_decile_rows = defaultdict(list)
+    for index, row in enumerate(sorted(rows, key=lambda item: item["native_score"]["score"])):
+        decile = min(9, 10 * index // max(len(rows), 1))
+        score_decile_rows[decile].append(row)
+    score_decile_ok = [
+        [row for row in score_decile_rows[index] if row["native_score"]["status"] == "ok"]
+        for index in range(10)
+    ]
+    score_decile_summary = {
+        "median_score": [
+            float(np.median([row["native_score"]["score"] for row in score_decile_rows[index]]))
+            for index in range(10)
+        ],
+        "ok_fraction": [
+            float(np.mean([row["native_score"]["status"] == "ok" for row in score_decile_rows[index]]))
+            for index in range(10)
+        ],
+        "median_surface_inverse_aspect_ratio": [
+            statistics(
+                row["native_score"]["diagnostics"]["surface_inverse_aspect_ratio"]
+                for row in score_decile_rows[index]
+            ).get("median", float("nan"))
+            for index in range(10)
+        ],
+        "median_ok_qs_global_error": [
+            statistics(
+                row["native_score"]["diagnostics"]["qs_global_error"]
+                for row in score_decile_ok[index]
+            ).get("median", float("nan"))
+            for index in range(10)
+        ],
+    }
+    summary["score_deciles_low_to_high"] = score_decile_summary
     (args.output_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
     )
@@ -314,6 +372,35 @@ def main() -> None:
     axis.legend(handles, [line.get_label() for line in handles], frameon=False, loc="best")
     figure.tight_layout()
     figure.savefig(args.output_dir / "quality_decile_gradient.png", dpi=180)
+    plt.close(figure)
+
+    figure, axes = plt.subplots(2, 1, figsize=(8.5, 7.2), sharex=True)
+    axes[0].plot(
+        deciles, score_decile_summary["median_surface_inverse_aspect_ratio"],
+        marker="o", color="#146c94", label="Median selected $a/R$",
+    )
+    axes[0].set_ylabel("Selected surface $a/R$")
+    success_axis = axes[0].twinx()
+    success_axis.plot(
+        deciles, score_decile_summary["ok_fraction"], marker="s",
+        color="#c84b31", label="Full-chain success",
+    )
+    success_axis.set(ylabel="Success fraction", ylim=(0, 1.02))
+    axes[0].legend(axes[0].lines + success_axis.lines,
+                   [line.get_label() for line in axes[0].lines + success_axis.lines],
+                   frameon=False, loc="best")
+    axes[1].plot(
+        deciles, score_decile_summary["median_ok_qs_global_error"],
+        marker="o", color="#5b8c5a",
+    )
+    axes[1].set_yscale("log")
+    axes[1].set(
+        xlabel="Native score decile (1 lowest, 10 highest)",
+        ylabel="Median volume QS error\n(successful cases)",
+        xticks=deciles,
+    )
+    figure.tight_layout()
+    figure.savefig(args.output_dir / "score_decile_physics.png", dpi=180)
     plt.close(figure)
 
 

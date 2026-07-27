@@ -2219,8 +2219,8 @@ bool build_volume_points_native(
     result.volume_valid_fraction = static_cast<double>(available_count) /
         std::max(candidate_count, 1);
     const int minimum_count = std::max(
-        config.alpha_fit_point_count,
-        static_cast<int>(std::ceil(0.6 * config.volume_point_count))
+        std::max(config.alpha_fit_point_count, config.volume_point_count),
+        static_cast<int>(std::ceil(0.95 * candidate_count))
     );
     if (available_count < minimum_count) {
         result.status = SGPU_SCORE_FLUX_REJECTED;

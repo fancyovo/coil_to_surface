@@ -16,7 +16,9 @@
 set -euo pipefail
 
 project=/home/scc/pb24511935/local_surface_evaluator
-case_file=${CASE_FILE:?CASE_FILE is required}
+default_case=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases/id_0206752.json
+default_metadata=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/metadata_selected.json
+case_file=${CASE_FILE:-$default_case}
 output=${OUTPUT:-$project/runs/native_score/smoke_${SLURM_JOB_ID}.json}
 postflight=${output%.json}_gpu_postflight.csv
 
@@ -46,4 +48,10 @@ export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
-python scripts/smoke_native_score.py "$case_file" --device 0 --output "$output"
+metadata_args=()
+if [[ -n ${METADATA:-} ]]; then
+    metadata_args=(--metadata "$METADATA")
+elif [[ -z ${CASE_FILE:-} ]]; then
+    metadata_args=(--metadata "$default_metadata")
+fi
+python scripts/smoke_native_score.py "$case_file" "${metadata_args[@]}" --device 0 --output "$output"

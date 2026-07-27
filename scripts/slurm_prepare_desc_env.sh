@@ -14,11 +14,15 @@
 set -euo pipefail
 
 project=/home/scc/pb24511935/local_surface_evaluator
-environment=$project/.venv-desc016
+bootstrap=$project/.virtualenv-bootstrap
+environment=$project/.venv-desc016-py312
 
 cd "$project"
 if [[ ! -x "$environment/bin/python" ]]; then
-    python3 -m venv "$environment"
+    /home/scc/pb24511935/coil/.venv/bin/python -m pip install \
+        --target "$bootstrap" --only-binary=:all: virtualenv
+    PYTHONPATH="$bootstrap" /home/scc/pb24511935/coil/.venv/bin/python \
+        -m virtualenv "$environment"
 fi
 source "$environment/bin/activate"
 python -m pip install --upgrade pip

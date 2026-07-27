@@ -110,7 +110,7 @@ def main() -> None:
         },
         "components": {
             name: statistics(row["native_score"]["components"][name] for row in rows)
-            for name in ("axis", "psi", "surface", "coordinate", "volume_qs", "coil")
+            for name in ("axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil")
         },
         "by_helicity": {},
         "correlation": {
@@ -184,6 +184,31 @@ def main() -> None:
         [row["native_score"]["diagnostics"]["qs_global_error"] for row in ok_rows],
         [row["native_score"]["diagnostics"]["volume_weight_effective_fraction"] for row in ok_rows],
     )
+    qh_ok_rows = [row for row in ok_rows if int(row["helicity"]) == 1]
+    summary["correlation"]["qh_ok_score_vs_iota_score_spearman"] = spearman(
+        [row["native_score"]["score"] for row in qh_ok_rows],
+        [row["native_score"]["diagnostics"]["score_iota"] for row in qh_ok_rows],
+    )
+    summary["correlation"]["qh_ok_score_vs_abs_iota_spearman"] = spearman(
+        [row["native_score"]["score"] for row in qh_ok_rows],
+        [
+            min(
+                abs(row["native_score"]["diagnostics"]["iota_min"]),
+                abs(row["native_score"]["diagnostics"]["iota_max"]),
+            )
+            for row in qh_ok_rows
+        ],
+    )
+    summary["qh_ok_iota_score"] = statistics(
+        row["native_score"]["diagnostics"]["score_iota"] for row in qh_ok_rows
+    )
+    summary["qh_ok_below_unit_iota_count"] = sum(
+        min(
+            abs(row["native_score"]["diagnostics"]["iota_min"]),
+            abs(row["native_score"]["diagnostics"]["iota_max"]),
+        ) < 1.0
+        for row in qh_ok_rows
+    )
     summary["component_p90_p10_spread"] = {
         name: values.get("p90", float("nan")) - values.get("p10", float("nan"))
         for name, values in summary["components"].items()
@@ -235,6 +260,9 @@ def main() -> None:
         "minimum_volume_qs_component": float(min(
             row["native_score"]["components"]["volume_qs"] for row in top
         )),
+        "minimum_iota_component": float(min(
+            row["native_score"]["components"]["iota"] for row in top
+        )),
         "minimum_volume_valid_fraction": float(min(
             row["native_score"]["diagnostics"]["volume_valid_fraction"] for row in top
         )),
@@ -252,6 +280,8 @@ def main() -> None:
             "case_id", "helicity", "nfp", "status", "score", "wall_s",
             "metadata_qs_error", "metadata_mean_iota", "surface_level",
             "inverse_aspect_ratio", "iota", "qs_global_error", "qs_edge_error",
+            "iota_score", "qs_residual_score", "surface_size_score",
+            "volume_qs_size_factor", "volume_qs_iota_factor",
             "flux_attempt_count", "volume_valid_fraction",
             "volume_weight_effective_fraction", "edge_weight_effective_fraction",
             "volume_candidate_count", "volume_available_count", "volume_point_count",
@@ -274,6 +304,11 @@ def main() -> None:
                 "iota": 0.5 * (diagnostics["iota_min"] + diagnostics["iota_max"]),
                 "qs_global_error": diagnostics["qs_global_error"],
                 "qs_edge_error": diagnostics["qs_edge_error"],
+                "iota_score": diagnostics["score_iota"],
+                "qs_residual_score": diagnostics["score_qs_residual"],
+                "surface_size_score": diagnostics["score_surface_size"],
+                "volume_qs_size_factor": diagnostics["score_volume_qs_size_factor"],
+                "volume_qs_iota_factor": diagnostics["score_volume_qs_iota_factor"],
                 "flux_attempt_count": diagnostics["flux_attempt_count"],
                 "volume_valid_fraction": diagnostics["volume_valid_fraction"],
                 "volume_weight_effective_fraction": diagnostics["volume_weight_effective_fraction"],

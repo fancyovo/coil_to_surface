@@ -22,6 +22,7 @@ run_root="$project/runs/native_score_cem/${SLURM_JOB_ID}"
 targets=${TARGETS:-QH,QA}
 iterations=${ITERATIONS:-8}
 popsize=${POPSIZE:-32}
+gpu_ids=${GPU_IDS:-0,1,2,3}
 
 cleanup() {
     status=$?
@@ -73,6 +74,6 @@ for target in "${target_list[@]}"; do
         --iterations "$iterations" \
         --popsize "$popsize" \
         --elite $((popsize / 4)) \
-        --gpus 0,1,2,3 \
+        --gpus "$gpu_ids" \
         --seed "$seed"
 done

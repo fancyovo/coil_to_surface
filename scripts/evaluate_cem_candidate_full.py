@@ -5,6 +5,7 @@ import base64
 from dataclasses import replace
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -449,12 +450,29 @@ def main() -> None:
     from stellarator_eval.config import EvalConfig
     from stellarator_eval.pipeline import evaluate_case_file
 
+    args.case_file = (
+        (REPO_ROOT / args.case_file).resolve()
+        if not args.case_file.is_absolute()
+        else args.case_file.resolve()
+    )
+    args.output_dir = (
+        (REPO_ROOT / args.output_dir).resolve()
+        if not args.output_dir.is_absolute()
+        else args.output_dir.resolve()
+    )
+    gpu_lib = Path(args.gpu_lib)
+    args.gpu_lib = str(
+        (REPO_ROOT / gpu_lib).resolve()
+        if not gpu_lib.is_absolute()
+        else gpu_lib.resolve()
+    )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     a_values = parse_float_list(args.a_values)
     levels = parse_float_list(args.levels)
     rows = []
     total_started = time.perf_counter()
     for a_value in a_values:
+        os.chdir(REPO_ROOT)
         run_dir = args.output_dir / f"a_{a_value:.4g}".replace(".", "p")
         summary_path = run_dir / "summary.json"
         if summary_path.exists():
@@ -512,6 +530,8 @@ def main() -> None:
                 "traceback": traceback.format_exc(),
                 "total_time_s": time.perf_counter() - started,
             }
+        finally:
+            os.chdir(REPO_ROOT)
         rows.append(row)
         write_json(args.output_dir / "sweep_progress.json", {"rows": rows})
         print(json.dumps(row, separators=(",", ":"), allow_nan=True), flush=True)

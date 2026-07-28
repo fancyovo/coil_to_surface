@@ -65,7 +65,7 @@ def distributed_setup() -> tuple[int, int, int, torch.device]:
         torch.cuda.set_device(local_rank)
         device = torch.device("cuda", local_rank)
         if world_size > 1:
-            dist.init_process_group("nccl")
+            dist.init_process_group("nccl", device_id=device)
     else:
         if world_size > 1:
             dist.init_process_group("gloo")
@@ -75,7 +75,8 @@ def distributed_setup() -> tuple[int, int, int, torch.device]:
 
 def barrier(world_size: int) -> None:
     if world_size > 1:
-        dist.barrier()
+        device_ids = [torch.cuda.current_device()] if torch.cuda.is_available() else None
+        dist.barrier(device_ids=device_ids)
 
 
 def reduce_mean(value: torch.Tensor, world_size: int) -> torch.Tensor:
@@ -307,6 +308,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    process_started = time.perf_counter()
     args = parse_args()
     rank, local_rank, world_size, device = distributed_setup()
     seed = args.seed + rank
@@ -449,6 +451,7 @@ def main() -> None:
                 log_started = time.perf_counter()
 
             if step % args.validation_interval == 0:
+                event_started = time.perf_counter()
                 value = validation_loss(
                     ema.model,
                     validation_store,
@@ -459,11 +462,17 @@ def main() -> None:
                     use_bf16=use_bf16,
                 )
                 if rank == 0:
-                    row = {"event": "validation", "step": step, "validation_loss": value}
+                    row = {
+                        "event": "validation",
+                        "step": step,
+                        "validation_loss": value,
+                        "duration_s": time.perf_counter() - event_started,
+                    }
                     append_metrics(metrics_path, row)
                     print(json.dumps(row, separators=(",", ":")), flush=True)
 
             if step % args.sample_interval == 0:
+                event_started = time.perf_counter()
                 if rank == 0:
                     last_sample_summary, last_candidates = generate_monitor_samples(
                         ema.model,
@@ -476,7 +485,12 @@ def main() -> None:
                         device=device,
                         use_bf16=use_bf16,
                     )
-                    row = {"event": "sample", "step": step, **last_sample_summary}
+                    row = {
+                        "event": "sample",
+                        "step": step,
+                        "duration_s": time.perf_counter() - event_started,
+                        **last_sample_summary,
+                    }
                     append_metrics(metrics_path, row)
                     print(json.dumps(row, separators=(",", ":")), flush=True)
                     plot_metrics(metrics_path, args.output_dir / "monitor.png")
@@ -488,6 +502,7 @@ def main() -> None:
                 and step % args.score_interval == 0
             )
             if should_score:
+                event_started = time.perf_counter()
                 if rank == 0:
                     if last_sample_summary.get("geometry_eligible_rate", 0.0) >= args.score_min_eligible_rate:
                         score_summary = score_candidates(
@@ -506,12 +521,14 @@ def main() -> None:
                             "reason": "geometry_eligible_rate_below_threshold",
                             **last_sample_summary,
                         }
+                    row["duration_s"] = time.perf_counter() - event_started
                     append_metrics(metrics_path, row)
                     print(json.dumps(row, separators=(",", ":")), flush=True)
                     plot_metrics(metrics_path, args.output_dir / "monitor.png")
                 barrier(world_size)
 
             if step % args.checkpoint_interval == 0 or step == args.steps:
+                event_started = time.perf_counter()
                 if rank == 0:
                     save_checkpoint(
                         args.output_dir / "checkpoints" / f"step_{step:08d}.pt",
@@ -538,6 +555,40 @@ def main() -> None:
                         geometry_bounds=bounds,
                     )
                 barrier(world_size)
+                if rank == 0:
+                    row = {
+                        "event": "checkpoint",
+                        "step": step,
+                        "duration_s": time.perf_counter() - event_started,
+                    }
+                    append_metrics(metrics_path, row)
+                    print(json.dumps(row, separators=(",", ":")), flush=True)
+
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
+            peak = torch.tensor(
+                [
+                    torch.cuda.max_memory_allocated(device),
+                    torch.cuda.max_memory_reserved(device),
+                ],
+                dtype=torch.float64,
+                device=device,
+            )
+            if world_size > 1:
+                dist.all_reduce(peak, op=dist.ReduceOp.MAX)
+        else:
+            peak = torch.zeros(2, dtype=torch.float64, device=device)
+        if rank == 0:
+            row = {
+                "event": "complete",
+                "step": args.steps,
+                "training_elapsed_s": time.perf_counter() - training_started,
+                "process_elapsed_s": time.perf_counter() - process_started,
+                "peak_memory_allocated_gib": float(peak[0].cpu()) / (1024**3),
+                "peak_memory_reserved_gib": float(peak[1].cpu()) / (1024**3),
+            }
+            append_metrics(metrics_path, row)
+            print(json.dumps(row, separators=(",", ":")), flush=True)
     finally:
         if world_size > 1 and dist.is_initialized():
             dist.destroy_process_group()

@@ -38,4 +38,3 @@ def test_flow_loss_and_heun_shapes_are_finite():
     )
     assert sampled.shape == data.shape
     assert torch.isfinite(sampled).all()
-

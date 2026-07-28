@@ -49,4 +49,3 @@ def sample_heun(
             next_velocity = model(predicted, next_time, nfp, mask)
             state = state + 0.5 * dt * (velocity + next_velocity)
     return state
-

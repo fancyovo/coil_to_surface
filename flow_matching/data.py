@@ -190,4 +190,3 @@ class GroupStore:
 def group_counts(groups: dict[GroupKey, RawGroup] | GroupStore) -> dict[str, int]:
     values = groups.groups if isinstance(groups, GroupStore) else groups
     return {f"nfp{key[0]}_nc{key[1]}": len(value if torch.is_tensor(value) else value.tokens) for key, value in values.items()}
-

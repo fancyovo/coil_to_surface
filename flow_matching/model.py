@@ -138,4 +138,3 @@ class CoilFlowTransformer(nn.Module):
     @property
     def parameter_count(self) -> int:
         return sum(parameter.numel() for parameter in self.parameters())
-

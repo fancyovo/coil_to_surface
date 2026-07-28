@@ -363,6 +363,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score-min-eligible-rate", type=float, default=0.25)
     parser.add_argument("--score-timeout-s", type=float, default=900.0)
     parser.add_argument("--resume", type=Path)
+    parser.add_argument("--resume-model", choices=("model", "ema"), default="model")
+    parser.add_argument("--reset-optimizer", action="store_true")
     parser.add_argument("--verify-data", action="store_true")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--no-bf16", action="store_true")
@@ -401,6 +403,10 @@ def main() -> None:
             raise ValueError(
                 f"target steps ({args.steps}) must exceed checkpoint step ({start_step})"
             )
+        if args.resume_model == "ema" and not args.reset_optimizer:
+            raise ValueError("promoting EMA weights requires --reset-optimizer")
+    elif args.resume_model != "model" or args.reset_optimizer:
+        raise ValueError("resume options require --resume")
 
     train_raw, manifest = load_raw_groups(
         args.data_dir, "train", verify_hashes=args.verify_data and rank == 0
@@ -435,9 +441,9 @@ def main() -> None:
         )
     base_model = CoilFlowTransformer(**requested_model_config).to(device)
     if checkpoint is not None:
-        base_model.load_state_dict(checkpoint["model"])
+        base_model.load_state_dict(checkpoint[args.resume_model])
     ema = ExponentialMovingAverage(base_model, args.ema_decay)
-    if checkpoint is not None:
+    if checkpoint is not None and args.resume_model == "model":
         ema.model.load_state_dict(checkpoint["ema"])
     train_model: nn.Module = base_model
     if args.compile:
@@ -456,7 +462,7 @@ def main() -> None:
         weight_decay=args.weight_decay,
         fused=device.type == "cuda",
     )
-    if checkpoint is not None:
+    if checkpoint is not None and not args.reset_optimizer:
         optimizer.load_state_dict(checkpoint["optimizer"])
         for group in optimizer.param_groups:
             group["lr"] = args.learning_rate
@@ -478,6 +484,8 @@ def main() -> None:
             "torch_version": torch.__version__,
             "parameter_count": base_model.parameter_count,
             "resume_checkpoint": str(args.resume) if args.resume is not None else None,
+            "resume_model": args.resume_model if args.resume is not None else None,
+            "optimizer_resumed": checkpoint is not None and not args.reset_optimizer,
             "start_step": start_step,
             "train_counts": group_counts(train_raw),
             "validation_counts": group_counts(validation_raw),

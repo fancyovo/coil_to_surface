@@ -35,7 +35,10 @@ nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,nohea
 resume_args=()
 if [[ -n "${QH_FLOW_RESUME:-}" ]]; then
   test -f "$QH_FLOW_RESUME"
-  resume_args=(--resume "$QH_FLOW_RESUME")
+  resume_args=(--resume "$QH_FLOW_RESUME" --resume-model "${QH_FLOW_RESUME_MODEL:-model}")
+  if [[ "${QH_FLOW_RESET_OPTIMIZER:-0}" == "1" ]]; then
+    resume_args+=(--reset-optimizer)
+  fi
 fi
 
 python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/train_qh_flow.py \

@@ -165,3 +165,83 @@ def test_cpu_training_resumes_optimizer_ema_and_global_step(tmp_path, monkeypatc
     ]
     assert any(row["event"] == "resume_validation" and row["step"] == 1 for row in rows)
     assert any(row["event"] == "train" and row["step"] == 3 for row in rows)
+
+
+def test_cpu_training_can_promote_ema_for_finetuning(tmp_path, monkeypatch):
+    data_dir = tmp_path / "data"
+    first_output = tmp_path / "first"
+    resumed_output = tmp_path / "ema-finetune"
+    data_dir.mkdir()
+    write_dataset(data_dir)
+    common = [
+        "--data-dir",
+        str(data_dir),
+        "--batch-per-gpu",
+        "4",
+        "--width",
+        "32",
+        "--layers",
+        "1",
+        "--heads",
+        "4",
+        "--hidden",
+        "64",
+        "--log-interval",
+        "1",
+        "--validation-interval",
+        "1",
+        "--sample-interval",
+        "1",
+        "--sample-count",
+        "4",
+        "--sample-steps",
+        "1",
+        "--checkpoint-interval",
+        "1",
+    ]
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["train_qh_flow.py", *common, "--output-dir", str(first_output), "--steps", "1"],
+    )
+    train_qh_flow.main()
+    source = torch.load(first_output / "checkpoint_latest.pt", weights_only=False)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "train_qh_flow.py",
+            *common,
+            "--output-dir",
+            str(resumed_output),
+            "--steps",
+            "2",
+            "--resume",
+            str(first_output / "checkpoint_latest.pt"),
+            "--resume-model",
+            "ema",
+            "--reset-optimizer",
+            "--lr-schedule",
+            "constant",
+            "--learning-rate",
+            "1e-4",
+            "--warmup-steps",
+            "0",
+        ],
+    )
+    train_qh_flow.main()
+
+    rows = [
+        json.loads(line)
+        for line in (resumed_output / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    manifest = json.loads((resumed_output / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["resume_model"] == "ema"
+    assert manifest["optimizer_resumed"] is False
+    assert any(row["event"] == "resume_validation" and row["step"] == 1 for row in rows)
+    promoted = torch.load(resumed_output / "checkpoint_latest.pt", weights_only=False)
+    assert any(
+        not torch.equal(promoted["model"][name], source["ema"][name])
+        for name in source["ema"]
+    )

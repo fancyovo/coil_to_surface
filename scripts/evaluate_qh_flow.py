@@ -36,9 +36,15 @@ def setup() -> tuple[int, int, int, torch.device]:
     if not torch.cuda.is_available():
         raise RuntimeError("first-generation native evaluation requires CUDA")
     torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
     if world_size > 1:
-        dist.init_process_group("nccl")
-    return rank, local_rank, world_size, torch.device("cuda", local_rank)
+        dist.init_process_group("nccl", device_id=device)
+    return rank, local_rank, world_size, device
+
+
+def barrier(world_size: int, local_rank: int) -> None:
+    if world_size > 1:
+        dist.barrier(device_ids=[local_rank])
 
 
 def distribution(values: list[float]) -> dict[str, float | int]:
@@ -117,7 +123,7 @@ def score_rank(
     lib_path: Path,
     device_id: int,
     output_path: Path,
-) -> None:
+) -> dict[str, float | int]:
     from stellarator_gpu import score_coils_native
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -172,6 +178,12 @@ def score_rank(
                     ),
                     flush=True,
                 )
+    return {
+        "rank": device_id,
+        "rows": len(rows),
+        "scored": scored,
+        "score_wall_s": time.perf_counter() - started,
+    }
 
 
 def load_rows(output_dir: Path, world_size: int) -> list[dict[str, Any]]:
@@ -343,12 +355,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    process_started = time.perf_counter()
     args = parse_args()
     rank, local_rank, world_size, device = setup()
     if rank == 0:
         args.output_dir.mkdir(parents=True, exist_ok=False)
-    if world_size > 1:
-        dist.barrier()
+    barrier(world_size, local_rank)
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model = CoilFlowTransformer(**checkpoint["model_config"]).to(device)
     model.load_state_dict(checkpoint["ema"])
@@ -360,6 +372,7 @@ def main() -> None:
         str(name): (float(values[0]), float(values[1]))
         for name, values in checkpoint["geometry_reference_bounds"].items()
     }
+    generation_started = time.perf_counter()
     rows = generate_rank(
         model,
         store,
@@ -373,21 +386,37 @@ def main() -> None:
         batch_size=args.sample_batch,
         device=device,
     )
-    score_rank(
+    generation_s = time.perf_counter() - generation_started
+    score_runtime = score_rank(
         rows,
         lib_path=args.lib,
         device_id=local_rank,
         output_path=args.output_dir / f"rank_{rank:02d}.jsonl",
     )
+    local_runtime = {"rank": rank, "generation_s": generation_s, **score_runtime}
     if world_size > 1:
-        dist.barrier()
+        gathered_runtime: list[dict[str, Any]] | None = [None] * world_size if rank == 0 else None
+        dist.gather_object(local_runtime, gathered_runtime, dst=0)
+    else:
+        gathered_runtime = [local_runtime]
+    barrier(world_size, local_rank)
     if rank == 0:
+        analysis_started = time.perf_counter()
         summary = analyze(
             load_rows(args.output_dir, world_size),
             output_dir=args.output_dir,
             good_score=args.good_score,
             good_iota=args.good_iota,
             good_size=args.good_size,
+        )
+        assert gathered_runtime is not None
+        summary["runtime"] = {
+            "rank": gathered_runtime,
+            "analysis_s": time.perf_counter() - analysis_started,
+            "process_s": time.perf_counter() - process_started,
+        }
+        (args.output_dir / "summary.json").write_text(
+            json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
         )
         (args.output_dir / "run_manifest.json").write_text(
             json.dumps(
@@ -405,7 +434,7 @@ def main() -> None:
         )
         print(json.dumps(summary, separators=(",", ":")), flush=True)
     if world_size > 1:
-        dist.barrier()
+        barrier(world_size, local_rank)
         dist.destroy_process_group()
 
 

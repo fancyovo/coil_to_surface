@@ -5,7 +5,10 @@ import numpy as np
 from stellarator_eval.volume_score import evaluate_volume_quality_score
 
 
-def _result(*, inverse_aspect=0.05, qs_error=0.02, iota=1.2, target=(1, 3)):
+def _result(
+    *, inverse_aspect=0.05, qs_error=0.02, iota=1.2, target=(1, 3),
+    qa_error=0.2, qp_error=0.6,
+):
     radius = inverse_aspect
     return {
         "status": "ok",
@@ -62,7 +65,9 @@ def _result(*, inverse_aspect=0.05, qs_error=0.02, iota=1.2, target=(1, 3)):
                 "target": {
                     "f_C_over_B3_rms": qs_error,
                     "radial_bins": [{"f_C_over_B3_rms": 1.2 * qs_error}],
-                }
+                },
+                "QA": {"f_C_over_B3_rms": qa_error},
+                "QP": {"f_C_over_B3_rms": qp_error},
             },
         },
     }
@@ -137,6 +142,18 @@ def test_volume_score_penalizes_worse_qs_at_fixed_surface():
     bad = evaluate_volume_quality_score(bad_result)
     assert good["components"]["volume_qs"] > bad["components"]["volume_qs"]
     assert good["score"] > bad["score"]
+
+
+def test_qh_target_must_outperform_qa_and_qp():
+    qh_dominant = evaluate_volume_quality_score(
+        _result(qs_error=0.01, qa_error=0.2, qp_error=0.6)
+    )
+    qp_dominant = evaluate_volume_quality_score(
+        _result(qs_error=0.2, qa_error=0.02, qp_error=0.03)
+    )
+    assert qh_dominant["details"]["qh_helicity_advantage"] > 0.9
+    assert qp_dominant["details"]["qh_helicity_advantage"] < 0.2
+    assert qh_dominant["score"] > qp_dominant["score"]
 
 
 def test_failure_statuses_remain_finite():

@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 5u
+#define SGPU_SCORE_ABI_VERSION 6u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -132,6 +132,9 @@ struct SgpuScoreConfig {
     double score_volume_qs_size_floor;
     double score_volume_qs_iota_floor;
     double score_qh_total_iota_floor;
+    std::int32_t surface_long_trace_periods;
+    double surface_long_trace_relative_tolerance;
+    double score_qh_total_helicity_floor;
 };
 
 struct SgpuScoreResult {
@@ -160,6 +163,7 @@ struct SgpuScoreResult {
 
     double surface_level;
     double surface_drift_relative_p95;
+    double surface_one_period_drift_relative_p95;
     double surface_effective_minor_radius;
     double surface_inverse_aspect_ratio;
     double surface_volume;
@@ -182,9 +186,13 @@ struct SgpuScoreResult {
     double score_volume_qs_iota_factor;
     double score_before_qh_iota_gate;
     double score_qh_total_iota_factor;
+    double score_qh_helicity_advantage;
+    double score_qh_total_helicity_factor;
 
     double qs_global_error;
     double qs_edge_error;
+    double qs_qa_global_error;
+    double qs_qp_global_error;
     double qs_abs_p95;
     double volume_valid_fraction;
     double volume_weight_effective_fraction;
@@ -204,6 +212,8 @@ struct SgpuScoreResult {
     std::int32_t volume_available_count;
     std::int32_t volume_point_count;
     std::int32_t alpha_column_count;
+    std::int32_t surface_long_trace_periods_completed;
+    std::int32_t surface_long_trace_rejected_count;
     char error_message[256];
 };
 

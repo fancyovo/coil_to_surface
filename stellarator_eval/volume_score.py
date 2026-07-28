@@ -37,6 +37,7 @@ class VolumeScoreConfig:
     volume_qs_size_floor: float = 0.65
     volume_qs_iota_floor: float = 0.50
     qh_total_iota_floor: float = 0.10
+    qh_total_helicity_floor: float = 0.10
     missing_coordinate_score: float = 0.08
     missing_volume_qs_score: float = 0.04
     weights: dict[str, float] = field(
@@ -226,6 +227,38 @@ def _iota_score(result: dict, cfg: VolumeScoreConfig) -> tuple[float, dict[str, 
     }
 
 
+def _qh_helicity_advantage(result: dict) -> tuple[float, dict[str, Any]]:
+    volume = result.get("volume_qs") or {}
+    target = volume.get("target_helicity") or [1, 0]
+    is_qh = len(target) >= 2 and int(target[0]) != 0 and int(target[1]) != 0
+    if not is_qh:
+        return 1.0, {
+            "qh_helicity_advantage": 1.0,
+            "qh_competitor_error": float("nan"),
+            "qh_target_error_per_helicity": float("nan"),
+        }
+
+    metrics = volume.get("metrics") or {}
+    target_error = _finite((metrics.get("target") or {}).get("f_C_over_B3_rms"), np.nan)
+    qa_error = _finite((metrics.get("QA") or {}).get("f_C_over_B3_rms"), np.nan)
+    qp_error = _finite((metrics.get("QP") or {}).get("f_C_over_B3_rms"), np.nan)
+    target_norm = max(float(np.hypot(int(target[0]), int(target[1]))), 1.0)
+    qp_norm = max(float(abs(int(target[1]))), 1.0)
+    target_per_helicity = target_error / target_norm
+    competitor_error = min(qa_error, qp_error / qp_norm)
+    if not np.isfinite(target_per_helicity) or not np.isfinite(competitor_error):
+        advantage = 1.0
+    else:
+        advantage = competitor_error / max(target_per_helicity + competitor_error, 1e-300)
+    return _clip01(advantage), {
+        "qh_helicity_advantage": float(_clip01(advantage)),
+        "qh_competitor_error": float(competitor_error),
+        "qh_target_error_per_helicity": float(target_per_helicity),
+        "qh_qa_error": float(qa_error),
+        "qh_qp_error_per_helicity": float(qp_error / qp_norm),
+    }
+
+
 def _volume_qs_score(
     result: dict, cfg: VolumeScoreConfig, iota_score: float
 ) -> tuple[float, dict[str, Any]]:
@@ -298,6 +331,7 @@ def evaluate_volume_quality_score(
     surface_score, surface_parts = _surface_score(result, cfg)
     coordinate_score, coordinate_parts = _coordinate_score(result, cfg)
     iota_score, iota_parts = _iota_score(result, cfg)
+    helicity_advantage, helicity_parts = _qh_helicity_advantage(result)
     qs_score, qs_parts = _volume_qs_score(result, cfg, iota_score)
     coil_metrics = (
         coil_geometry_metrics(field_input, current_unit=current_unit)
@@ -328,7 +362,15 @@ def evaluate_volume_quality_score(
         if iota_parts["iota_qh_gate_enabled"]
         else 1.0
     )
-    unit_score = unit_score_before_gate * qh_total_iota_factor
+    qh_total_helicity_factor = (
+        cfg.qh_total_helicity_floor
+        + (1.0 - cfg.qh_total_helicity_floor) * helicity_advantage
+        if iota_parts["iota_qh_gate_enabled"]
+        else 1.0
+    )
+    unit_score = (
+        unit_score_before_gate * qh_total_iota_factor * qh_total_helicity_factor
+    )
     details: dict[str, Any] = {}
     for part in (
         axis_parts,
@@ -337,11 +379,13 @@ def evaluate_volume_quality_score(
         coordinate_parts,
         qs_parts,
         iota_parts,
+        helicity_parts,
         coil_parts,
     ):
         details.update(part)
     details["score_before_qh_iota_gate"] = float(100.0 * _clip01(unit_score_before_gate))
     details["score_qh_total_iota_factor"] = float(qh_total_iota_factor)
+    details["score_qh_total_helicity_factor"] = float(qh_total_helicity_factor)
     return {
         "score": float(100.0 * _clip01(unit_score)),
         "score_unit_interval": float(_clip01(unit_score)),

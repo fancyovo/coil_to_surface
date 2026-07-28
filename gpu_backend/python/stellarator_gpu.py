@@ -27,7 +27,7 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 5
+SGPU_SCORE_ABI_VERSION = 6
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",
@@ -145,6 +145,9 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("score_volume_qs_size_floor", ctypes.c_double),
         ("score_volume_qs_iota_floor", ctypes.c_double),
         ("score_qh_total_iota_floor", ctypes.c_double),
+        ("surface_long_trace_periods", ctypes.c_int32),
+        ("surface_long_trace_relative_tolerance", ctypes.c_double),
+        ("score_qh_total_helicity_floor", ctypes.c_double),
     ]
 
 
@@ -171,6 +174,7 @@ class _SgpuScoreResult(ctypes.Structure):
         ("psi_angle_l2", ctypes.c_double),
         ("surface_level", ctypes.c_double),
         ("surface_drift_relative_p95", ctypes.c_double),
+        ("surface_one_period_drift_relative_p95", ctypes.c_double),
         ("surface_effective_minor_radius", ctypes.c_double),
         ("surface_inverse_aspect_ratio", ctypes.c_double),
         ("surface_volume", ctypes.c_double),
@@ -191,8 +195,12 @@ class _SgpuScoreResult(ctypes.Structure):
         ("score_volume_qs_iota_factor", ctypes.c_double),
         ("score_before_qh_iota_gate", ctypes.c_double),
         ("score_qh_total_iota_factor", ctypes.c_double),
+        ("score_qh_helicity_advantage", ctypes.c_double),
+        ("score_qh_total_helicity_factor", ctypes.c_double),
         ("qs_global_error", ctypes.c_double),
         ("qs_edge_error", ctypes.c_double),
+        ("qs_qa_global_error", ctypes.c_double),
+        ("qs_qp_global_error", ctypes.c_double),
         ("qs_abs_p95", ctypes.c_double),
         ("volume_valid_fraction", ctypes.c_double),
         ("volume_weight_effective_fraction", ctypes.c_double),
@@ -210,6 +218,8 @@ class _SgpuScoreResult(ctypes.Structure):
         ("volume_available_count", ctypes.c_int32),
         ("volume_point_count", ctypes.c_int32),
         ("alpha_column_count", ctypes.c_int32),
+        ("surface_long_trace_periods_completed", ctypes.c_int32),
+        ("surface_long_trace_rejected_count", ctypes.c_int32),
         ("error_message", ctypes.c_char * 256),
     ]
 

@@ -36,15 +36,17 @@ export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 idle_streak=0
 for _ in {1..60}; do
   idle=1
-  while IFS=',' read -r memory_used utilization; do
+  while IFS= read -r memory_used; do
     memory_used="${memory_used// /}"
-    utilization="${utilization// /}"
-    if (( memory_used > 16 || utilization != 0 )); then
+    if (( memory_used > 16 )); then
       idle=0
     fi
   done < <(
-    nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits
+    nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits
   )
+  if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
+    idle=0
+  fi
   if (( idle )); then
     ((idle_streak += 1))
     if (( idle_streak >= 3 )); then
@@ -56,7 +58,7 @@ for _ in {1..60}; do
   sleep 2
 done
 if (( idle_streak < 3 )); then
-  echo "allocated GPUs did not remain idle for three consecutive probes" >&2
+  echo "allocated GPUs retained memory or compute processes during idle probes" >&2
   exit 1
 fi
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader

@@ -523,3 +523,154 @@ $n_c!$ 个等价排列，当前噪声和目标按索引配对，可能模糊跨�
 收敛复核后的最终结论是：**8k 首代确实欠训练，而且欠训练解释了很大一部分中位质量差距；
 但 45k 当前模型已经出现可重复的验证过拟合，高质量尾部仍未出现。继续训练同一个模型不是
 下一步，下一步应比较集合 coupling、模型容量和更关注高精度尾部的训练目标。**
+
+## 11. 评测批次最优样本的完整链路复核
+
+此前作业 `28546` 只运行了 GPU 原生体 score，并导出了按总分排序的 top-case；没有对生成
+样本运行旧的磁面、Simsopt Boozer LS/Newton、Poincare 和 DESC 全面验收。本节补做这一步。
+
+### 11.1 样本选择与复核标准
+
+从同一批 2,048 个生成样本中选两个不同候选：
+
+| 选择标准 | candidate | $N_{\mathrm{FP}}$ | 基线圈数 | 原生 score | 原生体 QS residual | 原生 $\iota$ | 原生面逆纵横比 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 总 score 最高 | 1439 | 4 | 2 | 63.2127 | 0.483207 | 1.01494 | 0.022477 |
+| 体 QS residual 最低 | 567 | 3 | 4 | 40.0485 | 0.269510 | 0.821860 | 0.016772 |
+
+两个候选都使用完全相同的离线流程：分别令 $a=0.05,0.08,0.12,0.16,0.20$，重新求磁轴和
+$\psi$，扫描 16 个 $\psi$ level，对通过快速漂移筛选的面运行 Simsopt Boozer LS/Newton，
+再按体积选择最大的收敛面。只有存在这样的边界时才运行 Poincare 和 DESC。DESC 使用该面
+作为固定边界，零压强、零环向电流，$L=M=N=8$，最多 50 次迭代。
+
+这里采用三层相互独立的判据：
+
+1. Boozer LS/Newton 的代数残差只说明离散方程被求解；
+2. Poincare 截面检查真空场线是否形成与候选边界一致的嵌套面；
+3. DESC 必须同时满足坐标 nested、归一化 force residual 有限且显著下降。
+
+因此 DESC 返回 `optimizer_success=True` 或 Boozer 残差很小，都不能单独算物理验收通过。
+
+### 11.2 总 score 最高样本：形式 Boozer 面存在，独立物理复核失败
+
+旧路径在 4 个 $a$ 值上返回了至少一个形式收敛的 Boozer 面；$a=0.20$ 没有返回有效面：
+
+| $a$ | 最大接受 $\psi$ level | 体积 $\mathrm{m}^3$ | $\iota$ | 单面 QH error |
+| ---: | ---: | ---: | ---: | ---: |
+| 0.05 | 0.008 | $5.28999\times10^{-4}$ | 1.14244 | $9.20705\times10^{-4}$ |
+| 0.08 | 0.12 | 0.0205045 | 0.945406 | $3.46157\times10^{-4}$ |
+| 0.12 | 0.004 | 0.00151942 | 1.13918 | $1.62276\times10^{-4}$ |
+| 0.16 | 0.002 | 0.00134385 | 1.13918 | $1.61457\times10^{-4}$ |
+| 0.20 | 无 | 无 | 无 | 无 |
+
+独立 $a$ 扫描出现明显分支跳变，最终按体积选中 $a=0.08$、$\psi=0.12$。该面的 Boozer
+初始残差为 165.19，LS 后为 $1.04\times10^{-13}$，Newton 在初值处即接受。形式解参数为
+
+$$
+V=0.0205045\ \mathrm{m}^3,\qquad
+\iota=0.945406,\qquad
+G=-6.86777.
+$$
+
+但三种单面误差分别为
+
+$$
+e_{\mathrm{QA}}=1.66445\times10^{-4},\qquad
+e_{\mathrm{QH}}=3.46157\times10^{-4},\qquad
+e_{\mathrm{QP}}=1.88557\times10^{-4}.
+$$
+
+目标 QH 反而是三者中最差的，$|B|$ 热力图也主要呈近水平条带，而非清晰的 QH 斜向条带。
+
+![总分最高样本的最大形式 Boozer 面 |B|](assets/qh_flow_full_eval_28546/highest_score/assets/boozer_b.png)
+
+[打开交互式 $|B|$ 图](assets/qh_flow_full_eval_28546/highest_score/assets/boozer_b.html)
+
+更关键的是，Poincare 图没有形成与黑色候选边界一致的同心嵌套曲线；多个截面上均有大量
+轨迹散落在边界外。16 条轨迹都返回了 145 个截面点只能说明积分完成，不能说明嵌套成立。
+这与先前通过验收的 CEM 样本中清晰的同心曲线有本质区别。
+
+![总分最高样本的 Poincare 反例](assets/qh_flow_full_eval_28546/highest_score/assets/poincare.png)
+
+![总分最高样本的线圈与形式 Boozer 面](assets/qh_flow_full_eval_28546/highest_score/assets/coils_surface.png)
+
+[打开可旋转的三维线圈与形式面](assets/qh_flow_full_eval_28546/highest_score/assets/coils_surface.html)
+
+因此这里更准确的结论是：**旧 Boozer 离散方程存在一个极低残差形式解，但 Poincare 不支持
+把它解释为全局嵌套真空磁面。** 极低 LS residual 不能覆盖这一独立反证。
+
+### 11.3 DESC：接口完成，但物理解发散
+
+DESC 初始坐标被判定为 nested，但求解后变为非 nested。数值如下：
+
+| DESC 指标 | 初态 | 末态 |
+| --- | ---: | ---: |
+| nested | 是 | **否** |
+| 归一化 force mean | $1.022\times10^3$ | $1.210\times10^4$ |
+| 归一化 force P95 | $9.396\times10^3$ | $6.761\times10^{-3}$ |
+| 归一化 force max | $2.670\times10^4$ | $6.420\times10^7$ |
+| 体平均原始 force | $2.610\times10^{13}$ | $-1.173\times10^{19}$ |
+
+末态 P95 很小但 mean 和 max 爆炸，说明误差集中成少数灾难性离群点，而不是整体收敛。优化器
+在 12 次迭代后因 `xtol` 返回成功，但 cost 仍为 $2.035\times10^{13}$，optimality 为
+$1.339\times10^5$；$\iota(\rho)$ 也出现 $10^4$ 量级尖峰。该结果必须判为 DESC 失败。
+
+![DESC 最终 QH 诊断](assets/qh_flow_full_eval_28546/highest_score/desc/qs_QH.png)
+
+![DESC 非物理 iota profile](assets/qh_flow_full_eval_28546/highest_score/desc/iota.png)
+
+### 11.4 体 QS residual 最低样本：没有可供 DESC 使用的面
+
+candidate 567 的原生体 QS residual 虽是整个 2,048 样本批次最低值，但完整旧路径在全部
+5 个 $a$ 值上都没有得到 Boozer LS/Newton 收敛面：
+
+| $a$ | 通过快速漂移筛选的 level 数 | Boozer 结果 |
+| ---: | ---: | --- |
+| 0.05 | 11/16 | 全部未收敛 |
+| 0.08 | 9/16 | 全部未收敛 |
+| 0.12 | 2/16 | 全部未收敛 |
+| 0.16 | 0/16 | 未进入 Boozer |
+| 0.20 | 0/16 | 未进入 Boozer |
+
+这不是作业环境或超时失败：磁轴、$\psi$、漂移筛选和所有预定 Boozer 尝试都正常结束；程序
+按设计以 `no_boozer_surface` 停止。由于没有合法固定边界，继续绘制单面 $|B|$ 或调用 DESC
+只会制造无物理含义的结果，所以链路在此正确终止。
+
+### 11.5 对当前首代模型和 score 的新增结论
+
+这次复核比“good-QH 数量为 0”提供了更直接的证据：
+
+1. **总分最高样本是假阳性。** 它能通过原生 score，也能让旧 Boozer 离散求解器返回极低
+   residual，但 Poincare 和 DESC 都拒绝其全局物理有效性。
+2. **单独按微分 QS residual 排序更不可靠。** 批次中该项最好的样本甚至不存在旧路径可解面。
+3. **原生体指标仍适合快速筛选，不足以替代离线验收。** 当前批次最大 score 仅 63.21，低于
+   QUASR 成功 QH 中位数 66.83 和当前 good-QH 阈值 66.8；本次失败与批量统计一致。
+4. **下一版 reward 必须强化跨指标一致性。** 至少应让 QS 项依赖足够高的有效体积分数和稳定
+   surface branch，并加入廉价的场线闭合/漂移一致性门，避免“局部微分误差小但无全局面”以及
+   “离散 Boozer 残差小但实际轨迹不嵌套”两类作弊方式。
+
+本节不是说原生微分 QS 定义本身错误，而是确认其适用边界：它在已有良好嵌套坐标的前提下
+衡量局部 QH 偏差；当坐标或磁面存在性只由近似体拟合提供时，较小数值不构成全局存在性证明。
+
+### 11.6 耗时与可复现产物
+
+| 作业 | 结果 | 脚本内耗时 | Slurm 墙钟 |
+| --- | --- | ---: | ---: |
+| `28574`，总分最高 | 完成全部绘图和 DESC；物理失败 | 242.71 s | 4 分 47 秒 |
+| `28575`，QS 最好 | 5 个尺度均无 Boozer 面 | 63.43 s | 1 分 08 秒 |
+
+两个作业依次使用同一张空闲 RTX 5090，各占 16 个 CPU 核；第二个作业的非零退出码来自预期的
+`no_boozer_surface`，不是基础设施错误。关键产物如下：
+
+- [候选选择与原生指标](assets/qh_flow_full_eval_28546/selection_manifest.json)
+- [总分最高候选输入](assets/qh_flow_full_eval_28546/cases/highest_score_id_001439.json)
+- [QS 最好候选输入](assets/qh_flow_full_eval_28546/cases/best_qs_id_000567.json)
+- [总分最高候选完整汇总](assets/qh_flow_full_eval_28546/highest_score/full_summary.json)
+- [QS 最好候选失败汇总](assets/qh_flow_full_eval_28546/best_qs/full_summary.json)
+- [DESC 原始汇总](assets/qh_flow_full_eval_28546/highest_score/desc/summary.json)
+- [DESC 输入](assets/qh_flow_full_eval_28546/highest_score/desc/input.check)
+- [DESC equilibrium，供失败复现](assets/qh_flow_full_eval_28546/highest_score/desc/equilibrium.h5)
+
+远端完整目录为 `~/local_surface_evaluator/runs/qh_flow_full_eval_28546/`。本次最终验收结论是：
+**此前没有做完整评估；现在已经补做。两个排序标准选出的最优候选都没有通过完整物理验收，
+所以第一代 45k 模型仍未生成可确认的优质 QH 位形。**

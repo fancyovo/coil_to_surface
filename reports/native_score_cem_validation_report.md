@@ -814,3 +814,279 @@ $$
 - [完整旧路径与 DESC 审计 JSON](assets/native_score_cem_validation/long_qh_cem/full_evaluation_audit.json)
 - [DESC 输入](assets/native_score_cem_validation/long_qh_cem/full_eval/desc/input.check)
 - [DESC equilibrium](assets/native_score_cem_validation/long_qh_cem/full_eval/desc/equilibrium.h5)
+
+## 23. 低 $\iota$ 退化修正与三随机种子最终验收
+
+本节记录 2026-07-28 完成的最终验收。它覆盖前文第 15--22 节之后对 score 的修正、
+QUASR 经验标定、三个随机种子的长时 CEM，以及最高分样本的旧稳定路径和 DESC 复核。
+若本节与前文关于旧 score 的结论冲突，以本节为准。
+
+### 23.1 结论先行
+
+1. **低 $\iota$ 圆环退化已经被 score 排除。** 原先得分 78.935、
+   $|\iota|=0.06881$ 的退化样本，在最终公式下只得 **5.275**。三个新 CEM 最优样本的
+   $|\iota|$ 分别为 0.926、1.131、0.997，没有再次回到 $\iota\simeq0$。
+2. **三个随机种子都没有优化出高质量 QH。** 最高分只有 **48.472**，低于 QUASR QH
+   成功样本的 P10 56.862；对应原生微分 QH 残差为 4.149，`volume_qs` 分量只有
+   4.347/100。score 没有把它误报成高分，但 CEM 没找到 $|\iota|\gtrsim1$ 与低 QH
+   残差同时成立的区域。
+3. **旧路径证明该线圈有有限真空磁面，但目标 helicity 错了。** 最大连续可接受面体积为
+   $0.01482\,\mathrm{m}^3$，旧 Boozer 解为 $|\iota|=0.9407$；该面 QH error 为
+   0.531%，而 QP error 只有 0.0139%。$|B|$ 热图也呈环向竖直带，不是 QH 斜带。
+4. **DESC 验收失败。** 初态和末态都非嵌套；末态归一化 force mean 仍为
+   $1.34\times10^{10}$。DESC 返回的 `xtol` 只表示步长停滞，不能解释成物理收敛。
+
+因此，本轮最准确的判定是：**反低 $\iota$ 作弊修正通过；从零 CEM 优化高质量 QH
+失败；最高分样本的真空磁面检查部分通过，但目标 QH 与 DESC 检查失败。**
+
+## 24. 最终 score 的准确形式
+
+### 24.1 磁面尺寸饱和
+
+令原生路径选中磁面的逆纵横比为 $a/R$，定义
+
+$$
+x=\operatorname{clip}\!\left(\frac{a/R}{0.03},0,1\right),
+\qquad
+q_{\mathrm{size}}=x^2(3-2x).
+$$
+
+当 $a/R\ge0.03$ 时，$q_{\mathrm{size}}=1$，更大的磁面不再增加尺寸分数。这个因子同时
+用于 `surface` 分量和体 QS 的尺寸修正，因此旧样本的 $a/R=0.104$ 不再能靠继续增大磁面
+获得额外奖励。
+
+### 24.2 QH 的 $\iota$ 分量与总分门控
+
+对体积采样范围内的旋转变换取保守值
+
+$$
+\iota_*=\min_{\rho}\left|\iota(\rho)\right|,
+$$
+
+若拟合区间跨过零，则令 $\iota_*=0$。QH 的 $\iota$ 质量为
+
+$$
+q_{\iota}
+=\operatorname{clip}\!\left(\frac{\iota_*}{1.0},0,1\right)^2.
+$$
+
+这保证 $|\iota|<1$ 时连续受罚，且越接近零惩罚越强。QA/QP 不使用该门控。
+
+原始体 QS 质量由全体积和边缘残差组成：
+
+$$
+q_{\mathrm{res}}=0.8q_{\mathrm{global}}+0.2q_{\mathrm{edge}},
+$$
+
+QH 的体 QS 分量再乘
+
+$$
+F_{\mathrm{size}}=0.65+0.35q_{\mathrm{size}},
+\qquad
+F_{\iota}=0.5+0.5q_{\iota}.
+$$
+
+七个分量的权重依次为
+
+$$
+(w_{\mathrm{axis}},w_{\psi},w_{\mathrm{surface}},w_{\mathrm{coord}},
+w_{\mathrm{QS}},w_{\iota},w_{\mathrm{coil}})
+=(10,10,10,10,42,10,8).
+$$
+
+加权分数 $S_0$ 计算完后，QH 总分还要经过
+
+$$
+S=S_0\left(0.1+0.9q_{\iota}\right).
+$$
+
+所以低 $\iota$ 不只是少拿 10 分的独立分量，而会压低整个分数。保留 0.1 的底是为了
+让 CEM 在不可行区仍有连续排序信号，而不是把所有低 $\iota$ 样本压成完全相同的零分。
+
+### 24.3 QUASR 的经验标定
+
+这里没有依赖“QH 理论上必须 $\iota>1$”的强证明，而是直接检查 QUASR：
+
+| 数据子集 | 数量 | $|\iota|<1$ | P05 | 中位数 | 基线圈数 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 全部 QH | 3834 | 114 | 1.1 | 1.5 | 1--5 |
+| QH，$N_{\mathrm{FP}}=3$ | 987 | 6 | 1.1 | 1.4 | 2--5 |
+| 上一行中 metadata QS 最好 10% | 98 | 仅最小值 0.9 | 1.1 | 1.3 | 3--5 |
+
+在 $N_{\mathrm{FP}}=3$ 的高质量 QH 子集中没有 1 或 2 基线圈样本；3、4、5 基线圈分别
+有 11、42、45 个。本轮使用 3 基线圈，是数据支持的最低复杂度，而不是继续使用已经
+证明不足的单基线圈参数化。
+
+## 25. QUASR 与退化样本交叉验证
+
+在 1000 个既有原生评测样本中，有 357 个 QH 样本同时具有可用的旧、新诊断。对这些
+样本按最终公式重放，结果如下：
+
+| Spearman 相关 | 旧 score | 最终 score |
+| --- | ---: | ---: |
+| 与 metadata QS quality | 0.077 | **0.420** |
+| 与原生微分 QS quality | -0.481 | **0.179** |
+| 与磁面尺寸 | 0.875 | **0.340** |
+
+最终 QH score 的 P10、中位数、最大值分别为 56.862、66.834、74.006。前 20 名的最小
+$|\iota|$ 为 1.066，原生微分 QS 残差中位数为 0.147。低 $\iota$ 退化样本从 78.935
+降为 5.275，在 357 个成功 QH 样本中的百分位为 0。
+
+最终 ABI 还做了两次原生 C++/CUDA 精确 smoke：退化样本得到 5.27536；QUASR 样本
+1551144 得到 58.83082。两者与离线标量重放逐项一致，说明上述变化不是 Python 侧重新
+定义了 score，而是已经进入生产原生接口。
+
+![最终 score 的 QUASR 与退化样本审计](assets/native_score_cem_validation/score_v2_audit/score_v2_anticheat.png)
+
+## 26. 三随机种子 CEM
+
+### 26.1 固定配置与吞吐
+
+每个种子都使用 3 基线圈、192 维 PCA latent、96 代、每代 128 个候选、32 个 elite，
+以及 4 张空闲 RTX 5090，每卡一个原生 score worker。单个种子评估 12288 个候选。
+
+| 作业 | 随机种子 | 墙钟 | 均摊墙钟/候选 | `ok` / 12288 |
+| --- | ---: | ---: | ---: | ---: |
+| 28270 | 2026072801 | 10573.32 s | 0.860 s | 7156 |
+| 28276 | 2026072802 | 10269.38 s | 0.836 s | 6589 |
+| 28277 | 2026072803 | 10454.82 s | 0.851 s | 6637 |
+
+三个作业均以退出码 0 完成，无超时、worker 崩溃或 Python 异常。总计评估 36864 个
+候选，CEM 内部墙钟合计 31297.52 秒，即 8 小时 41 分 38 秒；总体均摊为
+$0.849\,\mathrm{s/candidate}$。每个作业的四张卡在启动时都是 0% 利用率、2 MiB 显存。
+
+### 26.2 三个最优样本
+
+| 作业 | 最优代 | score | $|\iota_*|$ | 原生 QH 残差 | $a/R$ | 体积 [$\mathrm{m}^3$] | `volume_qs` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 28270 | 96 | 41.329 | 0.926 | 5.700 | 0.01697 | 0.00233 | 3.247 |
+| 28276 | 63 | 46.991 | 1.131 | 104.045 | 0.06992 | 0.00088 | 0.305 |
+| 28277 | 96 | **48.472** | 0.997 | **4.149** | 0.01443 | 0.00394 | **4.347** |
+
+三个结果都远低于 QUASR QH 的 P10 56.862，因而最终 score 没有把它们伪装成高质量
+样本。第二个种子说明单独达到 $|\iota|>1$ 并不够：它的 QH 残差恶化到 104，总分仍只
+有 46.99。
+
+![第三个随机种子的收敛过程](assets/native_score_cem_validation/score_v2_three_seed/long_cem_convergence.png)
+
+第三个种子的 6637 个成功候选还显示出清晰的不可兼得关系：全体中最低原生 QH 残差为
+1.121，但该样本只有 $|\iota|=0.189$；最高总分样本把 $|\iota|$ 提到 0.997 后，QH
+残差反而为 4.149。没有候选同时接近 QUASR 的 $|\iota|$ 和 QH 残差范围。
+
+![尺寸、QH 残差与总分的 Pareto 分布](assets/native_score_cem_validation/score_v2_three_seed/long_cem_pareto.png)
+
+这说明当前失败首先是**搜索没有进入联合可行域**，而不是低 $\iota$ 样本仍能骗到高分。
+不过，若希望中等分数也更严格代表 QH，仍应增加目标 helicity 相对竞争 helicity 的门控。
+
+## 27. 最高分样本的旧稳定路径复核
+
+### 27.1 磁面扫描
+
+选择作业 28277 的最高分样本，独立运行旧的磁轴、$\psi$、Simsopt Boozer LS/Newton
+和场线检查。结果为：
+
+| $a$ [m] | 最大成功 $\psi$ level | 体积 [$\mathrm{m}^3$] | $\iota$ | QA | QH | QP |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.05 | 0.02 | 0.00265 | 0.8508 | 0.520% | 0.516% | **0.0062%** |
+| 0.08 | 0.02 | 0.00671 | 0.9404 | 0.522% | 0.523% | **0.0063%** |
+| 0.12 | 0.02 | **0.01482** | 0.9407 | 0.530% | 0.531% | **0.0139%** |
+| 0.16 | 0.001 | 0.00127 | -1.2826 | 0.604% | 0.604% | 0.0963% |
+| 0.20 | 无 | 无 | 无 | 无 | 无 | 无 |
+
+$a=0.16$ 时体积突然缩小一个数量级且 $\iota$ 变号，应视为分支跳转，不是更大的连续
+磁面。因此本次最大接受面取 $a=0.12$。其 Boozer LS 残差为
+$2.31\times10^{-14}$，Newton 在 0 次迭代即接受同一解。
+
+![旧稳定路径的磁面与 QS 扫描](assets/native_score_cem_validation/score_v2_three_seed/full_surface_sweep.png)
+
+### 27.2 目标 helicity 判断
+
+在全部三个连续面上，QP error 都比 QH error 小约 40--83 倍。最大面上的真空场强为
+
+$$
+|B|_{\min}=0.4805\,\mathrm{T},\qquad
+\langle|B|\rangle=0.5629\,\mathrm{T},\qquad
+|B|_{\max}=0.6235\,\mathrm{T}.
+$$
+
+$|B|$ 热图以环向竖直带为主；如果是目标 QH，应看到明显的单一斜向螺旋带。因此数值和
+图像都判定该候选更接近 QP，而不是 QH。
+
+![最大连续面上的 Boozer 磁场强度](assets/native_score_cem_validation/score_v2_three_seed/full_eval/assets/boozer_b.png)
+
+Poincare 图中的场线仍停留在有限截面区域内，说明该候选不是“完全无磁面”。但每条线只
+留下 111 个交点，外层点云较宽，且稳定扫描只能延伸到较小体积；这里最多能得出“存在
+有限真空约束区”，不能声称具有 QUASR 高质量样本那样的大而干净的嵌套区域。
+
+![最大连续面的 Poincare 复核](assets/native_score_cem_validation/score_v2_three_seed/full_eval/assets/poincare.png)
+
+![三基线圈与最大连续面](assets/native_score_cem_validation/score_v2_three_seed/full_eval/assets/coils_surface.png)
+
+[打开可旋转的完整三维线圈与磁面](assets/native_score_cem_validation/score_v2_three_seed/full_eval/assets/coils_surface.html)
+
+## 28. DESC 验收失败
+
+DESC 使用 $a=0.12$ 的最大连续 Boozer 面作为固定边界，$M=N=6$，平衡分辨率
+$L=M=N=8$，真空 pressure/current 均为零。结果如下：
+
+| DESC 指标 | 初态 | 末态 |
+| --- | ---: | ---: |
+| nested | **false** | **false** |
+| normalized force mean | $4.45\times10^{16}$ | $1.34\times10^{10}$ |
+| normalized force p95 | $4.01\times10^4$ | $2.37\times10^4$ |
+| normalized force max | $4.25\times10^{20}$ | $1.23\times10^{14}$ |
+
+求解用时 59.96 秒，在第 7 次迭代因 `xtol` 停止；cost 为
+$5.90\times10^{30}$，optimality 为 $7.28\times10^{14}$。虽然 DESC API 的
+`optimizer_success` 为 true，但这只表示停止条件被触发。非嵌套、巨大 force residual
+和发散的 $\iota(\rho)$ 同时存在，所以物理验收明确失败。
+
+![DESC 的非物理 iota 结果](assets/native_score_cem_validation/score_v2_three_seed/full_eval/desc/iota.png)
+
+这里不能反推真空 Boozer 面必然不存在：Poincare 和旧 Boozer 路径仍给出有限约束区。
+更准确的说法是，该强扭曲小边界没有给 DESC 的标准体初值提供良好坐标，后续平衡求解也
+没有修复它。按照本项目的验收标准，这已经足够判定候选不实用，无需继续手工救 DESC。
+
+## 29. 最终判断与下一步
+
+### 29.1 三层验收结论
+
+| 验收对象 | 结论 | 原因 |
+| --- | --- | --- |
+| score 的低 $\iota$ 反作弊 | **通过** | 旧退化样本从 78.935 降至 5.275，新最优均远离零 $\iota$ |
+| score 是否把坏样本报成高分 | **本轮通过** | 三个最优仅 41--48 分，明显低于 QUASR QH 分布 |
+| 从零 CEM 是否得到高质量 QH | **失败** | 没有样本同时具有 $|\iota|\gtrsim1$ 与低微分 QH 残差 |
+| 旧路径目标 QH | **失败** | 最大面 QP error 比 QH error 小约 38 倍 |
+| DESC | **失败** | 初末态均非嵌套且 force residual 巨大 |
+
+### 29.2 最可能有效的后续改进
+
+第一优先级是加入**目标 helicity margin**。令同一体积上的三种误差为
+$e_{\mathrm{QA}}$、$e_{\mathrm{QH}}$、$e_{\mathrm{QP}}$，定义
+
+$$
+\Delta_{\mathrm{QH}}
+=\log\frac{\min(e_{\mathrm{QA}},e_{\mathrm{QP}})+\epsilon}
+{e_{\mathrm{QH}}+\epsilon}.
+$$
+
+只有 $\Delta_{\mathrm{QH}}>0$ 才说明 QH 真正优于竞争模式。应把它作为 `volume_qs`
+或总分的软门控，而不是再提高磁面尺寸、坐标或工程分量。
+
+第二优先级是区分**评分设计**和**搜索策略**。最终 score 已正确地把本轮结果压在 50 分
+以下；继续改 score 不会自动让随机 CEM 找到 192 维空间中极窄的高质量 QH 区域。更合理
+的下一次优化应使用 4--5 基线圈，并用 QUASR 高质量 QH 样本建立混合初始分布，或采用
+“先磁面与 $\iota$、再 QH 纯度”的分阶段 CEM。开发验证仍可从随机重启交叉检查，但不应
+要求单个完全随机高维高斯同时承担可行域发现和精细 QH 优化。
+
+第三优先级是增加一个廉价的磁面实用性检查，例如少量截面的场线持续性或几何 Jacobian
+下界。它不能替代离线 DESC，但可以在进入高分区前排除只支持很小、强扭曲约束区的样本。
+
+## 30. 本轮验收产物
+
+- [第三个种子的压缩 CEM 审计](assets/native_score_cem_validation/score_v2_three_seed/long_cem_audit.json)
+- [最高分线圈与原生诊断](assets/native_score_cem_validation/score_v2_three_seed/best_case.json)
+- [旧路径与 DESC 脱敏审计](assets/native_score_cem_validation/score_v2_three_seed/full_evaluation_audit.json)
+- [Boozer $|B|$ 交互图](assets/native_score_cem_validation/score_v2_three_seed/full_eval/assets/boozer_b.html)
+- [DESC 输入](assets/native_score_cem_validation/score_v2_three_seed/full_eval/desc/input.check)
+- [失败的 DESC equilibrium，供复现诊断](assets/native_score_cem_validation/score_v2_three_seed/full_eval/desc/equilibrium.h5)

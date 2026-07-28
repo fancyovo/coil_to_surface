@@ -86,11 +86,29 @@ def reduce_mean(value: torch.Tensor, world_size: int) -> torch.Tensor:
     return value
 
 
-def learning_rate_scale(step: int, *, warmup: int, total: int) -> float:
+def learning_rate_scale(
+    step: int,
+    *,
+    warmup: int,
+    total: int,
+    schedule: str = "cosine",
+) -> float:
     if step < warmup:
         return max(step, 1) / max(warmup, 1)
+    if schedule == "constant":
+        return 1.0
+    if schedule != "cosine":
+        raise ValueError(f"unknown learning-rate schedule {schedule!r}")
     progress = (step - warmup) / max(total - warmup, 1)
     return 0.1 + 0.9 * 0.5 * (1.0 + math.cos(math.pi * min(progress, 1.0)))
+
+
+def previous_metrics_path(checkpoint_path: Path) -> Path | None:
+    direct = checkpoint_path.parent / "metrics.jsonl"
+    if direct.is_file():
+        return direct
+    parent = checkpoint_path.parent.parent / "metrics.jsonl"
+    return parent if parent.is_file() else None
 
 
 def calculate_reference_bounds(
@@ -324,6 +342,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-per-gpu", type=int, default=1024)
     parser.add_argument("--learning-rate", type=float, default=2.0e-4)
     parser.add_argument("--warmup-steps", type=int, default=500)
+    parser.add_argument("--lr-schedule", choices=("cosine", "constant"), default="cosine")
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--ema-decay", type=float, default=0.9995)
     parser.add_argument("--width", type=int, default=512)
@@ -343,6 +362,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score-count", type=int, default=32)
     parser.add_argument("--score-min-eligible-rate", type=float, default=0.25)
     parser.add_argument("--score-timeout-s", type=float, default=900.0)
+    parser.add_argument("--resume", type=Path)
     parser.add_argument("--verify-data", action="store_true")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--no-bf16", action="store_true")
@@ -363,15 +383,34 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = args.output_dir / "metrics.jsonl"
-    if rank == 0 and metrics_path.exists():
-        raise FileExistsError(f"refusing to overwrite existing run {metrics_path}")
+    if rank == 0:
+        if metrics_path.exists():
+            raise FileExistsError(f"refusing to overwrite existing run {metrics_path}")
+        if args.resume is not None:
+            inherited = previous_metrics_path(args.resume)
+            if inherited is not None:
+                metrics_path.write_text(inherited.read_text(encoding="utf-8"), encoding="utf-8")
     barrier(world_size)
+
+    checkpoint = None
+    start_step = 0
+    if args.resume is not None:
+        checkpoint = torch.load(args.resume, map_location="cpu", weights_only=False)
+        start_step = int(checkpoint["step"])
+        if args.steps <= start_step:
+            raise ValueError(
+                f"target steps ({args.steps}) must exceed checkpoint step ({start_step})"
+            )
 
     train_raw, manifest = load_raw_groups(
         args.data_dir, "train", verify_hashes=args.verify_data and rank == 0
     )
     validation_raw, _ = load_raw_groups(args.data_dir, "validation")
-    normalizer = CoilNormalizer.fit(train_raw)
+    normalizer = (
+        CoilNormalizer.from_dict(checkpoint["normalizer"])
+        if checkpoint is not None
+        else CoilNormalizer.fit(train_raw)
+    )
     train_store = GroupStore(train_raw, normalizer)
     validation_store = GroupStore(validation_raw, normalizer)
     bounds = calculate_reference_bounds(train_raw, device) if rank == 0 else None
@@ -381,13 +420,25 @@ def main() -> None:
         bounds = values[0]
     assert bounds is not None
 
-    base_model = CoilFlowTransformer(
-        width=args.width,
-        layers=args.layers,
-        heads=args.heads,
-        hidden=args.hidden,
-    ).to(device)
+    requested_model_config = {
+        "token_dim": 100,
+        "width": args.width,
+        "layers": args.layers,
+        "heads": args.heads,
+        "hidden": args.hidden,
+        "max_nfp": 16,
+    }
+    if checkpoint is not None and checkpoint["model_config"] != requested_model_config:
+        raise ValueError(
+            "resume model configuration differs from command line: "
+            f"{checkpoint['model_config']} != {requested_model_config}"
+        )
+    base_model = CoilFlowTransformer(**requested_model_config).to(device)
+    if checkpoint is not None:
+        base_model.load_state_dict(checkpoint["model"])
     ema = ExponentialMovingAverage(base_model, args.ema_decay)
+    if checkpoint is not None:
+        ema.model.load_state_dict(checkpoint["ema"])
     train_model: nn.Module = base_model
     if args.compile:
         train_model = torch.compile(train_model)
@@ -405,9 +456,19 @@ def main() -> None:
         weight_decay=args.weight_decay,
         fused=device.type == "cuda",
     )
+    if checkpoint is not None:
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        for group in optimizer.param_groups:
+            group["lr"] = args.learning_rate
+            group["initial_lr"] = args.learning_rate
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer,
-        lambda step: learning_rate_scale(step, warmup=args.warmup_steps, total=args.steps),
+        lambda local_step: learning_rate_scale(
+            start_step + local_step,
+            warmup=args.warmup_steps,
+            total=args.steps,
+            schedule=args.lr_schedule,
+        ),
     )
     if rank == 0:
         run_manifest = {
@@ -416,6 +477,8 @@ def main() -> None:
             "device": str(device),
             "torch_version": torch.__version__,
             "parameter_count": base_model.parameter_count,
+            "resume_checkpoint": str(args.resume) if args.resume is not None else None,
+            "start_step": start_step,
             "train_counts": group_counts(train_raw),
             "validation_counts": group_counts(validation_raw),
             "normalizer": normalizer.to_dict(),
@@ -427,8 +490,31 @@ def main() -> None:
         )
         print(json.dumps({"event": "start", **run_manifest}, default=str), flush=True)
 
-    key_rng = np.random.default_rng(args.seed)
-    batch_generator = torch.Generator().manual_seed(args.seed + 1000 * rank)
+    if checkpoint is not None:
+        event_started = time.perf_counter()
+        value = validation_loss(
+            ema.model,
+            validation_store,
+            rank=rank,
+            world_size=world_size,
+            device=device,
+            batch_size=128,
+            use_bf16=use_bf16,
+        )
+        if rank == 0:
+            row = {
+                "event": "resume_validation",
+                "step": start_step,
+                "validation_loss": value,
+                "learning_rate": scheduler.get_last_lr()[0],
+                "duration_s": time.perf_counter() - event_started,
+            }
+            append_metrics(metrics_path, row)
+            print(json.dumps(row, separators=(",", ":")), flush=True)
+
+    continuation_seed = args.seed + 104729 * start_step
+    key_rng = np.random.default_rng(continuation_seed)
+    batch_generator = torch.Generator().manual_seed(continuation_seed + 1000 * rank)
     log_started = time.perf_counter()
     training_started = log_started
     accumulated_loss = 0.0
@@ -438,7 +524,7 @@ def main() -> None:
     last_candidates: list[tuple[GroupKey, np.ndarray]] = []
 
     try:
-        for step in range(1, args.steps + 1):
+        for step in range(start_step + 1, args.steps + 1):
             key = train_store.choose_key(key_rng)
             data = train_store.batch(
                 key,

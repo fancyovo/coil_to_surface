@@ -32,18 +32,28 @@ test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
 
+resume_args=()
+if [[ -n "${QH_FLOW_RESUME:-}" ]]; then
+  test -f "$QH_FLOW_RESUME"
+  resume_args=(--resume "$QH_FLOW_RESUME")
+fi
+
 python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/train_qh_flow.py \
   --data-dir "$data" \
   --output-dir "$output" \
   --steps "${QH_FLOW_STEPS:-8000}" \
   --batch-per-gpu "${QH_FLOW_BATCH_PER_GPU:-1024}" \
+  --learning-rate "${QH_FLOW_LEARNING_RATE:-2e-4}" \
+  --warmup-steps "${QH_FLOW_WARMUP_STEPS:-500}" \
+  --lr-schedule "${QH_FLOW_LR_SCHEDULE:-cosine}" \
   --log-interval 20 \
-  --validation-interval 200 \
-  --sample-interval 250 \
+  --validation-interval "${QH_FLOW_VALIDATION_INTERVAL:-200}" \
+  --sample-interval "${QH_FLOW_SAMPLE_INTERVAL:-250}" \
   --sample-count 256 \
   --sample-steps 16 \
-  --checkpoint-interval 1000 \
+  --checkpoint-interval "${QH_FLOW_CHECKPOINT_INTERVAL:-1000}" \
   --score-lib "$score_lib" \
   --score-start-step "${QH_FLOW_SCORE_START_STEP:-2000}" \
   --score-interval "${QH_FLOW_SCORE_INTERVAL:-2000}" \
-  --score-count "${QH_FLOW_SCORE_COUNT:-32}"
+  --score-count "${QH_FLOW_SCORE_COUNT:-32}" \
+  "${resume_args[@]}"

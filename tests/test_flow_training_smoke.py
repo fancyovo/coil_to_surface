@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import numpy as np
+import torch
 
 from scripts import train_qh_flow
 
@@ -90,3 +91,77 @@ def test_two_step_cpu_training_writes_monitor_and_checkpoint(tmp_path, monkeypat
     assert (output_dir / "metrics.jsonl").is_file()
     assert (output_dir / "monitor.png").is_file()
     assert (output_dir / "checkpoint_latest.pt").is_file()
+
+
+def test_cpu_training_resumes_optimizer_ema_and_global_step(tmp_path, monkeypatch):
+    data_dir = tmp_path / "data"
+    first_output = tmp_path / "first"
+    resumed_output = tmp_path / "resumed"
+    data_dir.mkdir()
+    write_dataset(data_dir)
+
+    common = [
+        "--data-dir",
+        str(data_dir),
+        "--batch-per-gpu",
+        "4",
+        "--width",
+        "32",
+        "--layers",
+        "1",
+        "--heads",
+        "4",
+        "--hidden",
+        "64",
+        "--log-interval",
+        "1",
+        "--validation-interval",
+        "1",
+        "--sample-interval",
+        "1",
+        "--sample-count",
+        "4",
+        "--sample-steps",
+        "1",
+        "--checkpoint-interval",
+        "1",
+    ]
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["train_qh_flow.py", *common, "--output-dir", str(first_output), "--steps", "1"],
+    )
+    train_qh_flow.main()
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "train_qh_flow.py",
+            *common,
+            "--output-dir",
+            str(resumed_output),
+            "--steps",
+            "3",
+            "--resume",
+            str(first_output / "checkpoint_latest.pt"),
+            "--lr-schedule",
+            "constant",
+            "--learning-rate",
+            "1e-4",
+            "--warmup-steps",
+            "0",
+        ],
+    )
+    train_qh_flow.main()
+
+    checkpoint = torch.load(
+        resumed_output / "checkpoint_latest.pt", map_location="cpu", weights_only=False
+    )
+    assert checkpoint["step"] == 3
+    rows = [
+        json.loads(line)
+        for line in (resumed_output / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert any(row["event"] == "resume_validation" and row["step"] == 1 for row in rows)
+    assert any(row["event"] == "train" and row["step"] == 3 for row in rows)

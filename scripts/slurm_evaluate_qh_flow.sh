@@ -32,6 +32,33 @@ export NUMEXPR_NUM_THREADS=1
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+idle_streak=0
+for _ in {1..60}; do
+  idle=1
+  while IFS=',' read -r memory_used utilization; do
+    memory_used="${memory_used// /}"
+    utilization="${utilization// /}"
+    if (( memory_used > 16 || utilization != 0 )); then
+      idle=0
+    fi
+  done < <(
+    nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits
+  )
+  if (( idle )); then
+    ((idle_streak += 1))
+    if (( idle_streak >= 3 )); then
+      break
+    fi
+  else
+    idle_streak=0
+  fi
+  sleep 2
+done
+if (( idle_streak < 3 )); then
+  echo "allocated GPUs did not remain idle for three consecutive probes" >&2
+  exit 1
+fi
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
 
 python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/evaluate_qh_flow.py \

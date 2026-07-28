@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 7u
+#define SGPU_SCORE_ABI_VERSION 8u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -137,6 +137,7 @@ struct SgpuScoreConfig {
     double score_qh_total_helicity_floor;
     double score_qh_helicity_bad;
     double score_qh_helicity_good;
+    double score_qh_helicity_exploration_fraction;
 };
 
 struct SgpuScoreResult {

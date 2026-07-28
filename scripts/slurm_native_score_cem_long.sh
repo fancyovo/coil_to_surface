@@ -2,13 +2,13 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=native-cem-long
+#SBATCH --job-name=native-cem-v3-long
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:4
 #SBATCH --mem=128G
-#SBATCH --time=04:30:00
+#SBATCH --time=10:00:00
 #SBATCH --exclude=anode02
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
@@ -18,14 +18,14 @@ set -euo pipefail
 project=/home/scc/pb24511935/local_surface_evaluator
 pca=/home/scc/pb24511935/coil/checkpoints/pca_ae/pca_ae.pt
 lib="$project/gpu_backend/build_native_score/libstellarator_gpu.so"
-run_root="$project/runs/native_score_cem_long/${SLURM_JOB_ID}"
+run_root="$project/runs/native_score_cem_long_v3/${SLURM_JOB_ID}"
 target=${TARGET:-QH}
-seed=${SEED:-2026072801}
-iterations=${ITERATIONS:-96}
-popsize=${POPSIZE:-128}
+seed=${SEED:-2026072901}
+iterations=${ITERATIONS:-160}
+popsize=${POPSIZE:-160}
 gpu_ids=${GPU_IDS:-0,1,2,3}
 batch_timeout_s=${BATCH_TIMEOUT_S:-900}
-n_base_coils=${N_BASE_COILS:-3}
+n_base_coils=${N_BASE_COILS:-4}
 children=()
 
 cleanup() {
@@ -65,8 +65,11 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
 started=$(date +%s.%N)
-printf '{"target":"%s","seed":%d,"n_base_coils":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s}\n' \
-    "$target" "$seed" "$n_base_coils" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" \
+git_commit=$(git rev-parse HEAD)
+library_sha256=$(sha256sum "$lib" | cut -d' ' -f1)
+printf '{"target":"%s","seed":%d,"n_base_coils":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","git":"%s","library_sha256":"%s","started":%s}\n' \
+    "$target" "$seed" "$n_base_coils" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" \
+    "$git_commit" "$library_sha256" "$started" \
     > "$run_root/job.json"
 
 case "$target" in
@@ -91,6 +94,7 @@ wait "${children[0]}"
 children=()
 
 finished=$(date +%s.%N)
-printf '{"target":"%s","seed":%d,"n_base_coils":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","started":%s,"finished":%s}\n' \
-    "$target" "$seed" "$n_base_coils" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" "$started" "$finished" \
+printf '{"target":"%s","seed":%d,"n_base_coils":%d,"iterations":%d,"popsize":%d,"elite":%d,"gpu_ids":"%s","git":"%s","library_sha256":"%s","started":%s,"finished":%s}\n' \
+    "$target" "$seed" "$n_base_coils" "$iterations" "$popsize" "$((popsize / 4))" "$gpu_ids" \
+    "$git_commit" "$library_sha256" "$started" "$finished" \
     > "$run_root/job.json"

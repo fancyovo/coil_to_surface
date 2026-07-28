@@ -27,7 +27,7 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 7
+SGPU_SCORE_ABI_VERSION = 8
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",
@@ -150,6 +150,7 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("score_qh_total_helicity_floor", ctypes.c_double),
         ("score_qh_helicity_bad", ctypes.c_double),
         ("score_qh_helicity_good", ctypes.c_double),
+        ("score_qh_helicity_exploration_fraction", ctypes.c_double),
     ]
 
 

@@ -217,6 +217,30 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def compact_score_diagnostics(result: dict[str, Any]) -> dict[str, Any]:
+    diagnostics = result["diagnostics"]
+    names = (
+        "surface_level",
+        "surface_inverse_aspect_ratio",
+        "surface_one_period_drift_relative_p95",
+        "surface_drift_relative_p95",
+        "surface_long_trace_rejected_count",
+        "iota_min",
+        "iota_max",
+        "qs_global_error",
+        "qs_qa_global_error",
+        "qs_qp_global_error",
+        "score_qh_helicity_advantage",
+        "score_qh_helicity_quality",
+    )
+    return {
+        "score": float(result["score"]),
+        "status": str(result["status"]),
+        "components": result["components"],
+        "diagnostics": {name: diagnostics[name] for name in names},
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Optimize the native C++/CUDA score using diagonal CEM.")
     parser.add_argument("--pca", type=Path, required=True)
@@ -375,6 +399,10 @@ def main() -> None:
                     f"generation {generation} has only {np.count_nonzero(finite)} finite scores"
                 )
             elite_indices = np.argsort(scores)[::-1][: args.elite]
+            generation_best_index = int(elite_indices[0])
+            generation_best_result = evaluated[generation_best_index][0]
+            if generation_best_result is None:
+                raise RuntimeError("generation best candidate has no native score result")
             mean, sigma = update_distribution(
                 mean,
                 sigma,
@@ -392,6 +420,8 @@ def main() -> None:
                 "best_score": best_score,
                 "best_generation": best_generation,
                 "best_candidate": best_candidate,
+                "generation_best_candidate": generation_best_index,
+                "generation_best": compact_score_diagnostics(generation_best_result),
                 "sigma_mean": float(np.mean(sigma)),
                 "sigma_max": float(np.max(sigma)),
                 "statuses": statuses,

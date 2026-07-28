@@ -1294,7 +1294,9 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.score_qh_total_iota_floor > 1.0 ||
         config.score_qh_total_helicity_floor < 0.0 ||
         config.score_qh_total_helicity_floor > 1.0 ||
-        !(config.score_qh_helicity_good > config.score_qh_helicity_bad)) {
+        !(config.score_qh_helicity_good > config.score_qh_helicity_bad) ||
+        config.score_qh_helicity_exploration_fraction < 0.0 ||
+        config.score_qh_helicity_exploration_fraction > 1.0) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -1368,8 +1370,14 @@ void finalize_score(const SgpuScoreConfig& config, SgpuScoreResult& result) {
         (result.score_qh_helicity_advantage - config.score_qh_helicity_bad) /
         (config.score_qh_helicity_good - config.score_qh_helicity_bad)
     );
+    const double helicity_linear = clip01(
+        result.score_qh_helicity_advantage / config.score_qh_helicity_good
+    );
+    const double helicity_window =
+        helicity_position * helicity_position * (3.0 - 2.0 * helicity_position);
     result.score_qh_helicity_quality = qh_target
-        ? helicity_position * helicity_position * (3.0 - 2.0 * helicity_position)
+        ? config.score_qh_helicity_exploration_fraction * helicity_linear +
+            (1.0 - config.score_qh_helicity_exploration_fraction) * helicity_window
         : 1.0;
     result.score_qh_total_helicity_factor = qh_target
         ? config.score_qh_total_helicity_floor +
@@ -3332,6 +3340,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_qh_total_helicity_floor = 0.10;
     config->score_qh_helicity_bad = 0.10;
     config->score_qh_helicity_good = 0.30;
+    config->score_qh_helicity_exploration_fraction = 0.20;
     sgpu_internal_set_error("");
     return 0;
 }

@@ -563,6 +563,27 @@ $\psi$，扫描 16 个 $\psi$ level，对通过快速漂移筛选的面运行 Si
 | 0.16 | 0.002 | 0.00134385 | 1.13918 | $1.61457\times10^{-4}$ |
 | 0.20 | 无 | 无 | 无 | 无 |
 
+这里需要区分“$\psi$ 的局部微分误差”和“场线的长程约束误差”。它们在本例中相差很大：
+
+| 指标 | 原生 score 路径 | 旧路径 $a=0.08$ |
+| --- | ---: | ---: |
+| $\psi$ train RMS | $3.6882\times10^{-4}$ | $4.8028\times10^{-4}$ |
+| $|\mathbf B\cdot\nabla\psi|/(|\mathbf B||\nabla\psi|)$ mean | $1.3855\times10^{-5}$ | $2.8764\times10^{-5}$ |
+| 同一角度误差 P95 | $6.0950\times10^{-5}$ | $1.2185\times10^{-4}$ |
+| 同一角度误差 max | 未导出 | $5.3519\times10^{-4}$ |
+| 选中面的单周期相对位移 P95 | 0.6529% | 0.9306% |
+| 选中面的单周期绝对位移 P95 | 未导出 | $2.7429\times10^{-4}\ \mathrm m$ |
+
+所以 $\psi$ 的随机点局部夹角并不大，量级是 $10^{-5}$--$10^{-4}$；真正放行候选的是过弱的
+时间尺度门控。旧路径只要求单周期 P95 同时小于 $5\times10^{-4}\ \mathrm m$ 和平均半径的
+30%，本例分别为 $2.74\times10^{-4}\ \mathrm m$ 和 0.93%，因此通过。原生体 score 使用更严的
+5% 相对门，但 0.653% 仍会通过。两条路径都没有要求多周期内保持有界，也没有用最大值或
+连续坏区约束剩余 5% 的点。
+
+该候选的一周期几何角推进标准差为 0.464，但当前只记录、不参与门控。这个量不是严格的
+Boozer $\iota$ 误差，不能单独作硬判据；不过它与 $\iota\simeq1$ 附近的强非均匀/共振敏感
+映射一起，已经足以提示单周期法向位移不能代表长程拓扑。
+
 独立 $a$ 扫描出现明显分支跳变，最终按体积选中 $a=0.08$、$\psi=0.12$。该面的 Boozer
 初始残差为 165.19，LS 后为 $1.04\times10^{-13}$，Newton 在初值处即接受。形式解参数为
 
@@ -586,18 +607,41 @@ $$
 
 [打开交互式 $|B|$ 图](assets/qh_flow_full_eval_28546/highest_score/assets/boozer_b.html)
 
-更关键的是，Poincare 图没有形成与黑色候选边界一致的同心嵌套曲线；多个截面上均有大量
-轨迹散落在边界外。16 条轨迹都返回了 145 个截面点只能说明积分完成，不能说明嵌套成立。
-这与先前通过验收的 CEM 样本中清晰的同心曲线有本质区别。
+首次 Poincare 图还发现一个诊断脚本 bug：函数注释声称从面内播种，但默认
+`edge_fraction=1.1`，使最外一条场线从候选面外 10% 出发。现已改为 0.95，并为每个初始
+半径使用固定渐变色后重画。修正会减少最外侧离群点，但不改变结论：深色近轴轨迹相对稳定，
+中外层绿色/黄色轨迹仍越过黑色边界，无法形成填满目标体积的嵌套环族。
 
-![总分最高样本的 Poincare 反例](assets/qh_flow_full_eval_28546/highest_score/assets/poincare.png)
+![严格面内播种后的 Poincare 反例](assets/qh_flow_full_eval_28546/highest_score/assets/poincare_inside.png)
+
+每条线的 145 个 hit 是 4 个环向截面的总数，对应约 36 个磁场周期，而不是 145 个周期。
+0.93% 的单周期 P95 即使按不相关误差估算也会累积到约
+$\sqrt{36}\times0.93\%=5.6\%$；若含系统漂移则可达约 $36\times0.93\%=33\%$。共振附近的
+岛链或混沌层还会非线性放大这种误差，因此图上的厘米级展宽与单周期亚毫米误差并不矛盾。
+
+另对保存的 Boozer 面做了离配点验证。原求解使用阶数 6 和 $13\times13$ 配点；同一残差在
+错位和密网格上的结果为：
+
+| 网格 | 配点偏移 | Boozer residual RMS/点 | 法向场正弦 P95 |
+| --- | ---: | ---: | ---: |
+| $13^2$ | 0 | $7.96\times10^{-15}$ | $1.93\times10^{-15}$ |
+| $13^2$ | 0.371 | $7.05\times10^{-3}$ | $1.56\times10^{-3}$ |
+| $49^2$ | 0.371 | $5.42\times10^{-3}$ | $1.32\times10^{-3}$ |
+| $97^2$ | 0.371 | $5.42\times10^{-3}$ | $1.31\times10^{-3}$ |
+
+因此 $10^{-13}$ 只描述求解配点，不能当作全表面误差。作为对照，先前 Poincare 明确嵌套的
+CEM 样本在 $97^2$ 网格上的 Boozer residual RMS/点为 $1.24\times10^{-3}$，约为本候选的
+1/4.4。不过该好样本的法向场 P95 为 $2.65\times10^{-3}$，反而略大；这说明单个密网格法向
+统计也不能替代多周期拓扑检查。离网格残差可排除明显配点假精度，Poincare 才检查内部是否
+存在可用的嵌套面族。
 
 ![总分最高样本的线圈与形式 Boozer 面](assets/qh_flow_full_eval_28546/highest_score/assets/coils_surface.png)
 
 [打开可旋转的三维线圈与形式面](assets/qh_flow_full_eval_28546/highest_score/assets/coils_surface.html)
 
-因此这里更准确的结论是：**旧 Boozer 离散方程存在一个极低残差形式解，但 Poincare 不支持
-把它解释为全局嵌套真空磁面。** 极低 LS residual 不能覆盖这一独立反证。
+因此这里更准确的结论是：**$\psi$ 的局部微分拟合本身达到 $10^{-5}$--$10^{-4}$ 角误差，
+但当前单周期门过松；随后 Boozer 的极低 residual 又只在配点上成立。两者都没有验证多周期
+内部拓扑，所以不应仅凭这两个结果把候选送入 DESC。**
 
 ### 11.3 DESC：接口完成，但物理解发散
 
@@ -666,6 +710,8 @@ candidate 567 的原生体 QS residual 虽是整个 2,048 样本批次最低值�
 - [总分最高候选输入](assets/qh_flow_full_eval_28546/cases/highest_score_id_001439.json)
 - [QS 最好候选输入](assets/qh_flow_full_eval_28546/cases/best_qs_id_000567.json)
 - [总分最高候选完整汇总](assets/qh_flow_full_eval_28546/highest_score/full_summary.json)
+- [总分最高候选离网格 Boozer 复核](assets/qh_flow_full_eval_28546/highest_score/boozer_offgrid_validation.json)
+- [已知嵌套 CEM 样本的离网格对照](assets/native_score_cem_validation/long_qh_cem/full_eval/boozer_offgrid_validation.json)
 - [QS 最好候选失败汇总](assets/qh_flow_full_eval_28546/best_qs/full_summary.json)
 - [DESC 原始汇总](assets/qh_flow_full_eval_28546/highest_score/desc/summary.json)
 - [DESC 输入](assets/qh_flow_full_eval_28546/highest_score/desc/input.check)

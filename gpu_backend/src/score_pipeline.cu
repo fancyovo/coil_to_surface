@@ -127,6 +127,7 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->score_before_qh_iota_gate = nan;
     result->score_qh_total_iota_factor = nan;
     result->score_qh_helicity_advantage = 0.0;
+    result->score_qh_helicity_quality = 0.0;
     result->score_qh_total_helicity_factor = nan;
     result->qs_global_error = nan;
     result->qs_edge_error = nan;
@@ -1292,7 +1293,8 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.score_qh_total_iota_floor < 0.0 ||
         config.score_qh_total_iota_floor > 1.0 ||
         config.score_qh_total_helicity_floor < 0.0 ||
-        config.score_qh_total_helicity_floor > 1.0) {
+        config.score_qh_total_helicity_floor > 1.0 ||
+        !(config.score_qh_helicity_good > config.score_qh_helicity_bad)) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -1362,10 +1364,17 @@ void finalize_score(const SgpuScoreConfig& config, SgpuScoreResult& result) {
         ? config.score_qh_total_iota_floor +
             (1.0 - config.score_qh_total_iota_floor) * iota_score
         : 1.0;
+    const double helicity_position = clip01(
+        (result.score_qh_helicity_advantage - config.score_qh_helicity_bad) /
+        (config.score_qh_helicity_good - config.score_qh_helicity_bad)
+    );
+    result.score_qh_helicity_quality = qh_target
+        ? helicity_position * helicity_position * (3.0 - 2.0 * helicity_position)
+        : 1.0;
     result.score_qh_total_helicity_factor = qh_target
         ? config.score_qh_total_helicity_floor +
             (1.0 - config.score_qh_total_helicity_floor) *
-                clip01(result.score_qh_helicity_advantage)
+                result.score_qh_helicity_quality
         : 1.0;
     result.score = result.score_before_qh_iota_gate *
         result.score_qh_total_iota_factor * result.score_qh_total_helicity_factor;
@@ -3321,6 +3330,8 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_volume_qs_iota_floor = 0.50;
     config->score_qh_total_iota_floor = 0.10;
     config->score_qh_total_helicity_floor = 0.10;
+    config->score_qh_helicity_bad = 0.10;
+    config->score_qh_helicity_good = 0.30;
     sgpu_internal_set_error("");
     return 0;
 }

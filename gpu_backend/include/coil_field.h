@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 6u
+#define SGPU_SCORE_ABI_VERSION 7u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -135,6 +135,8 @@ struct SgpuScoreConfig {
     std::int32_t surface_long_trace_periods;
     double surface_long_trace_relative_tolerance;
     double score_qh_total_helicity_floor;
+    double score_qh_helicity_bad;
+    double score_qh_helicity_good;
 };
 
 struct SgpuScoreResult {
@@ -187,6 +189,7 @@ struct SgpuScoreResult {
     double score_before_qh_iota_gate;
     double score_qh_total_iota_factor;
     double score_qh_helicity_advantage;
+    double score_qh_helicity_quality;
     double score_qh_total_helicity_factor;
 
     double qs_global_error;

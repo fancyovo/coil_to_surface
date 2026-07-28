@@ -38,6 +38,8 @@ class VolumeScoreConfig:
     volume_qs_iota_floor: float = 0.50
     qh_total_iota_floor: float = 0.10
     qh_total_helicity_floor: float = 0.10
+    qh_helicity_bad: float = 0.10
+    qh_helicity_good: float = 0.30
     missing_coordinate_score: float = 0.08
     missing_volume_qs_score: float = 0.04
     weights: dict[str, float] = field(
@@ -364,7 +366,11 @@ def evaluate_volume_quality_score(
     )
     qh_total_helicity_factor = (
         cfg.qh_total_helicity_floor
-        + (1.0 - cfg.qh_total_helicity_floor) * helicity_advantage
+        + (1.0 - cfg.qh_total_helicity_floor)
+        * _q_saturating_up(
+            helicity_advantage - cfg.qh_helicity_bad,
+            cfg.qh_helicity_good - cfg.qh_helicity_bad,
+        )
         if iota_parts["iota_qh_gate_enabled"]
         else 1.0
     )
@@ -386,6 +392,14 @@ def evaluate_volume_quality_score(
     details["score_before_qh_iota_gate"] = float(100.0 * _clip01(unit_score_before_gate))
     details["score_qh_total_iota_factor"] = float(qh_total_iota_factor)
     details["score_qh_total_helicity_factor"] = float(qh_total_helicity_factor)
+    details["score_qh_helicity_quality"] = float(
+        _q_saturating_up(
+            helicity_advantage - cfg.qh_helicity_bad,
+            cfg.qh_helicity_good - cfg.qh_helicity_bad,
+        )
+        if iota_parts["iota_qh_gate_enabled"]
+        else 1.0
+    )
     return {
         "score": float(100.0 * _clip01(unit_score)),
         "score_unit_interval": float(_clip01(unit_score)),

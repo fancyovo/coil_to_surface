@@ -53,11 +53,20 @@ source /home/scc/pb24511935/coil/.venv/bin/activate
 printf '{"git":"%s","library_sha256":"%s"}\n' \
     "$(git rev-parse HEAD)" "$(sha256sum "$lib" | cut -d' ' -f1)" > "$output_dir/manifest.json"
 
-names=(known_good qp_cem_bad flow_long_bad quasr_1551144)
+names=(
+    known_good
+    qp_cem_bad
+    flow_long_bad
+    quasr_qh_2407084
+    quasr_qh_1446077
+    quasr_qp_like_1551144
+)
 cases=(
     "$project/reports/assets/native_score_cem_validation/long_qh_cem/best_case.json"
     "$project/reports/assets/native_score_cem_validation/score_v2_three_seed/best_case.json"
     "$project/runs/qh_flow_full_eval_28546/cases/highest_score_id_001439.json"
+    "/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases/id_2407084.json"
+    "/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases/id_1446077.json"
     "/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases/id_1551144.json"
 )
 for index in "${!names[@]}"; do

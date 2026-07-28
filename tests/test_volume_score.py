@@ -153,6 +153,8 @@ def test_qh_target_must_outperform_qa_and_qp():
     )
     assert qh_dominant["details"]["qh_helicity_advantage"] > 0.9
     assert qp_dominant["details"]["qh_helicity_advantage"] < 0.2
+    assert qh_dominant["details"]["score_qh_helicity_quality"] == 1.0
+    assert qp_dominant["details"]["score_qh_helicity_quality"] < 0.5
     assert qh_dominant["score"] > qp_dominant["score"]
 
 

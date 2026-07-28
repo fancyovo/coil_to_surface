@@ -29,6 +29,9 @@ export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
+cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
+test -f "$cuda_wheel_lib/libcusolver.so.12"
+export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
 
 python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/evaluate_qh_flow.py \

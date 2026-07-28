@@ -29,7 +29,7 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
 
-torchrun --standalone --nproc-per-node=4 scripts/train_qh_flow.py \
+python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/train_qh_flow.py \
   --data-dir "$data" \
   --output-dir "$output" \
   --steps "$steps" \
@@ -40,4 +40,3 @@ torchrun --standalone --nproc-per-node=4 scripts/train_qh_flow.py \
   --sample-count 128 \
   --sample-steps 8 \
   --checkpoint-interval "$steps"
-

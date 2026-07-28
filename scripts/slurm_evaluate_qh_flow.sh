@@ -31,7 +31,7 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
 
-torchrun --standalone --nproc-per-node=4 scripts/evaluate_qh_flow.py \
+python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/evaluate_qh_flow.py \
   --checkpoint "$checkpoint" \
   --data-dir "$data" \
   --output-dir "$output" \

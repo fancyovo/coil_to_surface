@@ -41,6 +41,6 @@ python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/train_qh
   --sample-steps 16 \
   --checkpoint-interval 1000 \
   --score-lib "$score_lib" \
-  --score-start-step 2000 \
-  --score-interval 2000 \
-  --score-count 32
+  --score-start-step "${QH_FLOW_SCORE_START_STEP:-2000}" \
+  --score-interval "${QH_FLOW_SCORE_INTERVAL:-2000}" \
+  --score-count "${QH_FLOW_SCORE_COUNT:-32}"

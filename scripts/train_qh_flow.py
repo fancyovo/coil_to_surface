@@ -203,33 +203,75 @@ def score_candidates(
     *,
     count: int,
     lib_path: Path,
-    gpu_ids: list[int],
-    timeout_s: float,
+    rank: int,
+    world_size: int,
+    device: torch.device,
     output_path: Path,
 ) -> dict[str, float]:
-    from scripts.optimize_native_score_cem import NativeScorePool, token_case
+    from scripts.optimize_native_score_cem import GPU_PYTHON, token_case
 
-    selected = candidates[:count]
-    cases = [
-        token_case(tokens, nfp=key[0], target="QH", metadata={"flow_monitor": True})
-        for key, tokens in selected
-    ]
-    if not cases:
-        return {"score_count": 0, "score_ok_rate": 0.0, "score_mean_all": 0.0}
-    with NativeScorePool(lib_path, gpu_ids) as pool:
-        evaluated = pool.map(cases, target="QH", timeout_s=timeout_s)
-    rows = []
+    selected: list[tuple[GroupKey, np.ndarray]] | None = candidates[:count] if rank == 0 else None
+    if world_size > 1:
+        values = [selected]
+        dist.broadcast_object_list(values, src=0)
+        selected = values[0]
+    assert selected is not None
+    if str(GPU_PYTHON) not in sys.path:
+        sys.path.insert(0, str(GPU_PYTHON))
+    from stellarator_gpu import score_coils_native
+
+    local_rows = []
+    for index in range(rank, len(selected), world_size):
+        key, tokens = selected[index]
+        case = token_case(tokens, nfp=key[0], target="QH", metadata={"flow_monitor": True})
+        started = time.perf_counter()
+        try:
+            raw = case["raw"]
+            result = score_coils_native(
+                str(lib_path.resolve()),
+                raw["x"],
+                raw["y"],
+                raw["z"],
+                raw["current"],
+                key[0],
+                device_id=int(device.index or 0),
+                target_helicity=(1, key[0]),
+            )
+            error = None
+        except Exception as exc:
+            result = None
+            error = repr(exc)
+        local_rows.append(
+            {
+                "index": index,
+                "case": case,
+                "elapsed_s": time.perf_counter() - started,
+                "error": error,
+                "native_score": result,
+            }
+        )
+
+    if world_size > 1:
+        gathered: list[list[dict[str, Any]]] | None = [None] * world_size if rank == 0 else None
+        dist.gather_object(local_rows, gathered, dst=0)
+        if rank != 0:
+            return {}
+        assert gathered is not None
+        rows = sorted(
+            (row for rank_rows in gathered for row in rank_rows), key=lambda row: row["index"]
+        )
+    else:
+        rows = local_rows
+
     scores = []
     ok_scores = []
-    for case, (result, elapsed, error) in zip(cases, evaluated, strict=True):
+    for row in rows:
+        result = row["native_score"]
         score = 0.0 if result is None else float(result["score"])
         status = "error" if result is None else str(result["status"])
         scores.append(score)
         if status == "ok":
             ok_scores.append(score)
-        rows.append(
-            {"case": case, "elapsed_s": elapsed, "error": error, "native_score": result}
-        )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(rows, allow_nan=True) + "\n", encoding="utf-8")
     return {
@@ -503,24 +545,36 @@ def main() -> None:
             )
             if should_score:
                 event_started = time.perf_counter()
-                if rank == 0:
-                    if last_sample_summary.get("geometry_eligible_rate", 0.0) >= args.score_min_eligible_rate:
-                        score_summary = score_candidates(
-                            last_candidates,
-                            count=args.score_count,
-                            lib_path=args.score_lib,
-                            gpu_ids=list(range(world_size)),
-                            timeout_s=args.score_timeout_s,
-                            output_path=args.output_dir / "score_monitor" / f"step_{step:08d}.json",
-                        )
+                run_score = (
+                    last_sample_summary.get("geometry_eligible_rate", 0.0)
+                    >= args.score_min_eligible_rate
+                    if rank == 0
+                    else None
+                )
+                if world_size > 1:
+                    values = [run_score]
+                    dist.broadcast_object_list(values, src=0)
+                    run_score = values[0]
+                if run_score:
+                    score_summary = score_candidates(
+                        last_candidates,
+                        count=args.score_count,
+                        lib_path=args.score_lib,
+                        rank=rank,
+                        world_size=world_size,
+                        device=device,
+                        output_path=args.output_dir / "score_monitor" / f"step_{step:08d}.json",
+                    )
+                    if rank == 0:
                         row = {"event": "score", "step": step, **score_summary}
-                    else:
+                elif rank == 0:
                         row = {
                             "event": "score_skipped",
                             "step": step,
                             "reason": "geometry_eligible_rate_below_threshold",
                             **last_sample_summary,
                         }
+                if rank == 0:
                     row["duration_s"] = time.perf_counter() - event_started
                     append_metrics(metrics_path, row)
                     print(json.dumps(row, separators=(",", ":")), flush=True)

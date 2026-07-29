@@ -69,24 +69,44 @@ if [[ -n "${QH_FLOW_RESUME:-}" ]]; then
   fi
 fi
 
-python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/train_qh_flow.py \
-  --data-dir "$data" \
-  --output-dir "$output" \
-  --steps "${QH_FLOW_STEPS:-8000}" \
-  --batch-per-gpu "${QH_FLOW_BATCH_PER_GPU:-8192}" \
-  --learning-rate "${QH_FLOW_LEARNING_RATE:-2e-4}" \
-  --warmup-steps "${QH_FLOW_WARMUP_STEPS:-500}" \
-  --lr-schedule "${QH_FLOW_LR_SCHEDULE:-cosine}" \
-  --geometry-relative-weight "${QH_FLOW_GEOMETRY_RELATIVE_WEIGHT:-0.05}" \
-  --current-feature-weight "${QH_FLOW_CURRENT_FEATURE_WEIGHT:-1.0}" \
-  --log-interval 20 \
-  --validation-interval "${QH_FLOW_VALIDATION_INTERVAL:-200}" \
-  --sample-interval "${QH_FLOW_SAMPLE_INTERVAL:-250}" \
-  --sample-count "${QH_FLOW_SAMPLE_COUNT:-256}" \
-  --sample-steps "${QH_FLOW_SAMPLE_STEPS:-16}" \
-  --checkpoint-interval "${QH_FLOW_CHECKPOINT_INTERVAL:-1000}" \
-  --score-lib "$score_lib" \
-  --score-start-step "${QH_FLOW_SCORE_START_STEP:-2000}" \
-  --score-interval "${QH_FLOW_SCORE_INTERVAL:-2000}" \
-  --score-count "${QH_FLOW_SCORE_COUNT:-32}" \
+train_args=(
+  --data-dir "$data"
+  --output-dir "$output"
+  --steps "${QH_FLOW_STEPS:-8000}"
+  --batch-per-gpu "${QH_FLOW_BATCH_PER_GPU:-8192}"
+  --learning-rate "${QH_FLOW_LEARNING_RATE:-2e-4}"
+  --warmup-steps "${QH_FLOW_WARMUP_STEPS:-500}"
+  --lr-schedule "${QH_FLOW_LR_SCHEDULE:-cosine}"
+  --geometry-relative-weight "${QH_FLOW_GEOMETRY_RELATIVE_WEIGHT:-0.05}"
+  --current-feature-weight "${QH_FLOW_CURRENT_FEATURE_WEIGHT:-1.0}"
+  --log-interval 20
+  --validation-interval "${QH_FLOW_VALIDATION_INTERVAL:-200}"
+  --sample-interval "${QH_FLOW_SAMPLE_INTERVAL:-250}"
+  --sample-count "${QH_FLOW_SAMPLE_COUNT:-256}"
+  --sample-steps "${QH_FLOW_SAMPLE_STEPS:-16}"
+  --checkpoint-interval "${QH_FLOW_CHECKPOINT_INTERVAL:-1000}"
+  --score-lib "$score_lib"
+  --score-start-step "${QH_FLOW_SCORE_START_STEP:-2000}"
+  --score-interval "${QH_FLOW_SCORE_INTERVAL:-2000}"
+  --score-count "${QH_FLOW_SCORE_COUNT:-32}"
   "${resume_args[@]}"
+)
+
+launch_attempts="${QH_FLOW_LAUNCH_ATTEMPTS:-3}"
+if (( launch_attempts < 1 )); then
+  echo "QH_FLOW_LAUNCH_ATTEMPTS must be positive" >&2
+  exit 2
+fi
+for (( attempt = 1; attempt <= launch_attempts; attempt++ )); do
+  if python -m torch.distributed.run --standalone --nproc-per-node=4 \
+    scripts/train_qh_flow.py "${train_args[@]}"; then
+    exit 0
+  else
+    status=$?
+  fi
+  if [[ -e "$output/metrics.jsonl" ]] || (( attempt == launch_attempts )); then
+    exit "$status"
+  fi
+  echo "torchrun failed before metrics creation; retrying launch ($attempt/$launch_attempts)" >&2
+  sleep 10
+done

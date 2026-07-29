@@ -19,6 +19,16 @@ data="${QH_FLOW_DATA:-$HOME/local_surface_evaluator_data/quasr_qh_flow_v1}"
 output="${QH_FLOW_OUTPUT:-$repo/runs/qh_flow_base_${SLURM_JOB_ID}}"
 score_lib="${QH_FLOW_SCORE_LIB:-$repo/gpu_backend/build_native_score/libstellarator_gpu.so}"
 
+mkdir -p "$output"
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+  nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu \
+    --format=csv,noheader > "$output/gpu_postflight.csv" 2>/dev/null || true
+  exit "$status"
+}
+trap cleanup EXIT INT TERM
+
 cd "$repo"
 test -f "$data/manifest.json"
 test -f "$score_lib"
@@ -58,7 +68,8 @@ if (( idle_streak < 3 )); then
   echo "allocated GPUs retained memory or compute processes during idle probes" >&2
   exit 1
 fi
-nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
+nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu \
+  --format=csv,noheader | tee "$output/gpu_preflight.csv"
 
 resume_args=()
 if [[ -n "${QH_FLOW_RESUME:-}" ]]; then

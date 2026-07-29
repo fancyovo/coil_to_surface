@@ -86,7 +86,8 @@ for child in "${children[@]}"; do
 done
 children=()
 
-python scripts/rescore_qh_flow_saved.py \
+cd /
+python "$project/scripts/rescore_qh_flow_saved.py" \
     --input-dir "$input_dir" \
     --output-dir "$output_dir" \
     --lib "$lib" \

@@ -45,6 +45,24 @@ def plot_metrics(jsonl_path: str | Path, output_path: str | Path) -> None:
 
     line(axes[0, 0], "train_loss", "train")
     line(axes[0, 0], "validation_loss", "validation")
+    line(
+        axes[0, 0],
+        "validation_geometry_physical_loss",
+        "validation, physical geometry",
+        linestyle="--",
+    )
+    line(
+        axes[0, 0],
+        "validation_geometry_relative_loss",
+        "validation, relative geometry",
+        linestyle=":",
+    )
+    line(
+        axes[0, 0],
+        "validation_current_loss",
+        "validation, current",
+        linestyle="-.",
+    )
     axes[0, 0].set(yscale="log", title="Flow matching loss", xlabel="step")
     axes[0, 0].legend()
 

@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:4
 #SBATCH --mem=128G
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -30,6 +30,34 @@ export NUMEXPR_NUM_THREADS=1
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+idle_streak=0
+for _ in {1..60}; do
+  idle=1
+  while IFS= read -r memory_used; do
+    memory_used="${memory_used// /}"
+    if (( memory_used > 16 )); then
+      idle=0
+    fi
+  done < <(
+    nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits
+  )
+  if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
+    idle=0
+  fi
+  if (( idle )); then
+    ((idle_streak += 1))
+    if (( idle_streak >= 3 )); then
+      break
+    fi
+  else
+    idle_streak=0
+  fi
+  sleep 2
+done
+if (( idle_streak < 3 )); then
+  echo "allocated GPUs retained memory or compute processes during idle probes" >&2
+  exit 1
+fi
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader
 
 resume_args=()
@@ -45,15 +73,17 @@ python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/train_qh
   --data-dir "$data" \
   --output-dir "$output" \
   --steps "${QH_FLOW_STEPS:-8000}" \
-  --batch-per-gpu "${QH_FLOW_BATCH_PER_GPU:-1024}" \
+  --batch-per-gpu "${QH_FLOW_BATCH_PER_GPU:-8192}" \
   --learning-rate "${QH_FLOW_LEARNING_RATE:-2e-4}" \
   --warmup-steps "${QH_FLOW_WARMUP_STEPS:-500}" \
   --lr-schedule "${QH_FLOW_LR_SCHEDULE:-cosine}" \
+  --geometry-relative-weight "${QH_FLOW_GEOMETRY_RELATIVE_WEIGHT:-0.05}" \
+  --current-feature-weight "${QH_FLOW_CURRENT_FEATURE_WEIGHT:-1.0}" \
   --log-interval 20 \
   --validation-interval "${QH_FLOW_VALIDATION_INTERVAL:-200}" \
   --sample-interval "${QH_FLOW_SAMPLE_INTERVAL:-250}" \
-  --sample-count 256 \
-  --sample-steps 16 \
+  --sample-count "${QH_FLOW_SAMPLE_COUNT:-256}" \
+  --sample-steps "${QH_FLOW_SAMPLE_STEPS:-16}" \
   --checkpoint-interval "${QH_FLOW_CHECKPOINT_INTERVAL:-1000}" \
   --score-lib "$score_lib" \
   --score-start-step "${QH_FLOW_SCORE_START_STEP:-2000}" \

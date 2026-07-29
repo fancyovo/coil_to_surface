@@ -91,6 +91,17 @@ def test_two_step_cpu_training_writes_monitor_and_checkpoint(tmp_path, monkeypat
     assert (output_dir / "metrics.jsonl").is_file()
     assert (output_dir / "monitor.png").is_file()
     assert (output_dir / "checkpoint_latest.pt").is_file()
+    rows = [
+        json.loads(line)
+        for line in (output_dir / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    validation = next(row for row in rows if row["event"] == "validation")
+    assert "validation_geometry_physical_loss" in validation
+    assert "validation_geometry_relative_loss" in validation
+    assert "validation_current_loss" in validation
+    manifest = json.loads((output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["loss_weighting"]["geometry_relative_weight"] == 0.05
+    assert len(manifest["loss_weighting"]["feature_weights"]) == 100
 
 
 def test_cpu_training_resumes_optimizer_ema_and_global_step(tmp_path, monkeypatch):

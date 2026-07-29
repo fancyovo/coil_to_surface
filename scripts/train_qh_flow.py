@@ -29,7 +29,12 @@ from flow_matching.data import (
     group_counts,
     load_raw_groups,
 )
-from flow_matching.flow import flow_matching_batch, flow_matching_loss, sample_heun
+from flow_matching.flow import (
+    flow_matching_batch,
+    physical_flow_feature_weights,
+    physical_flow_loss_components,
+    sample_heun,
+)
 from flow_matching.geometry import (
     curve_metrics,
     geometry_eligible,
@@ -140,8 +145,10 @@ def validation_loss(
     device: torch.device,
     batch_size: int,
     use_bf16: bool,
-) -> float:
-    total = torch.zeros(2, device=device, dtype=torch.float64)
+    feature_weights: torch.Tensor,
+    physical_geometry_weights: torch.Tensor,
+) -> dict[str, float]:
+    total = torch.zeros(5, device=device, dtype=torch.float64)
     for key_index, key in enumerate(store.keys):
         if key_index % world_size != rank:
             continue
@@ -164,12 +171,44 @@ def validation_loss(
                 time_value,
                 torch.full((count,), key[0], dtype=torch.long, device=device),
             )
-        loss = flow_matching_loss(prediction, target)
-        total[0] += loss.double() * count
-        total[1] += count
+        losses = loss_components(
+            prediction,
+            target,
+            feature_weights=feature_weights,
+            physical_geometry_weights=physical_geometry_weights,
+        )
+        total[:4] += torch.stack(tuple(losses.values())).double() * count
+        total[4] += count
     if world_size > 1:
         dist.all_reduce(total, op=dist.ReduceOp.SUM)
-    return float((total[0] / total[1].clamp_min(1.0)).cpu())
+    averaged = total[:4] / total[4].clamp_min(1.0)
+    return {
+        "validation_loss": float(averaged[0].cpu()),
+        "validation_geometry_physical_loss": float(averaged[1].cpu()),
+        "validation_geometry_relative_loss": float(averaged[2].cpu()),
+        "validation_current_loss": float(averaged[3].cpu()),
+    }
+
+
+def loss_components(
+    prediction: torch.Tensor,
+    target: torch.Tensor,
+    *,
+    feature_weights: torch.Tensor,
+    physical_geometry_weights: torch.Tensor,
+) -> dict[str, torch.Tensor]:
+    values = physical_flow_loss_components(
+        prediction,
+        target,
+        feature_weights=feature_weights,
+        physical_geometry_weights=physical_geometry_weights,
+    )
+    return {
+        "loss": values[0],
+        "geometry_physical_loss": values[1],
+        "geometry_relative_loss": values[2],
+        "current_loss": values[3],
+    }
 
 
 @torch.no_grad()
@@ -345,6 +384,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr-schedule", choices=("cosine", "constant"), default="cosine")
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--ema-decay", type=float, default=0.9995)
+    parser.add_argument("--geometry-relative-weight", type=float, default=0.05)
+    parser.add_argument("--current-feature-weight", type=float, default=1.0)
     parser.add_argument("--width", type=int, default=512)
     parser.add_argument("--layers", type=int, default=8)
     parser.add_argument("--heads", type=int, default=8)
@@ -382,6 +423,10 @@ def main() -> None:
     if device.type == "cuda":
         torch.cuda.manual_seed(seed)
     use_bf16 = device.type == "cuda" and not args.no_bf16
+    if not 0.0 <= args.geometry_relative_weight <= 1.0:
+        raise ValueError("geometry-relative-weight must be in [0, 1]")
+    if args.current_feature_weight <= 0.0:
+        raise ValueError("current-feature-weight must be positive")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = args.output_dir / "metrics.jsonl"
@@ -419,6 +464,13 @@ def main() -> None:
     )
     train_store = GroupStore(train_raw, normalizer)
     validation_store = GroupStore(validation_raw, normalizer)
+    feature_weights, physical_geometry_weights = physical_flow_feature_weights(
+        torch.from_numpy(normalizer.std),
+        relative_geometry_weight=args.geometry_relative_weight,
+        current_feature_weight=args.current_feature_weight,
+    )
+    feature_weights = feature_weights.to(device)
+    physical_geometry_weights = physical_geometry_weights.to(device)
     bounds = calculate_reference_bounds(train_raw, device) if rank == 0 else None
     if world_size > 1:
         values = [bounds]
@@ -490,6 +542,13 @@ def main() -> None:
             "train_counts": group_counts(train_raw),
             "validation_counts": group_counts(validation_raw),
             "normalizer": normalizer.to_dict(),
+            "loss_weighting": {
+                "geometry_metric": "Parseval curve L2 in raw coefficient space",
+                "geometry_relative_weight": args.geometry_relative_weight,
+                "current_feature_weight": args.current_feature_weight,
+                "feature_weights": feature_weights.cpu().tolist(),
+                "physical_geometry_weights": physical_geometry_weights.cpu().tolist(),
+            },
             "geometry_reference_bounds": bounds,
             "data_format": manifest.get("format"),
         }
@@ -500,7 +559,7 @@ def main() -> None:
 
     if checkpoint is not None:
         event_started = time.perf_counter()
-        value = validation_loss(
+        values = validation_loss(
             ema.model,
             validation_store,
             rank=rank,
@@ -508,12 +567,14 @@ def main() -> None:
             device=device,
             batch_size=128,
             use_bf16=use_bf16,
+            feature_weights=feature_weights,
+            physical_geometry_weights=physical_geometry_weights,
         )
         if rank == 0:
             row = {
                 "event": "resume_validation",
                 "step": start_step,
-                "validation_loss": value,
+                **values,
                 "learning_rate": scheduler.get_last_lr()[0],
                 "duration_s": time.perf_counter() - event_started,
             }
@@ -525,8 +586,14 @@ def main() -> None:
     batch_generator = torch.Generator().manual_seed(continuation_seed + 1000 * rank)
     log_started = time.perf_counter()
     training_started = log_started
-    accumulated_loss = 0.0
-    accumulated_grad = 0.0
+    loss_names = (
+        "loss",
+        "geometry_physical_loss",
+        "geometry_relative_loss",
+        "current_loss",
+    )
+    accumulated_losses = torch.zeros(len(loss_names), device=device)
+    accumulated_grad = torch.zeros((), device=device)
     accumulated_steps = 0
     last_sample_summary: dict[str, float] = {}
     last_candidates: list[tuple[GroupKey, np.ndarray]] = []
@@ -554,27 +621,38 @@ def main() -> None:
                     time_value,
                     torch.full((data.shape[0],), key[0], dtype=torch.long, device=device),
                 )
-                loss = flow_matching_loss(prediction, target)
+                losses = loss_components(
+                    prediction,
+                    target,
+                    feature_weights=feature_weights,
+                    physical_geometry_weights=physical_geometry_weights,
+                )
+                loss = losses["loss"]
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(train_model.parameters(), 1.0)
             optimizer.step()
             scheduler.step()
             ema.update(base_model)
-            accumulated_loss += float(loss.detach())
-            accumulated_grad += float(grad_norm)
+            accumulated_losses += torch.stack(
+                [losses[name].detach() for name in loss_names]
+            )
+            accumulated_grad += grad_norm.detach()
             accumulated_steps += 1
 
             if step % args.log_interval == 0:
                 elapsed = time.perf_counter() - log_started
-                loss_value = torch.tensor(accumulated_loss / accumulated_steps, device=device)
-                grad_value = torch.tensor(accumulated_grad / accumulated_steps, device=device)
-                loss_value = reduce_mean(loss_value, world_size)
+                loss_values = accumulated_losses / accumulated_steps
+                grad_value = accumulated_grad / accumulated_steps
+                loss_values = reduce_mean(loss_values, world_size)
                 grad_value = reduce_mean(grad_value, world_size)
                 if rank == 0:
                     row = {
                         "event": "train",
                         "step": step,
-                        "train_loss": float(loss_value.cpu()),
+                        "train_loss": float(loss_values[0].cpu()),
+                        "train_geometry_physical_loss": float(loss_values[1].cpu()),
+                        "train_geometry_relative_loss": float(loss_values[2].cpu()),
+                        "train_current_loss": float(loss_values[3].cpu()),
                         "grad_norm": float(grad_value.cpu()),
                         "learning_rate": scheduler.get_last_lr()[0],
                         "samples_per_s": args.batch_per_gpu * world_size * accumulated_steps / elapsed,
@@ -582,13 +660,14 @@ def main() -> None:
                     }
                     append_metrics(metrics_path, row)
                     print(json.dumps(row, separators=(",", ":")), flush=True)
-                accumulated_loss = accumulated_grad = 0.0
+                accumulated_losses.zero_()
+                accumulated_grad.zero_()
                 accumulated_steps = 0
                 log_started = time.perf_counter()
 
             if step % args.validation_interval == 0:
                 event_started = time.perf_counter()
-                value = validation_loss(
+                values = validation_loss(
                     ema.model,
                     validation_store,
                     rank=rank,
@@ -596,12 +675,14 @@ def main() -> None:
                     device=device,
                     batch_size=128,
                     use_bf16=use_bf16,
+                    feature_weights=feature_weights,
+                    physical_geometry_weights=physical_geometry_weights,
                 )
                 if rank == 0:
                     row = {
                         "event": "validation",
                         "step": step,
-                        "validation_loss": value,
+                        **values,
                         "duration_s": time.perf_counter() - event_started,
                     }
                     append_metrics(metrics_path, row)

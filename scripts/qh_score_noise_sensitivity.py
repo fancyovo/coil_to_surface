@@ -117,8 +117,7 @@ def prepare_cases(args: argparse.Namespace) -> None:
         key = tuple(source["key"])
         raw = source["tokens"]
         normalized_batch, clipped_fraction = normalizer.transform(raw[None], key)
-        normalized = normalized_batch[0]
-        canonical = normalizer.inverse(normalized[None], key)[0]
+        canonical = normalizer.inverse(normalized_batch, key)[0]
         source_manifest.append(
             {
                 "source_id": source_id,
@@ -153,7 +152,7 @@ def prepare_cases(args: argparse.Namespace) -> None:
                     "replicate": replicate,
                     "normalized_noise_rms": actual_noise_rms,
                     "normalized_noise_max": actual_noise_max,
-                    "perturbation": perturbation_metrics(tokens, canonical),
+                    "perturbation": perturbation_metrics(tokens, raw),
                     "tokens": np.asarray(tokens, dtype=np.float32).tolist(),
                 }
             )
@@ -183,15 +182,13 @@ def prepare_cases(args: argparse.Namespace) -> None:
                     + sigma_index * 1009
                     + replicate
                 )
-                requested_noise = rng.standard_normal(normalized.shape) * sigma
-                perturbed_normalized = np.clip(
-                    normalized + requested_noise, -normalizer.clip, normalizer.clip
-                )
-                actual_noise = perturbed_normalized - normalized
-                perturbed = normalizer.inverse(perturbed_normalized[None], key)[0]
+                actual_noise = rng.standard_normal(raw.shape) * sigma
+                actual_noise[..., -1] = 0.0
+                perturbed = np.asarray(raw, dtype=np.float64).copy()
+                perturbed[..., :99] += actual_noise[..., :99] * normalizer.std[:99]
                 append_case(
                     perturbed,
-                    variant="noise",
+                    variant="shape_noise",
                     sigma=sigma,
                     replicate=replicate,
                     actual_noise_rms=float(np.sqrt(np.mean(actual_noise**2))),
@@ -363,7 +360,7 @@ def summarize_group(rows: list[dict[str, Any]], baseline_score: float) -> dict[s
         "status_counts": dict(Counter(row["status"] for row in rows)),
         "ok_rate": len(ok) / len(rows),
         "score": distribution([row["score"] for row in rows]),
-        "score_fraction_of_canonical": distribution(
+        "score_fraction_of_original": distribution(
             [row["score"] / max(baseline_score, 1.0e-30) for row in rows]
         ),
         "position_delta_rms_m": distribution(
@@ -396,7 +393,9 @@ def plot_summary(rows: list[dict[str, Any]], summary: dict[str, Any], output: Pa
     figure, axes = plt.subplots(2, 2, figsize=(11.8, 8.0))
     for color, source_id in zip(colors, summary["source_ids"], strict=True):
         source_rows = [
-            row for row in rows if row["source_id"] == source_id and row["variant"] != "original"
+            row
+            for row in rows
+            if row["source_id"] == source_id and row["variant"] != "canonical"
         ]
         grouped: dict[float, list[dict[str, Any]]] = defaultdict(list)
         for row in source_rows:
@@ -429,7 +428,7 @@ def plot_summary(rows: list[dict[str, Any]], summary: dict[str, Any], output: Pa
         axes[1, 0].plot(x, ok_rate, "o-", color=color, label=f"{source_id} ok")
         axes[1, 0].plot(x, advantage, "s--", color=color, alpha=0.75, label=f"{source_id} adv")
 
-    noise_rows = [row for row in rows if row["variant"] == "noise"]
+    noise_rows = [row for row in rows if row["variant"] == "shape_noise"]
     displacement = np.asarray(
         [row["perturbation"]["position_delta_rms_m"] for row in noise_rows]
     )
@@ -449,7 +448,7 @@ def plot_summary(rows: list[dict[str, Any]], summary: dict[str, Any], output: Pa
     axes[0, 0].set_title("Score sensitivity (median and P10-P90)")
     axes[0, 0].legend(fontsize=8)
     axes[0, 1].axhline(1.0, color="#555555", linestyle=":")
-    axes[0, 1].set_ylabel("score / canonical score")
+    axes[0, 1].set_ylabel("score / original score")
     axes[0, 1].set_title("Relative score retention")
     axes[1, 0].set_ylabel("fraction or helicity advantage")
     axes[1, 0].set_ylim(-0.03, 1.03)
@@ -483,13 +482,13 @@ def analyze(args: argparse.Namespace) -> None:
         canonical = next(row for row in source_rows if row["variant"] == "canonical")
         noise_groups: dict[float, list[dict[str, Any]]] = defaultdict(list)
         for row in source_rows:
-            if row["variant"] == "noise":
+            if row["variant"] == "shape_noise":
                 noise_groups[float(row["noise_sigma"])].append(row)
         per_source[str(source_id)] = {
             "original": original,
             "canonical": canonical,
             "noise": {
-                str(sigma): summarize_group(group, canonical["score"])
+                str(sigma): summarize_group(group, original["score"])
                 for sigma, group in sorted(noise_groups.items())
             },
         }
@@ -498,10 +497,10 @@ def analyze(args: argparse.Namespace) -> None:
         selected = [
             row
             for row in rows
-            if row["variant"] == "noise" and row["noise_sigma"] == sigma
+            if row["variant"] == "shape_noise" and row["noise_sigma"] == sigma
         ]
         baselines = {
-            source_id: per_source[str(source_id)]["canonical"]["score"]
+            source_id: per_source[str(source_id)]["original"]["score"]
             for source_id in source_ids
         }
         selected_with_ratio = []
@@ -534,6 +533,7 @@ def analyze(args: argparse.Namespace) -> None:
         "sigmas": list(parse_floats(args.sigmas)),
         "replicates": args.replicates,
         "case_count": len(rows),
+        "noise_scope": "shape coefficients only; source currents unchanged",
         "per_source": per_source,
         "aggregate": aggregate,
         "runtime": {

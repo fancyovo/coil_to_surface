@@ -47,7 +47,7 @@ fi
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
     --format=csv,noheader,nounits > "$output_dir/gpu_preflight.csv"
 
-eval_env=${EVAL_ENV:-/home/scc/pb24511935/coil/.venv}
+eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
 source "$eval_env/bin/activate"
 export CUDA_HOME=/public/app/cuda/13.0
 export PATH="$CUDA_HOME/bin:$PATH"

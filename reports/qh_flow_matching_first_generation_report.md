@@ -1241,3 +1241,157 @@ DESC 成败不会改变“生成分布仍未进入高质量 QH 区域”的结�
 - [正式评测运行清单](assets/qh_flow_physical_eval_29016/run_manifest.json)
 - [正式评测 GPU 前状态](assets/qh_flow_physical_eval_29016/gpu_preflight.csv)
 - [正式评测 GPU 后状态](assets/qh_flow_physical_eval_29016/gpu_postflight.csv)
+
+## 15. 物理加权模型最高分样本的完整评估
+
+本节补做第 14 节中没有执行的完整验收。对象固定为物理加权模型 2,048 个正式生成样本中的
+最高分候选 `candidate 275`，没有重新采样或修改线圈。完整链路依次执行独立的 $a$ 扫描、
+旧 Boozer LS/Newton、离配点验证、Poincare 场线追踪以及 DESC 真空平衡求解。
+
+### 15.1 结论先行
+
+1. 这个候选不能通过完整物理验收。最大形式 Boozer 面是严重的配点假解，内部场线不嵌套，
+   DESC 初态和末态也都不嵌套。
+2. 失败不只发生在最大面。较小的 `a=0.12` 面在离配点误差上好得多，但 Poincare 轨迹仍
+   大范围越出候选边界，只是没有离开更宽的停止盒。
+3. 本次结果没有推翻“物理 loss 优于逐维等权 loss”的批量结论；最高分从 16.80 提升到
+   23.32 仍然成立。但 23.32 本来就远低于 QUASR 成功 QH 的低分位，因此该候选不是优质 QH。
+4. 它确实揭示了两个需要修复的问题：快速 score 的磁面门控还不能保证体内嵌套，旧完整
+   Boozer 路径又会在最小配点网格上制造机器精度的插值假收敛。
+
+### 15.2 快速 score 与完整扫描
+
+快速 score v3 给出的主要诊断为
+
+$$
+S=23.3200,\qquad |\iota|=1.51248,\qquad
+V=1.47135\times10^{-2}\ {\rm m}^3,
+$$
+
+$$
+e_{\rm QH}^{\rm diff}=0.6331,\qquad
+e_{\rm QA}^{\rm diff}=0.5372,\qquad
+e_{\rm QP}^{\rm diff}=0.02977.
+$$
+
+因此快速指标本身已经表明 QH 不是三种 helicity 中最优者，只是轴、$\psi$、磁面、坐标和
+线圈几何分量把总分维持在 23.32。所选快速面的有效小半径为 0.0270 m，16 个磁场周期的
+边界漂移 P95 为 0.408%。
+
+旧完整路径对五个 $\psi$ 拟合尺度分别搜索形式 Boozer 面：
+
+| $a$ | 最大形式 level | 体积 $\mathrm{m}^3$ | $\iota$ | 单面 QA | 单面 QH | 单面 QP |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.05 | 0.30 | $1.7683\times10^{-2}$ | -1.3553 | $1.636\times10^{-2}$ | $2.155\times10^{-2}$ | $2.266\times10^{-2}$ |
+| 0.08 | 无 | 无 | 无 | 无 | 无 | 无 |
+| 0.12 | 0.04 | $1.3389\times10^{-2}$ | -1.3865 | $3.712\times10^{-4}$ | $3.684\times10^{-4}$ | $3.432\times10^{-4}$ |
+| 0.16 | 0.02 | $1.1743\times10^{-2}$ | -1.5561 | $1.231\times10^{-3}$ | $1.225\times10^{-3}$ | $1.206\times10^{-3}$ |
+| 0.20 | 0.001 | $8.7285\times10^{-4}$ | -1.6031 | $2.266\times10^{-3}$ | $2.291\times10^{-3}$ | $2.305\times10^{-3}$ |
+
+$\iota$ 的符号差异来自曲面极向角方向约定，比较时应看绝对值。独立拟合之间没有形成平滑
+延拓分支：`a=0.08` 完全失败，而更大的 $a$ 又只在逐渐缩小的 level 上返回形式解。按体积
+直接取最大值最终选中 `a=0.05, level=0.30`，但这不等于找到了最大的真实嵌套面。
+
+### 15.3 配点假收敛
+
+所选曲面阶数为 6，求解网格恰为 $13\times13$。在原始配点上，Boozer residual RMS/点为
+$7.50\times10^{-15}$；只把同尺寸网格整体错开 0.371 个网格间距，误差立刻变为 0.343/点。
+密网格结果如下：
+
+| 曲面来源 | $97^2$ residual RMS/点 | $|\mathbf B\cdot\mathbf n|/(|\mathbf B||\mathbf n|)$ mean | 同量 P95 | 同量 max |
+| --- | ---: | ---: | ---: | ---: |
+| `a=0.05`，最大体积 | 0.2680 | 2.540% | 7.546% | 18.833% |
+| `a=0.12` | 0.01012 | 0.0600% | 0.2031% | 0.3371% |
+| `a=0.16` | 0.01117 | 0.0760% | 0.2406% | 0.3587% |
+| `a=0.20` | 0.02416 | 0.1908% | 0.5552% | 1.1390% |
+
+最大面的机器精度 residual 只存在于原始配点。它是典型的最小网格插值，而不是谱收敛。
+即使较小面没有出现如此灾难性的离网格误差，其 residual 仍显著高于先前已知嵌套 CEM
+对照的 $1.24\times10^{-3}$/点，不能只凭 Newton `success` 接受。
+
+### 15.4 Poincare 与 $|B|$ 图
+
+最大形式面从 16 个内部半径播种。最内四条线有 157--169 次截面命中，中外层大部分只有
+1--37 次，并迅速穿出候选截面。黑色边界自身也出现极端狭长和多叶形状，无法包围一族
+嵌套轨迹。
+
+![最大形式面的 Poincare 失败](assets/qh_flow_physical_full_eval_29039/assets/poincare.png)
+
+`a=0.12` 面的 16 条线都有 353--355 次命中，但这只说明它们没有离开停止盒。轨迹在四个
+截面上仍远远越出黑色边界，并不构成嵌套环族。因此后续诊断不能再用 hit count 代替
+“相对候选边界的展宽/越界率”。
+
+![较小形式面仍不嵌套](assets/qh_flow_physical_full_eval_29039/a_0p12/poincare.png)
+
+最大形式面的 $|B|$ 图具有明显斜纹，肉眼甚至可能把它误认为 QH 信号；但该图是在非磁面、
+离配点残差很大的参数曲面上绘制，不能作为 QH 证据。这说明 $|B|$ 图必须放在磁面存在性
+验收之后解释。
+
+![非物理形式面上的 Boozer B 图](assets/qh_flow_physical_full_eval_29039/assets/boozer_b.png)
+
+[打开三维线圈与形式面](assets/qh_flow_physical_full_eval_29039/assets/coils_surface.html)
+
+### 15.5 DESC 复核
+
+DESC 使用最大形式面边界和实际线圈场计算的环向磁通
+
+$$
+\Phi_{\rm edge}=1.04403\times10^{-3}\ {\rm Wb}.
+$$
+
+转换时检测到左手坐标并翻转极向角。DESC 的自动初值构造随后明确警告曲面不嵌套，坐标
+修复后仍不嵌套。求解器在 9 次迭代后因 `xtol` 返回成功，但物理量为：
+
+| DESC 指标 | 初态 | 末态 |
+| --- | ---: | ---: |
+| nested | 否 | 否 |
+| 归一化 force mean | 1.215 | $7.767\times10^5$ |
+| 归一化 force P95 | $5.529\times10^{-4}$ | 0.2147 |
+| 归一化 force max | $3.604\times10^3$ | $7.368\times10^9$ |
+
+最终 optimizer cost 为 $9.616\times10^{18}$，optimality 为 $1.534\times10^9$。低 P95 与
+极大的 mean/max 表明误差集中在少数奇异区域；求解不是整体收敛。最终 $\iota(\rho)$ 出现
+约 $10^3$ 的尖峰，QS 诊断跨越十余个数量级，均为非物理解。
+
+![DESC QH 诊断发散](assets/qh_flow_physical_full_eval_29039/desc/qs_QH.png)
+
+![DESC iota profile 发散](assets/qh_flow_physical_full_eval_29039/desc/iota.png)
+
+### 15.6 这次评估反映出的具体问题
+
+对生成模型而言，本例说明物理加权 loss 改善的是总体分布，不代表最高分样本已经进入可用
+QH 区间。快速面与完整路径最大形式面的体积和小半径处于相近尺度，所以不能简单解释为
+“完整路径选得太外”。两条路径使用的曲面并不完全相同，但它们给出相互冲突的稳定性判断，
+说明快速门控需要增加跨半径的内部拓扑检查，而不应只检查少量边界轨迹的 P95。
+
+对旧完整评估器而言，问题更明确：
+
+1. 6 阶曲面在 $13\times13$ 最小配点上可以精确插值，LS/Newton residual 会产生假精度。
+2. 当前按独立 $a$ 拟合所得形式解的体积直接取最大值，没有要求分支连续、离配点收敛或
+   Poincare 内部嵌套，因此会选择明显错误的 `a=0.05` 面。
+3. Poincare 的 hit count 只表示轨迹是否仍在停止盒，不能表示是否仍在候选磁面内。
+4. DESC 的 `xtol` 成功同样不是物理成功，必须联合 nested、force 分布和 profile 检查。
+
+下一步最直接的修正是把 Boozer LS 改为过定约束网格，并把错位密网格验证设为硬门；随后
+在 GPU 上用少量、覆盖多个内部半径的固定时长场线检查相对边界越界率。只有这两关通过后
+才生成 $|B|$ 图或调用 DESC。阈值应在 QUASR 高质量 QH 与已知失败样本上标定，不能只按
+本例拍定。
+
+### 15.7 运行与产物
+
+正式 RTX 5090 完整作业为 `29039`，复用先前已完成的五档扫描后墙钟 3 分 49 秒；DESC solve
+占 67.5 秒。离配点验证为 4 个短 CPU 作业，单面 4--23 秒。作业前后 GPU 检查均为空闲，
+最终 Slurm 队列及本任务进程为空。
+
+首次 A100 尝试 `29036` 因当前 CUDA 库没有 A100 kernel image 而在磁轴入口失败，不属于
+物理结果。RTX 首次作业 `29037` 完成扫描和 Poincare 后发现完整评估脚本默认激活的环境
+没有 DESC；脚本现已默认使用项目的 DESC 0.16 环境，并增加了可复用的离配点 Slurm 入口。
+
+- [完整原始汇总](assets/qh_flow_physical_full_eval_29039/full_summary.json)
+- [最大面离配点验证](assets/qh_flow_physical_full_eval_29039/boozer_offgrid_validation.json)
+- [较小面离配点验证](assets/qh_flow_physical_full_eval_29039/a_0p12/boozer_offgrid_validation.json)
+- [较小面 Poincare 元数据](assets/qh_flow_physical_full_eval_29039/a_0p12/poincare_summary.json)
+- [DESC 原始汇总](assets/qh_flow_physical_full_eval_29039/desc/summary.json)
+- [DESC equilibrium](assets/qh_flow_physical_full_eval_29039/desc/equilibrium.h5)
+- [GPU 前状态](assets/qh_flow_physical_full_eval_29039/gpu_preflight.csv)
+- [GPU 后状态](assets/qh_flow_physical_full_eval_29039/gpu_postflight.csv)

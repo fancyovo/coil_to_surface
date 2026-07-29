@@ -1,0 +1,173 @@
+{
+  "tail_points_requested": 50,
+  "runs": {
+    "selected": {
+      "validation_points": 150,
+      "tail_points": 50,
+      "tail_step_start": 20200,
+      "tail_step_end": 30000,
+      "validation_loss": {
+        "minimum": 0.5980106112530061,
+        "minimum_step": 29800,
+        "final": 0.5983846624523906,
+        "tail_mean": 0.603277782148619,
+        "tail_slope_per_1000_steps": -0.0010204278513784326
+      },
+      "validation_geometry_physical_loss": {
+        "minimum": 0.5676689479025129,
+        "minimum_step": 29800,
+        "final": 0.5681568682303566,
+        "tail_mean": 0.5704215967916528,
+        "tail_slope_per_1000_steps": -0.00042524285845359753
+      },
+      "validation_geometry_relative_loss": {
+        "minimum": 1.1937538233304954,
+        "minimum_step": 30000,
+        "final": 1.1937538233304954,
+        "tail_mean": 1.246614564609993,
+        "tail_slope_per_1000_steps": -0.011804252667147564
+      },
+      "validation_current_loss": {
+        "minimum": 0.4931618503693631,
+        "minimum_step": 29600,
+        "final": 0.494238042214291,
+        "tail_mean": 0.5088911936229524,
+        "tail_slope_per_1000_steps": -0.003617658978639245
+      },
+      "final_sample": {
+        "event": "sample",
+        "step": 30000,
+        "duration_s": 3.4137269479979295,
+        "finite_rate": 1.0,
+        "geometry_eligible_rate": 0.98828125,
+        "length_mean_median": 3.442808151245117,
+        "curvature_p95_median": 9.321158409118652,
+        "curvature_max_median": 17.409109115600586,
+        "radius_max_median": 1.7428561449050903,
+        "axis_distance_min_median": 0.39309823513031006,
+        "high_mode_fraction_median": 0.00011278125020908192,
+        "current_l1_a_median": 690688.375
+      },
+      "complete": {
+        "event": "complete",
+        "step": 30000,
+        "training_elapsed_s": 1469.3536060290062,
+        "process_elapsed_s": 1475.7369625659776,
+        "peak_memory_allocated_gib": 9.15343713760376,
+        "peak_memory_reserved_gib": 11.119140625
+      }
+    },
+    "constant_extension": {
+      "validation_points": 215,
+      "tail_points": 50,
+      "tail_step_start": 33200,
+      "tail_step_end": 43000,
+      "validation_loss": {
+        "minimum": 0.5971037979919241,
+        "minimum_step": 30800,
+        "final": 0.6004823454948761,
+        "tail_mean": 0.5989779206614065,
+        "tail_slope_per_1000_steps": 0.00036646069102032504
+      },
+      "validation_geometry_physical_loss": {
+        "minimum": 0.5672209823535661,
+        "minimum_step": 30800,
+        "final": 0.5754369937525836,
+        "tail_mean": 0.5723015192581523,
+        "tail_slope_per_1000_steps": 0.0007407532688730871
+      },
+      "validation_geometry_relative_loss": {
+        "minimum": 1.1009291989691747,
+        "minimum_step": 43000,
+        "final": 1.1009291989691747,
+        "tail_mean": 1.128982112948826,
+        "tail_slope_per_1000_steps": -0.006481415336499286
+      },
+      "validation_current_loss": {
+        "minimum": 0.47879046690633126,
+        "minimum_step": 43000,
+        "final": 0.47879046690633126,
+        "tail_mean": 0.48437874358172095,
+        "tail_slope_per_1000_steps": -0.000938760838205661
+      },
+      "final_sample": {
+        "event": "sample",
+        "step": 42000,
+        "duration_s": 3.6334253789973445,
+        "finite_rate": 1.0,
+        "geometry_eligible_rate": 0.986328125,
+        "length_mean_median": 3.3381946086883545,
+        "curvature_p95_median": 9.069450378417969,
+        "curvature_max_median": 16.00393295288086,
+        "radius_max_median": 1.7329286336898804,
+        "axis_distance_min_median": 0.40508803725242615,
+        "high_mode_fraction_median": 9.225762914866209e-05,
+        "current_l1_a_median": 690688.375
+      },
+      "complete": {
+        "event": "complete",
+        "step": 30000,
+        "training_elapsed_s": 1469.3536060290062,
+        "process_elapsed_s": 1475.7369625659776,
+        "peak_memory_allocated_gib": 9.15343713760376,
+        "peak_memory_reserved_gib": 11.119140625
+      }
+    },
+    "low_lr_finetune": {
+      "validation_points": 203,
+      "tail_points": 50,
+      "tail_step_start": 30800,
+      "tail_step_end": 40600,
+      "validation_loss": {
+        "minimum": 0.5980106112530061,
+        "minimum_step": 29800,
+        "final": 0.6699041798106871,
+        "tail_mean": 0.6425752759047879,
+        "tail_slope_per_1000_steps": 0.007106559751288844
+      },
+      "validation_geometry_physical_loss": {
+        "minimum": 0.5676689479025129,
+        "minimum_step": 29800,
+        "final": 0.6458469138438858,
+        "tail_mean": 0.6161993068419315,
+        "tail_slope_per_1000_steps": 0.007692393788351579
+      },
+      "validation_geometry_relative_loss": {
+        "minimum": 1.1647247218732106,
+        "minimum_step": 40600,
+        "final": 1.1647247218732106,
+        "tail_mean": 1.1762056611849487,
+        "tail_slope_per_1000_steps": -0.002513729714970623
+      },
+      "validation_current_loss": {
+        "minimum": 0.4791431907226737,
+        "minimum_step": 35000,
+        "final": 0.48313647347475647,
+        "tail_mean": 0.4817712400184345,
+        "tail_slope_per_1000_steps": -0.00037059371765519645
+      },
+      "final_sample": {
+        "event": "sample",
+        "step": 40000,
+        "duration_s": 3.741187372012064,
+        "finite_rate": 1.0,
+        "geometry_eligible_rate": 0.98828125,
+        "length_mean_median": 3.3655002117156982,
+        "curvature_p95_median": 9.255081176757812,
+        "curvature_max_median": 16.805997848510742,
+        "radius_max_median": 1.714565634727478,
+        "axis_distance_min_median": 0.40706878900527954,
+        "high_mode_fraction_median": 8.694780262885615e-05,
+        "current_l1_a_median": 690688.375
+      },
+      "complete": {
+        "event": "complete",
+        "step": 30000,
+        "training_elapsed_s": 1469.3536060290062,
+        "process_elapsed_s": 1475.7369625659776,
+        "peak_memory_allocated_gib": 9.15343713760376,
+        "peak_memory_reserved_gib": 11.119140625
+      }
+    }
+  }
+}

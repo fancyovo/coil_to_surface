@@ -20,12 +20,18 @@ checkpoint="${QH_FLOW_CHECKPOINT:?set QH_FLOW_CHECKPOINT to the trained checkpoi
 output="${QH_FLOW_OUTPUT:-$repo/runs/qh_flow_eval_${SLURM_JOB_ID}}"
 score_lib="${QH_FLOW_SCORE_LIB:-$repo/gpu_backend/build_native_score/libstellarator_gpu.so}"
 
-mkdir -p "$output"
+mkdir -p "$(dirname "$output")"
+preflight="${output}.gpu_preflight.csv"
+postflight="${output}.gpu_postflight.csv"
 cleanup() {
   status=$?
   trap - EXIT INT TERM
   nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu \
-    --format=csv,noheader > "$output/gpu_postflight.csv" 2>/dev/null || true
+    --format=csv,noheader > "$postflight" 2>/dev/null || true
+  if [[ -d "$output" ]]; then
+    mv "$preflight" "$output/gpu_preflight.csv" 2>/dev/null || true
+    mv "$postflight" "$output/gpu_postflight.csv" 2>/dev/null || true
+  fi
   exit "$status"
 }
 trap cleanup EXIT INT TERM
@@ -72,7 +78,7 @@ if (( idle_streak < 3 )); then
   exit 1
 fi
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu \
-  --format=csv,noheader | tee "$output/gpu_preflight.csv"
+  --format=csv,noheader | tee "$preflight"
 
 python -m torch.distributed.run --standalone --nproc-per-node=4 scripts/evaluate_qh_flow.py \
   --checkpoint "$checkpoint" \

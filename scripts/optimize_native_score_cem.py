@@ -237,7 +237,7 @@ def compact_score_diagnostics(result: dict[str, Any]) -> dict[str, Any]:
         "score": float(result["score"]),
         "status": str(result["status"]),
         "components": result["components"],
-        "diagnostics": {name: diagnostics[name] for name in names},
+        "diagnostics": {name: diagnostics.get(name, float("nan")) for name in names},
     }
 
 

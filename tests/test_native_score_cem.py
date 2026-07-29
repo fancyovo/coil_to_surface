@@ -3,6 +3,7 @@ import numpy as np
 from scripts.optimize_native_score_cem import (
     COEFF_COUNT,
     TOKEN_DIM,
+    compact_score_diagnostics,
     decode_latents,
     normalize_current_l1,
     token_case,
@@ -57,3 +58,15 @@ def test_distribution_update_is_smoothed_and_bounded():
     )
     np.testing.assert_allclose(next_mean, [[1.0, -1.0]])
     np.testing.assert_allclose(next_sigma, [[0.8, 0.8]])
+
+
+def test_compact_diagnostics_tolerates_early_failure_fields():
+    result = {
+        "score": 7.0,
+        "status": "no_axis",
+        "components": {"axis": 0.0},
+        "diagnostics": {"surface_level": float("nan")},
+    }
+    compact = compact_score_diagnostics(result)
+    assert compact["status"] == "no_axis"
+    assert np.isnan(compact["diagnostics"]["iota_min"])

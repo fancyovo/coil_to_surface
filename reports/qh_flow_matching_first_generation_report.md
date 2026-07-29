@@ -1395,3 +1395,595 @@ QH 区间。快速面与完整路径最大形式面的体积和小半径处于�
 - [DESC equilibrium](assets/qh_flow_physical_full_eval_29039/desc/equilibrium.h5)
 - [GPU 前状态](assets/qh_flow_physical_full_eval_29039/gpu_preflight.csv)
 - [GPU 后状态](assets/qh_flow_physical_full_eval_29039/gpu_postflight.csv)
+
+## 16. 为什么近似磁面会被 Boozer LS 拉坏，以及下一步的正确路径
+
+本节是对第 15 节的进一步源码审计和结论修正。本节没有运行新实验。审计范围包括当前
+`stellarator_eval/surface.py` 中的 Simsopt Boozer 调用，以及分支
+`desc-psi-volume-initial-guess` 中已经完成的
+$s\rightarrow\psi_T\rightarrow\alpha\rightarrow\nu\rightarrow$ 近 Boozer 面链路。
+
+### 16.1 结论先行
+
+1. 第 15 节绘出的黑色多叶、自交曲面不是正常 Boozer 面，也不是正常坐标变换的结果。
+   它在旧 Boozer LS 中已经离开原来的 $s$ 等值面，随后 Newton 迭代次数为 0，因此畸变
+   完全发生在 LS 阶段。
+2. “已经有近似磁面”并不自动意味着“已经有 Boozer 求解器的近似解”。前者主要保证
+   $\boldsymbol B\cdot\boldsymbol n$ 小；后者还要求曲面上的两个角标签已经接近 Boozer
+   参数化。当前旧流程给出的是几何角参数化，初始 Boozer residual 并不小。
+3. 旧 LS 同时改变全部曲面几何系数、$\iota$ 和 $G$，只固定一个标量体积，没有固定
+   $s=s_0$、没有限制离初始曲面的距离，也没有拓扑约束。初始点不在局部收敛域时，LS
+   完全可能用法向几何移动代替正确的切向重参数化。
+4. DESC 探索分支已经实现了正确方向：先在固定 $s$ 面上用稠密线性问题求
+   $\alpha$，再求环向修正 $\nu$，只重参数化同一物理面。对 `cem_qh03`，该路径在错位
+   独立网格上的完整 Simsopt Boozer 相对 residual 已达到
+   $3.52\times10^{-4}$ 至 $3.31\times10^{-3}$。
+5. 这套 $\alpha+\nu$ 初值尚未真正送入原 Simsopt LS/Newton。所以下一步应补做的不是
+   “再从几何角 $s$ 面启动一次旧 LS”，而是把已经接近完整 Boozer 的固定面作为初值，
+   再进行带几何身份检查的局部 Boozer 校正。
+6. 第 15 节可以确定的是“旧 LS 产出的面、其 $|B|$ 图和 DESC 结果无效”；目前不能据此
+   确定 flow candidate 275 本身没有良好磁面。后者必须在未经旧 LS 修改的 $s$ 面以及
+   $\alpha+\nu$ 面上重新判断。
+
+### 16.2 两种“接近”不是同一件事
+
+#### 几何上接近磁面
+
+从拟合的局部不变量 $s(R,Z,\phi)$ 提取
+
+$$
+s(\boldsymbol x)=s_0
+$$
+
+得到一个参数曲面
+
+$$
+\boldsymbol x=\boldsymbol x(\theta_g,\phi),
+$$
+
+其中 $\theta_g$ 是相对磁轴定义的几何极向角。若
+
+$$
+\frac{|\boldsymbol B\cdot\boldsymbol n|}{|\boldsymbol B||\boldsymbol n|}
+$$
+
+很小，且场线追踪保持在该面附近，说明这个点集在几何上接近磁面。这个判断与点集采用
+什么切向角标签基本无关。
+
+#### 在 Boozer 未知量中接近解
+
+当前零等离子体环向电流下，Simsopt 求解的曲面方程为
+
+$$
+\boldsymbol r_B
+=G\boldsymbol B
+-B^2\left(
+\boldsymbol x_{\phi_B}
++\iota\boldsymbol x_{\theta_B}
+\right)=0.
+$$
+
+它不仅要求 $\boldsymbol B$ 与曲面相切，还要求 $\theta_B$ 和 $\phi_B$ 沿场的参数速度正确。
+把同一张物理曲面错误地标成 $(\theta_g,\phi)$ 时，法向误差可以很小，但
+$\boldsymbol x_\phi+\iota\boldsymbol x_\theta$ 的切向方向或速度仍可明显错误。因此
+
+$$
+\boldsymbol B\cdot\boldsymbol n\simeq0
+$$
+
+不能推出
+
+$$
+\boldsymbol r_B\simeq0.
+$$
+
+这正是当前旧流程中的情况。candidate 275 的 $a=0.05$、$s_0=0.30$ 初始面几何拟合
+RMS 为 $9.80\times10^{-9}\,\mathrm m$，但以几何角、默认 $\iota$ 和 $G$ 计算的原始
+Boozer residual norm 为 152.94。这个数不是磁面法向误差，而是把法向、切向方向、
+切向速度、$\iota$ 和 $G$ 混在一起的未归一化残差。
+
+正确的数学操作应当主要是在同一个物理点集上寻找角映射
+
+$$
+(\theta_g,\phi)\longleftrightarrow(\theta_B,\phi_B),
+$$
+
+而不是大幅改变 $\boldsymbol x$ 的像集。旧调用并没有把这两类自由度分开。
+
+### 16.3 旧 Simsopt 调用为什么能产生自交假解
+
+当前 `evaluate_boozer_surface` 的实际顺序是：
+
+1. 在 $s=s_0$ 上提取 $13\times13$ 个点；
+2. 把这些点拟合成 6 阶 `SurfaceXYZTensorFourier`；
+3. 记录该初始面的体积 $V_0$；
+4. 构造 `BoozerSurface(field, surface, Volume(surface), V_0)`；
+5. 调用 `minimize_boozer_penalty_constraints_ls`，让曲面的全部 253 个自由度与
+   $\iota,G$ 一起变化；
+6. 用 LS 输出调用 exact Newton。
+
+这里唯一有效的曲面身份约束是
+
+$$
+V(\boldsymbol x)=V_0.
+$$
+
+但相同体积的环面形状有无限多个。该问题没有加入
+
+$$
+s(\boldsymbol x)=s_0,
+$$
+
+也没有加入
+
+$$
+\|\boldsymbol x-\boldsymbol x_{s_0}\|^2,
+$$
+
+更没有曲面 Jacobian、单射性、自交或离网格 residual 约束。因此一次 LS 更新会同时混合：
+
+- 沿面的切向移动，也就是我们真正想要的重参数化；
+- 垂直于面的法向移动，也就是改变物理磁面；
+- 高频谱形变，它可以只在配点之间出现。
+
+6 阶、stellarator-symmetric 曲面加上 $\iota,G$ 后共有 255 个未知量；exact residual
+恰好使用 85 个独立配点，扣除一个自动为零的分量并加一个体积方程后也是 255 个方程。
+这使它成为一个最小方阵配点系统，而不是离网格意义下的过定约束拟合。于是错误曲面可以
+同时满足：
+
+$$
+V=V_0,
+\qquad
+\boldsymbol r_B=0
+\quad\text{仅在原配点上},
+$$
+
+却在配点之间严重折叠。candidate 275 的 LS residual 从 152.94 降到
+$9.82\times10^{-14}$，但同尺寸错位网格立即变成每点 0.343，$97^2$ 网格为每点
+0.268。Newton 看到原配点 residual 已低于容差，迭代 0 次，因此不会纠正 LS 的分支错误。
+
+所以这里并不存在“正常的 Boozer 坐标把好磁面变成怪曲面”这一物理现象。实际发生的是：
+
+> 初始几何面使用错误角标签，离 Boozer 方程的局部解不够近；一个只固定体积的自由几何
+> 配点 LS 随后跳到了另一张同体积的折叠参数曲面，并被最小配点 residual 误判为精确解。
+
+### 16.4 DESC 分支已经验证的近 Boozer 路径
+
+该分支针对 `cem_qh03` 使用了如下链路。
+
+#### 第 1 步：标定物理环向磁通
+
+先把无量纲局部不变量 $s$ 标定为物理环向磁通 $\psi_T(s)$，再定义
+
+$$
+\rho=\sqrt{\frac{\psi_T(s)}{\psi_{T,\rm edge}}}.
+$$
+
+#### 第 2 步：稠密线性拟合 $\alpha$、$\lambda$ 和 $\iota$
+
+在整个体积内使用 12 万训练点和 6 万独立验证点，拟合
+
+$$
+\alpha
+=\theta_g+\lambda(\rho,\theta_g,\phi)
+-\iota(\rho)\phi,
+$$
+
+目标为
+
+$$
+\boldsymbol B
+\simeq
+\nabla\psi_T\times\nabla\alpha.
+$$
+
+$\lambda$ 使用 Fourier-Zernike 基，$\iota$ 与 $\lambda$ 系数在同一个 GPU FP64 QR
+线性系统中求解。选定模型为 `L12_M12_N16`，该例最终采用常数
+$\iota=-0.565228$。由此得到直场线极向角
+
+$$
+\vartheta=\theta_g+\lambda.
+$$
+
+#### 第 3 步：固定物理面，只做 $\alpha$ 重参数化
+
+对指定 $\rho$ 重新提取原来的 $s$ 等值点，只改变它们的角标签并投影成 12 阶曲面。
+这一步不优化物理曲面。除最外层外，场线方向角误差 P95 约为
+$0.04^\circ$ 至 $0.1^\circ$；但完整 Boozer relative residual 仍约为 0.14，因为沿场
+环向参数速度尚未修正。
+
+#### 第 4 步：再用一个线性问题求环向修正 $\nu$
+
+在固定面上计算
+
+$$
+G_{\rm local}
+=\boldsymbol B\cdot
+\left(\boldsymbol x_\phi+\iota\boldsymbol x_\vartheta\right),
+\qquad
+G=\langle G_{\rm local}\rangle,
+$$
+
+并解
+
+$$
+\left(\partial_\phi+\iota\partial_\vartheta\right)\nu
+=\frac{G_{\rm local}}{G}-1.
+$$
+
+然后定义
+
+$$
+\phi_B=\phi+\nu,
+\qquad
+\theta_B=\vartheta+\iota\nu.
+$$
+
+这个变换保持
+
+$$
+\alpha=\theta_B-\iota\phi_B
+$$
+
+不变，只修正沿磁力线的参数速度。它仍然不移动物理磁面。
+
+#### 第 5 步：错位独立网格验证原 Simsopt residual
+
+把同一面重采样到规则 $(\theta_B,\phi_B)$ 网格并重新投影后，代码直接调用 Simsopt 的
+`boozer_surface_residual`，但不调用任何自由曲面优化。12 阶 $\nu$ 的结果为：
+
+| 范围 | 完整 Boozer relative residual |
+|---|---:|
+| $0.12\le\rho\le0.9$ | $3.52\times10^{-4}$ 至 $1.10\times10^{-3}$ |
+| $\rho=1$ | $3.31\times10^{-3}$ |
+
+坐标映射满足
+
+$$
+0.7435\le1+D\nu\le1.2054,
+$$
+
+没有出现角映射折叠。与 $\alpha$-only 的约 0.14 相比，完整 residual 降低了 43 至
+404 倍。这证明该路线得到的不是另一个自定义代理量，而是原 Simsopt 方程的小残差初值。
+
+### 16.5 该分支尚未完成的部分
+
+需要避免把历史结果说得比实际更远：
+
+1. $\alpha+\nu$ 面只通过了固定几何的 residual 评估，尚未从这个初值真正运行原
+   Simsopt LS/Newton。因此“小残差”已证实，“求解器不会跳分支”尚未实测。
+2. 上述数值来自 `cem_qh03`，不是当前 flow candidate 275。当前候选必须重新做自己的
+   磁通标定、$\alpha$ 和 $\nu$ 拟合，不能直接复用 `cem_qh03` 的系数。
+3. 历史 DESC 体初值使用的是 $\alpha$-only 参数化，尚未实现 $\nu$ 以后才运行的；其
+   R/Z 体谱虽然全部嵌套，拟合误差约 0.13 至 0.19 mm，但后续 DESC solve 仍发散。
+4. 这不代表“缺少 $\nu$ 导致 DESC 发散”。DESC 0.16 的计算环向角固定为实验室环向角，
+   非零 $\nu$ 是平衡后的 Boozer 后处理坐标，不是可直接输入的 `Equilibrium` 自由度。
+   把 $\phi_B$ 错当成 DESC 的 $\zeta$ 会移动物理点，重现另一类几何错误。
+
+因此工作顺序必须严格分开：先证明线圈场上的 $\alpha+\nu$ 曲面和局部 Boozer 求解正确，
+再单独审计如何把同一物理面族以实验室 $\phi$ 和 PEST 极向角送入 DESC。
+
+### 16.6 下一步具体执行计划
+
+以下计划是下一轮实际实验的顺序。本节只记录计划，不执行这些计算。
+
+#### P0：恢复并冻结正确实现
+
+1. 从 `desc-psi-volume-initial-guess` 提取并复用已经验证的
+   `alpha_clebsch.py`、`toroidal_correction.py` 及对应诊断脚本，不重新发明另一套公式。
+2. 先在 `cem_qh03` 上复现归档数值，核对电流单位、$\phi$ 的圈/弧度归一化、极向角方向、
+   $\iota$ 符号和 $G$ 符号。
+3. 每个阶段分别保存原始 $s$ 面、$\alpha$ 面和 $\alpha+\nu$ 面，禁止再用同一个
+   `boozer_surface.npz` 文件名覆盖不同物理含义的对象。
+
+验收标准是 `cem_qh03` 的固定面 residual、映射 Jacobian 和历史汇总在浮点误差范围内
+复现。该步骤失败时不进入当前 flow 候选。
+
+#### P1：只验证 candidate 275 的原始 $s$ 面
+
+不读取第 15 节旧 LS 输出的黑色曲面，从线圈、磁轴和 $s$ 模型重新开始。对 raw surface
+screen 通过的多个 $s_0$ 做：
+
+1. 密集 $s=s_0$ 等值面提取和谱阶收敛；
+2. 多个内部半径的长时间 Poincare；
+3. $\boldsymbol B\cdot\boldsymbol n$ 的独立网格统计；
+4. 曲面 Jacobian、自交、截面单值性和相邻层嵌套检查。
+
+只有原始点集本身通过时，才把它称为近似磁面。若这一步失败，结论应归于 candidate 或
+$s$ 模型，而不是再调用 Boozer 求解器制造一个形式解。
+
+#### P2：在 candidate 275 上重走 $\psi_T\rightarrow\alpha$ 体拟合
+
+1. 标定 $\psi_T(s)$ 并检查跨环向截面的一致性和单调性；
+2. 沿用与成功实验同量级的稠密、体积均匀采样；
+3. 用 GPU QR 求 $\lambda$ 和 $\iota$；
+4. 用独立点云检查
+
+   $$
+   \boldsymbol B-\nabla\psi_T\times\nabla\alpha;
+   $$
+
+5. 用独立长场线 rotation number 交叉验证 $\iota$；
+6. 检查
+
+   $$
+   1+\partial_{\theta_g}\lambda>0
+   $$
+
+   以及径向连续性。
+
+这里要同时做阶数收敛，而不是只接受一个训练 residual 小的模型。若 $\alpha$ 在独立点或
+长场线上不闭合，就不进入 $\nu$ 和 Simsopt。
+
+#### P3：固定几何求 $\nu$，先不调用自由曲面求解器
+
+对每个通过 P1/P2 的面：
+
+1. 用 $\alpha$ 重参数化同一个点集；
+2. 在均匀网格上用线性 Fourier 解求 $\nu$；
+3. 反解 $(\theta_B,\phi_B)$ 并重投影；
+4. 在与拟合点错开的 $49^2$、$97^2$ 和必要时 $193^2$ 网格上计算原 Simsopt residual；
+5. 检查 $1+D\nu$、法向场、$s-s_0$、谱投影误差和不同阶数的收敛。
+
+纯重参数化前后的物理点集应保持不变。数值上，双向最近点距离应与曲面重投影误差同阶，
+而不能出现可见形状变化。任何多叶、自交或厘米级位移都应在这里直接判为实现错误。
+
+#### P4：从 $\alpha+\nu$ 小残差初值受控进入 Simsopt Boozer 求解
+
+这一步才执行用户所说的“再进 Boozer 面求解”。具体策略为：
+
+1. 把 P3 输出的 12 阶或阶数收敛后的 $\alpha+\nu$ 面连同拟合的 $\iota,G$ 作为初值；
+2. 首选从该小残差初值直接做局部 exact Newton，不再先运行会大范围寻找分支的旧 penalty
+   LS；
+3. 若必须测试原 LS，则只在初值副本上以很少迭代逐段运行，每段都重新做离网格和几何
+   身份检查；失败后回滚到最后一个合格副本；
+4. 比较阶数 8、10、12 或更高阶的同一物理解是否谱收敛，而不是只看单个阶数的
+   `success`；
+5. 保存每一步迭代前后的曲面，明确区分切向重参数化和法向几何校正。
+
+一个 Boozer 输出只有同时满足以下条件才接受：
+
+| 门槛 | 接受原则 |
+|---|---|
+| 训练 residual | 相对初值下降，不能只报告绝对机器精度 |
+| 错位/密网格 residual | 同步下降，并随网格加密和谱阶提高收敛 |
+| $s$ 身份 | 面上 $s-s_0$ 不比初始面显著恶化 |
+| 几何位移 | P95 法向位移不超过投影误差和小半径约 1% 中较宽者；阈值再由对照样本标定 |
+| 法向场 | $|\boldsymbol B\cdot\boldsymbol n|/(|B||n|)$ 不显著恶化 |
+| 拓扑 | Jacobian 全程同号，无自交，截面保持单闭曲线 |
+| 分支连续性 | $\iota$、$G$、体积和相邻 $\rho$ 面连续 |
+| Poincare | 内部多半径场线与候选边界形成一致的嵌套环族 |
+
+其中“solver success”只是一条日志，不是验收门槛。若 direct Newton 已经保持几何并把
+离网格 residual 降到稳定平台，就没有必要为了得到更小的原配点数字再运行自由 LS。
+
+#### P5：通过 Boozer 验收后再考虑 DESC
+
+DESC 阶段暂缓到 P4 通过以后。届时使用实验室环向角 $\phi$，把嵌套物理面族和
+$\alpha$/PEST 极向标签投影到 DESC 的 R/Z/L 体谱；不能把 $\phi_B$ 直接当成 DESC
+$\zeta$。在调用 `eq.solve()` 前，先比较同一物理点上的
+
+$$
+\boldsymbol B_{\rm coil}
+\quad\text{与}\quad
+\boldsymbol B_{\rm DESC,initial},
+$$
+
+并检查总磁通、current/iota profile、Jacobian 和初始 force residual。只有这些接口闭合，
+才值得运行受限 continuation 的 DESC solve。
+
+### 16.7 预期结果及分叉判断
+
+下一轮实验有三种清晰结果，不再允许它们混在一起：
+
+1. **原始 $s$ 面失败。** candidate 275 本身或 $s$ 拟合没有提供可靠嵌套磁面，流程在 P1
+   停止；第 15 节关于该 candidate 不可用的结论成立，但理由改为原始磁面证据。
+2. **$s$ 面正常，但 $\alpha$ 或 $\nu$ 失败。** 问题位于坐标拟合的阶数、采样、符号约定
+   或共振小除数；此时曲面几何仍不应发生大变化，可以在固定几何上定位。
+3. **$\alpha+\nu$ residual 已小，局部 Newton 仍跳分支。** 这将直接证明原 Simsopt
+   求解接口缺少可信域或几何约束。此时应实现带
+   $s(\boldsymbol x)-s_0$ 或法向位移惩罚的受限局部校正，而不是接受其自由 LS 输出。
+
+最理想且有历史证据支持的结果是第三步以前均通过，$\alpha+\nu$ 已把初始 residual 降到
+$10^{-3}$ 左右，局部 Newton 只做小量谱校正并保持同一物理面。只有这种结果才能称为
+“从线圈和 $s$ 得到正确 Boozer 面”，并作为后续 DESC 诊断的可信输入。
+
+## 17. candidate 275 的 $\alpha+\nu\rightarrow$ Boozer 实验结果
+
+### 17.1 先给结论
+
+本轮已实际执行第 16 节的核心路线，测试对象是 flow matching 生成结果中原生 score 最高的
+QH candidate 275，使用稳定评分器选出的 $s_{\rm edge}=0.25$，而不是旧完整评估误选的
+$s=0.30$。
+
+结论如下：
+
+1. 该样本的局部 $s$ 面是正常的嵌套磁面。此前报告中的大幅散乱庞加莱图来自绘图脚本过松的
+   ODE 容差 $10^{-5}$，不是磁面真实发散。
+2. 稠密体拟合可以为该样本得到可逆的 $\alpha$ 坐标和 $\iota$；固定物理面求线性 $\nu$
+   后，$\rho\leq0.9$ 的原 Simsopt 离网格 Boozer relative residual 已在
+   $6.62\times10^{-4}$ 到 $1.67\times10^{-3}$ 之间，外边界为
+   $5.31\times10^{-3}$。
+3. 从该 $\alpha+\nu$ 初值直接运行局部 exact Newton，不再运行旧 penalty LS，只需 3 个完整
+   Newton 步，就把三个测试面的 $25^2$ 配点 residual 降到约 $2\times10^{-15}$，并把
+   $97^2$ 错位密网格 residual 降到 $(2.39\text{--}2.55)\times10^{-5}$。
+4. Newton 后的面保持单一环绕、非零 Jacobian、连续 $\iota$ 和近似相同的 $s$ 身份；最终外面
+   内的 16 条场线经过约 89 个整环向周次后仍形成规则、互不交叉的嵌套环族。
+
+因此，第 16.7 节预期的理想情况已经实现：旧自由 LS 的自交面是错误分支；正确的
+$\alpha+\nu$ 初值位于目标 Boozer 解的局部收敛域内，不存在“正常 Boozer 变换必然把磁面变成
+怪面”的机制矛盾。
+
+本轮没有运行 DESC。现在已经满足“先得到并验收正确 Boozer 面”的前置条件，下一轮可以单独
+处理 Boozer 面族到 DESC 实验室环向角/PEST 极向角的接口，避免把 $\phi_B$ 错当成 DESC 的
+$\zeta$。
+
+### 17.2 本轮准确计算流程
+
+本轮读取稳定链路已有的线圈、磁轴和 `psi_model.npz`，没有重新设计或替换线圈到 $s$ 的部分。
+从 $s$ 开始依次执行：
+
+1. 在 $s_{\rm edge}=0.25$ 内重新标定物理环向磁通 $\psi_T(s)$；
+2. 用 12 万个体积均匀训练点和 6 万个独立验证点，以 GPU FP64 QR 联合拟合
+   $\lambda(\rho,\theta_g,\phi)$ 与常数 $\iota$；
+3. 在十个半径 $\rho=0.12,0.2,\ldots,1.0$ 上提取固定 $s$ 面，用 $\alpha$ 只做极向重参数化；
+4. 分别用 4、8、12 阶 Fourier 基线性求解 $\nu$，并把同一物理面重采样到
+   $(\theta_B,\phi_B)$ 规则网格；
+5. 在与拟合点错开的 $49^2$ 和 $97^2$ 网格上调用原 Simsopt
+   `boozer_surface_residual`；
+6. 对 $\rho=0.5,0.8,1.0$ 直接做一次一个步长的 exact Newton，每步后同时检查配点 residual、
+   离网格 residual、$s-s_0$、法向场、几何位移、环绕数和法向非退化；
+7. 对最终 $\rho=1$ Newton 面做高精度长时庞加莱交叉验证。
+
+这里没有调用会在大参数空间中自由搜索的 penalty LS，也没有运行非线性 DESC 平衡求解。
+Newton 只承担小残差初值后的局部谱校正，并且每一步都有回滚条件。
+
+### 17.3 磁通标定与体 $\alpha$ 拟合
+
+磁通标定得到
+
+$$
+\psi_{T,\rm edge}/(2\pi)=-2.38551395\times10^{-4},
+$$
+
+相对拟合 RMS 为 $1.71\times10^{-6}$，跨截面相对标准差最大值为
+$2.46\times10^{-3}$；$d\psi_T/ds$ 全程同号，因此标定单调。
+
+阶数扫描结果为：
+
+| $L,M,N$ | 列数 | 独立验证 relative $L^2$ | 拟合 $\iota$ | $\min(1+\lambda_\theta)$ | 不可逆点比例 |
+|---|---:|---:|---:|---:|---:|
+| $6,6,6$ | 361 | 0.18862 | 1.50737 | -0.1561 | $10^{-4}$ |
+| $8,8,8$ | 761 | 0.14994 | 1.52642 | 0.2132 | 0 |
+| $10,10,12$ | 1645 | 0.12373 | 1.53839 | -0.0696 | $10^{-5}$ |
+| $12,12,16$ | 2997 | 0.10474 | 1.54466 | 0.2003 | 0 |
+
+最终选择 `L12_M12_N16`。训练与验证 residual 接近，未见过拟合；更重要的是所选模型的
+
+$$
+1+\partial_{\theta_g}\lambda \geq 0.2003>0,
+$$
+
+所以角映射没有折叠。独立场线图中，修正前后直线拟合 RMS 的均值由 0.2833 rad 降到
+0.03887 rad，改善 7.29 倍：
+
+![candidate 275 的场线拉直](assets/qh_flow_candidate275_alpha_nu_guarded_29109/alpha/fieldline_straightening.png)
+
+这里约 0.105 的体 relative residual 不能与后面的单面 Boozer residual 混为一谈。它是整个
+三维体积上 $\boldsymbol B-\nabla\psi_T\times\nabla\alpha$ 的联合误差，包含近轴区域的坐标病态；
+固定面再求 $\nu$ 后，原 Simsopt 方程的误差低两个数量级。
+
+### 17.4 固定面线性 $\nu$ 的结果
+
+下表均使用 12 阶 $\nu$ 和独立错位网格：
+
+| $\rho$ | 平均小半径/mm | $\nu$ 前 residual | $\nu$ 后 residual | 法向场 P95 | 曲面重投影 RMS/$\mu$m |
+|---:|---:|---:|---:|---:|---:|
+| 0.12 | 3.07 | 0.12862 | $1.62\times10^{-3}$ | $2.13\times10^{-4}$ | 2.65 |
+| 0.20 | 5.13 | 0.12870 | $1.67\times10^{-3}$ | $2.29\times10^{-4}$ | 3.14 |
+| 0.30 | 7.70 | 0.12886 | $1.53\times10^{-3}$ | $2.61\times10^{-4}$ | 2.80 |
+| 0.40 | 10.27 | 0.12907 | $1.61\times10^{-3}$ | $3.03\times10^{-4}$ | 1.85 |
+| 0.50 | 12.86 | 0.12932 | $1.13\times10^{-3}$ | $4.19\times10^{-4}$ | 3.38 |
+| 0.60 | 15.46 | 0.12961 | $9.80\times10^{-4}$ | $4.39\times10^{-4}$ | 3.48 |
+| 0.70 | 18.08 | 0.12999 | $9.50\times10^{-4}$ | $5.76\times10^{-4}$ | 3.71 |
+| 0.80 | 20.71 | 0.13041 | $6.62\times10^{-4}$ | $5.43\times10^{-4}$ | 5.79 |
+| 0.90 | 23.36 | 0.13088 | $8.92\times10^{-4}$ | $5.92\times10^{-4}$ | 7.64 |
+| 1.00 | 26.04 | 0.13148 | $5.31\times10^{-3}$ | $1.29\times10^{-3}$ | 42.02 |
+
+角映射最坏情况下仍有
+
+$$
+0.7654\leq 1+(\partial_\phi+\iota\partial_\vartheta)\nu\leq1.2166,
+$$
+
+不存在环向映射折叠。外边界误差明显高于 $\rho=0.8$，主要同时伴随曲面 12 阶重投影误差由
+$5.79\,\mu\mathrm m$ 增至 $42.02\,\mu\mathrm m$；这说明外层仍受固定曲面谱阶数限制，但它已足以
+进入局部 Newton 收敛域。
+
+### 17.5 受保护 exact Newton
+
+初版保护器把相对初始面的双向最近点 P95 限制为小半径的 1%。交叉检查发现三个面的首个完整
+Newton 步都同时降低了离网格 residual、法向场误差和 $s$ 身份误差，唯一失败项只是该人为门限；
+实际位移为小半径的 1.6% 到 4.2%。因此门限修正为 5%，其他物理与拓扑保护保持不变。
+
+放宽后的结果为：
+
+| $\rho$ | 初始 $97^2$ residual | 最终 $25^2$ residual | 最终 $97^2$ residual | 法向场 P95 | $s$ 法向距离 P95/$\mu$m | 几何位移 P95/小半径 | 最终 $\iota$ |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.5 | $1.132\times10^{-3}$ | $2.13\times10^{-15}$ | $2.387\times10^{-5}$ | $2.47\times10^{-5}$ | 54.2 | 3.55% | 1.54538 |
+| 0.8 | $6.616\times10^{-4}$ | $2.25\times10^{-15}$ | $2.438\times10^{-5}$ | $2.65\times10^{-5}$ | 92.9 | 1.63% | 1.55231 |
+| 1.0 | $5.311\times10^{-3}$ | $2.28\times10^{-15}$ | $2.551\times10^{-5}$ | $2.86\times10^{-5}$ | 143.6 | 4.16% | 1.55903 |
+
+三个面都接受了 3 个完整 Newton 步。$97^2$ residual 对网格加密后稳定在约
+$2.5\times10^{-5}$，而不是像旧假解那样从配点机器精度反弹到 $O(10^{-1})$。三个面的几何环绕数
+均为 1.00168 左右，符号体积和相邻半径顺序保持连续。
+
+外边界在 $\phi=0$ 的 Newton 前后截面几乎重合；可见差异小于线宽：
+
+![外边界 Newton 前后物理截面](assets/qh_flow_candidate275_boozer_relaxed_29113/guarded_rho_1/surface_identity_phi0.png)
+
+### 17.6 庞加莱伪差与最终交叉验证
+
+旧图使用 Simsopt `compute_fieldlines` 的默认设置 `tol=1e-5`，在约 89 个整环向周次后产生了
+厘米级数值漂移，看起来像场线远离磁面。固定同一线圈、面和起点后重新扫描得到：
+
+| 追踪长度 | ODE 容差 | 每条线截面命中数 | 全部轨迹 $|\Delta s|$ P95 | 图像结论 |
+|---|---:|---:|---:|---|
+| 约 16 周期 | $10^{-8}$ | 62--63 | $8.34\times10^{-4}$ | 基本闭合，仍有少量数值越界 |
+| 约 16 周期 | $10^{-11}$ | 62--63 | $8.41\times10^{-4}$ | 全部位于外面内 |
+| 约 89 周期 | $10^{-11}$ | 353--355 | $8.52\times10^{-4}$ | 漂移有界，形成规则嵌套环族 |
+
+$|\Delta s|$ 没有随追踪长度增长，说明拟合 $s$ 沿真实场线的误差有界；几何图对积分容差更敏感，
+因此维护脚本的默认值已由 $10^{-5}$ 改为 $10^{-11}$。16 周期和长时对照图如下：
+
+![16 周期高精度庞加莱](assets/qh_flow_candidate275_poincare_psi_audit_29112/trace_16period_tol1e11.png)
+
+![89 周期高精度庞加莱](assets/qh_flow_candidate275_poincare_psi_audit_29112/trace_long_tol1e11.png)
+
+最终 Newton 外边界的独立 16 场线、89 周期结果也保持嵌套：
+
+![最终 Boozer 外面的长时庞加莱](assets/qh_flow_candidate275_boozer_relaxed_29113/poincare_guarded_boozer_rho1.png)
+
+### 17.7 实现问题与修正
+
+本轮实际发现并修复了四个流程问题：
+
+1. 首次作业使用的 Python 环境缺少 PyTorch，导致 GPU QR 在标定后退出；随后增加 GPU 环境烟测，
+   已验证 NumPy、SciPy、Simsopt、CUDA 13 和 PyTorch FP64 QR 同时可用。
+2. 一个阶段结束后，后续相对路径脚本遇到不可用的当前工作目录。所有 Slurm 阶段现均从 `/` 启动
+   并使用项目内绝对脚本路径，已通过续跑作业验证。
+3. 庞加莱绘图容差 $10^{-5}$ 会制造假的几何发散，默认值和正式调用均改为 $10^{-11}$。
+4. 初版批处理误把 Newton 前的 `alpha_nu` 面传给最终庞加莱绘图；现已改为明确读取
+   `guarded_rho_1/boozer_guarded.npz`。
+
+所有作业都先检查分配到的 GPU 没有已有计算进程。最终作业退出码为 0，GPU 后检查为 0% 利用率、
+2 MiB 显存占用，没有遗留计算或僵尸进程。
+
+### 17.8 耗时与下一步
+
+当前实现仍是研究诊断版，耗时不是稳定评分器目标：
+
+| 阶段 | 本轮墙钟 |
+|---|---:|
+| 物理磁通标定 | 53.0 s |
+| 四组 $\alpha$ 阶数扫描及独立诊断 | 128.6 s |
+| 十个半径 $\times$ 三组 $\nu$ 阶数、重投影和离网格验证 | 539.6 s |
+| 三个半径的受保护 Newton | 小于 44 s |
+| 最终 16 场线、约 89 周期高精度庞加莱 | 约 11 min |
+
+前两项合计 181.6 s，$\alpha+\nu$ 全扫描合计 721.2 s。大量时间来自开发期阶数扫描、重复曲面
+投影和高精度场线图；单次 12 阶线性 QR 本身只需数秒，Newton 也不是长尾瓶颈。
+
+现在进入 DESC 的合理输入不是旧自由 LS 面，也不是直接把 $\phi_B$ 塞给 DESC，而是本轮已经
+验收的嵌套 Boozer 面族。下一步应在实验室环向角 $\phi$ 固定时，把这些面的物理点重新投影为
+DESC 的 $R(\rho,\theta,\zeta)$、$Z(\rho,\theta,\zeta)$ 和 PEST 极向位移 $L$，再比较同一物理点上的
+
+$$
+\boldsymbol B_{\rm coil}
+\quad\text{与}\quad
+\boldsymbol B_{\rm DESC,initial}.
+$$
+
+只有该接口比较、Jacobian、总磁通和初始 force residual 通过后，才运行受限 DESC
+continuation。到本节为止，可以确认 Boozer 前置链路已经从机制上和数值上走通；尚不能声称
+DESC 初值接口或 DESC solve 已走通。

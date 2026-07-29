@@ -335,6 +335,7 @@ def main() -> None:
     parser.add_argument("--alpha-dir", type=Path, required=True)
     parser.add_argument("--alpha-fit", default="alpha_fit_L12_M12_N16.npz")
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--s-edge", type=float, default=None)
     parser.add_argument(
         "--rho-values", default="0.12,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0"
     )
@@ -347,6 +348,7 @@ def main() -> None:
     parser.add_argument("--validation-ntheta", type=int, default=59)
     parser.add_argument("--interpolation-size", type=int, default=97)
     parser.add_argument("--regularization", type=float, default=0.0)
+    parser.add_argument("--save-surfaces", action="store_true")
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=False)
@@ -354,7 +356,11 @@ def main() -> None:
     summary = load_json(args.run_dir / "summary.json")
     config = summary["config"]
     nfp = int(summary["nfp"])
-    s_edge = float(summary["best_surface"]["psi_level"])
+    s_edge = (
+        float(args.s_edge)
+        if args.s_edge is not None
+        else float(summary["best_surface"]["psi_level"])
+    )
     model = load_psi_model(args.run_dir / "psi_model.npz")
     alpha_fit = load_alpha_fit(args.alpha_dir / args.alpha_fit)
     field_input = load_field_input(args.case_file, "raw")
@@ -365,8 +371,13 @@ def main() -> None:
     boozer_cfg = dataclass_from_dict(BoozerConfig, config.get("boozer"))
 
     rows = []
+    saved_surfaces = []
     rho_values = parse_floats(args.rho_values)
     nu_orders = parse_ints(args.nu_orders)
+    selected_order = max(nu_orders)
+    surface_dir = args.output_dir / "surfaces"
+    if args.save_surfaces:
+        surface_dir.mkdir()
     for rho in rho_values:
         xyz, radii, extraction = surface_points_from_level_gpu(
             model,
@@ -390,6 +401,24 @@ def main() -> None:
         )
         training_data = surface_field_data(training, field, iota)
         G = float(np.mean(training_data["local_G"]))
+        surface_stem = f"rho_{rho:.6g}".replace(".", "p")
+        if args.save_surfaces:
+            alpha_path = surface_dir / f"{surface_stem}_alpha.npz"
+            np.savez(
+                alpha_path,
+                dofs=alpha_surface.get_dofs(),
+                iota=iota,
+                G=G,
+                nfp=nfp,
+                order=args.surface_order,
+                stellsym=bool(boozer_cfg.stellsym),
+                rho=float(rho),
+                s_edge=s_edge,
+                s_level=float(s_edge * rho * rho),
+                radius_mean_m=float(np.mean(radii)),
+                spectral_fit_rms_m=alpha_projection["spectral_fit_rms_m"],
+                kind="alpha",
+            )
         target = training_data["local_G"] / G - 1.0
         train_phi = np.arange(args.fit_nphi)[:, None] / (nfp * args.fit_nphi)
         train_theta = np.arange(args.fit_ntheta)[None, :] / args.fit_ntheta
@@ -444,6 +473,30 @@ def main() -> None:
             simsopt_corrected = residual_for_iota_G(
                 corrected_validation, field, iota=iota, G=G
             )
+            if args.save_surfaces and nu_order == selected_order:
+                corrected_path = surface_dir / f"{surface_stem}_alpha_nu.npz"
+                np.savez(
+                    corrected_path,
+                    dofs=corrected.get_dofs(),
+                    iota=iota,
+                    G=G,
+                    nfp=nfp,
+                    order=args.surface_order,
+                    stellsym=bool(boozer_cfg.stellsym),
+                    rho=float(rho),
+                    s_edge=s_edge,
+                    s_level=float(s_edge * rho * rho),
+                    radius_mean_m=float(np.mean(radii)),
+                    spectral_fit_rms_m=mapping["spectral_fit_rms_m"],
+                    kind="alpha_nu",
+                )
+                saved_surfaces.append(
+                    {
+                        "rho": float(rho),
+                        "alpha": str(alpha_path),
+                        "alpha_nu": str(corrected_path),
+                    }
+                )
             rows.append(
                 {
                     "rho": float(rho),
@@ -474,7 +527,6 @@ def main() -> None:
                 }
             )
 
-    selected_order = max(nu_orders)
     plot_radial(
         rows,
         selected_order,
@@ -493,6 +545,7 @@ def main() -> None:
         "nu_orders": nu_orders,
         "regularization": float(args.regularization),
         "selected_nu_order": int(selected_order),
+        "saved_surfaces": saved_surfaces,
         "rows": rows,
         "total_time_s": float(time.perf_counter() - started),
     }

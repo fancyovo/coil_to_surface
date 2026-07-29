@@ -22,7 +22,6 @@ for path in (REPO_ROOT, GPU_PYTHON):
 from scripts.optimize_native_score_cem import token_case
 
 
-QH_HELICITY_NORM = math.sqrt(2.0)
 QUASR_V3_P10 = 41.31
 QUASR_V3_MEDIAN = 51.44
 
@@ -203,7 +202,7 @@ def compact_row(old: dict[str, Any], rescored: dict[str, Any]) -> dict[str, Any]
         ),
         "qh_error": float(diagnostics["qs_global_error"]),
         "qh_error_per_helicity": float(diagnostics["qs_global_error"])
-        / QH_HELICITY_NORM,
+        / math.hypot(1.0, int(old["nfp"])),
         "qa_error": float(diagnostics["qs_qa_global_error"]),
         "qp_error": float(diagnostics["qs_qp_global_error"]),
         "helicity_advantage": float(

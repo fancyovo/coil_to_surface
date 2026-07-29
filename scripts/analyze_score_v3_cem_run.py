@@ -14,7 +14,6 @@ import numpy as np
 
 
 MILESTONES = (1, 2, 4, 8, 16, 32, 64, 96, 128, 160)
-QH_HELICITY_NORM = math.sqrt(2.0)
 
 
 def load_json(path: Path) -> dict:
@@ -27,10 +26,10 @@ def minimum_absolute_interval(lower: float, upper: float) -> float:
     return min(abs(lower), abs(upper))
 
 
-def compact_candidate(row: dict) -> dict:
+def compact_candidate(row: dict, nfp: int) -> dict:
     native = row["native_score"]
     diagnostics = native["diagnostics"]
-    qh_error = float(diagnostics["qs_global_error"]) / QH_HELICITY_NORM
+    qh_error = float(diagnostics["qs_global_error"]) / math.hypot(1.0, nfp)
     qa_error = float(diagnostics["qs_qa_global_error"])
     qp_error = float(diagnostics["qs_qp_global_error"])
     competitor_error = min(qa_error, qp_error)
@@ -75,7 +74,7 @@ def compact_candidate(row: dict) -> dict:
     }
 
 
-def stream_candidates(path: Path) -> tuple[list[dict], Counter[str]]:
+def stream_candidates(path: Path, nfp: int) -> tuple[list[dict], Counter[str]]:
     successful: list[dict] = []
     statuses: Counter[str] = Counter()
     with path.open("r", encoding="utf-8") as stream:
@@ -84,7 +83,7 @@ def stream_candidates(path: Path) -> tuple[list[dict], Counter[str]]:
             status = row["status"]
             statuses[status] += 1
             if status == "ok":
-                successful.append(compact_candidate(row))
+                successful.append(compact_candidate(row, nfp))
     return successful, statuses
 
 
@@ -343,7 +342,9 @@ def main() -> None:
     args = parser.parse_args()
 
     summary = load_json(args.summary)
-    rows, statuses = stream_candidates(args.candidates)
+    rows, statuses = stream_candidates(
+        args.candidates, int(summary["manifest"]["nfp"])
+    )
     if not rows:
         raise RuntimeError("CEM run contains no successful candidates")
     audit = build_audit(

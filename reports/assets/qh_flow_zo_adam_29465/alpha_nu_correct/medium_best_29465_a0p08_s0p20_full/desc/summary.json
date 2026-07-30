@@ -1,0 +1,78 @@
+{
+  "toroidal_flux": -0.0018495187994833412,
+  "input": {
+    "mpol": 12,
+    "ntor": 12,
+    "stellsym": true,
+    "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/input.check"
+  },
+  "nested_initial": true,
+  "initial_force_compute_success": true,
+  "initial_force_compute_time_s": 10.458008548943326,
+  "initial_force_mean_abs_normalized": 0.9449511808872351,
+  "initial_force_max_abs_normalized": 16.983088464086034,
+  "initial_force_p95_abs_normalized": 3.0814593801987726,
+  "initial_force_vol_average_raw": 6733225.799228019,
+  "plots_initial": {
+    "boundary": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boundary_initial.png",
+      "time_s": 3.5297879399731755
+    }
+  },
+  "solve_call_success": true,
+  "solve_return": "(Equilibrium at 0x131556bf9b80 (L=8, M=8, N=8, NFP=4, sym=True, spectral_indexing=ansi),           message: Maximum number of iterations has been exceeded.\n          success: False\n              fun: [ 6.111e-04 -1.096e-03 ... -1.953e-03 -1.653e-03]\n                x: [-4.228e-04 -2.783e-04 ... -4.609e-02 -3.063e-01]\n              nit: 50\n             cost: 0.17460660111728094\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 0.014205297963817665\n             nfev: 70\n             njev: 51\n             allx: [Array([-3.707e-05, -1.296e-07, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-4.399e-05,  2.022e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-2.490e-05,  1.107e-05, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.854e-05,  5.300e-07, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.179e-05, -2.257e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.240e-05, -3.671e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.500e-05, -2.825e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.695e-05, -2.311e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.736e-05, -2.999e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.796e-05, -2.978e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.792e-05, -3.227e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.801e-05, -3.298e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.795e-05, -3.486e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.788e-05, -3.627e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.784e-05, -3.697e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.773e-05, -3.819e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.768e-05, -3.873e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.757e-05, -3.960e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.751e-05, -3.998e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.740e-05, -4.056e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.733e-05, -4.080e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.721e-05, -4.117e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.714e-05, -4.129e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.702e-05, -4.149e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.694e-05, -4.152e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.683e-05, -4.154e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.677e-05, -4.148e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.666e-05, -4.131e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.657e-05, -4.110e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.652e-05, -4.088e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.646e-05, -4.045e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.641e-05, -4.007e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.639e-05, -3.979e-06, ...,  2.204e-07,\n                          -3.958e-05], dtype=float64), Array([-3.638e-05, -3.937e-06, ...,  2.204e-07,\n",
+  "optimizer_success": false,
+  "optimizer_message": "Maximum number of iterations has been exceeded.",
+  "optimizer_cost": 0.17460660111728094,
+  "optimizer_nit": 50.0,
+  "optimizer_nfev": 70.0,
+  "optimizer_njev": 51.0,
+  "optimizer_optimality": 0.014205297963817665,
+  "solve_time_s": 206.10178911103867,
+  "nested_final": true,
+  "final_force_compute_success": true,
+  "final_force_compute_time_s": 1.4069773060036823,
+  "final_force_mean_abs_normalized": 0.003261215017800554,
+  "final_force_max_abs_normalized": 0.07916878443984215,
+  "final_force_p95_abs_normalized": 0.008146763082292825,
+  "final_force_vol_average_raw": 2108.204892282552,
+  "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/equilibrium.h5",
+  "plots_final": {
+    "boundary": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boundary.png",
+      "time_s": 0.7918524920241907
+    },
+    "boozer_modes": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_modes.png",
+      "time_s": 17.034856606042013
+    },
+    "boozer_B": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_B.png",
+      "time_s": 15.795798403094523
+    },
+    "qs_QA": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QA.png",
+      "time_s": 13.190716608078219
+    },
+    "qs_QH": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QH.png",
+      "time_s": 4.549483462003991
+    },
+    "qs_QP": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QP.png",
+      "time_s": 3.6759956050664186
+    },
+    "iota": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_zo_adam_alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/iota.png",
+      "time_s": 7.060229251976125
+    }
+  }
+}

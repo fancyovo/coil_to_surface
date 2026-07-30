@@ -9,9 +9,9 @@
 
 1. **RK4 不慢到不可接受，直接用即可。** 正式优化使用全 FP32、关闭 autocast 的 256 步 RK4。80 轮中每轮 11 个 flow 解码合计平均耗时 4.720 s，占每轮墙钟的 20.3%；原生 C++/CUDA score 平均占 18.519 s，即 79.7%。主瓶颈仍是 score，不是 ODE 积分。
 2. **潜空间零阶 Adam 确实能稳定精修已有高分解。** 修正后的 native score 从 69.1136 提高到 70.5778，增加 1.4641 分。80 轮全部完成，所有 640 个梯度扰动端点均为 `ok`，最佳解出现在最后一轮，后 40 轮仍提高 0.3974 分。
-3. **但 70.58 分的最佳样本没有通过独立物理验收。** 固定 LS/Newton 路径只找到很小的候选 Boozer 面；庞加莱点不沿候选边界形成嵌套曲线，DESC 初末均非嵌套且力残差爆炸。因此本轮证明的是“优化器能优化当前 score”，不是“当前 score 已足以保证实用 QH 线圈”。
+3. **70.58 分的最佳样本通过了修正后的独立物理验收。** 正确的 $\psi\rightarrow\alpha\rightarrow\nu$ 路线找到体积 0.0286 $\mathrm{m}^3$、$\iota=2.383$ 的最大已测可行面；庞加莱呈有序嵌套，DESC 初末均嵌套且最终平均归一化力误差为 $3.26\times10^{-3}$。上一版失败来自误用旧的直接 LS/Newton 曲面，结论已撤回。
 
-这不是“从零搜索优于 CEM”的证据。本轮从已有 flow-prior CEM 最佳噪声启动，只验证局部一阶式黑箱优化是否可用。结论是：**优化算法可用且还未完全饱和，但目标函数与独立物理验收仍有明显缺口；在修正或解释该缺口前，不应提交 9 小时长跑。**
+这不是“从零搜索优于 CEM”的证据。本轮从已有 flow-prior CEM 最佳噪声启动，只验证局部一阶式黑箱优化是否可用。结论是：**优化算法可用且还未完全饱和，单个最佳样本也通过当前全链路验收；下一步应以相同 score 调用预算做少量多种子 CEM/Adam 对照，而不是直接提交 9 小时长跑。**
 
 ![80 轮优化过程](assets/qh_flow_zo_adam_29465/progress.png)
 
@@ -183,70 +183,86 @@ $$
 
 关键 score 分项为：surface 87.91、coordinate 83.87、volume-QS 43.34、$\iota$ 100、coil 69.92。QH helicity advantage 为 0.3107，quality 为 1.0。磁面尺寸项仍为 0.9517，$\iota$ 门控为 1.0，因此本轮提升没有依靠缩掉磁面或把 $\iota$ 推向 0。
 
-需要准确理解 QP error 数值较小这件事：最终评分并非只比较三个 residual 的绝对大小，还包含目标 QH 的 helicity advantage/quality 定义及 $\iota$ 门控。本轮 QH 和 QA 都下降，但 QH 相对 QA 的优势继续改善。因此在 **native score 自身定义内**，已知的低 $\iota$/小磁面门没有被绕过；下一节的独立评估仍表明这个定义遗漏了关键物理有效性。
+需要准确理解 QP error 数值较小这件事：最终评分并非只比较三个 residual 的绝对大小，还包含目标 QH 的 helicity advantage/quality 定义及 $\iota$ 门控。本轮 QH 和 QA 都下降，但 QH 相对 QA 的优势继续改善。因此在 **native score 自身定义内**，已知的低 $\iota$/小磁面门没有被绕过；下一节再用独立的 $\alpha+\nu$、庞加莱和 DESC 验收检查该高分是否对应真实磁面。
 
-## 7. 独立磁面、庞加莱和 DESC 验收
+## 7. 正确的 $\alpha+\nu$ 磁面、庞加莱和 DESC 验收
 
-### 7.1 固定磁面搜索
+### 7.1 流程纠错
 
-按默认完整评估流程扫描 $a=0.05,0.08,0.12,0.16,0.20$。只有 $a=0.12$ 和 0.16 找到 LS/Newton 报告成功的面；按体积选择 $a=0.12$、$\psi_{\rm level}=0.004$ 的 6 阶面。
+上一版独立验收错误地走了旧的“点云曲面 $\rightarrow$ 直接 LS/Newton”路线，没有使用本项目已经验证的
 
-| 指标 | 选中面 |
-| --- | ---: |
-| 平均半径 | 0.00746 m |
-| 半径范围 | 0.00485 到 0.01247 m |
-| 体积 | $1.19\times10^{-3}\,\mathrm{m}^3$ |
-| Boozer 路径 $\iota$ | -2.0583 |
-| LS residual | $5.24\times10^{-14}$ |
-| Newton 迭代 | 0 |
-| 面上 QH error | $2.18\times10^{-5}$ |
+$$
+\psi\rightarrow\alpha\rightarrow\nu\rightarrow\text{受保护 Boozer 面}
+$$
 
-这里的 $\iota$ 符号与 native score 使用的坐标方向约定相反，但绝对值也从 2.293 变成 2.058。更重要的是，这个面的体积只有 native 快速面诊断 0.01379 $\mathrm{m}^3$ 的约 8.6%，平均半径也远小于 native 给出的 0.02629 m。两条路径没有在“大且有效的磁面”上达成一致。
+主链。因此上一版散乱庞加莱和失败 DESC 只能否定那张错误分支的小曲面，不能否定 $\psi$、候选线圈或 $\alpha+\nu$ 路线；据此作出的“最终样本物理失败”结论现已撤回。旧产物仅保留在 [invalid_old_ls_full_eval](assets/qh_flow_zo_adam_29465/invalid_old_ls_full_eval/) 供审计，以下所有结论均来自正确链路。
 
-LS residual 极小不能单独证明面真实存在，因为 LS 方程可能落在错误分支或只满足离散参数化方程。庞加莱是对此的独立场线验收。
+### 7.2 宽域 $\psi$ 与最大可行面
 
-### 7.2 $|B|$ 与三维几何
+`psi.a` 是 $\psi$ 拟合的采样域半径，不是最终磁面小半径。复用稳定版已经计算的五个 $\psi$ 模型后，独立的拟合与 cheap field-line screen 为：
 
-![候选面上的 Boozer |B|](assets/qh_flow_zo_adam_29465/full_eval/assets/boozer_b.png)
+| $a$ | $\psi$ validation RMS | 角误差 P95 | 最大 screen 通过 $s$ | 该层平均/最大半径 |
+| ---: | ---: | ---: | ---: | ---: |
+| 0.05 | $8.16\times10^{-4}$ | $9.75\times10^{-5}$ | 0.36 | 0.0315 / 0.0376 m |
+| **0.08** | **$8.40\times10^{-4}$** | **$1.73\times10^{-4}$** | **0.30** | **0.0466 / 0.0613 m** |
+| 0.12 | $1.06\times10^{-3}$ | $3.61\times10^{-4}$ | 0.08 | 0.0352 / 0.0435 m |
+| 0.16 | $1.90\times10^{-3}$ | $9.02\times10^{-4}$ | 0.02 | 0.0231 / 0.0269 m |
+| 0.20 | $3.62\times10^{-3}$ | $2.91\times10^{-3}$ | 0.004 | 0.0129 / 0.0145 m |
 
-候选面上的 $|B|$ 范围为 0.66954 到 0.68174 T，平均值 0.67556 T，图上存在清晰螺旋条纹。但由于下一节的庞加莱否决了该面，不能把这张热力图单独当作真实磁面上的 QH 证据。
+因此选 `a=0.08` 的模型，并在 `s_edge=0.12,0.20,0.24,0.30` 上分别重新拟合固定阶 $(12,12,16)$ 的 $\alpha$、12 阶 $\nu$，而不是从一套外层拟合中截取内面。受保护 Newton 的统一结果为：
 
-![完整线圈与候选面](assets/qh_flow_zo_adam_29465/full_eval/assets/coils_surface.png)
+| $s_{\rm edge}$ | $|V|$ | $\iota$ | 离网格 relative $L^2$ | 法向场 P95 | $\psi$ 法向距离 P95 | Newton 位移 P95 / 门槛 | 判定 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 0.12 | 0.01665 $\mathrm{m}^3$ | 2.3408 | $3.93\times10^{-5}$ | $5.27\times10^{-5}$ | 0.304 mm | 1.156 / 1.390 mm | 通过 |
+| **0.20** | **0.02863 $\mathrm{m}^3$** | **2.3828** | **$4.42\times10^{-5}$** | **$5.71\times10^{-5}$** | **0.612 mm** | **1.463 / 1.817 mm** | **通过，最终选择** |
+| 0.24 | 0.03467 $\mathrm{m}^3$ | 2.3954 | $1.69\times10^{-3}$ | $4.06\times10^{-4}$ | 0.681 mm | 1.952 / 2.004 mm | residual/法向场失败 |
+| 0.30 | 0.04402 $\mathrm{m}^3$ | 2.4021 | $1.05\times10^{-2}$ | $6.20\times10^{-3}$ | 3.455 mm | 2.222 / 2.249 mm | residual/法向场失败 |
 
-交互产物：[Boozer $|B|$ HTML](assets/qh_flow_zo_adam_29465/full_eval/assets/boozer_b.html)；[完整线圈与磁面 HTML](assets/qh_flow_zo_adam_29465/full_eval/assets/coils_surface.html)。
+这给出了连续分支上清晰的“最大已测可行面” $s_{\rm edge}=0.20$，并由紧邻外层 $s=0.24$ 的失败限定边界；没有停在 `a=0.05` 的近轴微管。最终面的平均小半径约 0.0363 m，体积约为错误旧面 $1.19\times10^{-3}\,\mathrm{m}^3$ 的 24 倍。
 
-### 7.3 庞加莱否决
+绝对门槛随后固化进执行脚本并做了端到端烟测：$s=0.20$ 作业退出 0、全部检查为 true 且只生成 `boozer_guarded.npz`；$s=0.24$ 作业退出 3、residual/法向场检查为 false 且只生成 `boozer_rejected.npz`。失败候选不能再仅凭文件存在进入庞加莱或 DESC。
 
-![候选边界与庞加莱截面](assets/qh_flow_zo_adam_29465/full_eval/assets/poincare.png)
+在最终面对应的体拟合中，磁通标定保持单调，截面磁通相对标准差最大值为 0.00564；$\alpha$ 验证 relative $L^2$ 为 0.1017，$1+\lambda_\theta$ 最小值为 0.203；$\nu$ 映射 Jacobian 最小值为 0.672。也就是说体拟合并非机器精度，但两个坐标变换均无折叠，受保护 Newton 最终把外层物理 residual 压到 $10^{-5}$ 量级。
 
-8 条场线在 4 个环向截面的散点没有沿黑色候选边界形成嵌套闭合曲线。在 $\phi=0.12\pi$ 和 $0.38\pi$ 截面尤其明显：点云广泛散布于边界内外，而不是落在一族连续磁面上。因此这个 LS/Newton 面不能作为已验证真空磁面。
+### 7.3 正确庞加莱验收
 
-这也解释了为什么“LS residual 为 $10^{-14}$”与“物理面不成立”可以同时出现：前者只验收求解方程和离散表示，后者直接验收真实 Biot-Savart 场线。
+![正确 alpha+nu 外层面的庞加莱](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/poincare_closed.png)
 
-### 7.4 DESC 失败
+8 条场线在 4 个环向截面各有 21 个命中，按初始半径形成由内到外的有序嵌套层，且均位于候选边界内。启用同一个 `psi_model.npz` 后，最外线的相对 $s$ 漂移 P95 为 0.0456，所有命中的绝对 $s$ 漂移 P95 为 0.00624。$\psi$ 是有限精度近似不变量，但结果与其小角度误差一致；上一版那种跨区域散射确实来自错误曲面路径，而不是该线圈的真实场线结构。
 
-当前 CUDA-enabled JAX 环境不可用，GPU 入口按要求在预检阶段停止；最终 DESC 明确放到 Students 分区的 16 核纯 CPU 作业，不占 GPU。固定 $L=M=N=8$、最多 50 轮，实际 10 轮因 `xtol` 停止。
+### 7.4 $|B|$ 与三维几何
+
+![正确外层面上的 Boozer |B|](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/boozer_b.png)
+
+正确外层面上的 $|B|$ 范围为 0.61116 到 0.73122 T，平均值为 0.66729 T；热力图呈连续 QH 螺旋条纹。
+
+![完整线圈与正确外层面](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/coils_surface.png)
+
+交互产物：[Boozer $|B|$ HTML](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/boozer_b.html)；[完整线圈与磁面 HTML](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/coils_surface.html)。
+
+### 7.5 DESC 复核
+
+DESC 使用同一个受保护外层面、真实 Biot--Savart 场积分得到的环向磁通 $-1.8495\times10^{-3}\,\mathrm{Wb}$、零压强和零环向电流。当前 CUDA-enabled JAX 不可用，因此明确放在 Students 的 16 核纯 CPU 作业，不占 GPU。
 
 | DESC 指标 | 结果 |
 | --- | ---: |
-| 初始嵌套 | false |
-| 最终嵌套 | false |
-| 初始平均归一化力误差 | $5.55\times10^9$ |
-| 最终平均归一化力误差 | $9.84\times10^9$ |
-| 最终 P95 归一化力误差 | 585.9 |
-| 最终最大归一化力误差 | $7.25\times10^{13}$ |
-| 优化器 cost | $8.41\times10^{33}$ |
-| 优化器状态 | `xtol` success，但物理失败 |
+| 初始/最终嵌套 | true / true |
+| 初始平均归一化力误差 | 0.94495 |
+| 最终平均归一化力误差 | $3.26\times10^{-3}$ |
+| 最终 P95 归一化力误差 | $8.15\times10^{-3}$ |
+| 最终最大归一化力误差 | 0.0792 |
+| 优化器 cost | 0.17461 |
+| 停止原因 | 50 次迭代上限，optimizer success=false |
 
-DESC 在初始坐标非嵌套后尝试自动修复，仍报告非嵌套。虽然优化器 API 返回 success，力残差完全不在可接受量级，所以生成的 equilibrium 和后续图都只能作为失败诊断。
+虽然优化器达到迭代上限，但最终保持嵌套，平均和 P95 力误差均低于默认 $10^{-2}$ 门槛；这是物理上可信但尚未做分辨率收敛的 DESC 复核，不应写成“优化器收敛”。
 
-![失败 DESC 的 iota(rho)](assets/qh_flow_zo_adam_29465/full_eval/desc/iota.png)
+![DESC boundary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boundary.png)
 
-![失败 DESC 的 QH 分量](assets/qh_flow_zo_adam_29465/full_eval/desc/qs_QH.png)
+![DESC iota(rho)](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/iota.png)
 
-$\iota(\rho)$ 达到 $10^7$ 量级尖峰，QH 分量跨越几十个数量级，直观确认该 DESC 输出没有物理意义。QA/QP、Boozer modes、DESC $|B|$ 和 boundary 图均保留在 [desc](assets/qh_flow_zo_adam_29465/full_eval/desc/) 目录，但不用于宣称结果成功。
+![DESC QH components](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QH.png)
 
-原始产物：[full_summary.json](assets/qh_flow_zo_adam_29465/full_eval/full_summary.json)、[DESC summary](assets/qh_flow_zo_adam_29465/full_eval/desc/summary.json)、[选中 sweep summary](assets/qh_flow_zo_adam_29465/full_eval/sweep_a_0p12/summary.json)、[DESC input](assets/qh_flow_zo_adam_29465/full_eval/desc/input.check) 和 [equilibrium.h5](assets/qh_flow_zo_adam_29465/full_eval/desc/equilibrium.h5)。
+完整原始产物：[source $\psi$ summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/source_psi_a0p08/summary.json)、[$\psi$ model](assets/qh_flow_zo_adam_29465/alpha_nu_correct/source_psi_a0p08/psi_model.npz)、[full_summary.json](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/full_summary.json)、[DESC summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/summary.json)、[受保护外层面 summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20/guarded_rho_1/summary.json)、[$\alpha$ summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20/alpha/summary.json)、[$\nu$ summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20/alpha_nu/summary.json)、[DESC input](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/input.check) 和 [equilibrium.h5](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/equilibrium.h5)。最终 `boozer_guarded.npz` 的 SHA-256 为 `e278b25aaf0fe57142a0cd8cca6fc85b9cb709cdd06f4066bfbd2617b6f052f7`。
 
 ## 8. 耗时与资源
 
@@ -267,7 +283,9 @@ $\iota(\rho)$ 达到 $10^7$ 量级尖峰，QH 分量跨越几十个数量级，�
 
 GPU preflight 和 postflight 均为每卡 2 MiB、0% utilization。作业退出码为 0，结束后 Slurm 队列为空，没有遗留优化器或评分 worker 进程。
 
-完整物理验收的可复现有效阶段另外耗时：5 个 $a$ 的固定面扫描合计约 96.4 s；保存面可视化和 8 线庞加莱 34.6 s；CPU DESC 与出图 158.0 s；保存面完整作业总计 226.8 s。GPU DESC 预检在 35 s 内确认环境不可用并停止，没有静默回退占卡。
+修正后的物理验收计时与优化器本身分开。最终 `s=0.20` 单候选中，磁通标定 57.1 s，完整固定阶 $\alpha$ 147.1 s（其中 QR solve 7.03 s），三半径 $\nu$ 86.1 s；包含受保护 Newton、初始化和清理的 alpha+nu Slurm 墙钟为 5 min 11 s。开发阶段把 `s=0.12,0.20,0.24` 三个候选放在三张空闲 5090 上并行，三者在 5 min 10--20 s 内全部结束；`s=0.30` 的先导失败实验单独为 5 min 48 s。
+
+正确外层面的庞加莱与静态/HTML 可视化耗时 33.0 s。CPU DESC 阶段为 321.7 s，含导入、预检和写盘的完整保存面作业为 407.6 s，即 6 min 48 s。生产情况下已知 `a=0.08` 和候选层后，alpha+nu 与完整下游串行约 12 min；仍在《精简线圈评估流程》的 15 min 硬上限内，但尚未达到 5--8 min 目标。当前瓶颈依次是 CPU DESC、磁通标定和曲面重参数化，不是 QR。
 
 ## 9. 版本与可复现产物
 
@@ -296,13 +314,15 @@ flow checkpoint 为 30,000 step EMA，SHA-256：
 
 本轮满足“中等长度验证优化算法有效”的数值标准：总分和 QH 相关量持续改善；没有无效端点、先验逃逸、低 $\iota$ 或 native 磁面缩小；吞吐没有长尾；最佳解在最后一轮。
 
-但它没有满足“高分对应可用 QH 线圈”的物理标准。独立面搜索只找到小面，庞加莱和 DESC 均失败。因此当前最重要的问题已经从优化器转回 score：native 快速磁面/体 QS 为什么会给出 70.58，而独立场线追踪否决候选面。
+修正后的独立物理验收也通过：沿 $\alpha+\nu$ 路线找到体积 0.0286 $\mathrm{m}^3$、$\iota=2.383$ 的外层面；庞加莱显示有序嵌套；DESC 初始和最终都嵌套，最终平均归一化力误差为 $3.26\times10^{-3}$。因此先前“70.58 分样本只有小面、真实场线和 DESC 均失败”的结论完全由评估路线错误造成，不能保留。
 
-但仍有三条边界：
+这次结果证明的是：在这个起点和 80 轮预算下，潜空间零阶 Adam 能继续提高 score，并得到至少通过当前全链路物理验收的 QH 候选。它仍不能证明该方法总体优于 CEM，也不能证明当前 score 已不存在其他作弊方向。
 
-1. 这是单起点、单随机种子的局部精修，不证明从 flow 先验随机点启动时优于 CEM。
-2. 尚未对修正后的起点做同口径庞加莱，因此不能断言物理失败是 Adam 新造成的，还是原 CEM 起点本来就存在。当前只能确认最终样本不合格。
-3. 80 轮只覆盖 320 个随机方向投影。后半程仍有斜率，但在 score 有效性问题解决前，继续沿当前目标长跑没有意义。
-4. 本轮的 3 档回溯使每步为 11 次 score。若以后恢复长跑且有效率长期保持 100%，可在后期切成单 proposal，把每轮降到 9 次 score。
+仍有四条边界：
 
-因此下一步不应继续争论 RK4/Heun，也不应立即比较 9 小时 CEM/Adam。优先级应是：用同一最终线圈对齐 native 快速面、稳定 $\psi$ 等值面、LS/Newton 面和庞加莱起点，定位“快速面通过但真实场线不嵌套”的具体门槛；然后把廉价的场线闭合/漂移否决条件并入 score。只有高分样本稳定通过这一交叉验证后，才值得按相同 score 调用预算比较 CEM 与零阶 Adam。
+1. 这是单起点、单随机种子的局部精修，不代表从 flow 先验随机点启动时的总体成功率。
+2. 尚未按相同 score 调用次数与多个种子直接比较 CEM 和零阶 Adam。
+3. DESC 达到 50 次迭代上限，虽然力误差已过默认门槛，但没有做分辨率或迭代收敛研究。
+4. 三维线圈几何仍较复杂；现有 coil score 分项通过不等价于工程上已可制造，需要单独的工程约束审计。
+
+下一步应在保持 RK4 256 步和当前 score 不变的前提下，先做少量多种子中等长度复现，比较 CEM 与零阶 Adam 达到同一物理验收门槛所需的 score 调用数。长跑前还应把“下游正式验收只能使用 $\alpha+\nu$ 受保护外层面”的路径检查固化到产物 hash，防止再次发生本报告纠正的流程错误。

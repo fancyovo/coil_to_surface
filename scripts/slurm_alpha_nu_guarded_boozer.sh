@@ -22,6 +22,7 @@ project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
 s_edge=${S_EDGE:-0.25}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
+gpu_selector=${CUDA_VISIBLE_DEVICES:-}
 
 cleanup() {
     status=$?
@@ -31,8 +32,11 @@ cleanup() {
         kill "${children[@]}" 2>/dev/null || true
         wait "${children[@]}" 2>/dev/null || true
     fi
-    nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
-        --format=csv,noheader,nounits > "$OUTPUT_DIR/gpu_postflight.csv" 2>/dev/null || true
+    if [[ -n "$gpu_selector" ]]; then
+        nvidia-smi --id="$gpu_selector" \
+            --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
+            --format=csv,noheader,nounits > "$OUTPUT_DIR/gpu_postflight.csv" 2>/dev/null || true
+    fi
     exit "$status"
 }
 trap cleanup EXIT INT TERM
@@ -40,15 +44,18 @@ trap cleanup EXIT INT TERM
 cd "$project"
 mkdir -p "$OUTPUT_DIR"
 test -f "$gpu_lib"
+: "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 mapfile -t compute_processes < <(
-    nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits |
+    nvidia-smi --id="$gpu_selector" \
+        --query-compute-apps=pid --format=csv,noheader,nounits |
         sed '/^[[:space:]]*$/d'
 )
 if (( ${#compute_processes[@]} != 0 )); then
     printf 'the allocated GPU is not idle; compute PIDs: %s\n' "${compute_processes[*]}" >&2
     exit 42
 fi
-nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
+nvidia-smi --id="$gpu_selector" \
+    --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
     --format=csv,noheader,nounits > "$OUTPUT_DIR/gpu_preflight.csv"
 
 export CUDA_HOME=/public/app/cuda/13.0

@@ -29,6 +29,7 @@ test -f "$gpu_lib"
 test -f "$CASE_FILE"
 test -f "$RUN_DIR/psi_model.npz"
 mkdir -p "$candidate_root" "$project/logs"
+python3 "$project/evaluation/full_physical/preflight.py"
 
 manifest=$OUTPUT_ROOT/candidate_jobs.tsv
 printf 's_edge\tjob_id\toutput_dir\n' > "$manifest"
@@ -51,6 +52,7 @@ for edge in "${edges[@]}"; do
     if [[ $serial_candidates == 1 && -n $previous_job ]]; then
         submit_args+=(--dependency="afterany:$previous_job")
     fi
+    (cd "$project" && sbatch --test-only "${submit_args[@]:1}" scripts/slurm_alpha_nu_guarded_boozer.sh) >/dev/null
     job_id=$(cd "$project" && sbatch "${submit_args[@]}" scripts/slurm_alpha_nu_guarded_boozer.sh)
     job_id=${job_id%%;*}
     printf '%s\t%s\t%s\n' "$edge" "$job_id" "$output_dir" | tee -a "$manifest"

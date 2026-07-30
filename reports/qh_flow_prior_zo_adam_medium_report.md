@@ -324,6 +324,24 @@ GPU preflight 和 postflight 均为每卡 2 MiB、0% utilization。作业退出�
 
 因此，不能把本次作业描述成“alpha+nu 全程 GPU”。修正后的生产脚本已把 alpha 的场采样与 QR、nu 的训练/验证场采样和 guarded 线搜索的密集场验收切到 C++/CUDA 或 PyTorch CUDA FP32，并在各级 summary 中强制记录 backend；需要空间导数的 Boozer Newton、Simsopt 曲面拟合以及仅约 0.11 s/层的小型 nu 正交投影仍显式保留在 CPU。alpha+nu 的任务是提供稳定初值，最终是否可用仍由 $10^{-4}$ 物理 residual 门控，因此没有理由为这部分高吞吐计算固定使用 FP64。不能再用“申请了 GPU”掩盖 CPU 执行。
 
+生产默认改为 FP32 后，又在同一张空闲 RTX 5090 上用完整 12 万训练点、6 万验证点、三个 nu 半径和 `s=0.20` guarded 面做了端到端 smoke（Slurm job 29638），并与紧邻的全 GPU 场评估 FP64 smoke（job 29634）比较：
+
+| 指标 | FP64 | FP32 | 差异 |
+|---|---:|---:|---:|
+| alpha QR solve | 6.931 s | 1.911 s | -72.4% |
+| alpha 总时间 | 149.55 s | 148.03 s | -1.52 s |
+| alpha 验证 relative $L^2$ | 0.101695870 | 0.101695875 | $5.10\times10^{-9}$ |
+| $\min(1+\lambda_\theta)$ | 0.2031034 | 0.2031016 | $-1.75\times10^{-6}$ |
+| nu 总时间 | 78.96 s | 77.79 s | -1.18 s |
+| guarded final relative $L^2$ | $4.41968\times10^{-5}$ | $4.41974\times10^{-5}$ | $5.99\times10^{-10}$ |
+| guarded 法向场 P95 | $5.71167\times10^{-5}$ | $5.71595\times10^{-5}$ | $4.28\times10^{-8}$ |
+| guarded final $\iota$ | 2.382813686 | 2.382813685 | $5.20\times10^{-10}$ |
+| 最终 surface dofs 最大绝对差 |  |  | $7.68\times10^{-11}$ |
+| alpha+nu Slurm 墙钟 | 5 min 35 s | 5 min 00 s | -35 s |
+| 绝对门槛判定 | PASS | PASS | 不变 |
+
+FP32 没有改变可行面结论或坐标可逆性，且最终误差仍低于 $10^{-4}$ 门槛，因此作为初值链路的默认精度成立。QR 本身明显加速，但端到端只快 35 s，再次说明主要瓶颈是磁通标定和 CPU 曲面处理，而不是 QR。FP32 原始产物保存在 [fp32_smoke_s0p20](assets/qh_flow_zo_adam_29465/alpha_nu_correct/fp32_smoke_s0p20/)；其中 [alpha summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/fp32_smoke_s0p20/alpha/summary.json)、[nu summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/fp32_smoke_s0p20/alpha_nu/summary.json) 和 [guarded summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/fp32_smoke_s0p20/guarded_rho_1/summary.json) 均记录了逐阶段 backend 与精度。
+
 正确外层面的庞加莱与静态/HTML 可视化耗时 33.0 s。CPU DESC 阶段为 321.7 s，含导入、预检和写盘的完整保存面作业为 407.6 s，即 6 min 48 s。生产情况下已知 `a=0.08` 和候选层后，alpha+nu 与完整下游串行约 12 min；仍在《精简线圈评估流程》的 15 min 硬上限内，但尚未达到 5--8 min 目标。当前瓶颈依次是 CPU DESC、磁通标定和曲面重参数化，不是 QR。
 
 ## 9. 版本与可复现产物

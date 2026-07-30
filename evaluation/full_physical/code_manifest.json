@@ -3,6 +3,11 @@
   "entry_directory": "evaluation/full_physical",
   "stages": [
     {
+      "name": "code_preflight",
+      "entrypoint": "evaluation/full_physical/preflight.py",
+      "implementation": "evaluation/full_physical/code_manifest.json"
+    },
+    {
       "name": "surface_candidate_submission",
       "entrypoint": "evaluation/full_physical/submit_surface_candidates.sh",
       "implementation": "scripts/slurm_alpha_nu_guarded_boozer.sh"

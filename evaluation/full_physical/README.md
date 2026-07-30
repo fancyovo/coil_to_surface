@@ -11,6 +11,12 @@
 3. `submit_downstream.sh`：对选中的唯一 `boozer_guarded.npz` 运行庞加莱、Boozer 场图、三维 HTML 和 DESC。
 4. `validate_delivery.sh`：检查固定原始产物，并确认全部 DESC PNG 已在报告中逐张引用。
 
+两个提交入口会自动运行 `preflight.py` 和 `sbatch --test-only`。也可在提交前单独检查代码包：
+
+```bash
+python evaluation/full_physical/preflight.py
+```
+
 ## 代码清单
 
 完整机器可读清单见 `code_manifest.json`。主要实现为：

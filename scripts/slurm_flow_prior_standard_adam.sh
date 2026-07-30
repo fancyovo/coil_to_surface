@@ -17,7 +17,8 @@ set -euo pipefail
 project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
-lib="${SCORE_LIB:-$asset_root/gpu_backend/build_native_score/libstellarator_gpu.so}"
+lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
+expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427}"
 run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam/${SLURM_JOB_ID}}"
 iterations="${ITERATIONS:-60}"
 max_wall_s="${MAX_WALL_S:-1500}"
@@ -48,6 +49,7 @@ mkdir -p "$run_root"
 cd "$project"
 test -f "$checkpoint"
 test -f "$lib"
+test "$(sha256sum "$lib" | awk '{print $1}')" = "$expected_lib_sha"
 initial_args=()
 if [[ -n "$initial_case" ]]; then
   test -f "$initial_case"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 import csv
+from functools import wraps
 import hashlib
 import json
 import math
@@ -12,7 +13,6 @@ import time
 from typing import Any
 
 import numpy as np
-import torch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -20,13 +20,6 @@ GPU_PYTHON = REPO_ROOT / "gpu_backend" / "python"
 for path in (REPO_ROOT, GPU_PYTHON):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
-
-from flow_matching.data import CoilNormalizer
-from flow_matching.flow import integrate_flow
-from flow_matching.model import CoilFlowTransformer
-from scripts.optimize_native_score_cem import token_case
-from scripts.qh_score_noise_sensitivity import find_sources, perturbation_metrics
-
 
 DEFAULT_IDS = (1446077, 1826200, 2419096)
 _POSITIVE_ALPHAS = (
@@ -49,6 +42,17 @@ _POSITIVE_ALPHAS = (
 DEFAULT_ALPHAS = tuple(-value for value in reversed(_POSITIVE_ALPHAS)) + (
     0.0,
 ) + _POSITIVE_ALPHAS
+
+
+def torch_no_grad(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        import torch
+
+        with torch.no_grad():
+            return function(*args, **kwargs)
+
+    return wrapped
 
 
 def parse_ints(value: str) -> tuple[int, ...]:
@@ -257,6 +261,8 @@ def make_point(
     alpha: float | None = None,
     normalized_delta_rms: float | None = None,
 ) -> dict[str, Any]:
+    from scripts.qh_score_noise_sensitivity import perturbation_metrics
+
     return {
         "point_id": -1,
         "case_id": registry.register(tokens, nfp),
@@ -270,8 +276,15 @@ def make_point(
     }
 
 
-@torch.no_grad()
+@torch_no_grad
 def prepare_cases(args: argparse.Namespace) -> None:
+    import torch
+
+    from flow_matching.data import CoilNormalizer
+    from flow_matching.flow import integrate_flow
+    from flow_matching.model import CoilFlowTransformer
+    from scripts.qh_score_noise_sensitivity import find_sources, perturbation_metrics
+
     if not torch.cuda.is_available():
         raise RuntimeError("flow landscape preparation requires CUDA")
     source_ids = parse_ints(args.source_ids)
@@ -593,6 +606,7 @@ def prepare_cases(args: argparse.Namespace) -> None:
 
 def score_partition(args: argparse.Namespace) -> None:
     from stellarator_gpu import score_coils_native
+    from scripts.optimize_native_score_cem import token_case
 
     cases = [
         row

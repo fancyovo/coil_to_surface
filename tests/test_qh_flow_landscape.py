@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+import subprocess
+import sys
+
 import numpy as np
 
 from scripts.qh_flow_landscape import (
@@ -60,3 +64,20 @@ def test_curve_roughness_is_zero_for_linear_curve_on_nonuniform_grid():
     alphas = np.asarray([-0.2, -0.03, -0.001, 0.0, 0.007, 0.08, 0.2])
     roughness = curve_roughness(alphas, 3.0 * alphas + 2.0)
     assert roughness["second_derivative_rms"] < 1.0e-10
+
+
+def test_landscape_analysis_import_does_not_load_torch():
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import scripts.qh_flow_landscape; "
+            "assert 'torch' not in sys.modules",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

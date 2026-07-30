@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-cd /home/scc/pb24511935/local_surface_evaluator
+project="${PROJECT:-$HOME/local_surface_evaluator}"
+cd "$project"
 module load cuda/13.0 2>/dev/null || true
 export CUDA_HOME=/public/app/cuda/13.0
 export CUDACXX="$CUDA_HOME/bin/nvcc"

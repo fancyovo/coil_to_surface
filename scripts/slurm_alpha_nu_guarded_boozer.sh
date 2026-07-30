@@ -18,7 +18,7 @@ set -euo pipefail
 : "${RUN_DIR:?RUN_DIR is required}"
 : "${OUTPUT_DIR:?OUTPUT_DIR is required}"
 
-project=/home/scc/pb24511935/local_surface_evaluator
+project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
 s_edge=${S_EDGE:-0.25}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
 
@@ -69,10 +69,11 @@ python3 "$project/scripts/alpha_clebsch_ls_experiment.py" \
     --case-file "$CASE_FILE" \
     --s-edge "$s_edge" \
     --out-dir "$alpha_dir" \
-    --orders 6:6:6,8:8:8,10:10:12,12:12:16 \
+    --orders 12:12:16 \
     --iota-degree 0 \
     --train-points 120000 \
-    --validation-points 60000
+    --validation-points 60000 \
+    --skip-fieldline-plot
 
 cd /
 python3 "$project/scripts/diagnose_alpha_toroidal_correction.py" \
@@ -82,28 +83,14 @@ python3 "$project/scripts/diagnose_alpha_toroidal_correction.py" \
     --alpha-fit alpha_fit_L12_M12_N16.npz \
     --output-dir "$nu_dir" \
     --s-edge "$s_edge" \
-    --rho-values 0.12,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0 \
-    --nu-orders 4,8,12 \
+    --rho-values 0.5,0.8,1.0 \
+    --nu-orders 12 \
     --surface-order 12 \
     --save-surfaces
 
-for rho in 0p5 0p8 1; do
-    cd /
-    python3 "$project/scripts/guarded_boozer_from_alpha_nu.py" \
-        --case-file "$CASE_FILE" \
-        --run-dir "$RUN_DIR" \
-        --surface-npz "$nu_dir/surfaces/rho_${rho}_alpha_nu.npz" \
-        --output-dir "$OUTPUT_DIR/guarded_rho_${rho}"
-done
-
 cd /
-python3 "$project/scripts/plot_poincare_validation.py" \
+python3 "$project/scripts/guarded_boozer_from_alpha_nu.py" \
     --case-file "$CASE_FILE" \
-    --surface-npz "$OUTPUT_DIR/guarded_rho_1/boozer_guarded.npz" \
-    --output "$OUTPUT_DIR/poincare_guarded_boozer_rho1.png" \
-    --mpol 12 \
-    --ntor 12 \
-    --nfieldlines 16 \
-    --marker-size 5 \
-    --tol 1e-11 \
-    > "$OUTPUT_DIR/poincare_guarded_boozer_rho1.log"
+    --run-dir "$RUN_DIR" \
+    --surface-npz "$nu_dir/surfaces/rho_1_alpha_nu.npz" \
+    --output-dir "$OUTPUT_DIR/guarded_rho_1"

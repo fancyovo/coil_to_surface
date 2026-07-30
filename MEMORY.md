@@ -56,8 +56,14 @@ remain the detailed evidence; this file records the conclusions and pointers.
   at most four GPUs are occupied at once.
 - `29708` uses corrected score library SHA-256
   `0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427`.
-  Its observed initial score is `69.12277679724532`; the first updated score is
-  `69.18960066482659`. These are intermediate, not final, values.
+  Its observed initial score is `69.12277679724532`. At the latest lightweight
+  check it had reached iteration 142 after 56 minutes, with current/best score
+  `71.00164650219094`, QH error `0.2670273497524001`, $\iota=2.293895483$,
+  and valid endpoint fraction 1.0. These are intermediate, not final, values.
+- `29726`: COMPLETED with exit code 0 in 1 minute 23 seconds. This CPU-only
+  maintenance job re-rendered the most recent direct and DESC Boozer $|B|$
+  figures as white-background colored contour lines without rerunning the
+  surface or DESC solves. Direct data remained 0.611158548--0.731218674 T.
 
 ## 3. Durable User Requirements
 
@@ -427,6 +433,10 @@ new physics.
 - Standardized direct Boozer and DESC $|B|$ outputs as white-background colored
   contour lines; heatmaps and filled contours are no longer accepted for these
   report figures.
+- Re-rendered the latest full-evaluation report assets with Slurm job `29726`.
+  Direct PNG SHA-256 is `463adeae6983d12f9f9af8092b4a5f934a434e6a812957dbbf473bb0d1611495`;
+  DESC PNG SHA-256 is `eb4ecce0eb3c119274688c29a322514c43a056236f975e59b27debcce56bda5d`.
+  `validate_delivery.sh` passed and found all eight successful DESC PNGs cited.
 - Made `REMOTE_CODEX_INSTRUCTIONS.md` a required pre-read before every remote
   connection attempt. Corrected its stale `ustc107-jump` alias to the current
   `ustc107`; the WSL master connection, `pb24511935` identity, and `tradmin-02`

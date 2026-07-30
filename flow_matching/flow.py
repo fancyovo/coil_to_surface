@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import torch
 
 
@@ -131,3 +133,74 @@ def sample_heun(
             next_velocity = model(predicted, next_time, nfp, mask)
             state = state + 0.5 * dt * (velocity + next_velocity)
     return state
+
+
+@torch.no_grad()
+def integrate_flow(
+    model,
+    state: torch.Tensor,
+    nfp: torch.Tensor,
+    *,
+    start_time: float = 0.0,
+    end_time: float = 1.0,
+    steps: int = 32,
+    method: Literal["heun", "rk4"] = "rk4",
+    mask: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Integrate the learned flow ODE in either time direction."""
+    if steps < 1:
+        raise ValueError("steps must be positive")
+    if end_time == start_time:
+        raise ValueError("start_time and end_time must differ")
+    if method not in ("heun", "rk4"):
+        raise ValueError(f"unsupported integration method {method!r}")
+    if state.ndim != 3 or nfp.shape != (state.shape[0],):
+        raise ValueError("state and nfp batch dimensions must match")
+
+    value = state
+    dt = (float(end_time) - float(start_time)) / steps
+
+    def velocity(at: torch.Tensor, time_value: float) -> torch.Tensor:
+        time = torch.full(
+            (at.shape[0],),
+            time_value,
+            device=at.device,
+            dtype=torch.float32,
+        )
+        return model(at, time, nfp, mask)
+
+    for index in range(steps):
+        time_value = float(start_time) + index * dt
+        k1 = velocity(value, time_value)
+        if method == "heun":
+            predicted = value + dt * k1
+            k2 = velocity(predicted, time_value + dt)
+            value = value + 0.5 * dt * (k1 + k2)
+        else:
+            k2 = velocity(value + 0.5 * dt * k1, time_value + 0.5 * dt)
+            k3 = velocity(value + 0.5 * dt * k2, time_value + 0.5 * dt)
+            k4 = velocity(value + dt * k3, time_value + dt)
+            value = value + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        if mask is not None:
+            value = value * mask[..., None]
+    return value
+
+
+def sample_rk4(
+    model,
+    noise: torch.Tensor,
+    nfp: torch.Tensor,
+    *,
+    steps: int = 32,
+    mask: torch.Tensor | None = None,
+) -> torch.Tensor:
+    return integrate_flow(
+        model,
+        noise,
+        nfp,
+        start_time=0.0,
+        end_time=1.0,
+        steps=steps,
+        method="rk4",
+        mask=mask,
+    )

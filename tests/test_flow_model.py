@@ -5,9 +5,11 @@ import torch
 from flow_matching.flow import (
     flow_matching_batch,
     flow_matching_loss,
+    integrate_flow,
     physical_flow_feature_weights,
     physical_flow_loss_components,
     sample_heun,
+    sample_rk4,
 )
 from flow_matching.model import CoilFlowTransformer
 
@@ -92,3 +94,55 @@ def test_physical_loss_components_share_one_definition():
     torch.testing.assert_close(
         current, flow_matching_loss(prediction[..., -1:], target[..., -1:])
     )
+
+
+class TimeDependentVelocity(torch.nn.Module):
+    def forward(self, state, time, nfp, mask=None):
+        del nfp
+        velocity = (1.0 + time[:, None, None]) * torch.ones_like(state)
+        return velocity if mask is None else velocity * mask[..., None]
+
+
+def test_rk4_integrates_in_both_directions_and_closes():
+    model = TimeDependentVelocity()
+    initial = torch.randn(2, 3, 100)
+    nfp = torch.tensor([3, 4])
+    final = sample_rk4(model, initial, nfp, steps=4)
+    torch.testing.assert_close(final, initial + 1.5, rtol=0.0, atol=2.0e-6)
+    recovered = integrate_flow(
+        model, final, nfp, start_time=1.0, end_time=0.0, steps=4, method="rk4"
+    )
+    torch.testing.assert_close(recovered, initial, rtol=0.0, atol=2.0e-6)
+
+
+def test_bidirectional_integrator_respects_mask():
+    model = TimeDependentVelocity()
+    initial = torch.zeros(2, 3, 100)
+    mask = torch.tensor([[True, True, False], [True, False, False]])
+    result = integrate_flow(
+        model,
+        initial,
+        torch.tensor([3, 4]),
+        steps=2,
+        method="heun",
+        mask=mask,
+    )
+    torch.testing.assert_close(result[mask], torch.full_like(result[mask], 1.5))
+    assert torch.count_nonzero(result[~mask]) == 0
+
+
+def test_bidirectional_integrator_rejects_invalid_arguments():
+    model = TimeDependentVelocity()
+    initial = torch.zeros(1, 2, 100)
+    nfp = torch.tensor([4])
+    for kwargs in (
+        {"steps": 0},
+        {"start_time": 0.5, "end_time": 0.5},
+        {"method": "euler"},
+    ):
+        try:
+            integrate_flow(model, initial, nfp, **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"expected ValueError for {kwargs}")

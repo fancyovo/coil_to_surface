@@ -56,7 +56,7 @@ def test_first_drop_radius_uses_physical_displacement_at_crossing():
     np.testing.assert_allclose(radius["mean"], 0.0125)
 
 
-def test_curve_roughness_is_zero_for_linear_curve():
-    alphas = np.linspace(-0.2, 0.2, 9)
+def test_curve_roughness_is_zero_for_linear_curve_on_nonuniform_grid():
+    alphas = np.asarray([-0.2, -0.03, -0.001, 0.0, 0.007, 0.08, 0.2])
     roughness = curve_roughness(alphas, 3.0 * alphas + 2.0)
-    assert roughness["second_difference_rms"] < 1.0e-12
+    assert roughness["second_derivative_rms"] < 1.0e-10

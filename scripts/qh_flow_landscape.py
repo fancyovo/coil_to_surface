@@ -29,7 +29,26 @@ from scripts.qh_score_noise_sensitivity import find_sources, perturbation_metric
 
 
 DEFAULT_IDS = (1446077, 1826200, 2419096)
-DEFAULT_ALPHAS = tuple(np.linspace(-0.24, 0.24, 33))
+_POSITIVE_ALPHAS = (
+    0.001,
+    0.002,
+    0.004,
+    0.006,
+    0.009,
+    0.012,
+    0.018,
+    0.024,
+    0.03,
+    0.045,
+    0.06,
+    0.09,
+    0.12,
+    0.18,
+    0.24,
+)
+DEFAULT_ALPHAS = tuple(-value for value in reversed(_POSITIVE_ALPHAS)) + (
+    0.0,
+) + _POSITIVE_ALPHAS
 
 
 def parse_ints(value: str) -> tuple[int, ...]:
@@ -183,14 +202,19 @@ def curve_roughness(alphas: np.ndarray, scores: np.ndarray) -> dict[str, float]:
     order = np.argsort(alphas)
     x = np.asarray(alphas, dtype=np.float64)[order]
     y = np.asarray(scores, dtype=np.float64)[order]
-    if len(x) < 3 or not np.allclose(np.diff(x), np.diff(x)[0], rtol=1.0e-5):
-        raise ValueError("roughness requires at least three uniformly spaced points")
+    if len(x) < 3 or np.any(np.diff(x) <= 0.0):
+        raise ValueError("roughness requires at least three distinct ordered points")
     adjacent = np.diff(y)
-    second = np.diff(y, n=2)
+    intervals = np.diff(x)
+    slopes = adjacent / intervals
+    second = 2.0 * np.diff(slopes) / (intervals[:-1] + intervals[1:])
+    second_weights = 0.5 * (intervals[:-1] + intervals[1:])
     return {
         "total_variation": float(np.sum(np.abs(adjacent))),
         "max_adjacent_jump": float(np.max(np.abs(adjacent))),
-        "second_difference_rms": float(np.sqrt(np.mean(second * second))),
+        "second_derivative_rms": float(
+            np.sqrt(np.average(second * second, weights=second_weights))
+        ),
     }
 
 
@@ -256,8 +280,8 @@ def prepare_cases(args: argparse.Namespace) -> None:
         raise ValueError("at least one source and three alpha values are required")
     if np.count_nonzero(np.isclose(alphas, 0.0, atol=1.0e-12)) != 1:
         raise ValueError("alphas must contain exactly one zero")
-    if not np.allclose(np.diff(np.sort(alphas)), np.diff(np.sort(alphas))[0]):
-        raise ValueError("alphas must be uniformly spaced")
+    if len(np.unique(alphas)) != len(alphas):
+        raise ValueError("alphas must be unique")
     closure_steps = parse_ints(args.closure_steps)
     if (
         not closure_steps
@@ -829,8 +853,8 @@ def analyze(args: argparse.Namespace) -> None:
                     )
                 for roughness_name in (
                     "total_variation",
-                    "max_adjacent_jump",
-                    "second_difference_rms",
+                "max_adjacent_jump",
+                "second_derivative_rms",
                 ):
                     direct = float(paired[comparator]["roughness"][roughness_name])
                     latent = float(paired["latent"]["roughness"][roughness_name])
@@ -893,7 +917,7 @@ def analyze(args: argparse.Namespace) -> None:
     roughness_names = (
         "total_variation",
         "max_adjacent_jump",
-        "second_difference_rms",
+        "second_derivative_rms",
     )
     roughness_ratios = {
         comparator: {

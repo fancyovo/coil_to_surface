@@ -276,7 +276,12 @@ def plot_poincare_from_dofs(
             cross_section = surface.cross_section(phi=phi / (2 * np.pi))
             r_interp = np.sqrt(cross_section[:, 0] ** 2 + cross_section[:, 1] ** 2)
             z_interp = cross_section[:, 2]
-            ax.plot(r_interp, z_interp, linewidth=1, c="k")
+            ax.plot(
+                np.r_[r_interp, r_interp[0]],
+                np.r_[z_interp, z_interp[0]],
+                linewidth=1,
+                c="k",
+            )
     for i in range(len(phis), nrowcol * nrowcol):
         axs[i // nrowcol, i % nrowcol].axis("off")
     plt.tight_layout()

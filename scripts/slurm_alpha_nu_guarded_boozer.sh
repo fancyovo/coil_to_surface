@@ -21,6 +21,7 @@ set -euo pipefail
 project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
 s_edge=${S_EDGE:-0.25}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
+gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 
 cleanup() {
     status=$?
@@ -38,6 +39,7 @@ trap cleanup EXIT INT TERM
 
 cd "$project"
 mkdir -p "$OUTPUT_DIR"
+test -f "$gpu_lib"
 mapfile -t compute_processes < <(
     nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits |
         sed '/^[[:space:]]*$/d'
@@ -73,6 +75,7 @@ python3 "$project/scripts/alpha_clebsch_ls_experiment.py" \
     --iota-degree 0 \
     --train-points 120000 \
     --validation-points 60000 \
+    --gpu-lib "$gpu_lib" \
     --skip-fieldline-plot
 
 cd /

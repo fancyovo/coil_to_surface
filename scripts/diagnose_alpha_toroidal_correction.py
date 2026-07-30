@@ -379,6 +379,8 @@ def main() -> None:
     if args.save_surfaces:
         surface_dir.mkdir()
     for rho in rho_values:
+        rho_started = time.perf_counter()
+        stage_started = time.perf_counter()
         xyz, radii, extraction = surface_points_from_level_gpu(
             model,
             s_edge * rho * rho,
@@ -386,20 +388,35 @@ def main() -> None:
             scan_cfg,
             boozer_cfg,
         )
+        rho_timings = {
+            "surface_extraction_s": float(time.perf_counter() - stage_started)
+        }
+        stage_started = time.perf_counter()
         parameterized, alpha_transform = reparameterize_surface(
             xyz, float(rho), nfp, alpha_fit, "alpha_clockwise"
         )
+        rho_timings["alpha_reparameterization_s"] = float(
+            time.perf_counter() - stage_started
+        )
+        stage_started = time.perf_counter()
         alpha_surface, alpha_projection = fit_tensor_surface(
             parameterized,
             nfp,
             args.surface_order,
             bool(boozer_cfg.stellsym),
         )
+        rho_timings["alpha_surface_fit_s"] = float(
+            time.perf_counter() - stage_started
+        )
         iota = float(alpha_fit.iota(np.asarray([rho]))[0])
         training = sampled_surface(
             alpha_surface, nphi=args.fit_nphi, ntheta=args.fit_ntheta
         )
+        stage_started = time.perf_counter()
         training_data = surface_field_data(training, field, iota)
+        rho_timings["training_field_s"] = float(
+            time.perf_counter() - stage_started
+        )
         G = float(np.mean(training_data["local_G"]))
         surface_stem = f"rho_{rho:.6g}".replace(".", "p")
         if args.save_surfaces:
@@ -429,16 +446,26 @@ def main() -> None:
             phi_shift=0.371,
             theta_shift=0.413,
         )
+        stage_started = time.perf_counter()
         validation_data = surface_field_data(validation, field, iota)
+        rho_timings["validation_field_s"] = float(
+            time.perf_counter() - stage_started
+        )
         validation_phi = (
             np.arange(args.validation_nphi)[:, None] + 0.371
         ) / (nfp * args.validation_nphi)
         validation_theta = (
             np.arange(args.validation_ntheta)[None, :] + 0.413
         ) / args.validation_ntheta
+        stage_started = time.perf_counter()
         before = residual_for_iota_G(validation, field, iota=iota, G=G)
+        rho_timings["before_residual_s"] = float(
+            time.perf_counter() - stage_started
+        )
 
         for nu_order in nu_orders:
+            order_started = time.perf_counter()
+            stage_started = time.perf_counter()
             correction = fit_toroidal_correction(
                 train_theta,
                 train_phi,
@@ -449,12 +476,20 @@ def main() -> None:
                 ntor=nu_order,
                 regularization=args.regularization,
             )
+            order_timings = {
+                "nu_fit_s": float(time.perf_counter() - stage_started)
+            }
+            stage_started = time.perf_counter()
             nu_validation, _, _, along_field = evaluate_toroidal_correction(
                 correction, validation_theta, validation_phi
             )
             analytic = scalar_residual_metrics(
                 validation_data, G=G, scale=1.0 + along_field
             )
+            order_timings["analytic_validation_s"] = float(
+                time.perf_counter() - stage_started
+            )
+            stage_started = time.perf_counter()
             corrected, mapping = corrected_surface(
                 alpha_surface,
                 correction,
@@ -463,6 +498,9 @@ def main() -> None:
                 ntheta=args.fit_ntheta,
                 interpolation_size=args.interpolation_size,
             )
+            order_timings["corrected_surface_s"] = float(
+                time.perf_counter() - stage_started
+            )
             corrected_validation = sampled_surface(
                 corrected,
                 nphi=args.validation_nphi,
@@ -470,9 +508,14 @@ def main() -> None:
                 phi_shift=0.371,
                 theta_shift=0.413,
             )
+            stage_started = time.perf_counter()
             simsopt_corrected = residual_for_iota_G(
                 corrected_validation, field, iota=iota, G=G
             )
+            order_timings["corrected_residual_s"] = float(
+                time.perf_counter() - stage_started
+            )
+            order_timings["total_s"] = float(time.perf_counter() - order_started)
             if args.save_surfaces and nu_order == selected_order:
                 corrected_path = surface_dir / f"{surface_stem}_alpha_nu.npz"
                 np.savez(
@@ -524,6 +567,9 @@ def main() -> None:
                     "analytic_corrected": analytic,
                     "mapping_and_projection": mapping,
                     "simsopt_corrected": simsopt_corrected,
+                    "rho_shared_timings": rho_timings,
+                    "order_timings": order_timings,
+                    "rho_elapsed_s": float(time.perf_counter() - rho_started),
                 }
             )
 

@@ -11,6 +11,7 @@ import shutil
 import sys
 import time
 import traceback
+import types
 from typing import Any
 
 import numpy as np
@@ -41,6 +42,22 @@ def select_largest_surface(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, allow_nan=True), encoding="utf-8")
+
+
+def install_headless_tkinter_stub() -> None:
+    try:
+        import tkinter  # noqa: F401
+    except ModuleNotFoundError:
+        module = types.ModuleType("tkinter")
+
+        class HeadlessTk:
+            def winfo_fpixels(self, value: str) -> float:
+                del value
+                return 72.0
+
+        module.Tk = HeadlessTk
+        module._tkinter = types.SimpleNamespace(TclError=RuntimeError)
+        sys.modules["tkinter"] = module
 
 
 def surface_path(run_dir: Path, summary: dict[str, Any]) -> Path:
@@ -327,6 +344,7 @@ def run_desc_boundary_solve(
     import matplotlib
 
     matplotlib.use("Agg", force=True)
+    install_headless_tkinter_stub()
 
     from desc.geometry import FourierRZToroidalSurface
     from desc.plotting import (

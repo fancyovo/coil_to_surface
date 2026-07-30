@@ -42,6 +42,10 @@ from scripts.desc_psi_volume_initial_guess_experiment import load_field_input, l
 TWOPI = 2.0 * np.pi
 
 
+def resolve_project_path(path: Path, root: Path = ROOT) -> Path:
+    return path.resolve() if path.is_absolute() else (root / path).resolve()
+
+
 def parse_orders(text: str) -> list[tuple[int, int, int]]:
     orders = []
     for item in text.split(","):
@@ -281,6 +285,11 @@ def main() -> None:
     parser.add_argument("--rho-min", type=float, default=0.06)
     parser.add_argument("--relative-weighting", action="store_true")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument(
+        "--gpu-lib",
+        type=Path,
+        default=Path("gpu_backend/build_mixed/libstellarator_gpu.so"),
+    )
     parser.add_argument("--skip-fieldline-plot", action="store_true")
     args = parser.parse_args()
 
@@ -290,7 +299,7 @@ def main() -> None:
     field_input = load_field_input(args.case_file, args.case_key)
     psi_cfg = PsiFitConfig(
         backend="gpu",
-        gpu_lib_path="gpu_backend/build_mixed/libstellarator_gpu.so",
+        gpu_lib_path=str(resolve_project_path(args.gpu_lib)),
         gpu_device=0,
         gpu_segments_per_coil=256,
     )

@@ -322,7 +322,7 @@ GPU preflight 和 postflight 均为每卡 2 MiB、0% utilization。作业退出�
 | guarded Boozer Newton 与密集验收 | Simsopt | 未单独完整拆分 | CPU |
 | DESC | JAX CPU，16 核 | 321.7 s | 显式 CPU 作业，没有占 GPU |
 
-因此，不能把本次作业描述成“alpha+nu 全程 GPU”。修正后的生产脚本已把 nu 的训练/验证场采样和 guarded 线搜索的密集场验收切到 C++/CUDA FP64，并在各级 summary 中强制记录 backend；需要空间导数的 Boozer Newton、Simsopt 曲面拟合以及仅约 0.11 s/层的小型 nu 正交投影仍显式保留在 CPU。后两者的 GPU 化应按实测收益排序，不能用“申请了 GPU”掩盖 CPU 执行。
+因此，不能把本次作业描述成“alpha+nu 全程 GPU”。修正后的生产脚本已把 alpha 的场采样与 QR、nu 的训练/验证场采样和 guarded 线搜索的密集场验收切到 C++/CUDA 或 PyTorch CUDA FP32，并在各级 summary 中强制记录 backend；需要空间导数的 Boozer Newton、Simsopt 曲面拟合以及仅约 0.11 s/层的小型 nu 正交投影仍显式保留在 CPU。alpha+nu 的任务是提供稳定初值，最终是否可用仍由 $10^{-4}$ 物理 residual 门控，因此没有理由为这部分高吞吐计算固定使用 FP64。不能再用“申请了 GPU”掩盖 CPU 执行。
 
 正确外层面的庞加莱与静态/HTML 可视化耗时 33.0 s。CPU DESC 阶段为 321.7 s，含导入、预检和写盘的完整保存面作业为 407.6 s，即 6 min 48 s。生产情况下已知 `a=0.08` 和候选层后，alpha+nu 与完整下游串行约 12 min；仍在《精简线圈评估流程》的 15 min 硬上限内，但尚未达到 5--8 min 目标。当前瓶颈依次是 CPU DESC、磁通标定和曲面重参数化，不是 QR。
 

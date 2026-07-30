@@ -82,6 +82,7 @@ python3 "$project/scripts/alpha_clebsch_ls_experiment.py" \
     --iota-degree 0 \
     --train-points 120000 \
     --validation-points 60000 \
+    --precision fp32 \
     --gpu-lib "$gpu_lib" \
     --skip-fieldline-plot
 
@@ -98,7 +99,7 @@ python3 "$project/scripts/diagnose_alpha_toroidal_correction.py" \
     --surface-order 12 \
     --gpu-lib "$gpu_lib" \
     --gpu-device 0 \
-    --field-precision fp64 \
+    --field-precision fp32 \
     --save-surfaces
 
 cd /
@@ -109,4 +110,4 @@ python3 "$project/scripts/guarded_boozer_from_alpha_nu.py" \
     --output-dir "$OUTPUT_DIR/guarded_rho_1" \
     --gpu-lib "$gpu_lib" \
     --gpu-device 0 \
-    --validation-field-precision fp64
+    --validation-field-precision fp32

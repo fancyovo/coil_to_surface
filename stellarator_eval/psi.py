@@ -244,14 +244,14 @@ def _make_training_points(axis, nfp: int, cfg: PsiFitConfig):
     return ra + dr[keep], za + dz[keep], phi[keep]
 
 
-def _b_components_gpu(gpu_field, r, z, phi):
+def _b_components_gpu(gpu_field, r, z, phi, *, precision: str = "fp64"):
     r = np.asarray(r, dtype=float)
     z = np.asarray(z, dtype=float)
     phi = np.asarray(phi, dtype=float)
     cp = np.cos(phi)
     sp = np.sin(phi)
     xyz = np.ascontiguousarray(np.column_stack([r * cp, r * sp, z]))
-    b = gpu_field.eval_B(xyz)
+    b = gpu_field.eval_B(xyz, precision=precision)
     br = b[:, 0] * cp + b[:, 1] * sp
     bphi = -b[:, 0] * sp + b[:, 1] * cp
     bz = b[:, 2]

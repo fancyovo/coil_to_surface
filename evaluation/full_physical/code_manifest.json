@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "entry_directory": "evaluation/full_physical",
+  "stages": [
+    {
+      "name": "surface_candidate_submission",
+      "entrypoint": "evaluation/full_physical/submit_surface_candidates.sh",
+      "implementation": "scripts/slurm_alpha_nu_guarded_boozer.sh"
+    },
+    {
+      "name": "alpha",
+      "entrypoint": "scripts/alpha_clebsch_ls_experiment.py",
+      "implementation": "stellarator_eval/alpha_clebsch.py"
+    },
+    {
+      "name": "nu",
+      "entrypoint": "scripts/diagnose_alpha_toroidal_correction.py",
+      "implementation": "stellarator_eval/toroidal_correction.py"
+    },
+    {
+      "name": "guarded_boozer",
+      "entrypoint": "scripts/guarded_boozer_from_alpha_nu.py",
+      "implementation": "scripts/diagnose_alpha_boozer_residual.py"
+    },
+    {
+      "name": "surface_selection",
+      "entrypoint": "evaluation/full_physical/select_largest_guarded_surface.py"
+    },
+    {
+      "name": "downstream_submission",
+      "entrypoint": "evaluation/full_physical/submit_downstream.sh",
+      "implementations": [
+        "scripts/slurm_evaluate_saved_boozer_full.sh",
+        "scripts/slurm_evaluate_saved_boozer_full_cpu.sh",
+        "scripts/evaluate_saved_boozer_surface_full.py"
+      ]
+    },
+    {
+      "name": "delivery_validation",
+      "entrypoint": "evaluation/full_physical/validate_delivery.sh",
+      "implementation": "scripts/validate_desc_report_artifacts.py"
+    }
+  ]
+}

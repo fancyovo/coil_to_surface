@@ -496,15 +496,18 @@ def fit_alpha_gpu_qr(
     iota_degree: int = 3,
     relative_weighting: bool = False,
     device: str = "cuda",
+    precision: str = "fp32",
 ) -> AlphaFitResult:
-    """Solve the unconstrained dense Clebsch fit with a GPU FP64 QR factorization."""
+    """Solve the unconstrained dense Clebsch fit with a GPU QR factorization."""
     import torch
 
     t0 = time.perf_counter()
+    if precision not in {"fp32", "fp64"}:
+        raise ValueError("precision must be 'fp32' or 'fp64'")
     modes = build_clebsch_modes(radial_order, poloidal_order, toroidal_order)
     B = np.asarray(B, dtype=float)
     count = len(B)
-    dtype = torch.float64
+    dtype = torch.float32 if precision == "fp32" else torch.float64
     rho = torch.as_tensor(coordinates["rho"], dtype=dtype, device=device)
     theta = torch.as_tensor(coordinates["theta"], dtype=dtype, device=device)
     phi = torch.as_tensor(coordinates["phi"], dtype=dtype, device=device)
@@ -568,7 +571,7 @@ def fit_alpha_gpu_qr(
         "solve_s": float(solve_s),
         "total_s": float(time.perf_counter() - t0),
         "solver": "torch.linalg.lstsq(gels)",
-        "precision": "fp64",
+        "precision": precision,
         "relative_weighting": bool(relative_weighting),
         "weighted_residual_rms": float(torch.sqrt(torch.mean(weighted_residual**2)).item()),
         "column_scale_min": float(torch.min(column_scale).item()),

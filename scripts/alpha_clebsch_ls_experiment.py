@@ -56,8 +56,10 @@ def parse_orders(text: str) -> list[tuple[int, int, int]]:
     return orders
 
 
-def sample_bfield(gpu_field, R, Z, phi) -> np.ndarray:
-    br, bphi, bz = _b_components_gpu(gpu_field, R, Z, phi)
+def sample_bfield(gpu_field, R, Z, phi, *, precision: str) -> np.ndarray:
+    br, bphi, bz = _b_components_gpu(
+        gpu_field, R, Z, phi, precision=precision
+    )
     return np.column_stack([br, bphi, bz])
 
 
@@ -285,6 +287,7 @@ def main() -> None:
     parser.add_argument("--rho-min", type=float, default=0.06)
     parser.add_argument("--relative-weighting", action="store_true")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--precision", choices=("fp32", "fp64"), default="fp32")
     parser.add_argument(
         "--gpu-lib",
         type=Path,
@@ -307,7 +310,9 @@ def main() -> None:
 
     gpu_field = _make_gpu_field(field_input, model.nfp, psi_cfg, args.current_unit)
     try:
-        b_sampler = lambda r, z, p: _b_components_gpu(gpu_field, r, z, p)
+        b_sampler = lambda r, z, p: _b_components_gpu(
+            gpu_field, r, z, p, precision=args.precision
+        )
         calibration_levels = args.s_edge * np.asarray(
             [0.015625, 0.03125, 0.0625, 0.10, 0.16, 0.25, 0.36, 0.49, 0.64, 0.81, 1.0]
         )
@@ -351,8 +356,16 @@ def main() -> None:
         )
         train_coordinates = physical_coordinate_data(model, calibration, *train)
         validation_coordinates = physical_coordinate_data(model, calibration, *validation)
-        train_B = sample_bfield(gpu_field, train[0], train[1], train[2])
-        validation_B = sample_bfield(gpu_field, validation[0], validation[1], validation[2])
+        train_B = sample_bfield(
+            gpu_field, train[0], train[1], train[2], precision=args.precision
+        )
+        validation_B = sample_bfield(
+            gpu_field,
+            validation[0],
+            validation[1],
+            validation[2],
+            precision=args.precision,
+        )
 
         baseline = AlphaFitResult(
             modes=[],
@@ -385,6 +398,7 @@ def main() -> None:
                 iota_degree=args.iota_degree,
                 relative_weighting=args.relative_weighting,
                 device=args.device,
+                precision=args.precision,
             )
             training_metrics, _ = evaluate_alpha_fit(result, train_coordinates, train_B, model.nfp)
             validation_metrics, _ = evaluate_alpha_fit(
@@ -438,9 +452,9 @@ def main() -> None:
                 "rho_min": args.rho_min,
             },
             "backends": {
-                "flux_calibration_field": "C++/CUDA",
-                "training_and_validation_field": "C++/CUDA",
-                "alpha_design_and_qr": "PyTorch CUDA FP64 gels",
+                "flux_calibration_field": f"C++/CUDA {args.precision}",
+                "training_and_validation_field": f"C++/CUDA {args.precision}",
+                "alpha_design_and_qr": f"PyTorch CUDA {args.precision} gels",
                 "coordinate_sampling_and_diagnostics": "NumPy/SciPy CPU",
             },
             "calibration": calibration.diagnostics,

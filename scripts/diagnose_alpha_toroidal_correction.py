@@ -358,7 +358,7 @@ def main() -> None:
         default=ROOT / "gpu_backend" / "build_mixed" / "libstellarator_gpu.so",
     )
     parser.add_argument("--gpu-device", type=int, default=0)
-    parser.add_argument("--field-precision", choices=("fp32", "fp64"), default="fp64")
+    parser.add_argument("--field-precision", choices=("fp32", "fp64"), default="fp32")
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=False)

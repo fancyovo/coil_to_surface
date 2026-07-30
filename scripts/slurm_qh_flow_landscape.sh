@@ -21,6 +21,7 @@ lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}
 output="${OUTPUT_DIR:-$project/runs/qh_flow_landscape_${SLURM_JOB_ID}}"
 source_ids="${SOURCE_IDS:-1446077,1826200,2419096}"
 directions="${DIRECTIONS:-4}"
+closure_steps="${CLOSURE_STEPS:-32,64,128,256}"
 alphas="${ALPHAS:--0.24,-0.225,-0.21,-0.195,-0.18,-0.165,-0.15,-0.135,-0.12,-0.105,-0.09,-0.075,-0.06,-0.045,-0.03,-0.015,0,0.015,0.03,0.045,0.06,0.075,0.09,0.105,0.12,0.135,0.15,0.165,0.18,0.195,0.21,0.225,0.24}"
 world_size=4
 children=()
@@ -81,13 +82,14 @@ nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu \
 python "$project/scripts/qh_flow_landscape.py" \
   --data-dir "$data" --checkpoint "$checkpoint" --output-dir "$output" \
   --lib "$lib" --source-ids "$source_ids" --directions "$directions" \
-  --alphas="$alphas" --prepare-only
+  --alphas="$alphas" --closure-steps "$closure_steps" --prepare-only
 
 for rank in 0 1 2 3; do
   python "$project/scripts/qh_flow_landscape.py" \
     --data-dir "$data" --checkpoint "$checkpoint" --output-dir "$output" \
     --lib "$lib" --source-ids "$source_ids" --directions "$directions" \
-    --alphas="$alphas" --rank "$rank" --world-size "$world_size" \
+    --alphas="$alphas" --closure-steps "$closure_steps" \
+    --rank "$rank" --world-size "$world_size" \
     > "$output/rank_$(printf '%02d' "$rank").log" 2>&1 &
   children+=("$!")
 done
@@ -97,4 +99,4 @@ children=()
 python "$project/scripts/qh_flow_landscape.py" \
   --data-dir "$data" --checkpoint "$checkpoint" --output-dir "$output" \
   --lib "$lib" --source-ids "$source_ids" --directions "$directions" \
-  --alphas="$alphas" --analyze-only
+  --alphas="$alphas" --closure-steps "$closure_steps" --analyze-only

@@ -437,6 +437,13 @@ def prepare_cases(args: argparse.Namespace) -> None:
             derivative_decoded[args.directions :]
             - derivative_decoded[: args.directions]
         ) / (2.0 * args.derivative_step)
+        random_data_directions = np.stack(
+            [
+                normalize_direction(rng.standard_normal(x_center.shape))
+                * float(np.sqrt(np.mean(tangent[direction] ** 2)))
+                for direction in range(args.directions)
+            ]
+        )
 
         latent_states = (
             z_center[None, None]
@@ -453,12 +460,17 @@ def prepare_cases(args: argparse.Namespace) -> None:
             steps=closure_steps[-1],
             method="rk4",
         ).cpu().numpy()
-        direct_decoded = (
+        tangent_direct_decoded = (
             x_center[None, None]
             + alphas[None, :, None, None] * tangent[:, None]
         ).reshape(-1, count, 100)
+        random_direct_decoded = (
+            x_center[None, None]
+            + alphas[None, :, None, None] * random_data_directions[:, None]
+        ).reshape(-1, count, 100)
         latent_raw = normalizer.inverse(latent_decoded, key)
-        direct_raw = normalizer.inverse(direct_decoded, key)
+        tangent_direct_raw = normalizer.inverse(tangent_direct_decoded, key)
+        random_direct_raw = normalizer.inverse(random_direct_decoded, key)
 
         np.savez_compressed(
             args.output_dir / f"directions_{source_id}.npz",
@@ -467,6 +479,7 @@ def prepare_cases(args: argparse.Namespace) -> None:
             noise_center=z_center,
             latent_directions=directions,
             transported_tangents=tangent,
+            random_data_directions=random_data_directions,
             alphas=alphas,
         )
         for direction in range(args.directions):
@@ -485,7 +498,16 @@ def prepare_cases(args: argparse.Namespace) -> None:
                 flat_index = direction * len(alphas) + alpha_index
                 for path, normalized, raw in (
                     ("latent", latent_decoded[flat_index], latent_raw[flat_index]),
-                    ("direct", direct_decoded[flat_index], direct_raw[flat_index]),
+                    (
+                        "tangent_direct",
+                        tangent_direct_decoded[flat_index],
+                        tangent_direct_raw[flat_index],
+                    ),
+                    (
+                        "random_direct",
+                        random_direct_decoded[flat_index],
+                        random_direct_raw[flat_index],
+                    ),
                 ):
                     points.append(
                         make_point(
@@ -643,7 +665,11 @@ def plot_results(rows: list[dict[str, Any]], manifest: dict, output_dir: Path) -
             row for row in rows if row["source_id"] == source_id and row["kind"] == "landscape"
         ]
         for direction, color in enumerate(colors):
-            for path, linestyle in (("latent", "-"), ("direct", "--")):
+            for path, linestyle in (
+                ("latent", "-"),
+                ("tangent_direct", "--"),
+                ("random_direct", ":"),
+            ):
                 curve = sorted(
                     [
                         row
@@ -678,7 +704,11 @@ def plot_results(rows: list[dict[str, Any]], manifest: dict, output_dir: Path) -
             row for row in rows if row["source_id"] == source_id and row["kind"] == "landscape"
         ]
         for direction, color in enumerate(colors):
-            for path, marker in (("latent", "o"), ("direct", "x")):
+            for path, marker in (
+                ("latent", "o"),
+                ("tangent_direct", "x"),
+                ("random_direct", "+"),
+            ):
                 curve = [
                     row
                     for row in selected
@@ -749,7 +779,7 @@ def analyze(args: argparse.Namespace) -> None:
         }
         for direction in range(manifest["directions"]):
             paired = {}
-            for path in ("latent", "direct"):
+            for path in ("latent", "tangent_direct", "random_direct"):
                 curve = sorted(
                     [
                         row
@@ -781,31 +811,32 @@ def analyze(args: argparse.Namespace) -> None:
                     "roughness": curve_roughness(alphas, scores),
                 }
                 curve_metrics.append(paired[path])
-            for drop_name in ("drop_5_width", "drop_10_width"):
-                direct = float(paired["direct"][drop_name]["total"])
-                latent = float(paired["latent"][drop_name]["total"])
-                paired["latent"][f"ratio_to_direct_{drop_name}"] = (
-                    latent / direct if direct > 0.0 else math.inf
-                )
-            for radius_name in (
-                "drop_5_physical_radius_m",
-                "drop_10_physical_radius_m",
-            ):
-                direct = float(paired["direct"][radius_name]["mean"])
-                latent = float(paired["latent"][radius_name]["mean"])
-                paired["latent"][f"ratio_to_direct_{radius_name}"] = (
-                    latent / direct if direct > 0.0 else math.inf
-                )
-            for roughness_name in (
-                "total_variation",
-                "max_adjacent_jump",
-                "second_difference_rms",
-            ):
-                direct = float(paired["direct"]["roughness"][roughness_name])
-                latent = float(paired["latent"]["roughness"][roughness_name])
-                paired["latent"][f"ratio_to_direct_{roughness_name}"] = (
-                    latent / direct if direct > 0.0 else math.inf
-                )
+            for comparator in ("tangent_direct", "random_direct"):
+                for drop_name in ("drop_5_width", "drop_10_width"):
+                    direct = float(paired[comparator][drop_name]["total"])
+                    latent = float(paired["latent"][drop_name]["total"])
+                    paired["latent"][f"ratio_to_{comparator}_{drop_name}"] = (
+                        latent / direct if direct > 0.0 else math.inf
+                    )
+                for radius_name in (
+                    "drop_5_physical_radius_m",
+                    "drop_10_physical_radius_m",
+                ):
+                    direct = float(paired[comparator][radius_name]["mean"])
+                    latent = float(paired["latent"][radius_name]["mean"])
+                    paired["latent"][f"ratio_to_{comparator}_{radius_name}"] = (
+                        latent / direct if direct > 0.0 else math.inf
+                    )
+                for roughness_name in (
+                    "total_variation",
+                    "max_adjacent_jump",
+                    "second_difference_rms",
+                ):
+                    direct = float(paired[comparator]["roughness"][roughness_name])
+                    latent = float(paired["latent"]["roughness"][roughness_name])
+                    paired["latent"][f"ratio_to_{comparator}_{roughness_name}"] = (
+                        latent / direct if direct > 0.0 else math.inf
+                    )
 
     fieldnames = [
         "point_id",
@@ -846,13 +877,18 @@ def analyze(args: argparse.Namespace) -> None:
         "drop_5_physical_radius_m",
         "drop_10_physical_radius_m",
     )
+    comparisons = ("tangent_direct", "random_direct")
     ratios = {
-        drop_name: [
-            row[f"ratio_to_direct_{drop_name}"]
-            for row in curve_metrics
-            if row["path"] == "latent" and math.isfinite(row[f"ratio_to_direct_{drop_name}"])
-        ]
-        for drop_name in width_names
+        comparator: {
+            drop_name: [
+                row[f"ratio_to_{comparator}_{drop_name}"]
+                for row in curve_metrics
+                if row["path"] == "latent"
+                and math.isfinite(row[f"ratio_to_{comparator}_{drop_name}"])
+            ]
+            for drop_name in width_names
+        }
+        for comparator in comparisons
     }
     roughness_names = (
         "total_variation",
@@ -860,36 +896,46 @@ def analyze(args: argparse.Namespace) -> None:
         "second_difference_rms",
     )
     roughness_ratios = {
-        name: [
-            row[f"ratio_to_direct_{name}"]
-            for row in curve_metrics
-            if row["path"] == "latent" and math.isfinite(row[f"ratio_to_direct_{name}"])
-        ]
-        for name in roughness_names
+        comparator: {
+            name: [
+                row[f"ratio_to_{comparator}_{name}"]
+                for row in curve_metrics
+                if row["path"] == "latent"
+                and math.isfinite(row[f"ratio_to_{comparator}_{name}"])
+            ]
+            for name in roughness_names
+        }
+        for comparator in comparisons
     }
     summary = {
         "manifest": manifest,
         "baselines": baselines,
         "curve_metrics": curve_metrics,
         "aggregate": {
-            name: {
-                "count": len(values),
-                "median_latent_to_direct_width": float(np.median(values)) if values else None,
-                "p25_latent_to_direct_width": float(np.percentile(values, 25)) if values else None,
-                "p75_latent_to_direct_width": float(np.percentile(values, 75)) if values else None,
-                "latent_wider_fraction": float(np.mean(np.asarray(values) > 1.0)) if values else None,
+            comparator: {
+                name: {
+                    "count": len(values),
+                    "median_latent_to_comparator_width": float(np.median(values)) if values else None,
+                    "p25_latent_to_comparator_width": float(np.percentile(values, 25)) if values else None,
+                    "p75_latent_to_comparator_width": float(np.percentile(values, 75)) if values else None,
+                    "latent_wider_fraction": float(np.mean(np.asarray(values) > 1.0)) if values else None,
+                }
+                for name, values in comparison_values.items()
             }
-            for name, values in ratios.items()
+            for comparator, comparison_values in ratios.items()
         },
         "roughness": {
-            name: {
-                "count": len(values),
-                "median_latent_to_direct": float(np.median(values)) if values else None,
-                "p25_latent_to_direct": float(np.percentile(values, 25)) if values else None,
-                "p75_latent_to_direct": float(np.percentile(values, 75)) if values else None,
-                "latent_smoother_fraction": float(np.mean(np.asarray(values) < 1.0)) if values else None,
+            comparator: {
+                name: {
+                    "count": len(values),
+                    "median_latent_to_comparator": float(np.median(values)) if values else None,
+                    "p25_latent_to_comparator": float(np.percentile(values, 25)) if values else None,
+                    "p75_latent_to_comparator": float(np.percentile(values, 75)) if values else None,
+                    "latent_smoother_fraction": float(np.mean(np.asarray(values) < 1.0)) if values else None,
+                }
+                for name, values in comparison_values.items()
             }
-            for name, values in roughness_ratios.items()
+            for comparator, comparison_values in roughness_ratios.items()
         },
         "runtime": {
             "flow_preparation_wall_s": manifest["flow_preparation_wall_s"],

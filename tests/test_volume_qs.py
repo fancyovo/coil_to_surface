@@ -12,6 +12,7 @@ from stellarator_eval.volume_qs import (
     _physical_volume_weights,
     _surface_radius_on_rays,
     _budget_flux_levels,
+    vacuum_G,
 )
 
 
@@ -174,3 +175,44 @@ def test_compute_f_c_matches_direct_formula():
     C = np.sum(B * grad_magnitude, axis=1)
     expected = (-0.47 - 3.0) * A - 5.2 * C
     np.testing.assert_allclose(result["f_C"], expected)
+
+
+def test_vacuum_G_uses_signed_toroidal_flux():
+    currents = np.asarray([2.0, -3.0, 5.0])
+    positive = vacuum_G(currents, 4, 0.02)
+    negative = vacuum_G(currents, 4, -0.02)
+    assert positive > 0.0
+    np.testing.assert_allclose(negative, -positive)
+
+
+def test_normalized_f_c_is_invariant_under_global_current_reversal():
+    count = 30
+    scale = 1.7
+    rng = np.random.default_rng(918)
+    B = rng.normal(size=(count, 3))
+    grad_B = rng.normal(size=(count, 3, 3))
+    points = {
+        "s": np.linspace(0.01, 0.16, count),
+        "rho": np.linspace(0.1, 1.0, count),
+        "grad_s": rng.normal(size=(count, 3)),
+    }
+    alpha = StraightFieldFit([], np.empty(0), np.asarray([1.23]), {})
+    flux = FluxScaleFit(np.asarray([0.004, -0.001]), 0.16, {})
+    G = 3.8
+    reference = compute_f_c(points, B, grad_B, alpha, flux, M=1, N=3, G=G)
+    reversed_result = compute_f_c(
+        points,
+        -scale * B,
+        -scale * grad_B,
+        alpha,
+        FluxScaleFit(-scale * flux.coefficients, flux.s_edge, {}),
+        M=1,
+        N=3,
+        G=-scale * G,
+    )
+    np.testing.assert_allclose(
+        reversed_result["f_C_over_B3"],
+        reference["f_C_over_B3"],
+        rtol=2.0e-14,
+        atol=2.0e-14,
+    )

@@ -199,7 +199,7 @@ def main() -> None:
         if args.alpha_validation_points > 0 and len(validation_indices)
         else None
     )
-    G = vacuum_G(currents_a, field_input.nfp)
+    G = vacuum_G(currents_a, field_input.nfp, flux.psi_edge)
     metrics = {}
     start = time.perf_counter()
     for name, M, N in (

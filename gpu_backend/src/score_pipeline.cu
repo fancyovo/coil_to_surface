@@ -2992,6 +2992,7 @@ bool compute_qs_metric_native(
     const double* currents_a,
     int n_base_coils,
     int nfp,
+    double edge_toroidal_flux,
     const SgpuScoreConfig& config,
     SgpuScoreResult& result
 ) {
@@ -3005,7 +3006,12 @@ bool compute_qs_metric_native(
     }
     double current_sum = 0.0;
     for (int index = 0; index < n_base_coils; ++index) current_sum += std::abs(currents_a[index]);
-    const double G = 4.0e-7 * PI * 2.0 * nfp * current_sum;
+    if (!std::isfinite(edge_toroidal_flux) || edge_toroidal_flux == 0.0) {
+        fail_result(&result, "QS metric requires nonzero signed toroidal flux");
+        return false;
+    }
+    const double G_magnitude = 4.0e-7 * PI * 2.0 * nfp * current_sum;
+    const double G = std::copysign(G_magnitude, edge_toroidal_flux);
     const float edge_threshold = static_cast<float>(
         config.volume_rho_min + (1.0 - config.volume_rho_min) *
         (config.radial_bin_count - 1.0) / config.radial_bin_count
@@ -3167,7 +3173,7 @@ bool run_downstream_gpu(
     started = Clock::now();
     if (!compute_qs_metric_native(
             points, d_B.data(), d_grad_B.data(), alpha, currents_a,
-            n_base_coils, nfp, config, result)) {
+            n_base_coils, nfp, flux.edge_flux, config, result)) {
         return false;
     }
     result.timings[SGPU_SCORE_TIME_QS_METRICS] = seconds_since(started);

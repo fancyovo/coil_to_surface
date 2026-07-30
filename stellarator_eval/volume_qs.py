@@ -873,8 +873,12 @@ def fit_flux_scale(points: dict, B, alpha_fit: StraightFieldFit, config: VolumeQ
     return fit
 
 
-def vacuum_G(currents_a, nfp: int) -> float:
-    return float(MU0 * 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float))))
+def vacuum_G(currents_a, nfp: int, toroidal_flux: float) -> float:
+    toroidal_flux = float(toroidal_flux)
+    if not np.isfinite(toroidal_flux) or toroidal_flux == 0.0:
+        raise ValueError("vacuum G requires nonzero signed toroidal flux")
+    magnitude = MU0 * 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float)))
+    return float(np.copysign(magnitude, toroidal_flux))
 
 
 def compute_f_c(points: dict, B, grad_B, alpha_fit: StraightFieldFit, flux_fit: FluxScaleFit, *, M: int, N: int, G: float, I: float = 0.0):
@@ -1072,7 +1076,7 @@ def evaluate_volume_qs_model(
         "QH_minus": (1, -int(field_input.nfp)),
         "QP": (0, int(field_input.nfp)),
     }
-    G = vacuum_G(currents_a, field_input.nfp)
+    G = vacuum_G(currents_a, field_input.nfp, calibration.psi_edge)
     metric_start = time.perf_counter()
     metrics = {}
     for name, (M, N) in specs.items():

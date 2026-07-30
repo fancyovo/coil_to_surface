@@ -399,6 +399,8 @@ def prepare_cases(args: argparse.Namespace) -> None:
         key = tuple(source["key"])
         nfp, count = key
         source_raw = np.asarray(source["tokens"], dtype=np.float32)
+        source_flipped = source_raw.copy()
+        source_flipped[:, -1] *= -1.0
         x_reference = reference[batch_index, :count]
         x_center = selected_reconstruction[batch_index, :count]
         z_center = selected_noise[batch_index, :count]
@@ -411,6 +413,16 @@ def prepare_cases(args: argparse.Namespace) -> None:
                 nfp=nfp,
                 kind="source_raw",
                 center=center_raw,
+            )
+        )
+        points.append(
+            make_point(
+                registry,
+                source_flipped,
+                source_id=source_id,
+                nfp=nfp,
+                kind="source_flipped",
+                center=source_raw,
             )
         )
         points.append(
@@ -828,7 +840,12 @@ def analyze(args: argparse.Namespace) -> None:
         source_rows = [row for row in rows if row["source_id"] == source_id]
         baselines[str(source_id)] = {
             kind: next(row for row in source_rows if row["kind"] == kind)
-            for kind in ("source_raw", "source_canonical", "reconstruction")
+            for kind in (
+                "source_raw",
+                "source_flipped",
+                "source_canonical",
+                "reconstruction",
+            )
         }
         for direction in range(manifest["directions"]):
             paired = {}

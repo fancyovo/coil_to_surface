@@ -59,7 +59,16 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export MPLBACKEND=Agg
 
+desc_gpu_args=()
+if [[ ${REQUIRE_DESC_GPU:-1} == 1 ]]; then
+    desc_gpu_args+=(--require-desc-gpu)
+fi
+
 python3 "$project/scripts/evaluate_saved_boozer_surface_full.py" \
     --case-file "$CASE_FILE" \
     --surface-npz "$SURFACE_NPZ" \
-    --output-dir "$OUTPUT_DIR"
+    --output-dir "$OUTPUT_DIR" \
+    --poincare-nfieldlines "${POINCARE_NFIELDLINES:-8}" \
+    --poincare-tmax "${POINCARE_TMAX:-2e7}" \
+    --desc-maxiter "${DESC_MAXITER:-50}" \
+    "${desc_gpu_args[@]}"

@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.evaluate_cem_candidate_full import (
+    preflight_desc_environment,
     render_boozer_and_geometry,
     run_desc_boundary_solve,
     write_json,
@@ -35,8 +36,11 @@ def main() -> None:
     parser.add_argument("--surface-npz", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--current-unit", default="A")
+    parser.add_argument("--poincare-nfieldlines", type=int, default=8)
+    parser.add_argument("--poincare-tmax", type=float, default=2.0e7)
+    parser.add_argument("--require-desc-gpu", action="store_true")
     parser.add_argument("--desc-resolution", type=int, default=8)
-    parser.add_argument("--desc-maxiter", type=int, default=100)
+    parser.add_argument("--desc-maxiter", type=int, default=50)
     parser.add_argument("--desc-ftol", type=float, default=1.0e-8)
     args = parser.parse_args()
 
@@ -66,6 +70,11 @@ def main() -> None:
         "surface": surface_meta,
     }
     try:
+        result["desc_preflight"] = preflight_desc_environment()
+        if args.require_desc_gpu and not result["desc_preflight"]["gpu_available"]:
+            raise RuntimeError(
+                "DESC GPU was required, but JAX did not expose a GPU device"
+            )
         if progress_path.exists():
             progress = json.loads(progress_path.read_text(encoding="utf-8"))
             if progress.get("surface_npz") != str(args.surface_npz):
@@ -81,6 +90,8 @@ def main() -> None:
                 output_dir=args.output_dir / "assets",
                 current_unit=args.current_unit,
                 surface_order=surface_order,
+                poincare_nfieldlines=args.poincare_nfieldlines,
+                poincare_tmax=args.poincare_tmax,
             )
             result["visualization_time_s"] = time.perf_counter() - stage_started
             write_json(progress_path, result)

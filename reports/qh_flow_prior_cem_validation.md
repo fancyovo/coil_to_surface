@@ -277,6 +277,12 @@ $$
 
 ![DESC 重算的 Boozer 场强](assets/qh_flow_prior_cem_29129/correct_full/desc/boozer_B.png)
 
+下图给出 DESC 中幅值最大的 $B_{M,N}$ Boozer 谱分量随 $\rho$ 的变化。主导的
+$(M,N)=(0,0)$ 和 QH 目标分量 $(1,4)$ 清晰可见；$(1,4)$ 从内向外增大，而多个非目标模也在
+$10^{-3}$ 到 $10^{-2}$ T 范围内增长，这与“有 QH 倾向但仍非高质量 QH”的结论一致。
+
+![DESC Boozer 谱分量随 rho 的变化](assets/qh_flow_prior_cem_29129/correct_full/desc/boozer_modes.png)
+
 ![DESC QH 误差分量](assets/qh_flow_prior_cem_29129/correct_full/desc/qs_QH.png)
 
 ![DESC 旋转变换剖面](assets/qh_flow_prior_cem_29129/correct_full/desc/iota.png)
@@ -324,6 +330,9 @@ banner 超时，尚未回收该短 profiling 作业，因此本段不给出虚�
 另需区分：本次完整图形评估中的长时庞加莱单独耗时 285.1 s，它是严格验收图，不属于
 $\nu$ 拟合，也不应进入最终 10 秒 score 路径。场评估原始基准见
 [nu_field_profile.json](assets/qh_flow_prior_cem_29129/nu_field_profile.json)。
+
+后续默认评估的冻结流程、资源分配、时间上限和产物契约见
+[精简线圈评估流程](../docs/精简线圈评估流程.md)。
 
 ## 10. 总结与下一步
 

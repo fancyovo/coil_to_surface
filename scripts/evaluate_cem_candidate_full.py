@@ -60,6 +60,23 @@ def install_headless_tkinter_stub() -> None:
         sys.modules["tkinter"] = module
 
 
+def preflight_desc_environment() -> dict[str, Any]:
+    install_headless_tkinter_stub()
+    import jax
+    import desc.plotting  # noqa: F401
+
+    jax_devices = list(jax.devices())
+    devices = [str(device) for device in jax_devices]
+    return {
+        "jax_backend": str(jax.default_backend()),
+        "jax_devices": devices,
+        "gpu_available": any(
+            str(getattr(device, "platform", "")).lower() == "gpu"
+            for device in jax_devices
+        ),
+    }
+
+
 def surface_path(run_dir: Path, summary: dict[str, Any]) -> Path:
     level = float(summary["best_surface"]["psi_level"])
     return run_dir / f"level_{level:.6g}".replace(".", "p") / "boozer_surface.npz"
@@ -193,6 +210,8 @@ def render_boozer_and_geometry(
     output_dir: Path,
     current_unit: str,
     surface_order: int,
+    poincare_nfieldlines: int = 8,
+    poincare_tmax: float = 2.0e7,
 ) -> dict[str, Any]:
     import matplotlib
 
@@ -291,8 +310,8 @@ def render_boozer_and_geometry(
         mpol=surface_order,
         ntor=surface_order,
         coil_order=field_input.order,
-        nfieldlines=16,
-        tmax_fl=1.0e8,
+        nfieldlines=poincare_nfieldlines,
+        tmax_fl=poincare_tmax,
         save_path=output_dir / "poincare.png",
         marker_size=5,
         dpi=180,

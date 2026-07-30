@@ -2,13 +2,13 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=flow-adam-rnd
+#SBATCH --job-name=flow-adam-multi
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:4
 #SBATCH --mem=128G
-#SBATCH --time=00:30:00
+#SBATCH --time=06:30:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -18,12 +18,12 @@ project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$asset_root/gpu_backend/build_native_score/libstellarator_gpu.so}"
-run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam/${SLURM_JOB_ID}}"
+run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam_multistart/${SLURM_JOB_ID}}"
+start_seed="${START_SEED:-2026073100}"
+start_count="${START_COUNT:-16}"
 iterations="${ITERATIONS:-60}"
-max_wall_s="${MAX_WALL_S:-1500}"
-learning_rate="${LEARNING_RATE:?LEARNING_RATE is required}"
-seed="${SEED:-2026073004}"
-initial_case="${INITIAL_CASE:-}"
+max_wall_s="${PER_START_MAX_WALL_S:-1500}"
+learning_rate="${LEARNING_RATE:-0.003}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 children=()
 
@@ -48,11 +48,6 @@ mkdir -p "$run_root"
 cd "$project"
 test -f "$checkpoint"
 test -f "$lib"
-initial_args=()
-if [[ -n "$initial_case" ]]; then
-  test -f "$initial_case"
-  initial_args+=(--initial-case "$initial_case")
-fi
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 source "$HOME/coil/.venv/bin/activate"
 export PYTHONPATH="$project${PYTHONPATH:+:$PYTHONPATH}"
@@ -78,15 +73,18 @@ nvidia-smi --id="$gpu_selector" \
   --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
   --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"
 
-python "$project/scripts/optimize_flow_prior_standard_adam.py" \
-  --checkpoint "$checkpoint" \
-  --lib "$lib" \
-  --out-dir "$run_root" \
-  --iterations "$iterations" \
-  --max-wall-s "$max_wall_s" \
-  --learning-rate "$learning_rate" \
-  --seed "$seed" \
-  "${initial_args[@]}" &
-children+=("$!")
-wait "${children[0]}"
-children=()
+for ((index = 0; index < start_count; ++index)); do
+  seed=$((start_seed + index))
+  output="$run_root/seed_${seed}"
+  python "$project/scripts/optimize_flow_prior_standard_adam.py" \
+    --checkpoint "$checkpoint" \
+    --lib "$lib" \
+    --out-dir "$output" \
+    --iterations "$iterations" \
+    --max-wall-s "$max_wall_s" \
+    --learning-rate "$learning_rate" \
+    --seed "$seed" &
+  children+=("$!")
+  wait "${children[0]}"
+  children=()
+done

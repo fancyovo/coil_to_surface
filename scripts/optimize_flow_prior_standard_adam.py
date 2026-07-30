@@ -22,6 +22,7 @@ from scripts.optimize_flow_prior_zo_adam import (
     diagnostics_value,
     gradient_from_pairs,
     load_flow_checkpoint,
+    load_initial_noise,
     orthogonal_directions,
     result_score,
     result_valid,
@@ -131,6 +132,7 @@ def main() -> None:
         )
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--initial-case", type=Path)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument(
         "--lib",
@@ -160,6 +162,8 @@ def main() -> None:
         raise RuntimeError("flow-prior optimization requires CUDA")
     if not args.checkpoint.is_file() or not args.lib.is_file():
         raise FileNotFoundError("checkpoint and native score library must exist")
+    if args.initial_case is not None and not args.initial_case.is_file():
+        raise FileNotFoundError(f"initial case does not exist: {args.initial_case}")
     if args.nfp < 1 or args.n_base_coils < 1:
         raise ValueError("nfp and n-base-coils must be positive")
     if args.iterations < 1 or args.directions < 1 or args.flow_steps < 1:
@@ -183,9 +187,29 @@ def main() -> None:
         raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
 
     rng = np.random.default_rng(args.seed)
-    current_noise = rng.standard_normal(
-        (args.n_base_coils, TOKEN_DIM), dtype=np.float32
-    )
+    if args.initial_case is None:
+        current_noise = rng.standard_normal(
+            (args.n_base_coils, TOKEN_DIM), dtype=np.float32
+        )
+        initialization = "independent_standard_normal_flow_prior"
+        initial_case_metadata = None
+    else:
+        current_noise, initial_payload = load_initial_noise(args.initial_case)
+        if current_noise.shape != (args.n_base_coils, TOKEN_DIM):
+            raise ValueError(
+                "initial case noise shape does not match n-base-coils: "
+                f"{current_noise.shape} != {(args.n_base_coils, TOKEN_DIM)}"
+            )
+        initialization = "provided_flow_prior_noise_with_zero_adam_moments"
+        initial_case_metadata = {
+            "path": str(args.initial_case.resolve()),
+            "recorded_cem_score": initial_payload.get("flow_prior_cem", {}).get(
+                "best_score"
+            ),
+            "recorded_standard_adam_score": initial_payload.get(
+                "flow_prior_standard_adam", {}
+            ).get("best_score"),
+        }
     first_moment = np.zeros_like(current_noise, dtype=np.float64)
     second_moment = np.zeros_like(current_noise, dtype=np.float64)
 
@@ -199,7 +223,8 @@ def main() -> None:
     manifest = {
         "algorithm": "standard_adam_with_orthogonal_antithetic_zo_gradient",
         "objective": "maximize_native_qh_score",
-        "initialization": "independent_standard_normal_flow_prior",
+        "initialization": initialization,
+        "initial_case": initial_case_metadata,
         "target": args.target,
         "nfp": args.nfp,
         "n_base_coils": args.n_base_coils,

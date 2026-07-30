@@ -14,8 +14,7 @@
 
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project="${PROJECT:-$(cd "$script_dir/.." && pwd)}"
+project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$asset_root/gpu_backend/build_native_score/libstellarator_gpu.so}"

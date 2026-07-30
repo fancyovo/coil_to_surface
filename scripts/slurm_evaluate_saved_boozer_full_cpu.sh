@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --account=stu
-#SBATCH --partition=CPU-6530
-#SBATCH --qos=qos_stu_default
+#SBATCH --partition=Students
+#SBATCH --qos=qos_stu_medium_2gpu
 #SBATCH --job-name=boozer-full-cpu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

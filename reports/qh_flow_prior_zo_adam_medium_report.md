@@ -236,7 +236,7 @@ $$
 
 ![正确外层面上的 Boozer |B|](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/boozer_b.png)
 
-正确外层面上的 $|B|$ 范围为 0.61116 到 0.73122 T，平均值为 0.66729 T；热力图呈连续 QH 螺旋条纹。
+正确外层面上的 $|B|$ 范围为 0.61116 到 0.73122 T，平均值为 0.66729 T；白底彩色等高线呈连续 QH 螺旋条纹，线条颜色表示 $|B|$ 大小。
 
 ![完整线圈与正确外层面](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/assets/coils_surface.png)
 
@@ -272,7 +272,7 @@ DESC 使用同一个受保护外层面、真实 Biot--Savart 场积分得到的�
 
 下面两张图分别给出最终平衡的 Boozer 坐标 $|B|$ 分布和 $B_{M,N}(\rho)$ 模谱。前者检查 QH 条纹是否连续，后者检查非目标模及其径向变化。
 
-![DESC Boozer |B|](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_B.png)
+![DESC Boozer |B| 彩色等高线](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_B.png)
 
 ![DESC Boozer modes](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_modes.png)
 

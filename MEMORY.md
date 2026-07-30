@@ -87,14 +87,21 @@ remain the detailed evidence; this file records the conclusions and pointers.
 - Reports must be readable, clearly separate verified results from hypotheses,
   and cite the relevant plots and raw summaries.
 - A complete evaluation of a selected coil is not optional. It includes the
-  largest reasonably feasible surface, $|B|$ heatmap, full-device coils plus
+  largest reasonably feasible surface, white-background colored $|B|$ contour
+  lines, full-device coils plus
   surface HTML, Poincare validation, DESC, all required DESC figures, and DESC
   quantities versus $\rho$.
+- Before every remote connection attempt, read
+  `REMOTE_CODEX_INSTRUCTIONS.md` and run its WSL/master-connection preflight in
+  order. Do not guess a Windows SSH alias, initiate interactive authentication,
+  or bypass a failed control-socket check.
 
 ## 4. Remote Compute Source of Truth
 
-- Current SSH alias: `ustc107`, reached through the user's existing WSL SSH
-  master connection. Never store or repeat passwords.
+- Remote commands use the authenticated WSL master connection documented in
+  `REMOTE_CODEX_INSTRUCTIONS.md` (`wsl.exe -d Ubuntu -- ssh ... ustc107`). The
+  document, not ad hoc local SSH config, is authoritative.
+  Never store or repeat passwords.
 - Active remote worktree:
   `~/local_surface_evaluator_worktrees/qh-flow-zo-adam`.
 - Shared base repository and large artifacts: `~/local_surface_evaluator`.
@@ -333,7 +340,9 @@ candidate acceptance. The workflow must:
 3. run the dense FP32 GPU $\alpha+\nu$ initializer;
 4. run guarded Boozer/Poincare validation and reject branch jumps or coordinate
    folding;
-5. generate a $|B|$ heatmap and full-device coils plus surface HTML;
+5. generate white-background colored $|B|$ contour lines, with line color
+   encoding magnitude, and full-device coils plus surface HTML; do not use a
+   heatmap or filled contours;
 6. run DESC with the documented boundary and flux conventions;
 7. include every required DESC figure, including boundary, Boozer modes,
    Boozer $|B|$, QH QS diagnostics, $\iota$, and the available quantities versus
@@ -374,6 +383,9 @@ new physics.
 12. **Misleading DESC success:** optimizer success or low mean force does not
     override non-nestedness, Jacobian sign changes, boundary mismatch, or force
     singularities.
+13. **Ad hoc remote connection:** read `REMOTE_CODEX_INSTRUCTIONS.md` first and
+    use its WSL master-connection preflight. A failed control socket is a hard
+    stop until the user rebuilds the authenticated master connection.
 
 ## 11. Important Files
 
@@ -412,6 +424,13 @@ new physics.
 
 ### 2026-07-31
 
+- Standardized direct Boozer and DESC $|B|$ outputs as white-background colored
+  contour lines; heatmaps and filled contours are no longer accepted for these
+  report figures.
+- Made `REMOTE_CODEX_INSTRUCTIONS.md` a required pre-read before every remote
+  connection attempt. Corrected its stale `ustc107-jump` alias to the current
+  `ustc107`; the WSL master connection, `pb24511935` identity, and `tradmin-02`
+  login node were then verified.
 - Added clean random-start standard Adam with $\beta_1=0.9$, $\beta_2=0.999$,
   fixed $\eta$, and no optimizer heuristics.
 - Completed controlled 60-step runs for $\eta=0.001$ and 0.003; cancelled the

@@ -138,6 +138,58 @@ def write_image_html(image_path: Path, output_path: Path, title: str) -> None:
     )
 
 
+def save_periodic_colored_contours(
+    *,
+    values: np.ndarray,
+    output_path: Path,
+    xlabel: str,
+    ylabel: str,
+    title: str,
+    colorbar_label: str,
+    ncontours: int = 32,
+) -> None:
+    """Save colored contour lines for data periodic in both coordinates."""
+    import matplotlib.pyplot as plt
+
+    values = np.asarray(values, dtype=float)
+    if values.ndim != 2 or min(values.shape) < 2:
+        raise ValueError("values must have a two-dimensional periodic grid")
+    if not np.all(np.isfinite(values)):
+        raise ValueError("values must be finite")
+    if ncontours < 2:
+        raise ValueError("ncontours must be at least 2")
+
+    closed = np.pad(values, ((0, 1), (0, 1)), mode="wrap")
+    x = np.linspace(0.0, 2.0 * np.pi, values.shape[0] + 1)
+    y = np.linspace(0.0, 2.0 * np.pi, values.shape[1] + 1)
+    value_min = float(np.min(values))
+    value_max = float(np.max(values))
+    if value_max == value_min:
+        scale = max(abs(value_min), 1.0)
+        value_min -= 1.0e-12 * scale
+        value_max += 1.0e-12 * scale
+    levels = np.linspace(value_min, value_max, ncontours)
+
+    figure, axis = plt.subplots(figsize=(9.0, 4.8))
+    contours = axis.contour(
+        x,
+        y,
+        closed.T,
+        levels=levels,
+        cmap="turbo",
+        linewidths=1.0,
+    )
+    axis.set_xlim(x[0], x[-1])
+    axis.set_ylim(y[0], y[-1])
+    axis.set_xlabel(xlabel)
+    axis.set_ylabel(ylabel)
+    axis.set_title(title)
+    figure.colorbar(contours, ax=axis, label=colorbar_label)
+    figure.tight_layout()
+    figure.savefig(output_path, dpi=190)
+    plt.close(figure)
+
+
 def write_three_geometry_html(
     *,
     output_path: Path,
@@ -236,18 +288,14 @@ def render_boozer_and_geometry(
     xyz = np.asarray(surface.gamma(), dtype=float)
     built.field.set_points(xyz.reshape(-1, 3))
     b_abs = np.linalg.norm(np.asarray(built.field.B(), dtype=float), axis=1).reshape(xyz.shape[:2])
-    zeta = np.linspace(0.0, 2.0 * np.pi, xyz.shape[0], endpoint=False)
-    theta = np.linspace(0.0, 2.0 * np.pi, xyz.shape[1], endpoint=False)
-
-    fig, axis = plt.subplots(figsize=(9.0, 4.8))
-    image = axis.pcolormesh(zeta, theta, b_abs.T, shading="auto", cmap="turbo")
-    axis.set_xlabel(r"field-period angle $N_{\rm FP}\phi$")
-    axis.set_ylabel(r"Boozer $\theta$")
-    axis.set_title(r"$|B|$ on largest Boozer-solvable surface")
-    fig.colorbar(image, ax=axis, label=r"$|B|$ [T]")
-    fig.tight_layout()
-    fig.savefig(output_dir / "boozer_b.png", dpi=190)
-    plt.close(fig)
+    save_periodic_colored_contours(
+        values=b_abs,
+        output_path=output_dir / "boozer_b.png",
+        xlabel=r"field-period angle $N_{\rm FP}\phi$",
+        ylabel=r"Boozer $\theta$",
+        title=r"Colored $|B|$ contours on largest Boozer-solvable surface",
+        colorbar_label=r"$|B|$ [T]",
+    )
 
     write_image_html(output_dir / "boozer_b.png", output_dir / "boozer_b.html", "Boozer |B|")
 
@@ -447,7 +495,7 @@ def run_desc_boundary_solve(
                     "boozer_modes", output_dir, plot_boozer_modes, eq, rho=10, num_modes=12, log=True
                 ),
                 "boozer_B": save_desc_plot(
-                    "boozer_B", output_dir, plot_boozer_surface, eq, rho=1.0, fill=True, ncontours=32
+                    "boozer_B", output_dir, plot_boozer_surface, eq, rho=1.0, fill=False, ncontours=32
                 ),
                 "qs_QA": save_desc_plot(
                     "qs_QA", output_dir, plot_qs_error, eq, helicity=(1, 0), log=True

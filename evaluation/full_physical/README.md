@@ -8,7 +8,7 @@
 1. `submit_surface_candidates.sh`：对给定的 `S_EDGES` 依次运行 psi -> alpha -> nu -> guarded Boozer 面。
    默认使用 Slurm dependency 串行候选，任意时刻最多占一张 GPU。
 2. `select_largest_guarded_surface.py`：选择最大已测通过面；默认要求至少有一个更外侧失败点，否则要求继续外扩。
-3. `submit_downstream.sh`：对选中的唯一 `boozer_guarded.npz` 运行庞加莱、Boozer 场图、三维 HTML 和 DESC。
+3. `submit_downstream.sh`：对选中的唯一 `boozer_guarded.npz` 运行庞加莱、Boozer 场图、三维 HTML 和 DESC。直接 Boozer 与 DESC 的 $|B|$ 图均固定为白底彩色等高线，颜色表示 $|B|$ 大小，不使用热力图或填色等高线。
 4. `validate_delivery.sh`：检查固定原始产物，并确认全部 DESC PNG 已在报告中逐张引用。
 
 两个提交入口会自动运行 `preflight.py` 和 `sbatch --test-only`。也可在提交前单独检查代码包：

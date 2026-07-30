@@ -163,6 +163,8 @@ def main() -> None:
     parser.add_argument("--residual-growth-tolerance", type=float, default=1e-3)
     parser.add_argument("--normal-growth-limit", type=float, default=2.0)
     parser.add_argument("--psi-distance-growth-limit", type=float, default=2.0)
+    parser.add_argument("--max-final-relative-l2", type=float, default=1e-4)
+    parser.add_argument("--max-final-normal-p95", type=float, default=1e-4)
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=False)
@@ -312,8 +314,35 @@ def main() -> None:
             break
 
     final_dofs, final_iota, final_G = accepted_state
+    final_dense = accepted["grids"][-1]
+    final_distance_p95 = max(
+        float(
+            accepted["distance_from_initial"]["candidate_to_reference_m"]["p95"]
+        ),
+        float(
+            accepted["distance_from_initial"]["reference_to_candidate_m"]["p95"]
+        ),
+    )
+    absolute_checks = {
+        "relative_l2": float(final_dense["relative_l2"])
+        <= args.max_final_relative_l2,
+        "normal_field_p95": float(final_dense["normal_B_sine_p95"])
+        <= args.max_final_normal_p95,
+        "geometry_distance": final_distance_p95 <= max_distance,
+        "toroidal_winding": float(
+            accepted["geometry"]["geometric_toroidal_winding"]["min"]
+        )
+        > 0.0,
+        "normal_nonzero": float(accepted["geometry"]["normal_norm"]["min"])
+        > 1e-12,
+    }
+    accepted_for_downstream = all(absolute_checks.values())
+    surface_name = (
+        "boozer_guarded.npz" if accepted_for_downstream else "boozer_rejected.npz"
+    )
+    output_surface = args.output_dir / surface_name
     np.savez(
-        args.output_dir / "boozer_guarded.npz",
+        output_surface,
         dofs=final_dofs,
         iota=final_iota,
         G=final_G,
@@ -369,10 +398,19 @@ def main() -> None:
         "attempts": attempts,
         "accepted_step_count": sum("accepted_fraction" in row for row in attempts),
         "final": accepted,
-        "output_surface": str(args.output_dir / "boozer_guarded.npz"),
+        "acceptance_thresholds": {
+            "max_final_relative_l2": args.max_final_relative_l2,
+            "max_final_normal_p95": args.max_final_normal_p95,
+            "max_geometry_distance_p95_m": max_distance,
+        },
+        "absolute_checks": absolute_checks,
+        "accepted_for_downstream": accepted_for_downstream,
+        "output_surface": str(output_surface),
     }
     write_json(args.output_dir / "summary.json", output)
     print(json.dumps(output, indent=2), flush=True)
+    if not accepted_for_downstream:
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

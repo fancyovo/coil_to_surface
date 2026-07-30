@@ -715,9 +715,17 @@ def plot_results(rows: list[dict[str, Any]], manifest: dict, output_dir: Path) -
         axis.set(title=f"QUASR {source_id}", xlabel="paired direction coordinate alpha", ylabel="score v3")
         axis.grid(alpha=0.2)
     axes[0, 0].legend(ncol=2, fontsize=7)
-    figure.suptitle("Paired QH score landscapes: flow latent path vs direct data-space tangent")
+    figure.suptitle(
+        "QH score landscapes: latent, transported tangent, and random data directions"
+    )
     figure.tight_layout()
     figure.savefig(output_dir / "landscape_score_vs_alpha.png", dpi=190)
+
+    for axis in axes[:, 0]:
+        axis.set_xlim(-0.035, 0.035)
+    figure.suptitle("QH score landscapes near the reference coils")
+    figure.tight_layout()
+    figure.savefig(output_dir / "landscape_score_vs_alpha_zoom.png", dpi=190)
     plt.close(figure)
 
     figure, axes = plt.subplots(
@@ -751,7 +759,28 @@ def plot_results(rows: list[dict[str, Any]], manifest: dict, output_dir: Path) -
             xlabel="coil position RMS displacement [m]",
             ylabel="score v3",
         )
+        axis.set_xscale("symlog", linthresh=5.0e-4)
         axis.grid(alpha=0.2)
+    from matplotlib.lines import Line2D
+
+    path_handles = [
+        Line2D([], [], color="black", marker=marker, linestyle="none", label=path)
+        for path, marker in (
+            ("latent", "o"),
+            ("tangent direct", "x"),
+            ("random direct", "+"),
+        )
+    ]
+    direction_handles = [
+        Line2D([], [], color=color, linewidth=2.0, label=f"direction {direction}")
+        for direction, color in enumerate(colors)
+    ]
+    axes[0, 0].legend(
+        handles=path_handles + direction_handles,
+        ncol=4,
+        fontsize=7,
+        loc="lower left",
+    )
     figure.suptitle("Score retention at matched physical displacement")
     figure.tight_layout()
     figure.savefig(output_dir / "landscape_score_vs_displacement.png", dpi=190)

@@ -18,7 +18,7 @@ set -euo pipefail
 : "${SURFACE_NPZ:?SURFACE_NPZ is required}"
 : "${OUTPUT_DIR:?OUTPUT_DIR is required}"
 
-project="$HOME/local_surface_evaluator"
+project="${PROJECT:-$HOME/local_surface_evaluator}"
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
 
 cleanup() {
@@ -63,6 +63,10 @@ desc_gpu_args=()
 if [[ ${REQUIRE_DESC_GPU:-1} == 1 ]]; then
     desc_gpu_args+=(--require-desc-gpu)
 fi
+surface_order_args=()
+if [[ -n ${SURFACE_ORDER:-} ]]; then
+    surface_order_args+=(--surface-order "$SURFACE_ORDER")
+fi
 
 python3 "$project/scripts/evaluate_saved_boozer_surface_full.py" \
     --case-file "$CASE_FILE" \
@@ -71,4 +75,5 @@ python3 "$project/scripts/evaluate_saved_boozer_surface_full.py" \
     --poincare-nfieldlines "${POINCARE_NFIELDLINES:-8}" \
     --poincare-tmax "${POINCARE_TMAX:-2e7}" \
     --desc-maxiter "${DESC_MAXITER:-50}" \
+    "${surface_order_args[@]}" \
     "${desc_gpu_args[@]}"

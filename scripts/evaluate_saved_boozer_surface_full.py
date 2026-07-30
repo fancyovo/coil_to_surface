@@ -38,6 +38,7 @@ def main() -> None:
     parser.add_argument("--current-unit", default="A")
     parser.add_argument("--poincare-nfieldlines", type=int, default=8)
     parser.add_argument("--poincare-tmax", type=float, default=2.0e7)
+    parser.add_argument("--surface-order", type=int, default=None)
     parser.add_argument("--require-desc-gpu", action="store_true")
     parser.add_argument("--desc-resolution", type=int, default=8)
     parser.add_argument("--desc-maxiter", type=int, default=50)
@@ -56,12 +57,22 @@ def main() -> None:
             raise FileExistsError(f"output already complete: {args.output_dir}")
 
     with np.load(args.surface_npz) as saved:
-        surface_order = int(saved["order"])
+        if "order" in saved:
+            surface_order = int(saved["order"])
+        elif args.surface_order is not None:
+            surface_order = args.surface_order
+        else:
+            raise ValueError(
+                "surface NPZ has no order metadata; pass --surface-order explicitly"
+            )
+        if surface_order < 1:
+            raise ValueError("surface order must be positive")
         surface_meta = {
             key: np.asarray(saved[key]).item()
             for key in ("nfp", "order", "iota", "G", "rho", "s_edge", "s_level")
             if key in saved
         }
+        surface_meta.setdefault("order", surface_order)
 
     started = time.perf_counter()
     result = {

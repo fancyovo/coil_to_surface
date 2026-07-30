@@ -96,6 +96,9 @@ python3 "$project/scripts/diagnose_alpha_toroidal_correction.py" \
     --rho-values 0.5,0.8,1.0 \
     --nu-orders 12 \
     --surface-order 12 \
+    --gpu-lib "$gpu_lib" \
+    --gpu-device 0 \
+    --field-precision fp64 \
     --save-surfaces
 
 cd /
@@ -103,4 +106,7 @@ python3 "$project/scripts/guarded_boozer_from_alpha_nu.py" \
     --case-file "$CASE_FILE" \
     --run-dir "$RUN_DIR" \
     --surface-npz "$nu_dir/surfaces/rho_1_alpha_nu.npz" \
-    --output-dir "$OUTPUT_DIR/guarded_rho_1"
+    --output-dir "$OUTPUT_DIR/guarded_rho_1" \
+    --gpu-lib "$gpu_lib" \
+    --gpu-device 0 \
+    --validation-field-precision fp64

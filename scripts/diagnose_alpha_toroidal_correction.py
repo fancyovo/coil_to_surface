@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import atexit
+from dataclasses import replace
 import os
 from pathlib import Path
 import sys
@@ -23,8 +25,8 @@ if str(ROOT) not in sys.path:
 from simsopt.geo import SurfaceXYZTensorFourier
 
 from stellarator_eval.alpha_clebsch import load_alpha_fit
-from stellarator_eval.config import BoozerConfig, SurfaceScanConfig
-from stellarator_eval.field import build_field
+from stellarator_eval.config import BoozerConfig, PsiFitConfig, SurfaceScanConfig
+from stellarator_eval.psi import _make_gpu_field
 from stellarator_eval.serialization import write_json
 from stellarator_eval.surface import surface_points_from_level_gpu
 from stellarator_eval.toroidal_correction import (
@@ -39,6 +41,7 @@ from scripts.desc_psi_volume_initial_guess_experiment import (
     load_psi_model,
 )
 from scripts.diagnose_alpha_boozer_residual import (
+    GpuBOnlyFieldAdapter,
     fit_tensor_surface,
     parse_floats,
     parse_ints,
@@ -349,6 +352,13 @@ def main() -> None:
     parser.add_argument("--interpolation-size", type=int, default=97)
     parser.add_argument("--regularization", type=float, default=0.0)
     parser.add_argument("--save-surfaces", action="store_true")
+    parser.add_argument(
+        "--gpu-lib",
+        type=Path,
+        default=ROOT / "gpu_backend" / "build_mixed" / "libstellarator_gpu.so",
+    )
+    parser.add_argument("--gpu-device", type=int, default=0)
+    parser.add_argument("--field-precision", choices=("fp32", "fp64"), default="fp64")
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=False)
@@ -364,11 +374,28 @@ def main() -> None:
     model = load_psi_model(args.run_dir / "psi_model.npz")
     alpha_fit = load_alpha_fit(args.alpha_dir / args.alpha_fit)
     field_input = load_field_input(args.case_file, "raw")
-    field = build_field(
-        field_input, current_unit=config.get("current_unit") or "A"
-    ).field
+    gpu_lib = args.gpu_lib if args.gpu_lib.is_absolute() else ROOT / args.gpu_lib
+    gpu_config = PsiFitConfig(
+        backend="gpu",
+        gpu_lib_path=str(gpu_lib.resolve()),
+        gpu_device=args.gpu_device,
+        gpu_segments_per_coil=256,
+    )
+    gpu_field = _make_gpu_field(
+        field_input,
+        nfp,
+        gpu_config,
+        config.get("current_unit") or "A",
+    )
+    atexit.register(gpu_field.close)
+    field = GpuBOnlyFieldAdapter(gpu_field, precision=args.field_precision)
     scan_cfg = dataclass_from_dict(SurfaceScanConfig, config.get("scan"))
     boozer_cfg = dataclass_from_dict(BoozerConfig, config.get("boozer"))
+    boozer_cfg = replace(
+        boozer_cfg,
+        gpu_lib_path=str(gpu_lib.resolve()),
+        gpu_device=args.gpu_device,
+    )
 
     rows = []
     saved_surfaces = []
@@ -591,11 +618,20 @@ def main() -> None:
         "nu_orders": nu_orders,
         "regularization": float(args.regularization),
         "selected_nu_order": int(selected_order),
+        "backends": {
+            "surface_extraction": "C++/CUDA",
+            "field_evaluation": f"C++/CUDA eval_B {args.field_precision}",
+            "nu_fourier_projection": "NumPy CPU direct orthogonal projection",
+            "surface_reparameterization": "NumPy/SciPy CPU",
+            "surface_spectral_fit": "Simsopt CPU",
+        },
         "saved_surfaces": saved_surfaces,
         "rows": rows,
         "total_time_s": float(time.perf_counter() - started),
     }
     write_json(args.output_dir / "summary.json", output)
+    gpu_field.close()
+    atexit.unregister(gpu_field.close)
 
 
 if __name__ == "__main__":

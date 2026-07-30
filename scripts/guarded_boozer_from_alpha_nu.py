@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
 import os
 from pathlib import Path
@@ -22,11 +23,15 @@ if str(ROOT) not in sys.path:
 
 from simsopt.geo import BoozerSurface, SurfaceXYZTensorFourier, Volume
 
+from stellarator_eval.config import PsiFitConfig
 from stellarator_eval.field import build_field, load_case_file
-from stellarator_eval.psi import psi_and_gradient
+from stellarator_eval.psi import _make_gpu_field, psi_and_gradient
 from stellarator_eval.serialization import write_json
 from scripts.desc_psi_volume_initial_guess_experiment import load_psi_model
-from scripts.diagnose_alpha_boozer_residual import residual_for_iota_G
+from scripts.diagnose_alpha_boozer_residual import (
+    GpuBOnlyFieldAdapter,
+    residual_for_iota_G,
+)
 
 
 TWOPI = 2.0 * np.pi
@@ -165,6 +170,13 @@ def main() -> None:
     parser.add_argument("--psi-distance-growth-limit", type=float, default=2.0)
     parser.add_argument("--max-final-relative-l2", type=float, default=1e-4)
     parser.add_argument("--max-final-normal-p95", type=float, default=1e-4)
+    parser.add_argument(
+        "--gpu-lib",
+        type=Path,
+        default=ROOT / "gpu_backend" / "build_mixed" / "libstellarator_gpu.so",
+    )
+    parser.add_argument("--gpu-device", type=int, default=0)
+    parser.add_argument("--validation-field-precision", choices=("fp32", "fp64"), default="fp64")
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=False)
@@ -185,7 +197,21 @@ def main() -> None:
     field_input = load_case_file(args.case_file, args.case_key)
     if field_input.nfp != nfp:
         raise ValueError(f"surface nfp={nfp} but case nfp={field_input.nfp}")
-    field = build_field(field_input, current_unit=args.current_unit).field
+    solver_field = build_field(field_input, current_unit=args.current_unit).field
+    gpu_lib = args.gpu_lib if args.gpu_lib.is_absolute() else ROOT / args.gpu_lib
+    gpu_config = PsiFitConfig(
+        backend="gpu",
+        gpu_lib_path=str(gpu_lib.resolve()),
+        gpu_device=args.gpu_device,
+        gpu_segments_per_coil=256,
+    )
+    gpu_field = _make_gpu_field(
+        field_input, nfp, gpu_config, args.current_unit
+    )
+    atexit.register(gpu_field.close)
+    validation_field = GpuBOnlyFieldAdapter(
+        gpu_field, precision=args.validation_field_precision
+    )
     model = load_psi_model(args.run_dir / "psi_model.npz")
     reference_surface = surface_from_dofs(
         dofs, nfp=nfp, order=order, size=max(grid_sizes), offset=0.371
@@ -194,7 +220,7 @@ def main() -> None:
 
     initial = evaluate_state(
         dofs,
-        field=field,
+        field=validation_field,
         model=model,
         nfp=nfp,
         order=order,
@@ -222,7 +248,7 @@ def main() -> None:
             start_dofs, nfp=nfp, order=order, size=2 * order + 1
         )
         boozer = BoozerSurface(
-            field, exact_surface, Volume(exact_surface), target_volume
+            solver_field, exact_surface, Volume(exact_surface), target_volume
         )
         result = boozer.solve_residual_equation_exactly_newton(
             tol=args.newton_tol,
@@ -249,7 +275,7 @@ def main() -> None:
             candidate_state = interpolate_state(accepted_state, trial_state, fraction)
             candidate = evaluate_state(
                 candidate_state[0],
-                field=field,
+                field=validation_field,
                 model=model,
                 nfp=nfp,
                 order=order,
@@ -404,11 +430,20 @@ def main() -> None:
             "max_geometry_distance_p95_m": max_distance,
         },
         "absolute_checks": absolute_checks,
+        "backends": {
+            "boozer_newton_with_spatial_derivatives": "Simsopt CPU",
+            "dense_line_search_field_validation": (
+                f"C++/CUDA eval_B {args.validation_field_precision}"
+            ),
+            "psi_and_geometry_validation": "NumPy/SciPy CPU",
+        },
         "accepted_for_downstream": accepted_for_downstream,
         "output_surface": str(output_surface),
     }
     write_json(args.output_dir / "summary.json", output)
     print(json.dumps(output, indent=2), flush=True)
+    gpu_field.close()
+    atexit.unregister(gpu_field.close)
     if not accepted_for_downstream:
         raise SystemExit(3)
 

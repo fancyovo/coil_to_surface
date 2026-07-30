@@ -197,6 +197,8 @@ $$
 
 主链。因此上一版散乱庞加莱和失败 DESC 只能否定那张错误分支的小曲面，不能否定 $\psi$、候选线圈或 $\alpha+\nu$ 路线；据此作出的“最终样本物理失败”结论现已撤回。旧产物仅保留在 [invalid_old_ls_full_eval](assets/qh_flow_zo_adam_29465/invalid_old_ls_full_eval/) 供审计，以下所有结论均来自正确链路。
 
+本次纠错并不只包含主链选错。完整实现与交付审计还发现：最初把 `a=0.05` 当成最终范围而没有向外找面；guarded Newton 缺少绝对 residual 门槛且失败面可能沿用可用文件名；GPU 空闲检查错误地观察整台节点而非 Slurm 可见卡；nu 诊断虽然申请 GPU，但场评估、傅里叶投影和曲面重建实际主要走 CPU；庞加莱边界截面没有闭合；正式运行与调试重提混杂；DESC 成功生成的诊断图没有全部进入报告。上述问题均已逐项写入《精简线圈评估流程》的错误复盘、硬门槛和自动交付检查，不能仅以“本次结果后来修正了”视为解决。
+
 ### 7.2 宽域 $\psi$ 与最大可行面
 
 `psi.a` 是 $\psi$ 拟合的采样域半径，不是最终磁面小半径。复用稳定版已经计算的五个 $\psi$ 模型后，独立的拟合与 cheap field-line screen 为：
@@ -256,11 +258,33 @@ DESC 使用同一个受保护外层面、真实 Biot--Savart 场积分得到的�
 
 虽然优化器达到迭代上限，但最终保持嵌套，平均和 P95 力误差均低于默认 $10^{-2}$ 门槛；这是物理上可信但尚未做分辨率收敛的 DESC 复核，不应写成“优化器收敛”。
 
-![DESC boundary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boundary.png)
+本次 DESC 作业成功生成 1 张初始诊断图和 7 张最终诊断图。以下逐张引用全部 8 张图，而不是只展示其中几张。
+
+初始边界用于核对 $alpha+\nu$ 外层面进入 DESC 后是否保持原有几何；最终边界用于检查求解过程中是否出现折叠或异常漂移。
+
+![DESC initial boundary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boundary_initial.png)
+
+![DESC final boundary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boundary.png)
+
+最终 $iota(\rho)$ 如下。
 
 ![DESC iota(rho)](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/iota.png)
 
+下面两张图分别给出最终平衡的 Boozer 坐标 $|B|$ 分布和 $B_{M,N}(\rho)$ 模谱。前者检查 QH 条纹是否连续，后者检查非目标模及其径向变化。
+
+![DESC Boozer |B|](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_B.png)
+
+![DESC Boozer modes](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/boozer_modes.png)
+
+最后三张图使用同一个最终平衡，分别按 QA、目标 QH 和 QP helicity 分解 QS 误差随 $\rho$ 的变化。QH 是本任务的目标通道，QA/QP 同时保留用于识别错误对称性竞争。
+
+![DESC QA components](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QA.png)
+
 ![DESC QH components](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QH.png)
+
+![DESC QP components](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/qs_QP.png)
+
+这 8 个引用已通过自动清单检查：DESC 核心 5 图（最终 boundary、Boozer $|B|$、$B_{M,N}(\rho)$、目标 QH、$\iota(\rho)$）齐全，且 `summary.json` 中所有成功生成的附加图也均已进入报告。
 
 完整原始产物：[source $\psi$ summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/source_psi_a0p08/summary.json)、[$\psi$ model](assets/qh_flow_zo_adam_29465/alpha_nu_correct/source_psi_a0p08/psi_model.npz)、[full_summary.json](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/full_summary.json)、[DESC summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/summary.json)、[受保护外层面 summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20/guarded_rho_1/summary.json)、[$\alpha$ summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20/alpha/summary.json)、[$\nu$ summary](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20/alpha_nu/summary.json)、[DESC input](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/input.check) 和 [equilibrium.h5](assets/qh_flow_zo_adam_29465/alpha_nu_correct/medium_best_29465_a0p08_s0p20_full/desc/equilibrium.h5)。最终 `boozer_guarded.npz` 的 SHA-256 为 `e278b25aaf0fe57142a0cd8cca6fc85b9cb709cdd06f4066bfbd2617b6f052f7`。
 
@@ -284,6 +308,21 @@ DESC 使用同一个受保护外层面、真实 Biot--Savart 场积分得到的�
 GPU preflight 和 postflight 均为每卡 2 MiB、0% utilization。作业退出码为 0，结束后 Slurm 队列为空，没有遗留优化器或评分 worker 进程。
 
 修正后的物理验收计时与优化器本身分开。最终 `s=0.20` 单候选中，磁通标定 57.1 s，完整固定阶 $\alpha$ 147.1 s（其中 QR solve 7.03 s），三半径 $\nu$ 86.1 s；包含受保护 Newton、初始化和清理的 alpha+nu Slurm 墙钟为 5 min 11 s。开发阶段把 `s=0.12,0.20,0.24` 三个候选放在三张空闲 5090 上并行，三者在 5 min 10--20 s 内全部结束；`s=0.30` 的先导失败实验单独为 5 min 48 s。
+
+本次原始 `s=0.20` 作业的 backend 审计如下。`gpu_preflight.csv` 和 `gpu_postflight.csv` 只能证明分配卡在作业边界空闲，不能证明中间算子使用了 GPU；下表结论来自实际调用代码和分阶段计时。
+
+| 子阶段 | 本次实际 backend | 本次计时 | 判断 |
+|---|---|---:|---|
+| 磁通标定与 alpha 训练/验证场采样 | C++/CUDA | 磁通标定 57.1 s | GPU |
+| alpha 设计矩阵与 QR | PyTorch CUDA FP64 `gels` | assemble 1.36 s，solve 7.03 s | GPU |
+| nu 的 psi 等值面提取 | C++/CUDA | 外两层约 0.03 s/层 | GPU |
+| nu 训练/验证场采样 | Simsopt Biot--Savart | 约 0.18 s/层 | CPU，原实现未接已有 CUDA 场接口 |
+| nu 傅里叶正交投影 | NumPy | 约 0.11 s/层 | CPU，但不是当前瓶颈 |
+| 每层 alpha 曲面拟合与 nu 修正面重建 | Simsopt/NumPy/SciPy | 约 7.6 s + 14.9 s/层 | CPU，是 86.1 s 的主要来源 |
+| guarded Boozer Newton 与密集验收 | Simsopt | 未单独完整拆分 | CPU |
+| DESC | JAX CPU，16 核 | 321.7 s | 显式 CPU 作业，没有占 GPU |
+
+因此，不能把本次作业描述成“alpha+nu 全程 GPU”。修正后的生产脚本已把 nu 的训练/验证场采样和 guarded 线搜索的密集场验收切到 C++/CUDA FP64，并在各级 summary 中强制记录 backend；需要空间导数的 Boozer Newton、Simsopt 曲面拟合以及仅约 0.11 s/层的小型 nu 正交投影仍显式保留在 CPU。后两者的 GPU 化应按实测收益排序，不能用“申请了 GPU”掩盖 CPU 执行。
 
 正确外层面的庞加莱与静态/HTML 可视化耗时 33.0 s。CPU DESC 阶段为 321.7 s，含导入、预检和写盘的完整保存面作业为 407.6 s，即 6 min 48 s。生产情况下已知 `a=0.08` 和候选层后，alpha+nu 与完整下游串行约 12 min；仍在《精简线圈评估流程》的 15 min 硬上限内，但尚未达到 5--8 min 目标。当前瓶颈依次是 CPU DESC、磁通标定和曲面重参数化，不是 QR。
 

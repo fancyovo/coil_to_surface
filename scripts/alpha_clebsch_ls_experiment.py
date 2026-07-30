@@ -437,6 +437,12 @@ def main() -> None:
                 "grid_phi": args.grid_phi,
                 "rho_min": args.rho_min,
             },
+            "backends": {
+                "flux_calibration_field": "C++/CUDA",
+                "training_and_validation_field": "C++/CUDA",
+                "alpha_design_and_qr": "PyTorch CUDA FP64 gels",
+                "coordinate_sampling_and_diagnostics": "NumPy/SciPy CPU",
+            },
             "calibration": calibration.diagnostics,
             "calibration_polynomial_coeffs": calibration.polynomial_coeffs.tolist(),
             "baseline_lambda0_iota0": {

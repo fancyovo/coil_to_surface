@@ -250,6 +250,8 @@ def analyze(rows: list[dict[str, Any]], output_dir: Path) -> dict[str, Any]:
     order = np.argsort(probability, kind="stable")
     bins = []
     for index, indices in enumerate(np.array_split(order, 10)):
+        if len(indices) == 0:
+            continue
         values = score[indices]
         bins.append(
             {

@@ -63,13 +63,17 @@ once the task is accepted.
   starts, then native-scores the optimized tail to determine whether it reaches
   a different regime from natural random sampling. Implementation commit is
   `80fcb106a01fbe851035dfbfa4c4d2a7b1ee36cc`; all 86 local tests pass. Smoke
-  scored-candidate smoke is being repaired and cannot support a numerical
-  conclusion yet. Job `29885` failed before code startup because it was
+  scored-candidate smoke job `29890` completed optimization, RK4 decode, and
+  four native-score calls, then failed in post-score plotting because the old
+  correlation analyzer attempted ten bins for four rows. Empty bins are now
+  skipped and a regression test covers this case; this smoke cannot support a
+  numerical conclusion. Job `29885` failed before code startup because it was
   submitted from `~/`, causing `SLURM_SUBMIT_DIR` to resolve to the wrong
-  project path. Job `29886` used the correct workdir but also exited before
-  output-directory creation; its silent bare-`test` preflight is being replaced
-  with explicit diagnostics before another submission. Future direct
-  submissions must use `--chdir` or set `PROJECT` explicitly. The
+  project path. Jobs `29886` and diagnostic `29889` established that
+  `sbatch --chdir` changes `WorkDir` but not exported `SLURM_SUBMIT_DIR`;
+  therefore direct submissions must set `PROJECT` explicitly (or invoke
+  `sbatch` from the worktree). Preflight checks now report the exact missing
+  path or hash instead of failing silently. The
   earlier unscreened random-start experiment remains incomplete and must not be
   restarted unless the user explicitly authorizes it.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.

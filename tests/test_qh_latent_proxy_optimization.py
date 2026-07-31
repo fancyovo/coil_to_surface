@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from scripts.evaluate_qh_latent_proxy_score import analyze
 from scripts.optimize_qh_latent_proxy import calibrated_probability, project_to_rms_
 
 
@@ -21,3 +22,19 @@ def test_calibrated_probability_is_monotone_and_finite() -> None:
     assert np.all(np.diff(probability) >= 0.0)
     assert probability[0] > 0.0
     assert probability[-1] == 1.0
+
+
+def test_score_analysis_accepts_fewer_than_ten_cases(tmp_path) -> None:
+    rows = [
+        {
+            "proxy_probability": 0.2 + 0.1 * index,
+            "proxy_logit": float(index),
+            "score": float(index + 1),
+            "status": "ok",
+            "sampling_modes": ["optimized_projected"],
+        }
+        for index in range(4)
+    ]
+    summary = analyze(rows, tmp_path)
+    assert summary["count"] == 4
+    assert len(summary["prediction_bins"]) == 4

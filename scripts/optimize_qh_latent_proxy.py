@@ -131,7 +131,7 @@ def setup_distributed() -> tuple[int, int, int, torch.device]:
     local_rank = int(os.environ.get("LOCAL_RANK", "0"))
     torch.cuda.set_device(local_rank)
     if world_size > 1:
-        dist.init_process_group("nccl")
+        dist.init_process_group("nccl", device_id=torch.device("cuda", local_rank))
     return rank, local_rank, world_size, torch.device("cuda", local_rank)
 
 

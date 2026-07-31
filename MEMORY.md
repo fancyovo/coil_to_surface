@@ -50,45 +50,23 @@ once the task is accepted.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
-- Current objective status: the baseline latent-support proxy experiment is complete;
-  final evidence is in `reports/qh_flow_latent_proxy_experiment_report.md`.
-  Inverse-QUASR versus condition-matched Gaussian classification is strong
-  (FP32 held-out test AUC 0.93414; target `nfp4_nc3` AUC 0.95097), but it has
-  essentially zero current-native-score correlation in every checked subset.
-  All/IID/rank-stratified/status-ok Pearson values are respectively
-  -0.0418/-0.0205/-0.0566/-0.0271, with Spearman values also near zero. This
-  proxy diagnoses current-flow latent distribution mismatch and has not been
-  validated as an Adam/CEM physical-quality prefilter. The user has explicitly
-  requested a follow-up that actively maximizes this proxy from many Gaussian
-  starts, then native-scores the optimized tail to determine whether it reaches
-  a different regime from natural random sampling. Implementation commit is
-  `80fcb106a01fbe851035dfbfa4c4d2a7b1ee36cc`; all 86 local tests pass. Smoke
-  scored-candidate smoke job `29893` completed `0:0` in 32 seconds after the
-  small-batch analysis fix. It verified four-GPU exact-gradient Adam, projected
-  Adam, flow decode, native score, reused-control analysis, and cleanup; all
-  four GPUs ended at 2 MiB and 0% utilization. Its 2+2 scored cases are not
-  numerical evidence. Formal job `29900` completed all 1,024 current-native-
-  score evaluations after optimizing 8,192 paired starts per variant and
-  selecting the top 512 free plus top 512 RMS-projected candidates. It then
-  failed only when the final pure-analysis interpreter inherited an invalid
-  current-directory handle; `scored_cases.jsonl`, score summary, hashes, and
-  GPU cleanup are intact. Native score runtime was 1336.21 seconds; all four
-  GPUs ended at 2 MiB and 0%. The postprocessor now explicitly re-enters the
-  project and adds latent-diversity diagnostics; it must be rerun without
-  repeating decode or score. Earlier job `29890` completed optimization, RK4 decode, and
-  four native-score calls, then failed in post-score plotting because the old
-  correlation analyzer attempted ten bins for four rows. Empty bins are now
-  skipped and a regression test covers this case; this smoke cannot support a
-  numerical conclusion. Job `29885` failed before code startup because it was
-  submitted from `~/`, causing `SLURM_SUBMIT_DIR` to resolve to the wrong
-  project path. Jobs `29886` and diagnostic `29889` established that
-  `sbatch --chdir` changes `WorkDir` but not exported `SLURM_SUBMIT_DIR`;
-  therefore direct submissions must set `PROJECT` explicitly (or invoke
-  `sbatch` from the worktree). Preflight checks now report the exact missing
-  path or hash instead of failing silently. The
-  earlier unscreened random-start experiment remains incomplete and must not be
-  restarted unless the user explicitly authorizes it.
-- Fixed optimizer learning rate for this experiment: $\eta=0.003$.
+- Current objective status: the latent-support proxy and active-optimization
+  experiments are complete. Baseline evidence is in
+  `reports/qh_flow_latent_proxy_experiment_report.md`; active-tail evidence is
+  in `reports/qh_latent_proxy_active_optimization_report.md`. Natural Gaussian
+  samples retain essentially zero proxy/score correlation. Exact-gradient
+  free Adam over 8,192 starts did produce moderate enrichment in its top 512:
+  median score 7.078 versus 4.837 for the reused IID control, and `status=ok`
+  70.7% versus 56.3%. Per-start-RMS-projected Adam did not enrich score
+  (median 3.694, `status=ok` 55.5%). The free tail moved to latent RMS 0.810
+  versus IID 1.004, while within-tail raw-logit/score Pearson and Spearman were
+  -0.0078/-0.0045. Thus the gain is a diverse low-radius feasibility shift,
+  not evidence that the classifier ranks high physical quality. A matched-RMS
+  random-direction control is required before attributing the gain to learned
+  angular proxy structure. All 88 local tests pass; no Slurm job is active.
+- Fixed optimizer learning rate for the earlier native-score standard-Adam
+  experiment: $\eta=0.003$; the completed differentiable proxy experiment used
+  $\eta=0.01$.
 - The planned 9-hour single-seed run and the remaining $\eta=0.01,0.03$ sweep
   were cancelled at the user's request.
 - Complete physical acceptance of job `29708`'s best sample (score
@@ -108,6 +86,13 @@ once the task is accepted.
 ### Slurm jobs, accepted 2026-07-31
 
 - No optimizer job remains active.
+- `29900`: all 1,024 native scores completed in 1336.21 seconds after 23.22
+  seconds of optimization/preparation. Slurm state is `FAILED 1:0` only because
+  the final analysis interpreter inherited an invalid cwd after score output;
+  all score artifacts and hashes are complete and all four GPUs ended at 2 MiB,
+  0%. The script now explicitly re-enters the project before postprocessing.
+- `29914`: corrected CPU-only postprocessing completed `0:0` in 24 seconds,
+  including bootstrap statistics, plots, and latent-diversity diagnostics.
 - `29708`: COMPLETED, exit code 0, 1 h 55 min 23 s. Corrected-score
   CEM-latent Adam completed 273 iterations: initial `69.12277679724532`, final
   `71.72986622806994`, best `71.73423878408627` at iteration 271. All
@@ -491,14 +476,16 @@ new physics.
   `reports/qh_flow_prior_first_order_feasibility.md`.
 - Standard-Adam job acceptance and multistart failure analysis:
   `reports/qh_flow_standard_adam_acceptance_report.md`.
+- Latent-support proxy active-optimization result:
+  `reports/qh_latent_proxy_active_optimization_report.md`.
 
 ## 12. Next Actions
 
-1. Do not use the completed all-QUASR-vs-Gaussian support proxy to screen
-   physical optimizer starts. If the user continues this direction, redesign
-   labels around high current score / physical feasibility or train a score-
-   ranking proxy, then repeat IID, rank-stratified, and extreme-tail native-
-   score validation.
+1. Do not treat the all-QUASR-vs-Gaussian proxy logit as a physical-quality
+   ranking. If the user continues this direction, first score random directions
+   rescaled to match the free-Adam RMS distribution near 0.81. This separates a
+   generic low-radius effect from learned angular proxy structure. A production
+   proxy should ultimately use current-score/feasibility labels.
 2. Do not resubmit or supplement the failed random multistart experiment until
    the user explicitly requests it.
 3. Before any future multistart run, isolate seeds as Slurm array tasks, record
@@ -514,6 +501,20 @@ new physics.
 
 ### 2026-07-31
 
+- Completed active proxy-tail optimization. From 8,192 paired starts per
+  variant, free Adam top-512 improved median native score from IID 4.837 to
+  7.078 and `status=ok` from 56.3% to 70.7%, while RMS-projected top-512 did not
+  improve. The free tail is strongly low-radius (median 0.810), remains diverse,
+  and has zero within-tail proxy/score correlation. The result is moderate
+  feasibility enrichment with an unresolved radial confound, not a validated
+  physical-quality proxy. Full report and assets are under
+  `reports/qh_latent_proxy_active_optimization_report.md` and
+  `reports/assets/qh_latent_proxy_optimized_29900/`.
+- Hardened latent proxy jobs after smoke diagnostics: direct `sbatch --chdir`
+  does not change exported `SLURM_SUBMIT_DIR`, so direct submissions set
+  `PROJECT` explicitly; preflights now report missing paths/hashes; score
+  analysis accepts batches smaller than ten; final postprocessing is a
+  restartable CPU job and explicitly re-enters the project directory.
 - Clarified the latent-proxy score scatter in both plot and report: green means
   `status=ok`; red is the union of `no_axis`, `no_surface`, `drift_rejected`,
   and `flux_rejected`; the black decile mean includes both colors, while the

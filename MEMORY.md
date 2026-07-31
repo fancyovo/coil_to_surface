@@ -117,6 +117,37 @@ once the task is accepted.
   daily collector together. The collector must have no Slurm dependency on the
   Adam jobs: its existing `--nice=10000` priority lets Adam run first, while
   still allowing collection to start when GPUs become idle even if Adam fails.
+- Complete evaluation of `start_10` began on 2026-07-31 from fixed commit
+  `ebb03cfc8e26a9c0efb6cb20ca160142afc79d82`. Source-$\psi$ candidate jobs
+  `30091`, `30093`, `30095`, and `30097` test `a=0.04,0.05,0.06,0.08`
+  respectively under
+  `~/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731`.
+  Select from their measured fit errors and physically covered field-line-screen
+  radius; do not assume the prior sample's `a=0.08` is valid.
+- All four source-$\psi$ jobs completed `0:0` in 73--75 seconds. Their numerical
+  payload took about 9.8 seconds each. The sample-specific comparison selected
+  `a=0.08`: validation RMS `7.383e-4`, direction-error P95 `9.591e-5`, largest
+  cheap-screen pass `s=0.49` at mean radius `0.05716 m`, and explicit failure
+  at `s=0.64`.
+- Guarded candidate job `30099` (`s=0.24`) and replacement job `30107`
+  (`s=0.36`) completed and passed. Jobs `30109` (`s=0.49`) and `30111`
+  (`s=0.64`) exited 3 because the fixed off-grid residual/normal-field guards
+  rejected them; this is the intended physical rejection, not an infrastructure
+  failure. Pending 16-CPU duplicates `30101/30103/30105` were cancelled before
+  startup and replaced by 4-CPU jobs so the last three candidates could run in
+  parallel. The selected `s=0.36` surface has $|V|\approx0.04741\,\mathrm{m}^3$,
+  $\iota\approx1.6971$, and off-grid relative residual `3.056e-5`; `s=0.49`
+  is its required neighboring outer failure. CPU-DESC downstream job `30120`
+  completed `0:0` in 5 min 40 s. DESC remained nested and reduced normalized
+  force mean/P95/max to `2.796e-3/6.748e-3/1.546e-2`; its optimizer reached the
+  50-iteration limit (`success=false`). All fixed artifacts and all eight DESC
+  figures passed delivery validation and are reported in
+  `reports/qh_random_start_score_adam_report.md` section 6, with assets under
+  `reports/assets/qh_score_adam_start10_47p200_full_eval_20260731/`. Selected
+  surface SHA-256 is
+  `db0895246a74d93622763292292ee03d26e7ff0348e15f9bac02b54755af3965`;
+  DESC equilibrium SHA-256 is
+  `399ddbb4afaeeaa5a497145c4ee74ea0587ef2a18ba5d2a9bc72d2ed64ecf7c7`.
 
 ### Slurm jobs, accepted 2026-07-31
 

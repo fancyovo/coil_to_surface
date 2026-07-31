@@ -178,3 +178,98 @@ Slurm 控制器恢复后，单步烟测 `29992` 先通过；正式数组 `29996`
 对已经抽到的起点，初始 score 对固定预算后的绝对质量有很强预测力，但对可优化增益只有有限预测力。真正决定短程 Adam 能否大幅上升的是局部 landscape，而不是初始 score 一个标量。约 20--30 分的三个起点在本面板中都表现出良好、连续的上升，说明这一层是有价值的优化起点；但 8 分起点的异常大增益和 10--15 分层的平缓轨迹同时表明，不能仅凭 score 阈值推断盆地宽度。
 
 本面板是为了覆盖 score 轴而主动选出的 12 个点，不是按自然先验频率抽取的独立重复试验。每个分层样本数很少，尤其 40 分以上只有一个，因此不能从 12 条轨迹估计“随机 Adam 成功率”，也不能把相关系数当作总体精确值。若后续目标是预测哪些随机起点值得投入长程 Adam，需要额外学习或测量局部平滑度、梯度一致性和可行域裕量，而不应只按初始 score 排序。
+
+## 6. 当前最佳 47.2006 样本的完整物理评估
+
+### 6.1 验收结论
+
+12 条轨迹中最高分的 `start_10` 进一步通过了固定完整评估。结论是：**该样本确有较大、可守护求解的嵌套 QH 磁面，DESC 也把力误差降到小量；但 QH 起伏仍明显，和 47.20 的中等 score 一致。**
+
+这次没有复用此前 71.7342 样本的 `a` 或 `s`。源 $\psi$ 并行测试了 `a=0.04,0.05,0.06,0.08`；四者的训练/验证误差均稳定，本样本实测选择 `a=0.08`，因为它在误差仍小的前提下覆盖了最大的通过半径：
+
+| $a$ | $\psi$ 验证 RMS | 方向误差 P95 | 最大廉价筛选通过层 | 通过层平均半径 / m | 首个外层失败 |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.04 | $6.79\times10^{-4}$ | $4.91\times10^{-5}$ | 0.49 | 0.02847 | 0.64 |
+| 0.05 | $6.89\times10^{-4}$ | $6.06\times10^{-5}$ | 0.49 | 0.03557 | 0.64 |
+| 0.06 | $7.02\times10^{-4}$ | $7.17\times10^{-5}$ | 0.49 | 0.04269 | 0.64 |
+| **0.08** | **$7.38\times10^{-4}$** | **$9.59\times10^{-5}$** | **0.49** | **0.05716** | **0.64** |
+
+磁轴闭合残差为 $4.52\times10^{-9}$。`a=0.08` 的误差虽略高于更小拟合域，但仍处于 $10^{-4}$ 方向误差量级，并把已验证物理半径扩展一倍，因此选择依据不是“误差最小即最好”，而是误差与有用体积的共同约束。
+
+### 6.2 $\alpha+\nu+$ guarded 外扩
+
+在选中的源 $\psi$ 上测试 `s=0.24,0.36,0.49,0.64`。`s=0.36` 是最大通过面，紧邻的 `s=0.49` 已被离网格残差和法向场门槛明确拒绝：
+
+| $s$ | 判定 | $|V|$ / $\mathrm{m}^3$ | $\iota$ | 离网格 relative $L^2$ | 法向场 P95 | 相对 $\psi$ 面距离 P95 / mm |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 0.24 | 通过 | 0.03088 | 1.6890 | $2.58\times10^{-5}$ | $4.08\times10^{-5}$ | 0.135 |
+| **0.36** | **通过并选中** | **0.04741** | **1.6971** | **$3.06\times10^{-5}$** | **$4.66\times10^{-5}$** | **0.185** |
+| 0.49 | 拒绝 | 0.06353 | 1.6847 | $2.51\times10^{-2}$ | $1.64\times10^{-2}$ | 5.045 |
+| 0.64 | 拒绝 | 0.05365 | 1.6431 | $1.27\times10^{-1}$ | $1.62\times10^{-1}$ | 47.395 |
+
+选中层的 $\alpha$ 使用 120,000 个训练点、60,000 个验证点和 $(L,M,N)=(12,12,16)$。验证 relative $L^2$ 为 0.09652，$\min(1+\lambda_\theta)=0.2547>0$，拟合得到 $\iota=1.6781$。12 阶 $\nu$ 把表面 Simsopt relative $L^2$ 从 0.20148 降到 0.006801，映射 Jacobian 最小值为 0.6508。guarded 修正接受 5 步后得到
+
+$$
+\iota=1.697113,\qquad G=-6.943557,\qquad |V|=0.047414\ \mathrm{m}^3.
+$$
+
+最终面相对 $\psi$ 等值面的线性化法向距离 P95 为 0.185 mm；相对 $\alpha+\nu$ 初始面的双向位移 P95 为 1.787 mm，低于本面 2.353 mm 的保护阈值。
+
+### 6.3 场线、$|B|$ 与线圈几何
+
+8 条场线在四个环向截面上各取得 25 个命中，未越过候选边界；该采样没有显示逃逸或宏观磁岛。点数只够做验收级检查，不把这张稀疏图过度解释为高分辨率拓扑证明。
+
+![47.2006 样本最大通过面上的庞加莱验证](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/assets/poincare.png)
+
+直接 Boozer 面上的 $|B|$ 范围为 0.65933--0.80806 T，平均值为 0.73579 T。白底彩色等高线显示清楚的 QH 斜条纹，但闭合畸变和非理想起伏仍明显；这与 native score 的 `volume_qs=34.39` 一致，并不是“高 score 被完整评估推翻”。
+
+![47.2006 样本直接 Boozer 面的彩色 |B| 等高线](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/assets/boozer_b.png)
+
+![47.2006 样本完整线圈和最大通过面](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/assets/coils_surface.png)
+
+交互产物：[Boozer $|B|$ HTML](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/assets/boozer_b.html)；[完整设备线圈与磁面 HTML](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/assets/coils_surface.html)。
+
+### 6.4 DESC 复核
+
+DESC 使用真实 Biot--Savart 场积分得到的环向磁通 $-3.68289\times10^{-3}\,\mathrm{Wb}$；它与 $\alpha$ 标定的 $-3.70349\times10^{-3}\,\mathrm{Wb}$ 相差约 0.56%，构成独立实现间的量级交叉检查。当前 DESC 环境明确为 JAX CPU。
+
+| DESC 指标 | 结果 |
+| --- | ---: |
+| 初始 / 最终嵌套 | true / true |
+| 初始 mean / P95 / max 归一化力误差 | 1.092 / 2.121 / 5.456 |
+| 最终 mean / P95 / max 归一化力误差 | $2.80\times10^{-3}$ / $6.75\times10^{-3}$ / $1.55\times10^{-2}$ |
+| optimizer cost / optimality | 0.009141 / 0.002406 |
+| 迭代 / 函数评估 | 50 / 57 |
+| optimizer success | false，达到迭代上限 |
+
+求解前后体均保持嵌套，最终力误差通过当前验收门槛；但优化器达到 50 步上限，因此只能写成“物理结果通过”，不能写成“优化器形式收敛”。以下逐张引用本次全部 8 张 DESC 图。
+
+![DESC initial boundary, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/boundary_initial.png)
+
+![DESC final boundary, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/boundary.png)
+
+![DESC iota versus rho, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/iota.png)
+
+![DESC Boozer |B| colored contours, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/boozer_B.png)
+
+![DESC Boozer modes versus rho, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/boozer_modes.png)
+
+![DESC QA components versus rho, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/qs_QA.png)
+
+![DESC QH components versus rho, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/qs_QH.png)
+
+![DESC QP components versus rho, score 47.2006](assets/qh_score_adam_start10_47p200_full_eval_20260731/full/desc/qs_QP.png)
+
+### 6.5 耗时和原始产物
+
+| 阶段 | 资源 | 墙钟 |
+| --- | --- | ---: |
+| 4 个 source $\psi$ 候选 | 4 x RTX 5090 并行 | 1 min 15 s；单候选数值载荷约 9.8 s |
+| 已知选中层的 $\alpha+\nu+$ guarded | 1 x RTX 5090，FP32 | 4 min 45 s |
+| 稀疏外层边界发现 | 先 1 项、再 3 项并行 | 10 min 37 s |
+| 可视化与 CPU DESC | 16 CPU | 5 min 40 s |
+| 已知参数单路径 | source + 选中层 + 下游 | 约 **11 min 40 s** |
+
+选中候选内部，$\alpha$ 总耗时 148.05 s，其中磁通标定 63.28 s、FP32 GPU QR 0.87 s；$\nu$ 总耗时 82.87 s。下游内部可视化 41.92 s、DESC 232.51 s，其中 DESC solve 为 142.38 s。
+
+完整原始产物位于 [47.2006 完整评估目录](assets/qh_score_adam_start10_47p200_full_eval_20260731/)。选中 `boozer_guarded.npz` 的 SHA-256 为 `db0895246a74d93622763292292ee03d26e7ff0348e15f9bac02b54755af3965`，DESC `equilibrium.h5` 的 SHA-256 为 `399ddbb4afaeeaa5a497145c4ee74ea0587ef2a18ba5d2a9bc72d2ed64ecf7c7`。

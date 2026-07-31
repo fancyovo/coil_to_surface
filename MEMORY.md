@@ -488,6 +488,12 @@ new physics.
 
 ### 2026-07-31
 
+- Clarified the latent-proxy score scatter in both plot and report: green means
+  `status=ok`; red is the union of `no_axis`, `no_surface`, `drift_rejected`,
+  and `flux_rejected`; the black decile mean includes both colors, while the
+  separately reported status-ok correlation uses green points only. Future
+  score scatter plots must label validity colors directly rather than relying
+  on unexplained color coding.
 - Completed training-only job `29820` on the full inverse-QH latent dataset.
   The best validation AUC was 0.93039 at step 1600; training continued to step
   5100 and stopped only after the final validation plateau. Added an

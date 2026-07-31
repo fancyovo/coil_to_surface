@@ -53,12 +53,12 @@ once the task is accepted.
 - Current objective status: the latent-support proxy and active-optimization
   experiments are complete. The active follow-up studies how native-score Adam
   depends on the **native score of an IID standard-Gaussian starting latent**;
-  proxy-selected or proxy-optimized starts are excluded. Before selecting Adam
-  starts, score 4,096 additional IID latents with the corrected native score and
-  FP32 RK4-256 flow decoder. A score of 50 or above is the intended high-score
-  tier. If several thousand IID samples contain no such case, use 40 or above
-  as the practical high tier while retaining 50 or above as an explicitly empty
-  extreme tier. Baseline proxy evidence is in
+  proxy-selected or proxy-optimized starts are excluded. The 4,096-sample IID
+  pool is complete: maximum score `41.0500821`, one sample at 40 or above, and
+  zero at 50 or above. Therefore 40 or above is the practical high tier for
+  this experiment, while 50 or above remains an explicitly empty extreme tier.
+  A 12-start panel now spans one rejected start and `status=ok` scores near 2,
+  5, 8, 10, 12, 15, 20, 25, 30, 38.7, and 41.05. Baseline proxy evidence is in
   `reports/qh_flow_latent_proxy_experiment_report.md`; active-tail evidence is
   in `reports/qh_latent_proxy_active_optimization_report.md`. Natural Gaussian
   samples retain essentially zero proxy/score correlation. Exact-gradient
@@ -88,10 +88,8 @@ once the task is accepted.
   section 8 and `reports/assets/qh_flow_standard_adam_71p734_full_eval/`.
   Selected-surface SHA-256 is
   `8b0171a25de84532601bc02f10181a0381b3620bdeb9a6b624cfde2a82936c7c`.
-- Active Slurm job `29960` scores 4,096 pure-IID random latents with FP32
-  RK4-256 and the corrected native score. Its run directory is
-  `~/local_surface_evaluator/runs/qh_random_score_pool_29960`; it was submitted
-  from implementation commit `585bd2e31be00ab3efff0d37558fbdcb728169c2`.
+- No project Slurm job is active. The next action is the 12-start, 40-step
+  standard-Adam array after synchronizing its implementation and start panel.
 
 ### Slurm jobs, accepted 2026-07-31
 
@@ -99,8 +97,17 @@ once the task is accepted.
   all artifacts; all four allocated GPUs were idle before and after, and no job
   process remained. Python emitted harmless duplicate semaphore-unlink warnings
   during worker shutdown.
-- `29960`: active formal pure-IID pool: 4,096 samples, seed `20260805`, FP32
-  RK4-256, four corrected native-score workers.
+- `29960`: numerically complete. Slurm accounting was temporarily unavailable
+  at acceptance, but the manifest is `stage=complete`, all 4,096 rows exist,
+  and all four postflight GPUs are at 2 MiB and 0%. FP32 RK4-256 decoding took
+  38.34 seconds and four-worker corrected native scoring took 5165.32 seconds.
+  Overall mean/median/P90/P95/P99/max are
+  `4.341/3.494/9.420/11.765/21.031/41.050`; 2,149/4,096 samples are
+  `status=ok`. Exceedance counts at 10/20/30/40/50 are 326/45/6/1/0.
+  Source artifact SHA-256 values are `49cccc0d7b6dcb8aa8a7f9e620f897817610278a2edac215aa77edcd02a9abb8`
+  for `scored_cases.jsonl` and
+  `88bdeefab57f1d2f0320fb4cc339ae3a374eb25243b6ff2f70ccad614d16ea12`
+  for `random_latents.npz`.
 - `29900`: all 1,024 native scores completed in 1336.21 seconds after 23.22
   seconds of optimization/preparation. Slurm state is `FAILED 1:0` only because
   the final analysis interpreter inherited an invalid cwd after score output;

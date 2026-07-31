@@ -1,0 +1,281 @@
+{
+  "format": "qh_iid_score_adam_start_panel_v2",
+  "source": {
+    "scored_cases": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_random_score_pool_29960\\scored_cases.jsonl",
+    "scored_cases_sha256": "49cccc0d7b6dcb8aa8a7f9e620f897817610278a2edac215aa77edcd02a9abb8",
+    "random_latents": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_random_score_pool_29960\\random_latents.npz",
+    "random_latents_sha256": "88bdeefab57f1d2f0320fb4cc339ae3a374eb25243b6ff2f70ccad614d16ea12",
+    "selection": "all rows are from the pure IID standard-Gaussian pool"
+  },
+  "distribution": {
+    "count": 4096,
+    "score": {
+      "mean": 4.3412275543186105,
+      "median": 3.493830545382592,
+      "p90": 9.420234314592243,
+      "p95": 11.764990817655503,
+      "p99": 21.031047659015574,
+      "p99_5": 25.230436099302704,
+      "max": 41.05008213463776
+    },
+    "score_exceedance_counts": {
+      "10": 326,
+      "20": 45,
+      "30": 6,
+      "40": 1,
+      "50": 0
+    },
+    "status_counts": {
+      "drift_rejected": 819,
+      "flux_rejected": 18,
+      "no_axis": 842,
+      "no_surface": 268,
+      "ok": 2149
+    },
+    "status_ok_rate": 0.524658203125
+  },
+  "targets": [
+    {
+      "label": "rejected_0",
+      "target_score": 0.0,
+      "status": "rejected",
+      "score_min": 0.0,
+      "score_max": 1.0,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "low_0",
+      "target_score": 2.0,
+      "status": "ok",
+      "score_min": 1.5,
+      "score_max": 2.5,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "low_1",
+      "target_score": 5.0,
+      "status": "ok",
+      "score_min": 4.5,
+      "score_max": 5.5,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "medium_0",
+      "target_score": 8.0,
+      "status": "ok",
+      "score_min": 7.5,
+      "score_max": 8.5,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "medium_1",
+      "target_score": 10.0,
+      "status": "ok",
+      "score_min": 9.5,
+      "score_max": 10.5,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "medium_2",
+      "target_score": 12.0,
+      "status": "ok",
+      "score_min": 11.5,
+      "score_max": 12.5,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "medium_3",
+      "target_score": 15.0,
+      "status": "ok",
+      "score_min": 14.0,
+      "score_max": 16.0,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "good_0",
+      "target_score": 20.0,
+      "status": "ok",
+      "score_min": 19.0,
+      "score_max": 21.0,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "good_1",
+      "target_score": 25.0,
+      "status": "ok",
+      "score_min": 24.0,
+      "score_max": 26.0,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "good_2",
+      "target_score": 30.0,
+      "status": "ok",
+      "score_min": 28.0,
+      "score_max": 32.0,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "upper_tail_0",
+      "target_score": 38.7,
+      "status": "ok",
+      "score_min": 35.0,
+      "score_max": 40.0,
+      "direction_seed_offset": 0
+    },
+    {
+      "label": "high_0",
+      "target_score": 41.05,
+      "status": "ok",
+      "score_min": 40.0,
+      "score_max": 100.0,
+      "direction_seed_offset": 0
+    }
+  ],
+  "starts": [
+    {
+      "start_id": 0,
+      "file": "start_00.json",
+      "label": "rejected_0",
+      "stratum": "rejected",
+      "target_score": 0.0,
+      "recorded_score": 0.09080688221923375,
+      "recorded_status": "no_axis",
+      "case_id": 1375,
+      "latent_rms": 1.090503470333666,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 1,
+      "file": "start_01.json",
+      "label": "low_0",
+      "stratum": "low",
+      "target_score": 2.0,
+      "recorded_score": 2.015714043785332,
+      "recorded_status": "ok",
+      "case_id": 3273,
+      "latent_rms": 0.9874584077439676,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 2,
+      "file": "start_02.json",
+      "label": "low_1",
+      "stratum": "low",
+      "target_score": 5.0,
+      "recorded_score": 5.00424843273155,
+      "recorded_status": "ok",
+      "case_id": 1164,
+      "latent_rms": 0.9908220391080667,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 3,
+      "file": "start_03.json",
+      "label": "medium_0",
+      "stratum": "medium",
+      "target_score": 8.0,
+      "recorded_score": 7.999593353560957,
+      "recorded_status": "ok",
+      "case_id": 2414,
+      "latent_rms": 1.0125971141464356,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 4,
+      "file": "start_04.json",
+      "label": "medium_1",
+      "stratum": "medium",
+      "target_score": 10.0,
+      "recorded_score": 9.996646740032757,
+      "recorded_status": "ok",
+      "case_id": 568,
+      "latent_rms": 1.0005396263035742,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 5,
+      "file": "start_05.json",
+      "label": "medium_2",
+      "stratum": "medium",
+      "target_score": 12.0,
+      "recorded_score": 11.983346744406061,
+      "recorded_status": "ok",
+      "case_id": 2683,
+      "latent_rms": 1.0068719143844471,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 6,
+      "file": "start_06.json",
+      "label": "medium_3",
+      "stratum": "medium",
+      "target_score": 15.0,
+      "recorded_score": 14.983520057499918,
+      "recorded_status": "ok",
+      "case_id": 548,
+      "latent_rms": 1.0092502676436037,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 7,
+      "file": "start_07.json",
+      "label": "good_0",
+      "stratum": "good",
+      "target_score": 20.0,
+      "recorded_score": 19.763041244553992,
+      "recorded_status": "ok",
+      "case_id": 2044,
+      "latent_rms": 0.9853210740895652,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 8,
+      "file": "start_08.json",
+      "label": "good_1",
+      "stratum": "good",
+      "target_score": 25.0,
+      "recorded_score": 24.912143078396504,
+      "recorded_status": "ok",
+      "case_id": 1220,
+      "latent_rms": 0.9617993578135869,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 9,
+      "file": "start_09.json",
+      "label": "good_2",
+      "stratum": "good",
+      "target_score": 30.0,
+      "recorded_score": 29.87232049817727,
+      "recorded_status": "ok",
+      "case_id": 3549,
+      "latent_rms": 0.9518345095973831,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 10,
+      "file": "start_10.json",
+      "label": "upper_tail_0",
+      "stratum": "upper_tail",
+      "target_score": 38.7,
+      "recorded_score": 38.69432755254292,
+      "recorded_status": "ok",
+      "case_id": 2912,
+      "latent_rms": 0.9538221299517491,
+      "direction_seed_offset": 0
+    },
+    {
+      "start_id": 11,
+      "file": "start_11.json",
+      "label": "high_0",
+      "stratum": "high",
+      "target_score": 41.05,
+      "recorded_score": 41.05008213463776,
+      "recorded_status": "ok",
+      "case_id": 132,
+      "latent_rms": 0.9199520884203657,
+      "direction_seed_offset": 0
+    }
+  ]
+}

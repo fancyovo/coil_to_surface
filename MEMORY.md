@@ -38,9 +38,10 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- Active local branch: `qh-flow-latent-proxy`, created from
+- Active local and remote branch: `qh-flow-latent-proxy`, created from
   `qh-flow-zo-adam` at `e0b21ca1ebf72a32c73b8448c731942fedf1c889` on
-  2026-07-31. The remote worktree has not yet been switched or synchronized.
+  2026-07-31. The remote worktree was switched after synchronizing implementation
+  commit `eb6dbb0e56b01da4df2ad0bf9fef4af665a1bb4c`.
 - Current experiment implementation baseline:
   `cc69110d0a5663a50fa56ac97a671973bd6f064d`
   (`Pin Adam jobs to corrected score library`). The branch also contains this

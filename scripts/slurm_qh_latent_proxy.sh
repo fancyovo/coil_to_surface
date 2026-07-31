@@ -66,6 +66,10 @@ nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total 
   --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"
 git rev-parse HEAD > "$run_root/code_commit.txt"
 
+inverse_limit_args=()
+if [[ -n "${INVERSE_LIMIT_PER_GROUP:-}" ]]; then
+  inverse_limit_args+=(--limit-per-group "$INVERSE_LIMIT_PER_GROUP")
+fi
 python -m torch.distributed.run --standalone --nproc-per-node=4 \
   scripts/invert_qh_flow_latents.py \
   --data-dir "$data" \
@@ -73,7 +77,8 @@ python -m torch.distributed.run --standalone --nproc-per-node=4 \
   --output-dir "$run_root/latents" \
   --steps "${INVERSE_STEPS:-256}" \
   --batch-size "${INVERSE_BATCH:-4096}" \
-  --closure-count "${CLOSURE_COUNT:-8}" &
+  --closure-count "${CLOSURE_COUNT:-8}" \
+  "${inverse_limit_args[@]}" &
 children+=("$!")
 wait "${children[0]}"
 children=()
@@ -93,4 +98,3 @@ python -m torch.distributed.run --standalone --nproc-per-node=4 \
 children+=("$!")
 wait "${children[0]}"
 children=()
-

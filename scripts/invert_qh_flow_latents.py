@@ -170,6 +170,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", type=int, default=256)
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--closure-count", type=int, default=8)
+    parser.add_argument("--limit-per-group", type=int)
     return parser.parse_args()
 
 
@@ -177,6 +178,8 @@ def main() -> None:
     args = parse_args()
     if args.steps < 1 or args.batch_size < 1 or args.closure_count < 0:
         raise ValueError("steps and batch size must be positive; closure count must be nonnegative")
+    if args.limit_per_group is not None and args.limit_per_group < 1:
+        raise ValueError("limit per group must be positive")
     process_started = time.perf_counter()
     rank, local_rank, world_size, device = setup()
     if rank == 0:
@@ -194,11 +197,12 @@ def main() -> None:
     for split in ("train", "validation", "test"):
         groups, _ = load_raw_groups(args.data_dir, split)
         for key in sorted(groups):
+            count = args.limit_per_group
             shard, closure = invert_group(
                 model,
                 normalizer,
-                groups[key].tokens,
-                groups[key].ids,
+                groups[key].tokens[:count],
+                groups[key].ids[:count],
                 key=key,
                 split=split,
                 rank=rank,

@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from scripts.evaluate_qh_latent_proxy_score import analyze
+from scripts.analyze_qh_latent_proxy_optimization import latent_diversity
 from scripts.optimize_qh_latent_proxy import calibrated_probability, project_to_rms_
 
 
@@ -38,3 +39,11 @@ def test_score_analysis_accepts_fewer_than_ten_cases(tmp_path) -> None:
     summary = analyze(rows, tmp_path)
     assert summary["count"] == 4
     assert len(summary["prediction_bins"]) == 4
+
+
+def test_latent_diversity_detects_duplicate_pair() -> None:
+    latent = np.zeros((3, 1, 2), dtype=np.float32)
+    latent[2] = 1.0
+    summary = latent_diversity(latent)
+    assert summary["rounded_1e4_unique_count"] == 2
+    assert summary["nearest_neighbor_rms_distance"]["min"] == 0.0

@@ -63,7 +63,19 @@ once the task is accepted.
   starts, then native-scores the optimized tail to determine whether it reaches
   a different regime from natural random sampling. Implementation commit is
   `80fcb106a01fbe851035dfbfa4c4d2a7b1ee36cc`; all 86 local tests pass. Smoke
-  scored-candidate smoke job `29890` completed optimization, RK4 decode, and
+  scored-candidate smoke job `29893` completed `0:0` in 32 seconds after the
+  small-batch analysis fix. It verified four-GPU exact-gradient Adam, projected
+  Adam, flow decode, native score, reused-control analysis, and cleanup; all
+  four GPUs ended at 2 MiB and 0% utilization. Its 2+2 scored cases are not
+  numerical evidence. Formal job `29900` completed all 1,024 current-native-
+  score evaluations after optimizing 8,192 paired starts per variant and
+  selecting the top 512 free plus top 512 RMS-projected candidates. It then
+  failed only when the final pure-analysis interpreter inherited an invalid
+  current-directory handle; `scored_cases.jsonl`, score summary, hashes, and
+  GPU cleanup are intact. Native score runtime was 1336.21 seconds; all four
+  GPUs ended at 2 MiB and 0%. The postprocessor now explicitly re-enters the
+  project and adds latent-diversity diagnostics; it must be rerun without
+  repeating decode or score. Earlier job `29890` completed optimization, RK4 decode, and
   four native-score calls, then failed in post-score plotting because the old
   correlation analyzer attempted ten bins for four rows. Empty bins are now
   skipped and a regression test covers this case; this smoke cannot support a

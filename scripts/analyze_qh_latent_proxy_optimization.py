@@ -98,6 +98,43 @@ def compare(candidate: list[dict[str, Any]], control: list[dict[str, Any]], *, s
     }
 
 
+def latent_diversity(latent: np.ndarray) -> dict[str, Any]:
+    values = np.asarray(latent, dtype=np.float64)
+    if values.ndim != 3 or len(values) < 2:
+        raise ValueError("latent diversity requires at least two rank-3 samples")
+    flat = values.reshape(len(values), -1)
+    dimension = flat.shape[1]
+    square = np.sum(flat * flat, axis=1)
+    square_distance = np.maximum(square[:, None] + square[None, :] - 2.0 * flat @ flat.T, 0.0)
+    rms_distance = np.sqrt(square_distance / dimension)
+    np.fill_diagonal(rms_distance, np.inf)
+    nearest = np.min(rms_distance, axis=1)
+    pairwise = rms_distance[np.triu_indices(len(values), k=1)]
+    norm = np.sqrt(square).clip(min=1.0e-12)
+    cosine = (flat @ flat.T) / (norm[:, None] * norm[None, :])
+    pairwise_cosine = cosine[np.triu_indices(len(values), k=1)]
+    return {
+        "count": len(values),
+        "rounded_1e4_unique_count": int(len(np.unique(np.round(flat, 4), axis=0))),
+        "nearest_neighbor_rms_distance": {
+            "min": float(np.min(nearest)),
+            "median": float(np.median(nearest)),
+            "p90": float(np.percentile(nearest, 90)),
+        },
+        "pairwise_rms_distance": {
+            "p10": float(np.percentile(pairwise, 10)),
+            "median": float(np.median(pairwise)),
+            "p90": float(np.percentile(pairwise, 90)),
+        },
+        "pairwise_cosine_similarity": {
+            "p10": float(np.percentile(pairwise_cosine, 10)),
+            "median": float(np.median(pairwise_cosine)),
+            "p90": float(np.percentile(pairwise_cosine, 90)),
+            "max": float(np.max(pairwise_cosine)),
+        },
+    }
+
+
 def plot(groups: dict[str, list[dict[str, Any]]], output_path: Path) -> None:
     import matplotlib
 
@@ -154,6 +191,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare actively optimized proxy candidates with existing IID controls.")
     parser.add_argument("--optimized-scored", type=Path, required=True)
     parser.add_argument("--control-scored", type=Path, required=True)
+    parser.add_argument("--selected-latents", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=20260803)
     return parser.parse_args()
@@ -169,6 +207,13 @@ def main() -> None:
     if not control or not free or not projected:
         raise ValueError("control, free-Adam, and projected-Adam groups must all be nonempty")
     groups = {"iid_control_29824": control, "free": free, "projected": projected}
+    with np.load(args.selected_latents, allow_pickle=False) as payload:
+        selected_latent = np.asarray(payload["latent"])
+        selected_variant = np.asarray(payload["variant"])
+    diversity = {
+        variant: latent_diversity(selected_latent[selected_variant == variant])
+        for variant in ("free", "projected")
+    }
     summary = {
         "format": "qh_latent_proxy_optimization_comparison_v1",
         "groups": {name: summarize(rows) for name, rows in groups.items()},
@@ -176,6 +221,7 @@ def main() -> None:
             name: compare(rows, control, seed=args.seed + index)
             for index, (name, rows) in enumerate((("free", free), ("projected", projected)))
         },
+        "selected_latent_diversity": diversity,
         "control_reused": {
             "path": str(args.control_scored.resolve()),
             "selection": "sampling_modes contains iid_prior",

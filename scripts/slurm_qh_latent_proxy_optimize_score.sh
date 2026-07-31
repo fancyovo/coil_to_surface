@@ -131,7 +131,9 @@ children+=("$!")
 wait "${children[0]}"
 children=()
 
+cd "$project"
 python scripts/analyze_qh_latent_proxy_optimization.py \
   --optimized-scored "$run_root/scored_cases.jsonl" \
   --control-scored "$control_scored" \
+  --selected-latents "$run_root/selected_optimized_latents.npz" \
   --output-dir "$run_root"

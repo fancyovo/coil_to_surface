@@ -57,7 +57,14 @@ once the task is accepted.
   classification is materially above chance, measure current native score
   against proxy prediction on a moderately sized prior sample. The local
   inversion, proxy training/test, score-correlation, and Slurm entrypoints are
-  implemented; all 83 local tests pass. No remote job has been submitted yet. The
+  implemented; all 83 local tests pass. Four-GPU smoke job `29812` completed
+  `0:0` in 1 minute 32 seconds with four samples per condition group, four RK4
+  steps, and two proxy training steps; it validates plumbing only, not numerical
+  quality. Full four-GPU job `29815` completed the all-sample 256-step inversion
+  in 674.54 seconds, then failed before training at module-level `import torch`
+  because oneMKL could not load `libtorch_cpu.so`. Its latent manifest is valid
+  and must be reused rather than recomputed. A training-only retry has not yet
+  been submitted. The
   earlier unscreened random-start experiment remains incomplete and must not be
   restarted unless the user explicitly authorizes it.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.

@@ -28,6 +28,14 @@ silently deleting them. Distinguish these three quantities explicitly:
 The newest dated correction wins if older text conflicts with it. Large reports
 remain the detailed evidence; this file records the conclusions and pointers.
 
+Keep this file selective. Record only facts needed to resume after compaction,
+durable workflow requirements, validated numerical conclusions, active jobs,
+and mistakes that must not recur. Detailed scheduler history, every trial
+parameter, and routine intermediate measurements belong in reports/artifacts,
+not permanently in memory. It is acceptable to record temporary job details
+while work is active, but collapse them to the final outcome and report pointer
+once the task is accepted.
+
 ## 2. Current Snapshot
 
 - Active local and remote branch: `qh-flow-zo-adam`.
@@ -44,6 +52,19 @@ remain the detailed evidence; this file records the conclusions and pointers.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.
 - The planned 9-hour single-seed run and the remaining $\eta=0.01,0.03$ sweep
   were cancelled at the user's request.
+- Complete physical acceptance of job `29708`'s best sample (score
+  `71.73423878408627`) is complete. For this sample, `a=0.08` produced a good
+  source-$\psi$ fit; the guarded outward search accepted through `s=0.30` and
+  rejected adjacent `s=0.36`. The selected surface has
+  $|V|=0.04491\,\mathrm{m}^3$, $\iota=2.4626$, and off-grid relative residual
+  $4.63\times10^{-5}$. Poincare passed; DESC remained nested and reduced the
+  normalized force error to mean/P95 $2.88\times10^{-3}/6.26\times10^{-3}$,
+  although its optimizer hit the 50-iteration limit. Full evidence and all
+  required figures are in `reports/qh_flow_standard_adam_acceptance_report.md`
+  section 8 and `reports/assets/qh_flow_standard_adam_71p734_full_eval/`.
+  Selected-surface SHA-256 is
+  `8b0171a25de84532601bc02f10181a0381b3620bdeb9a6b624cfde2a82936c7c`.
+- No optimizer or physical-evaluation Slurm job remains active.
 
 ### Slurm jobs, accepted 2026-07-31
 
@@ -101,6 +122,12 @@ remain the detailed evidence; this file records the conclusions and pointers.
   lines, full-device coils plus
   surface HTML, Poincare validation, DESC, all required DESC figures, and DESC
   quantities versus $\rho$.
+- The source-$\psi$ fit radius `a` and candidate surface levels `s` are
+  **sample-specific search results, not fixed workflow constants**. The
+  `a=0.08` and current `s` values recorded for the 71.7342 candidate must not
+  be reused blindly for a geometrically different coil set. Every new sample
+  must re-evaluate the useful $\psi$ fitting domain and perform its own outward
+  guarded-surface search.
 - Before every remote connection attempt, read
   `REMOTE_CODEX_INSTRUCTIONS.md` and run its WSL/master-connection preflight in
   order. Do not guess a Windows SSH alias, initiate interactive authentication,
@@ -347,6 +374,8 @@ candidate acceptance. The workflow must:
 1. run the current native score and preserve the complete metric/timing bundle;
 2. expand outward and select a reasonably large guarded surface, not a fixed
    $a=0.05$ micro-tube and not necessarily the mathematically maximal surface;
+   both the source fit radius $a$ and the tested $s$ ladder must be adapted to
+   the current sample rather than copied from a previous evaluation;
 3. run the dense FP32 GPU $\alpha+\nu$ initializer;
 4. run guarded Boozer/Poincare validation and reject branch jumps or coordinate
    folding;
@@ -401,6 +430,9 @@ new physics.
     `29709` lost seven seeds when the second interpreter failed during
     `import torch`. Use seed-isolated Slurm array tasks and an independent
     aggregation step; also explicitly close and join `NativeScorePool` queues.
+15. **`sbatch --wrap` shell:** Slurm may execute a wrapped command with
+    `/bin/sh`. Do not put Bash-only options such as `set -o pipefail` directly
+    in the wrapper; submit a real Bash script or explicitly invoke Bash.
 
 ## 11. Important Files
 
@@ -427,10 +459,9 @@ new physics.
    the user explicitly requests it.
 2. Before any future multistart run, isolate seeds as Slurm array tasks, record
    per-seed failures, add a separate aggregation step, and fix queue cleanup.
-3. When authorized, run the complete physical evaluation contract on the new
-   `71.7342388` candidate. It has not yet received $\alpha+\nu$, large-surface,
-   Poincare, $|B|$, HTML, or DESC acceptance and must not be called physically
-   validated.
+3. The `71.7342388` candidate's complete physical evaluation is finished and
+   validated; do not rerun it unless a new diagnostic or changed algorithm
+   requires it. Use section 8 of the acceptance report as the source of truth.
 4. A future random-basin probability result must still include every
    predetermined unscreened seed, including failed trajectories; the one
    completed seed from `29709` is only partial evidence.
@@ -441,6 +472,12 @@ new physics.
 
 - Accepted job `29708`: standard Adam from the corrected-score CEM latent rose
   from 69.1228 to best 71.7342 in 273 iterations without optimizer heuristics.
+- Completed the same sample's fixed physical evaluation. This sample's
+  adaptive search selected `a=0.08`, accepted through `s=0.30`, rejected
+  adjacent `s=0.36`, passed Poincare, and produced a nested DESC result with
+  final normalized force mean/P95 below $10^{-2}$. Added all required figures
+  and raw artifacts to section 8 of the acceptance report; delivery validation
+  passed. These `a/s` values are sample-specific, not workflow defaults.
 - Marked job `29709` failed rather than complete. Only seed `2026073100`
   finished; the second Python runtime failed during `import torch` with an
   oneMKL `libtorch_cpu.so` load error, so no random-start success rate exists.

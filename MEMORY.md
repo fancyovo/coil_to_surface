@@ -37,29 +37,33 @@ remain the detailed evidence; this file records the conclusions and pointers.
   living-memory documentation; query `git rev-parse HEAD` at session start for
   the actual tip rather than writing a self-referential commit hash here.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
-- Current objective: determine whether fixed-rate standard Adam in the trained
-  QH flow latent space can optimize from ordinary random prior samples, and
-  compare that behavior with Adam initialized at the best prior CEM latent.
+- Current objective: the CEM-initialized standard-Adam run has been accepted,
+  but the unscreened random-start probability experiment is incomplete because
+  its multistart runner failed after one seed. Do not restart or rerun it until the
+  user explicitly authorizes another run.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.
 - The planned 9-hour single-seed run and the remaining $\eta=0.01,0.03$ sweep
   were cancelled at the user's request.
 
-### Active Slurm jobs, last checked 2026-07-31
+### Slurm jobs, accepted 2026-07-31
 
-- `29708`: RUNNING, corrected-score CEM-latent Adam, requested wall time 2 h.
-  Output:
-  `~/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_standard_adam_cem_2h_fixed/`.
-- `29709`: PENDING on `afterok:29708`, eight **unscreened** random Gaussian
-  starts, 120 Adam steps per start. Output:
-  `~/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_flow_standard_adam_multistart_8x120_fixed/`.
-- Both jobs request four RTX 5090 GPUs and 16 CPU cores. They are serialized, so
-  at most four GPUs are occupied at once.
-- `29708` uses corrected score library SHA-256
+- No optimizer job remains active.
+- `29708`: COMPLETED, exit code 0, 1 h 55 min 23 s. Corrected-score
+  CEM-latent Adam completed 273 iterations: initial `69.12277679724532`, final
+  `71.72986622806994`, best `71.73423878408627` at iteration 271. All
+  perturbation endpoints were valid. Best-case SHA-256:
+  `92c8553821837e6c2723586f87ae7a04ef056cf0cdb39fd513c15f9b064a128c`.
+- `29709`: FAILED, exit code 2, after 42 min 03 s. Only unscreened seed
+  `2026073100` completed all 120 iterations, from `0.3681156045594607` to best
+  `7.124938833298255`. Starting seed `2026073101` then failed at module-level
+  `import torch` with oneMKL unable to load `libtorch_cpu.so`; the remaining
+  seven predetermined seeds never ran. This is not an 0/8 or 1/8 success-rate
+  result, and no random-basin probability may be inferred from it.
+- Both jobs used corrected score library SHA-256
   `0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427`.
-  Its observed initial score is `69.12277679724532`. At the latest lightweight
-  check it had reached iteration 142 after 56 minutes, with current/best score
-  `71.00164650219094`, QH error `0.2670273497524001`, $\iota=2.293895483$,
-  and valid endpoint fraction 1.0. These are intermediate, not final, values.
+  Peak RSS was about 3.7 GiB, far below 128 GiB; both GPU postflight files show
+  all four GPUs at 2 MiB and 0% utilization, with no optimizer/score workers
+  left behind.
 - `29726`: COMPLETED with exit code 0 in 1 minute 23 seconds. This CPU-only
   maintenance job re-rendered the most recent direct and DESC Boozer $|B|$
   figures as white-background colored contour lines without rerunning the
@@ -392,6 +396,11 @@ new physics.
 13. **Ad hoc remote connection:** read `REMOTE_CODEX_INSTRUCTIONS.md` first and
     use its WSL master-connection preflight. A failed control socket is a hard
     stop until the user rebuilds the authenticated master connection.
+14. **Sequential multistart runtime:** do not launch many full
+    PyTorch/CUDA/multiprocessing lifecycles in one `set -e` shell loop. Job
+    `29709` lost seven seeds when the second interpreter failed during
+    `import torch`. Use seed-isolated Slurm array tasks and an independent
+    aggregation step; also explicitly close and join `NativeScorePool` queues.
 
 ## 11. Important Files
 
@@ -409,27 +418,35 @@ new physics.
 - Old hybrid Adam report: `reports/qh_flow_prior_zo_adam_medium_report.md`.
 - Standard first-order feasibility discussion:
   `reports/qh_flow_prior_first_order_feasibility.md`.
+- Standard-Adam job acceptance and multistart failure analysis:
+  `reports/qh_flow_standard_adam_acceptance_report.md`.
 
 ## 12. Next Actions
 
-1. Do not disturb jobs `29708` and `29709` unless they fail or the user changes
-   direction.
-2. On next wake-up, update this file with final Slurm states and aggregate:
-   CEM-start score trajectory, all eight random-start initial/best/final scores,
-   success fraction under explicit thresholds, endpoint validity, and latent
-   drift.
-3. Compare random starts as a basin-probability experiment, not as a screened
-   leaderboard. Report all eight, including failures.
-4. Run the complete physical evaluation contract on the best corrected-score
-   candidate after optimization, including all standard artifacts.
-5. Write a readable standard-Adam report that includes the short $\eta$
-   comparison, the stale-binary incident and correction, the CEM-start run, and
-   the unscreened random-start distribution.
+1. Do not resubmit or supplement the failed random multistart experiment until
+   the user explicitly requests it.
+2. Before any future multistart run, isolate seeds as Slurm array tasks, record
+   per-seed failures, add a separate aggregation step, and fix queue cleanup.
+3. When authorized, run the complete physical evaluation contract on the new
+   `71.7342388` candidate. It has not yet received $\alpha+\nu$, large-surface,
+   Poincare, $|B|$, HTML, or DESC acceptance and must not be called physically
+   validated.
+4. A future random-basin probability result must still include every
+   predetermined unscreened seed, including failed trajectories; the one
+   completed seed from `29709` is only partial evidence.
 
 ## 13. Dated Change Log
 
 ### 2026-07-31
 
+- Accepted job `29708`: standard Adam from the corrected-score CEM latent rose
+  from 69.1228 to best 71.7342 in 273 iterations without optimizer heuristics.
+- Marked job `29709` failed rather than complete. Only seed `2026073100`
+  finished; the second Python runtime failed during `import torch` with an
+  oneMKL `libtorch_cpu.so` load error, so no random-start success rate exists.
+- Preserved all available artifacts and wrote
+  `reports/qh_flow_standard_adam_acceptance_report.md`. Per user instruction,
+  no rerun or additional physical evaluation was submitted.
 - Standardized direct Boozer and DESC $|B|$ outputs as white-background colored
   contour lines; heatmaps and filled contours are no longer accepted for these
   report figures.

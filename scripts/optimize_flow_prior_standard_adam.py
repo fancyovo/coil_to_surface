@@ -99,7 +99,7 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
     figure, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
     axes[0, 0].plot(iterations, [row["current_score"] for row in rows], label="current")
     axes[0, 0].plot(iterations, [row["best_score"] for row in rows], label="best")
-    axes[0, 0].set(ylabel="native score", title="Standard Adam from random noise")
+    axes[0, 0].set(ylabel="native score", title="Standard Adam optimization")
     axes[0, 0].legend()
     axes[0, 1].plot(iterations, [row["current_qh_error"] for row in rows], label="QH")
     axes[0, 1].plot(iterations, [row["current_qa_error"] for row in rows], label="QA")
@@ -127,7 +127,7 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Maximize native score from random flow-prior noise with a fixed-step, "
+            "Maximize native score from a flow-prior latent with a fixed-step, "
             "standard Adam update and orthogonal antithetic zeroth-order gradients."
         )
     )

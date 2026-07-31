@@ -88,8 +88,13 @@ once the task is accepted.
   section 8 and `reports/assets/qh_flow_standard_adam_71p734_full_eval/`.
   Selected-surface SHA-256 is
   `8b0171a25de84532601bc02f10181a0381b3620bdeb9a6b624cfde2a82936c7c`.
-- No project Slurm job is active. The next action is the 12-start, 40-step
-  standard-Adam array after synchronizing its implementation and start panel.
+- No project Slurm job is active. The 12-start, 40-step standard-Adam code and
+  panel are synchronized at remote commit
+  `494dcd5fd1a9e5e83f38aab0de89b5e46c878333`, but submission is temporarily
+  blocked because the Slurm controller repeatedly times out on
+  `scontrol/squeue`. SSH, identity, the project path, and the accounting
+  association remain valid. Once the controller recovers, run a one-start,
+  one-step smoke before submitting array `0-11%1`.
 
 ### Slurm jobs, accepted 2026-07-31
 

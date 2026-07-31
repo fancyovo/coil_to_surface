@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from scipy.stats import mannwhitneyu
+from scipy.stats import mannwhitneyu, pearsonr, spearmanr
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -17,6 +17,18 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     score = np.asarray([row["score"] for row in rows], dtype=float)
     status = np.asarray([row["status"] for row in rows], dtype="U32")
     ok_score = score[status == "ok"]
+    raw_logit = np.asarray([row.get("proxy_raw_logit", np.nan) for row in rows], dtype=float)
+    finite = np.isfinite(raw_logit) & np.isfinite(score)
+    if np.sum(finite) >= 3 and np.std(raw_logit[finite]) > 0.0 and np.std(score[finite]) > 0.0:
+        proxy_score_correlation = {
+            "count": int(np.sum(finite)),
+            "pearson": float(pearsonr(raw_logit[finite], score[finite]).statistic),
+            "spearman": float(spearmanr(raw_logit[finite], score[finite]).statistic),
+        }
+    else:
+        proxy_score_correlation = {"count": int(np.sum(finite)), "pearson": None, "spearman": None}
+    movement = [row.get("metadata", {}).get("latent_l2_from_initial") for row in rows]
+    movement = np.asarray([value for value in movement if value is not None], dtype=float)
     return {
         "count": len(rows),
         "score": {
@@ -49,10 +61,16 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "min": float(np.nanmin([row.get("proxy_raw_logit", np.nan) for row in rows])),
             "max": float(np.nanmax([row.get("proxy_raw_logit", np.nan) for row in rows])),
         },
+        "proxy_raw_logit_vs_score": proxy_score_correlation,
         "latent_rms": {
             "median": float(np.median([row["latent_rms"] for row in rows])),
             "p90": float(np.percentile([row["latent_rms"] for row in rows], 90)),
             "max": float(np.max([row["latent_rms"] for row in rows])),
+        },
+        "latent_l2_from_initial": {
+            "count": int(len(movement)),
+            "median": float(np.median(movement)) if len(movement) else None,
+            "p90": float(np.percentile(movement, 90)) if len(movement) else None,
         },
     }
 

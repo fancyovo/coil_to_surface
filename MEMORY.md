@@ -44,6 +44,8 @@ once the task is accepted.
   (`Pin Adam jobs to corrected score library`). The branch also contains this
   living-memory documentation; query `git rev-parse HEAD` at session start for
   the actual tip rather than writing a self-referential commit hash here.
+- Complete physical-evaluation report and assets were delivered in commit
+  `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
 - Current objective: the CEM-initialized standard-Adam run has been accepted,
   but the unscreened random-start probability experiment is incomplete because

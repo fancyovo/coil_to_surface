@@ -118,7 +118,7 @@ once the task is accepted.
   Adam jobs: its existing `--nice=10000` priority lets Adam run first, while
   still allowing collection to start when GPUs become idle even if Adam fails.
 - Complete evaluation of `start_10` began on 2026-07-31 from fixed commit
-  `ebb03cfc8e26a9c0efb6cb20ca160142afc79d82`. Source-$\psi$ candidate jobs
+  `ebb03cf8e833ac4129a9be927bd97bf1bb584dd3`. Source-$\psi$ candidate jobs
   `30091`, `30093`, `30095`, and `30097` test `a=0.04,0.05,0.06,0.08`
   respectively under
   `~/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731`.

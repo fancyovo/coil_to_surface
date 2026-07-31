@@ -102,21 +102,17 @@ once the task is accepted.
   normal collection before the next foreground experiments: active jobs `30021`
   and `30079` and queued jobs `30022` and `30023` were cancelled. Completed
   atomic shards remain in `~/local_surface_evaluator_data/qh_iid_score_corpus_v1`
-  and must not be removed. The current total must be refreshed from shard
-  metadata at delivery.
+  and must not be removed. A metadata-only recount on 2026-07-31 found 3,012
+  completed samples in 49 shards from four streams; refresh this count at every
+  later delivery.
 - The current 12-start native-score Adam panel's best case is `start_10`, with
   current validated score `47.200617843580396`; its remote input is
   `~/local_surface_evaluator/runs/qh_score_adam_start_sweep_29996/start_10/best.json`.
   On 2026-07-31 the user required this case to receive the fixed complete
-  physical evaluation before any new optimizer jobs are submitted. The planned
-  standard-Adam experiment keeps the same 12 IID starts, uses $\eta=0.01$, runs
-  starts 0--9 for 40 steps and starts 10--11 for 200 steps, and only then starts
-  background collection. It has not yet been submitted. Submit starts 0--9 as
-  the first 10-element P107 array; after any three array elements finish and
-  free three QOS submission slots, submit starts 10--11 and one four-GPU P107
-  daily collector together. The collector must have no Slurm dependency on the
-  Adam jobs: its existing `--nice=10000` priority lets Adam run first, while
-  still allowing collection to start when GPUs become idle even if Adam fails.
+  physical evaluation before the follow-up optimizer jobs; that evaluation is
+  now complete. The follow-up keeps the same 12 IID starts, uses $\eta=0.01$,
+  runs starts 0--9 for 40 steps and starts 10--11 for 200 steps, and uses the
+  current corrected score implementation.
 - Complete evaluation of `start_10` began on 2026-07-31 from fixed commit
   `ebb03cf8e833ac4129a9be927bd97bf1bb584dd3`. Source-$\psi$ candidate jobs
   `30091`, `30093`, `30095`, and `30097` test `a=0.04,0.05,0.06,0.08`
@@ -148,6 +144,24 @@ once the task is accepted.
   `db0895246a74d93622763292292ee03d26e7ff0348e15f9bac02b54755af3965`;
   DESC equilibrium SHA-256 is
   `399ddbb4afaeeaa5a497145c4ee74ea0587ef2a18ba5d2a9bc72d2ed64ecf7c7`.
+- After complete-evaluation acceptance, P107 array `30124_[0-9]` was submitted
+  for the first ten IID starts with standard Adam, $\eta=0.01$, 40 steps,
+  `0-9%1`, FP32 RK4-256, and corrected native score. Its common output root is
+  `~/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731`.
+  Elements 0--2 completed `0:0` in 11:34, 14:48, and 15:25; their
+  initial-to-best scores were `0.0908226 -> 0.3662429`,
+  `2.0132327 -> 4.7271975`, and `5.0007726 -> 9.4243062`. All three recorded
+  clean four-GPU postflight state. Element 3 was running and 4--9 were pending
+  at the handoff.
+- After those three stable completions freed the required QOS slots, P107 array
+  `30165_[10-11]` was submitted for starts 10--11 with $\eta=0.01$, 200 steps,
+  `10-11%1`, a 10,000-second optimizer wall guard, and a 3-hour Slurm limit.
+  Independent daily P107 collector job `30166` was submitted at the same time.
+  Scheduler inspection explicitly confirmed `Dependency=(null)` and
+  `Nice=10000` for `30166`: it can start whenever resources are free even if
+  any Adam task fails, while yielding priority to the foreground jobs. Both
+  submissions use fixed remote implementation commit
+  `77115ef38e2423c97a5be67333d69e811268db66`.
 
 ### Slurm jobs, accepted 2026-07-31
 

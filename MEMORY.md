@@ -50,29 +50,16 @@ once the task is accepted.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
-- Current objective: implement and run the latent-support proxy experiment. The
-  proposed positives are inverse-traced QUASR QH samples and negatives are
-  condition-matched Gaussian-prior samples. The experiment must train to
-  validation convergence, deliver a held-out test confusion matrix, and, if
-  classification is materially above chance, measure current native score
-  against proxy prediction on a moderately sized prior sample. The local
-  inversion, proxy training/test, score-correlation, and Slurm entrypoints are
-  implemented; all 84 local tests pass. Four-GPU smoke job `29812` completed
-  `0:0` in 1 minute 32 seconds with four samples per condition group, four RK4
-  steps, and two proxy training steps; it validates plumbing only, not numerical
-  quality. Full four-GPU job `29815` completed the all-sample 256-step inversion
-  in 674.54 seconds, then failed before training at module-level `import torch`
-  because oneMKL could not load `libtorch_cpu.so`. Its latent manifest is valid
-  and was reused rather than recomputed. Retryable training-only job `29820`
-  completed `0:0` in 2 minutes 14 seconds. Its best-validation-AUC checkpoint
-  is step 1600; training continued to step 5100, exhausted three validation-
-  driven LR reductions, and stopped on the final validation plateau. The old
-  BF16-inference test summary reports AUC 0.93295 and accuracy 0.85367, which
-  proves useful discrimination but is not the authoritative probability or
-  confusion result because BF16 quantized the logits and calibration was poor.
-  A separate FP32 inference plus validation-only monotone Platt calibration is
-  implemented and must be used for the final test report and native-score
-  correlation. The
+- Current objective status: the latent-support proxy experiment is complete;
+  final evidence is in `reports/qh_flow_latent_proxy_experiment_report.md`.
+  Inverse-QUASR versus condition-matched Gaussian classification is strong
+  (FP32 held-out test AUC 0.93414; target `nfp4_nc3` AUC 0.95097), but it has
+  essentially zero current-native-score correlation in every checked subset.
+  All/IID/rank-stratified/status-ok Pearson values are respectively
+  -0.0418/-0.0205/-0.0566/-0.0271, with Spearman values also near zero. This
+  proxy diagnoses current-flow latent distribution mismatch but **must not be
+  used as an Adam/CEM physical-quality prefilter**. All 84 local tests pass and
+  no Slurm job remains active. The
   earlier unscreened random-start experiment remains incomplete and must not be
   restarted unless the user explicitly authorizes it.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.
@@ -481,11 +468,11 @@ new physics.
 
 ## 12. Next Actions
 
-1. Run the authoritative FP32 evaluation of job `29820`'s best checkpoint, then
-   run current-native-score correlation because held-out discrimination is
-   materially above chance. Report the FP32 test confusion matrix, calibration,
-   per-condition behavior, radial baseline, screening enrichment, score scatter,
-   Pearson/Spearman correlations, and all stage timings.
+1. Do not use the completed all-QUASR-vs-Gaussian support proxy to screen
+   physical optimizer starts. If the user continues this direction, redesign
+   labels around high current score / physical feasibility or train a score-
+   ranking proxy, then repeat IID, rank-stratified, and extreme-tail native-
+   score validation.
 2. Do not resubmit or supplement the failed random multistart experiment until
    the user explicitly requests it.
 3. Before any future multistart run, isolate seeds as Slurm array tasks, record
@@ -509,6 +496,27 @@ new physics.
   score-correlation preparation path to consume the same FP32 calibration.
   The original BF16 test summary is retained as provisional ranking evidence,
   not as the final calibrated result.
+- Single-GPU authoritative FP32 evaluation job `29822` completed `0:0` in 42
+  seconds. On 17,016 held-out balanced test examples it obtained ROC-AUC
+  0.93414, AP 0.94555, and accuracy 0.85349 with validation-selected threshold;
+  the confusion counts are TN/FP/FN/TP = 8088/420/2073/6435. For the target
+  `nfp4_nc3` group, test AUC is 0.95097. The latent-RMS-only baseline test AUC
+  is 0.71343. Validation-only Platt calibration reduced held-out test log loss
+  from 1.61842 to 0.34705 without changing ranking. Artifacts are at
+  `~/local_surface_evaluator/runs/qh_latent_proxy_eval_29822/` and locally under
+  `reports/assets/qh_latent_proxy_eval_29822/`.
+- Four-GPU native-score correlation job `29824` completed `0:0` in 22 minutes
+  08 seconds with corrected score-library SHA `0b7342...`. It predicted 131,072
+  prior latents, selected 768 prediction-rank-stratified plus 256 independent
+  IID cases, decoded and scored 1,024 cases. All-sample Pearson/Spearman was
+  -0.0418/-0.0161; IID was -0.0205/-0.0269; stratified was -0.0566/-0.0120;
+  status-ok only was -0.0271/-0.0107. Even the five cases with proxy probability
+  at least 0.9 had mean/max score 2.50/8.05 and only 40% status-ok. This
+  invalidates using the current classifier as a physical-quality prefilter.
+  Artifacts are at
+  `~/local_surface_evaluator/runs/qh_latent_proxy_score_29824/` and locally under
+  `reports/assets/qh_latent_proxy_score_29824/`. All GPUs were at 2 MiB and 0%
+  utilization postflight, with no workers left behind.
 - Created branch `qh-flow-latent-proxy` and implemented separate, restartable
   stages for 4-GPU FP32 RK4 inversion, validation-driven proxy training,
   held-out confusion/enrichment evaluation, and optional current-native-score

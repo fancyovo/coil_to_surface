@@ -70,7 +70,8 @@ once the task is accepted.
   -0.0078/-0.0045. Thus the gain is a diverse low-radius feasibility shift,
   not evidence that the classifier ranks high physical quality. A matched-RMS
   random-direction control is required before attributing the gain to learned
-  angular proxy structure. All 88 local tests pass; no Slurm job is active.
+  angular proxy structure. The current full local suite has 100 passing tests.
+  Adam array job `29996` is active as described below.
 - Fixed optimizer learning rate for the earlier native-score standard-Adam
   experiment: $\eta=0.003$; the completed differentiable proxy experiment used
   $\eta=0.01$.
@@ -88,16 +89,21 @@ once the task is accepted.
   section 8 and `reports/assets/qh_flow_standard_adam_71p734_full_eval/`.
   Selected-surface SHA-256 is
   `8b0171a25de84532601bc02f10181a0381b3620bdeb9a6b624cfde2a82936c7c`.
-- No project Slurm job is active. The 12-start, 40-step standard-Adam code and
-  panel are synchronized at remote commit
-  `494dcd5fd1a9e5e83f38aab0de89b5e46c878333`, but submission is temporarily
-  blocked because the Slurm controller repeatedly times out on
-  `scontrol/squeue`. SSH, identity, the project path, and the accounting
-  association remain valid. Once the controller recovers, run a one-start,
-  one-step smoke before submitting array `0-11%1`.
+- Slurm controller access recovered. The one-step smoke passed, and active
+  array job `29996` runs formal starts `0-9`, 40 Adam steps each, sequentially
+  (`%1`) under `~/local_surface_evaluator/runs/qh_score_adam_start_sweep_29996`.
+  QOS limits arrays to 10 submitted elements, so starts `10-11` must be
+  submitted as a second array after `29996` completes. Remote commit is
+  `b71aac17289736664c3fea9d0ec31b423f8a33e8`.
 
 ### Slurm jobs, accepted 2026-07-31
 
+- `29992`: COMPLETED `0:0` in 68 seconds. Recorded/startup scores were
+  `0.0908069/0.0908226`; one Adam step ended at `0.0912093`. All four GPUs were
+  2 MiB and 0% before and after, and commit hash `b71aac1` matched.
+- `29996`: active formal score-Adam array for starts `0-9`, 40 steps each,
+  sequentially. The attempted 12-element submission was rejected before job
+  creation by `QOSMaxSubmitJobPerUserLimit`; no duplicate job exists.
 - `29958`: COMPLETED `0:0` in 17 seconds. The four-sample RK4-8 smoke generated
   all artifacts; all four allocated GPUs were idle before and after, and no job
   process remained. Python emitted harmless duplicate semaphore-unlink warnings
@@ -160,6 +166,32 @@ once the task is accepted.
 - The current initial-score/Adam study uses only IID standard-Gaussian starts.
   Do not mix proxy-ranked, proxy-optimized, CEM, QUASR-inverted, or otherwise
   constructed starts into its score distribution or optimization panel.
+- Maintain an interruptible background IID score-data collector whenever GPU
+  resources are otherwise idle. Each retained sample must include the exact
+  flow latent, complete decoded/raw coil parameters, current total score, full
+  score diagnostics/components needed to recompute future score weightings,
+  and checkpoint/library/config provenance. The dataset must remain usable if
+  score weights or the flow model later change; a scalar score alone is not an
+  acceptable record.
+- The two Student-partition RTX 5090 GPUs should continuously collect with
+  distinct random seeds in one-day jobs, with multiple compliant jobs queued
+  when useful. The four P107 RTX 5090 GPUs are lower-priority background
+  collectors: cancel only these collector jobs when foreground project work
+  needs P107, and relaunch them when P107 is otherwise idle. All six concurrent
+  streams must use disjoint seed/sample namespaces. Collection is append-only
+  and shard-based; interruption and restart need not resume a partially scored
+  shard, but completed shards must never be overwritten or duplicated.
+- Background collector conditions must be sampled from the **empirical joint
+  `(nfp, n_coils)` distribution of the QUASR QH training split**, matching flow
+  training. Do not sample `nfp` and `n_coils` independently and do not use a
+  uniform distribution over groups. All Student and P107 streams write
+  completed, uniquely named shards into the single dataset root
+  `~/local_surface_evaluator_data/qh_iid_score_corpus_v1`; per-stream manifests
+  remain separate under that root for provenance.
+- Until the user explicitly terminates background collection, every task
+  delivery must end with a short statement of the current total number of
+  completed score samples in the unified corpus. Query shard metadata rather
+  than estimating from running-job progress.
 - Numerical training and evaluation run on the new Slurm server, not the old
   server. Use submitted jobs, not heavy computation on the login node.
 - Work only under `~/` remotely. Check that allocated GPUs are idle before a
@@ -323,8 +355,13 @@ Detailed evidence:
 
 ## 7. QH Flow Model
 
-- Target condition currently studied: QH, $N_{\mathrm{FP}}=4$, three base
-  coils.
+- The flow model was trained on the complete extracted QUASR QH dataset, not a
+  fixed condition: 170,755 total QH samples, including 153,747 training
+  samples. Its supported training groups span $N_{\mathrm{FP}}=2\ldots8$ and
+  one through five base coils. Each training step selected a joint
+  `(nfp, n_coils)` group with probability proportional to that group's training
+  count. Fixed $N_{\mathrm{FP}}=4$, three-base-coil settings belong only to
+  later CEM/Adam/proxy experiments.
 - One token is one coil: 99 Fourier geometry/current-related coefficients plus
   one current value, for 100 values per token.
 - Architecture: non-causal Transformer with no RoPE, eight layers, width 512,

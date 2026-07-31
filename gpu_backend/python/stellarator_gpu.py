@@ -325,6 +325,39 @@ def score_coils_native(
     }
 
 
+def native_score_config_snapshot(
+    lib_path: str | Path,
+    *,
+    device_id: int = 0,
+    target_helicity: tuple[int, int] = (1, 0),
+    config_overrides: dict | None = None,
+) -> dict:
+    """Return the exact native score configuration used by score_coils_native."""
+    path = str(Path(lib_path).resolve())
+    lib = _NATIVE_SCORE_LIB_CACHE.get(path)
+    if lib is None:
+        lib = ctypes.CDLL(path)
+        _bind_native_score(lib)
+        _NATIVE_SCORE_LIB_CACHE[path] = lib
+    config = _SgpuScoreConfig()
+    _check_lib_code(lib, lib.sgpu_default_score_config(ctypes.byref(config)))
+    config.device_id = int(device_id)
+    config.target_M = int(target_helicity[0])
+    config.target_N = int(target_helicity[1])
+    for name, value in (config_overrides or {}).items():
+        if not hasattr(config, name):
+            raise ValueError(f"unknown native score config field {name!r}")
+        setattr(config, name, value)
+    snapshot = {}
+    for name, _ in _SgpuScoreConfig._fields_:
+        value = getattr(config, name)
+        if isinstance(value, ctypes.Array):
+            snapshot[name] = [item for item in value]
+        else:
+            snapshot[name] = value
+    return snapshot
+
+
 def _check_lib_code(lib: ctypes.CDLL, code: int):
     if code:
         msg = lib.sgpu_last_error()

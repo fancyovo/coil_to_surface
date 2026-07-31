@@ -50,15 +50,19 @@ once the task is accepted.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
-- Current objective status: the latent-support proxy and active-optimization
-  experiments are complete. The active follow-up studies how native-score Adam
-  depends on the **native score of an IID standard-Gaussian starting latent**;
-  proxy-selected or proxy-optimized starts are excluded. The 4,096-sample IID
-  pool is complete: maximum score `41.0500821`, one sample at 40 or above, and
-  zero at 50 or above. Therefore 40 or above is the practical high tier for
-  this experiment, while 50 or above remains an explicitly empty extreme tier.
-  A 12-start panel now spans one rejected start and `status=ok` scores near 2,
-  5, 8, 10, 12, 15, 20, 25, 30, 38.7, and 41.05. Baseline proxy evidence is in
+- Current objective status: the latent-support proxy, active-optimization, and
+  IID-start native-score Adam experiments are complete. The 4,096-sample IID
+  pool had maximum score `41.0500821`, one sample at 40 or above, and zero at
+  50 or above. The 12-start, 40-step standard-Adam panel spanned one rejected
+  start and `status=ok` scores near 2, 5, 8, 10, 12, 15, 20, 25, 30, 38.7, and
+  41.05. All 12 jobs completed. Initial score versus best final score was
+  strongly correlated (Pearson/Spearman `0.940/0.951`), but initial score
+  versus optimization gain was only weak-to-moderately correlated
+  (`0.249/0.517`). The 8.00 and 19.75 starts gained 19.36 and 13.90, while the
+  41.05 start gained only 4.19; local basin structure, not initial score alone,
+  controls short-run optimizability. No trajectory reached 50. Full evidence
+  is in `reports/qh_random_start_score_adam_report.md` and
+  `reports/assets/qh_score_adam_start_sweep_29996/`. Baseline proxy evidence is in
   `reports/qh_flow_latent_proxy_experiment_report.md`; active-tail evidence is
   in `reports/qh_latent_proxy_active_optimization_report.md`. Natural Gaussian
   samples retain essentially zero proxy/score correlation. Exact-gradient
@@ -71,7 +75,6 @@ once the task is accepted.
   not evidence that the classifier ranks high physical quality. A matched-RMS
   random-direction control is required before attributing the gain to learned
   angular proxy structure. The current full local suite has 100 passing tests.
-  Adam array job `29996` is active as described below.
 - Fixed optimizer learning rate for the earlier native-score standard-Adam
   experiment: $\eta=0.003$; the completed differentiable proxy experiment used
   $\eta=0.01$.
@@ -89,21 +92,52 @@ once the task is accepted.
   section 8 and `reports/assets/qh_flow_standard_adam_71p734_full_eval/`.
   Selected-surface SHA-256 is
   `8b0171a25de84532601bc02f10181a0381b3620bdeb9a6b624cfde2a82936c7c`.
-- Slurm controller access recovered. The one-step smoke passed, and active
-  array job `29996` runs formal starts `0-9`, 40 Adam steps each, sequentially
-  (`%1`) under `~/local_surface_evaluator/runs/qh_score_adam_start_sweep_29996`.
-  QOS limits arrays to 10 submitted elements, so starts `10-11` must be
-  submitted as a second array after `29996` completes. Remote commit is
-  `b71aac17289736664c3fea9d0ec31b423f8a33e8`.
+- Slurm controller access recovered. Array `29996` completed starts `0-9`, and
+  supplemental array `30025` completed starts `10-11`, all with 40 steps and
+  exit code 0. Remote implementation commit is
+  `28e421f8db378461a6f487dc2206cdb8e46dedcb`.
+- The empirical-prior background score collector is implemented at commit
+  `28e421f8db378461a6f487dc2206cdb8e46dedcb`. Student smoke job `30020`
+  completed cleanly with four retained samples. On 2026-07-31 the user paused
+  normal collection before the next foreground experiments: active jobs `30021`
+  and `30079` and queued jobs `30022` and `30023` were cancelled. Completed
+  atomic shards remain in `~/local_surface_evaluator_data/qh_iid_score_corpus_v1`
+  and must not be removed. The current total must be refreshed from shard
+  metadata at delivery.
+- The current 12-start native-score Adam panel's best case is `start_10`, with
+  current validated score `47.200617843580396`; its remote input is
+  `~/local_surface_evaluator/runs/qh_score_adam_start_sweep_29996/start_10/best.json`.
+  On 2026-07-31 the user required this case to receive the fixed complete
+  physical evaluation before any new optimizer jobs are submitted. The planned
+  standard-Adam experiment keeps the same 12 IID starts, uses $\eta=0.01$, runs
+  starts 0--9 for 40 steps and starts 10--11 for 200 steps, and only then starts
+  background collection. It has not yet been submitted. Submit starts 0--9 as
+  the first 10-element P107 array; after any three array elements finish and
+  free three QOS submission slots, submit starts 10--11 and one four-GPU P107
+  daily collector together. The collector must have no Slurm dependency on the
+  Adam jobs: its existing `--nice=10000` priority lets Adam run first, while
+  still allowing collection to start when GPUs become idle even if Adam fails.
 
 ### Slurm jobs, accepted 2026-07-31
 
 - `29992`: COMPLETED `0:0` in 68 seconds. Recorded/startup scores were
   `0.0908069/0.0908226`; one Adam step ended at `0.0912093`. All four GPUs were
   2 MiB and 0% before and after, and commit hash `b71aac1` matched.
-- `29996`: active formal score-Adam array for starts `0-9`, 40 steps each,
-  sequentially. The attempted 12-element submission was rejected before job
-  creation by `QOSMaxSubmitJobPerUserLimit`; no duplicate job exists.
+- `29996`: COMPLETED starts `0-9`, all `0:0`; `30025`: COMPLETED starts
+  `10-11`, both `0:0`. Each used 40 standard-Adam steps with the same direction
+  seed, FP32 RK4-256, and corrected native score. Mean trajectory wall time was
+  861.8 seconds. The attempted original 12-element array was rejected before
+  job creation by `QOSMaxSubmitJobPerUserLimit`; it did not create duplicates.
+- `30020`: COMPLETED `0:0`. Two Student RTX 5090 ranks each retained two
+  formal-quality RK4-256 samples. Both streams used the 153,747-sample,
+  33-group empirical QUASR QH training prior, distinct seeds `480320/480321`,
+  and validated checkpoint/library hashes; all four rows passed schema/SHA/ID
+  checks. Both GPUs were 2 MiB and 0% before and after.
+- `30021` and `30079`: CANCELLED on 2026-07-31 at the user's request to pause
+  collection before foreground evaluation/optimization. Their completed shards
+  are retained. The resulting batch-step exit 143/SIGTERM is the expected
+  cancellation state, not a numerical failure.
+- `30022` and `30023`: CANCELLED while queued behind `30021`; neither started.
 - `29958`: COMPLETED `0:0` in 17 seconds. The four-sample RK4-8 smoke generated
   all artifacts; all four allocated GPUs were idle before and after, and no job
   process remained. Python emitted harmless duplicate semaphore-unlink warnings

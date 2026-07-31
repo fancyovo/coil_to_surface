@@ -3,6 +3,11 @@
   "entry_directory": "evaluation/full_physical",
   "stages": [
     {
+      "name": "source_psi_candidate_submission",
+      "entrypoint": "evaluation/full_physical/submit_source_psi_candidates.sh",
+      "implementation": "scripts/slurm_fit_source_psi.sh"
+    },
+    {
       "name": "code_preflight",
       "entrypoint": "evaluation/full_physical/preflight.py",
       "implementation": "evaluation/full_physical/code_manifest.json"

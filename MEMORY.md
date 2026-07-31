@@ -88,11 +88,19 @@ once the task is accepted.
   section 8 and `reports/assets/qh_flow_standard_adam_71p734_full_eval/`.
   Selected-surface SHA-256 is
   `8b0171a25de84532601bc02f10181a0381b3620bdeb9a6b624cfde2a82936c7c`.
-- No optimizer or physical-evaluation Slurm job remains active.
+- Active Slurm job `29960` scores 4,096 pure-IID random latents with FP32
+  RK4-256 and the corrected native score. Its run directory is
+  `~/local_surface_evaluator/runs/qh_random_score_pool_29960`; it was submitted
+  from implementation commit `585bd2e31be00ab3efff0d37558fbdcb728169c2`.
 
 ### Slurm jobs, accepted 2026-07-31
 
-- No optimizer job remains active.
+- `29958`: COMPLETED `0:0` in 17 seconds. The four-sample RK4-8 smoke generated
+  all artifacts; all four allocated GPUs were idle before and after, and no job
+  process remained. Python emitted harmless duplicate semaphore-unlink warnings
+  during worker shutdown.
+- `29960`: active formal pure-IID pool: 4,096 samples, seed `20260805`, FP32
+  RK4-256, four corrected native-score workers.
 - `29900`: all 1,024 native scores completed in 1336.21 seconds after 23.22
   seconds of optimization/preparation. Slurm state is `FAILED 1:0` only because
   the final analysis interpreter inherited an invalid cwd after score output;

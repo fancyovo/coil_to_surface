@@ -201,8 +201,13 @@ def main() -> None:
                 f"{current_noise.shape} != {(args.n_base_coils, TOKEN_DIM)}"
             )
         initialization = "provided_flow_prior_noise_with_zero_adam_moments"
+        generic_start = initial_payload.get("flow_prior_start", {})
         initial_case_metadata = {
             "path": str(args.initial_case.resolve()),
+            "source": generic_start.get("source"),
+            "source_case_id": generic_start.get("source_case_id"),
+            "recorded_input_score": generic_start.get("recorded_score"),
+            "recorded_input_status": generic_start.get("recorded_status"),
             "recorded_cem_score": initial_payload.get("flow_prior_cem", {}).get(
                 "best_score"
             ),

@@ -38,7 +38,9 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- Active local and remote branch: `qh-flow-zo-adam`.
+- Active local branch: `qh-flow-latent-proxy`, created from
+  `qh-flow-zo-adam` at `e0b21ca1ebf72a32c73b8448c731942fedf1c889` on
+  2026-07-31. The remote worktree has not yet been switched or synchronized.
 - Current experiment implementation baseline:
   `cc69110d0a5663a50fa56ac97a671973bd6f064d`
   (`Pin Adam jobs to corrected score library`). The branch also contains this
@@ -47,10 +49,16 @@ once the task is accepted.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
-- Current objective: the CEM-initialized standard-Adam run has been accepted,
-  but the unscreened random-start probability experiment is incomplete because
-  its multistart runner failed after one seed. Do not restart or rerun it until the
-  user explicitly authorizes another run.
+- Current objective: implement and run the latent-support proxy experiment. The
+  proposed positives are inverse-traced QUASR QH samples and negatives are
+  condition-matched Gaussian-prior samples. The experiment must train to
+  validation convergence, deliver a held-out test confusion matrix, and, if
+  classification is materially above chance, measure current native score
+  against proxy prediction on a moderately sized prior sample. The local
+  inversion, proxy training/test, score-correlation, and Slurm entrypoints are
+  implemented; all 83 local tests pass. No remote job has been submitted yet. The
+  earlier unscreened random-start experiment remains incomplete and must not be
+  restarted unless the user explicitly authorizes it.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.
 - The planned 9-hour single-seed run and the remaining $\eta=0.01,0.03$ sweep
   were cancelled at the user's request.
@@ -457,14 +465,23 @@ new physics.
 
 ## 12. Next Actions
 
-1. Do not resubmit or supplement the failed random multistart experiment until
+1. Review `reports/qh_flow_latent_proxy_feasibility.md` with the user before
+   implementing the latent proxy. The key theoretical constraint is that an
+   ideal flow makes inverse-QH latents and Gaussian-prior latents identical;
+   however, the observed high-quality inverse round trips versus low-quality
+   random decodes prove that the current finite flow still has a corresponding
+   latent distribution mismatch. This classifier is intended to distill that
+   mismatch as a support/density-ratio proxy. High held-out discrimination must
+   still be checked against conditioning, memorization, radial, and RK4-artifact
+   controls.
+2. Do not resubmit or supplement the failed random multistart experiment until
    the user explicitly requests it.
-2. Before any future multistart run, isolate seeds as Slurm array tasks, record
+3. Before any future multistart run, isolate seeds as Slurm array tasks, record
    per-seed failures, add a separate aggregation step, and fix queue cleanup.
-3. The `71.7342388` candidate's complete physical evaluation is finished and
+4. The `71.7342388` candidate's complete physical evaluation is finished and
    validated; do not rerun it unless a new diagnostic or changed algorithm
    requires it. Use section 8 of the acceptance report as the source of truth.
-4. A future random-basin probability result must still include every
+5. A future random-basin probability result must still include every
    predetermined unscreened seed, including failed trajectories; the one
    completed seed from `29709` is only partial evidence.
 
@@ -472,6 +489,19 @@ new physics.
 
 ### 2026-07-31
 
+- Created branch `qh-flow-latent-proxy` and implemented separate, restartable
+  stages for 4-GPU FP32 RK4 inversion, validation-driven proxy training,
+  held-out confusion/enrichment evaluation, and optional current-native-score
+  correlation. The score follow-up separates PyTorch decode and native score
+  worker processes so PyTorch does not retain GPU0. All 83 local tests pass;
+  remote smoke/full jobs are not yet submitted.
+- Added the score-free latent-proxy feasibility design in
+  `reports/qh_flow_latent_proxy_feasibility.md`; no experiment has started. It
+  records that inverse-QUASR versus Gaussian classification converges to chance
+  for an ideal flow, while the current model's known decoded-quality gap proves
+  a latent mismatch is present. The experiment will measure how much of that
+  mismatch a cheap held-out classifier can capture; it is not yet a calibrated
+  continuous physical-score predictor.
 - Accepted job `29708`: standard Adam from the corrected-score CEM latent rose
   from 69.1228 to best 71.7342 in 273 iterations without optimizer heuristics.
 - Completed the same sample's fixed physical evaluation. This sample's

@@ -14,4 +14,4 @@
 
 set -euo pipefail
 export GPU_COUNT=2
-exec "${PROJECT:?PROJECT is required}/scripts/run_qh_iid_score_collector.sh"
+exec bash "${PROJECT:?PROJECT is required}/scripts/run_qh_iid_score_collector.sh"

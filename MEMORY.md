@@ -57,14 +57,22 @@ once the task is accepted.
   classification is materially above chance, measure current native score
   against proxy prediction on a moderately sized prior sample. The local
   inversion, proxy training/test, score-correlation, and Slurm entrypoints are
-  implemented; all 83 local tests pass. Four-GPU smoke job `29812` completed
+  implemented; all 84 local tests pass. Four-GPU smoke job `29812` completed
   `0:0` in 1 minute 32 seconds with four samples per condition group, four RK4
   steps, and two proxy training steps; it validates plumbing only, not numerical
   quality. Full four-GPU job `29815` completed the all-sample 256-step inversion
   in 674.54 seconds, then failed before training at module-level `import torch`
   because oneMKL could not load `libtorch_cpu.so`. Its latent manifest is valid
-  and must be reused rather than recomputed. A training-only retry has not yet
-  been submitted. The
+  and was reused rather than recomputed. Retryable training-only job `29820`
+  completed `0:0` in 2 minutes 14 seconds. Its best-validation-AUC checkpoint
+  is step 1600; training continued to step 5100, exhausted three validation-
+  driven LR reductions, and stopped on the final validation plateau. The old
+  BF16-inference test summary reports AUC 0.93295 and accuracy 0.85367, which
+  proves useful discrimination but is not the authoritative probability or
+  confusion result because BF16 quantized the logits and calibration was poor.
+  A separate FP32 inference plus validation-only monotone Platt calibration is
+  implemented and must be used for the final test report and native-score
+  correlation. The
   earlier unscreened random-start experiment remains incomplete and must not be
   restarted unless the user explicitly authorizes it.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.
@@ -473,15 +481,11 @@ new physics.
 
 ## 12. Next Actions
 
-1. Review `reports/qh_flow_latent_proxy_feasibility.md` with the user before
-   implementing the latent proxy. The key theoretical constraint is that an
-   ideal flow makes inverse-QH latents and Gaussian-prior latents identical;
-   however, the observed high-quality inverse round trips versus low-quality
-   random decodes prove that the current finite flow still has a corresponding
-   latent distribution mismatch. This classifier is intended to distill that
-   mismatch as a support/density-ratio proxy. High held-out discrimination must
-   still be checked against conditioning, memorization, radial, and RK4-artifact
-   controls.
+1. Run the authoritative FP32 evaluation of job `29820`'s best checkpoint, then
+   run current-native-score correlation because held-out discrimination is
+   materially above chance. Report the FP32 test confusion matrix, calibration,
+   per-condition behavior, radial baseline, screening enrichment, score scatter,
+   Pearson/Spearman correlations, and all stage timings.
 2. Do not resubmit or supplement the failed random multistart experiment until
    the user explicitly requests it.
 3. Before any future multistart run, isolate seeds as Slurm array tasks, record
@@ -497,6 +501,14 @@ new physics.
 
 ### 2026-07-31
 
+- Completed training-only job `29820` on the full inverse-QH latent dataset.
+  The best validation AUC was 0.93039 at step 1600; training continued to step
+  5100 and stopped only after the final validation plateau. Added an
+  authoritative FP32 evaluator with validation-only monotone Platt calibration,
+  changed future training validation/test inference to FP32, and changed the
+  score-correlation preparation path to consume the same FP32 calibration.
+  The original BF16 test summary is retained as provisional ranking evidence,
+  not as the final calibrated result.
 - Created branch `qh-flow-latent-proxy` and implemented separate, restartable
   stages for 4-GPU FP32 RK4 inversion, validation-driven proxy training,
   held-out confusion/enrichment evaluation, and optional current-native-score

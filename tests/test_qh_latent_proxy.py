@@ -8,8 +8,10 @@ import torch
 
 from flow_matching.proxy import (
     LatentProxyTransformer,
+    apply_logit_calibration,
     binary_metrics,
     enrichment_at_prior_rates,
+    fit_logit_calibration,
     validation_threshold,
 )
 from scripts.evaluate_qh_latent_proxy_score import select_cases
@@ -57,6 +59,21 @@ def test_enrichment_uses_negative_pass_rate_as_denominator():
     assert row["actual_prior_pass_rate"] == 0.25
     assert row["positive_retention_rate"] == 1.0
     assert row["enrichment"] == 4.0
+
+
+def test_platt_calibration_improves_overconfident_validation_logits():
+    logits = np.asarray([-20.0, -8.0, -3.0, 3.0, 8.0, 20.0])
+    labels = np.asarray([0, 1, 0, 1, 0, 1])
+    calibration = fit_logit_calibration(logits, labels)
+    probability = apply_logit_calibration(
+        logits,
+        scale=float(calibration["scale"]),
+        bias=float(calibration["bias"]),
+    )
+    assert calibration["success"]
+    assert 0.0 < calibration["scale"] < 1.0
+    assert calibration["calibrated_log_loss"] < calibration["initial_log_loss"]
+    assert np.all(np.diff(probability) > 0.0)
 
 
 def test_score_sample_selection_is_disjoint_and_spans_probability_range():

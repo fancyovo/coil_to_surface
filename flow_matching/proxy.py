@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from scipy.optimize import minimize
+from scipy.special import expit
 from scipy.stats import rankdata
 from torch import nn
 
@@ -194,3 +196,66 @@ def enrichment_at_prior_rates(
             }
         )
     return rows
+
+
+def apply_logit_calibration(
+    logits: np.ndarray,
+    *,
+    scale: float,
+    bias: float,
+) -> np.ndarray:
+    values = np.asarray(logits, dtype=np.float64)
+    if not np.isfinite(values).all() or not np.isfinite(scale) or not np.isfinite(bias):
+        raise ValueError("logits and calibration parameters must be finite")
+    if scale <= 0.0:
+        raise ValueError("calibration scale must be positive")
+    return expit(scale * values + bias)
+
+
+def fit_logit_calibration(
+    logits: np.ndarray,
+    labels: np.ndarray,
+) -> dict[str, float | int | bool | str]:
+    """Fit a monotone Platt calibration using validation labels only."""
+    values = np.asarray(logits, dtype=np.float64).reshape(-1)
+    label = np.asarray(labels, dtype=np.int64).reshape(-1)
+    if values.shape != label.shape or values.size == 0:
+        raise ValueError("logits and labels must be nonempty and have equal shape")
+    if not np.isfinite(values).all() or not np.isin(label, (0, 1)).all():
+        raise ValueError("logits must be finite and labels must be binary")
+    if not np.any(label == 0) or not np.any(label == 1):
+        raise ValueError("both classes are required")
+
+    def objective(parameters: np.ndarray) -> tuple[float, np.ndarray]:
+        log_scale, bias = parameters
+        scale = np.exp(log_scale)
+        calibrated_logit = scale * values + bias
+        probability = expit(calibrated_logit)
+        loss = np.mean(np.logaddexp(0.0, calibrated_logit) - label * calibrated_logit)
+        residual = probability - label
+        gradient = np.asarray(
+            [np.mean(residual * scale * values), np.mean(residual)],
+            dtype=np.float64,
+        )
+        return float(loss), gradient
+
+    initial_loss, _ = objective(np.zeros(2, dtype=np.float64))
+    result = minimize(
+        objective,
+        np.zeros(2, dtype=np.float64),
+        method="L-BFGS-B",
+        jac=True,
+        bounds=((-8.0, 8.0), (-50.0, 50.0)),
+        options={"ftol": 1.0e-13, "gtol": 1.0e-10, "maxiter": 500},
+    )
+    scale = float(np.exp(result.x[0]))
+    return {
+        "method": "validation_platt_monotone",
+        "scale": scale,
+        "bias": float(result.x[1]),
+        "initial_log_loss": float(initial_loss),
+        "calibrated_log_loss": float(result.fun),
+        "iterations": int(result.nit),
+        "success": bool(result.success),
+        "message": str(result.message),
+    }

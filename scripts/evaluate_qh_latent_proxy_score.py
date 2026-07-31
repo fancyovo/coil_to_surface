@@ -63,7 +63,7 @@ def prepare(args: argparse.Namespace) -> None:
     from flow_matching.data import CoilNormalizer
     from flow_matching.flow import integrate_flow
     from flow_matching.model import CoilFlowTransformer
-    from flow_matching.proxy import LatentProxyTransformer
+    from flow_matching.proxy import LatentProxyTransformer, apply_logit_calibration
     from scripts.optimize_native_score_cem import token_case
 
     if not torch.cuda.is_available():
@@ -79,6 +79,12 @@ def prepare(args: argparse.Namespace) -> None:
     proxy = LatentProxyTransformer(**proxy_checkpoint["model_config"]).to(device=device)
     proxy.load_state_dict(proxy_checkpoint["model"])
     proxy.eval()
+    calibration = {"method": "identity", "scale": 1.0, "bias": 0.0}
+    if args.calibration_summary is not None:
+        calibration_summary = json.loads(args.calibration_summary.read_text(encoding="utf-8"))
+        if calibration_summary.get("checkpoint_sha256") != file_sha256(args.proxy_checkpoint):
+            raise ValueError("calibration summary does not match the proxy checkpoint")
+        calibration = calibration_summary["calibration"]
     flow_checkpoint = torch.load(args.flow_checkpoint, map_location="cpu", weights_only=False)
     flow = CoilFlowTransformer(**flow_checkpoint["model_config"]).to(device=device, dtype=torch.float32)
     flow.load_state_dict(flow_checkpoint["ema"])
@@ -89,17 +95,24 @@ def prepare(args: argparse.Namespace) -> None:
     noise = rng.standard_normal(
         (args.pool_count, args.n_base_coils, 100), dtype=np.float32
     )
-    probabilities = []
+    raw_logits = []
     prediction_started = time.perf_counter()
     with torch.inference_mode():
         for start in range(0, len(noise), args.proxy_batch):
             stop = min(start + args.proxy_batch, len(noise))
             tokens = torch.from_numpy(noise[start:stop]).to(device=device)
             nfp = torch.full((stop - start,), args.nfp, dtype=torch.long, device=device)
-            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-                logits = proxy(tokens, nfp)
-            probabilities.append(torch.sigmoid(logits.float()).cpu().numpy())
-    probabilities_np = np.concatenate(probabilities)
+            logits = proxy(tokens, nfp)
+            raw_logits.append(logits.float().cpu().numpy())
+    raw_logits_np = np.concatenate(raw_logits).astype(np.float64)
+    calibrated_logits_np = (
+        float(calibration["scale"]) * raw_logits_np + float(calibration["bias"])
+    )
+    probabilities_np = apply_logit_calibration(
+        raw_logits_np,
+        scale=float(calibration["scale"]),
+        bias=float(calibration["bias"]),
+    )
     torch.cuda.synchronize(device)
     prediction_s = time.perf_counter() - prediction_started
     selected, modes = select_cases(
@@ -146,6 +159,8 @@ def prepare(args: argparse.Namespace) -> None:
                 "pool_index": int(pool_index),
                 "sampling_modes": modes[int(pool_index)],
                 "proxy_probability": float(probabilities_np[pool_index]),
+                "proxy_logit": float(calibrated_logits_np[pool_index]),
+                "proxy_raw_logit": float(raw_logits_np[pool_index]),
                 "latent_rms": float(np.sqrt(np.mean(selected_noise[local_index].astype(np.float64) ** 2))),
                 "case": case,
             }
@@ -153,6 +168,8 @@ def prepare(args: argparse.Namespace) -> None:
     np.savez_compressed(
         args.output_dir / "proxy_pool_predictions.npz",
         probability=probabilities_np,
+        calibrated_logit=calibrated_logits_np,
+        raw_logit=raw_logits_np,
         selected_pool_index=selected,
         selected_probability=probabilities_np[selected],
         selected_noise=selected_noise,
@@ -164,6 +181,7 @@ def prepare(args: argparse.Namespace) -> None:
         "proxy_checkpoint_sha256": file_sha256(args.proxy_checkpoint),
         "flow_checkpoint_sha256": file_sha256(args.flow_checkpoint),
         "proxy_checkpoint_step": int(proxy_checkpoint["step"]),
+        "calibration": calibration,
         "flow_checkpoint_step": int(flow_checkpoint["step"]),
         "pool_probability": {
             "min": float(np.min(probabilities_np)),
@@ -203,8 +221,16 @@ def analyze(rows: list[dict[str, Any]], output_dir: Path) -> dict[str, Any]:
     probability = np.asarray([row["proxy_probability"] for row in rows], dtype=float)
     score = np.asarray([row["score"] for row in rows], dtype=float)
     status = np.asarray([row["status"] for row in rows], dtype="U32")
-    logit = np.log(np.clip(probability, 1.0e-7, 1.0 - 1.0e-7)) - np.log1p(
-        -np.clip(probability, 1.0e-7, 1.0 - 1.0e-7)
+    logit = np.asarray(
+        [
+            row.get(
+                "proxy_logit",
+                np.log(np.clip(row["proxy_probability"], 1.0e-7, 1.0 - 1.0e-7))
+                - np.log1p(-np.clip(row["proxy_probability"], 1.0e-7, 1.0 - 1.0e-7)),
+            )
+            for row in rows
+        ],
+        dtype=float,
     )
     subsets = {
         "all": np.ones(len(rows), dtype=bool),
@@ -328,6 +354,8 @@ def score(args: argparse.Namespace) -> None:
                 "pool_index": row["pool_index"],
                 "sampling_modes": row["sampling_modes"],
                 "proxy_probability": row["proxy_probability"],
+                "proxy_logit": row.get("proxy_logit"),
+                "proxy_raw_logit": row.get("proxy_raw_logit"),
                 "latent_rms": row["latent_rms"],
                 "score": float(compact["score"]) if compact is not None else 0.0,
                 "status": compact["status"] if compact is not None else "error",
@@ -359,6 +387,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--proxy-checkpoint", type=Path)
     parser.add_argument("--flow-checkpoint", type=Path)
+    parser.add_argument("--calibration-summary", type=Path)
     parser.add_argument("--lib", type=Path)
     parser.add_argument("--nfp", type=int, default=4)
     parser.add_argument("--n-base-coils", type=int, default=3)

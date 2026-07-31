@@ -17,6 +17,7 @@ set -euo pipefail
 project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 proxy_checkpoint="${PROXY_CHECKPOINT:?PROXY_CHECKPOINT is required}"
+calibration_summary="${PROXY_CALIBRATION_SUMMARY:?PROXY_CALIBRATION_SUMMARY is required}"
 flow_checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
 expected_flow_sha="${EXPECTED_FLOW_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}"
@@ -49,6 +50,7 @@ trap cleanup EXIT INT TERM
 mkdir -p "$(dirname "$run_root")"
 cd "$project"
 test -f "$proxy_checkpoint"
+test -f "$calibration_summary"
 test -f "$flow_checkpoint"
 test -f "$lib"
 test "$(sha256sum "$flow_checkpoint" | awk '{print $1}')" = "$expected_flow_sha"
@@ -81,6 +83,7 @@ python scripts/evaluate_qh_latent_proxy_score.py \
   --mode prepare \
   --output-dir "$run_root" \
   --proxy-checkpoint "$proxy_checkpoint" \
+  --calibration-summary "$calibration_summary" \
   --flow-checkpoint "$flow_checkpoint" \
   --pool-count "${PROXY_POOL_COUNT:-131072}" \
   --stratified-count "${PROXY_STRATIFIED_COUNT:-768}" \

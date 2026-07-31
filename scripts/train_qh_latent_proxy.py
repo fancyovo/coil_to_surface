@@ -114,6 +114,7 @@ def evaluate_groups(
     was_training = model.training
     model.eval()
     probability_parts = []
+    logit_parts = []
     label_parts = []
     group_parts = []
     id_output_parts = []
@@ -137,7 +138,9 @@ def evaluate_groups(
             with autocast_context(use_bf16):
                 logits = model(tokens, nfp)
             probabilities = torch.sigmoid(logits.float())
+            logits_fp32 = logits.float()
             probability_parts.append(probabilities.cpu().numpy())
+            logit_parts.append(logits_fp32.cpu().numpy())
             label_parts.append(
                 np.r_[np.ones(len(positive_batch), dtype=np.int8), np.zeros(len(negative_batch), dtype=np.int8)]
             )
@@ -154,6 +157,7 @@ def evaluate_groups(
         model.train()
     return {
         "probability": np.concatenate(probability_parts),
+        "logit": np.concatenate(logit_parts),
         "label": np.concatenate(label_parts),
         "group": np.concatenate(group_parts),
         "id": np.concatenate(id_output_parts),
@@ -516,7 +520,7 @@ def main() -> None:
                 batch_size=args.eval_batch,
                 seed=args.seed + 100000000,
                 device=device,
-                use_bf16=use_bf16,
+                use_bf16=False,
             )
             threshold = validation_threshold(evaluated["probability"], evaluated["label"])
             validation_summary = summarize_evaluation(evaluated, threshold=threshold)
@@ -610,7 +614,7 @@ def main() -> None:
             batch_size=args.eval_batch,
             seed=args.seed + 100000000,
             device=device,
-            use_bf16=use_bf16,
+            use_bf16=False,
         )
         threshold = validation_threshold(validation_values["probability"], validation_values["label"])
         validation_summary = summarize_evaluation(validation_values, threshold=threshold)
@@ -621,7 +625,7 @@ def main() -> None:
             batch_size=args.eval_batch,
             seed=args.seed + 200000000,
             device=device,
-            use_bf16=use_bf16,
+            use_bf16=False,
         )
         test_summary = summarize_evaluation(test_values, threshold=threshold)
         summary = {

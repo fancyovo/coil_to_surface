@@ -218,6 +218,12 @@ $$
 
 ![代理预测与原生 score 点云](assets/qh_latent_proxy_score_29824/proxy_prediction_vs_native_score.png)
 
+图中颜色和黑线的含义如下：
+
+- **绿色点**：原生评分返回 `status=ok`。这表示该样本成功找到磁轴和可用磁面，并通过磁通质量、长时间漂移等当前 score 的全部物理可行性门；纵轴 score 才是被评分流程接受的有效结果。
+- **红色点**：原生评分被至少一个物理门拒绝，即 `no_axis`、`no_surface`、`drift_rejected` 或 `flux_rejected`。纵轴仍画出程序返回的诊断性 score，但这类样本不能当作物理可行的高质量解。
+- **黑色折线和圆点**：每个 proxy 预测分位中全部样本的 mean score，红点和绿点都包含在内。为排除红点影响，表中“仅 `status=ok`”一行另行只用绿色点计算相关性；结果仍接近 0。
+
 ![代理预测分位与 score 趋势](assets/qh_latent_proxy_score_29824/proxy_score_decile_trend.png)
 
 十个预测分位的 mean score 只在 3.57 到 5.45 间无序波动，P90 也没有上升趋势。高概率尾部反而进一步排除了“只有最顶端才有用”的解释：

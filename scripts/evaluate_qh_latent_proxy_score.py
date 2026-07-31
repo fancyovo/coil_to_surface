@@ -297,22 +297,44 @@ def plot_score_correlation(
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
 
-    colors = np.where(status == "ok", "#237a57", "#9a4d42")
+    ok_color = "#237a57"
+    rejected_color = "#9a4d42"
+    colors = np.where(status == "ok", ok_color, rejected_color)
     figure, axes = plt.subplots(1, 2, figsize=(12, 4.8), constrained_layout=True)
     axes[0].scatter(probability, score, c=colors, s=12, alpha=0.48, edgecolors="none")
-    axes[0].plot(
+    mean_line = axes[0].plot(
         [row["probability_mean"] for row in bins],
         [row["score_mean"] for row in bins],
         "o-",
         color="#111111",
         lw=2,
         label="decile mean",
-    )
+    )[0]
+    status_handles = [
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            color=ok_color,
+            label="status=ok",
+        ),
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            color=rejected_color,
+            label="rejected by physical gate",
+        ),
+    ]
     axes[0].set(xlabel="proxy probability", ylabel="native score", title="Native score vs proxy prediction")
-    axes[0].legend()
+    axes[0].legend(handles=[*status_handles, mean_line])
     axes[1].scatter(logit, score, c=colors, s=12, alpha=0.48, edgecolors="none")
     axes[1].set(xlabel="proxy logit", ylabel="native score", title="Native score vs proxy logit")
+    axes[1].legend(handles=status_handles)
     figure.savefig(output_dir / "proxy_prediction_vs_native_score.png", dpi=190)
     plt.close(figure)
 

@@ -50,16 +50,26 @@ once the task is accepted.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
-- Current objective status: the latent-support proxy experiment is complete;
+- Current objective status: the baseline latent-support proxy experiment is complete;
   final evidence is in `reports/qh_flow_latent_proxy_experiment_report.md`.
   Inverse-QUASR versus condition-matched Gaussian classification is strong
   (FP32 held-out test AUC 0.93414; target `nfp4_nc3` AUC 0.95097), but it has
   essentially zero current-native-score correlation in every checked subset.
   All/IID/rank-stratified/status-ok Pearson values are respectively
   -0.0418/-0.0205/-0.0566/-0.0271, with Spearman values also near zero. This
-  proxy diagnoses current-flow latent distribution mismatch but **must not be
-  used as an Adam/CEM physical-quality prefilter**. All 84 local tests pass and
-  no Slurm job remains active. The
+  proxy diagnoses current-flow latent distribution mismatch and has not been
+  validated as an Adam/CEM physical-quality prefilter. The user has explicitly
+  requested a follow-up that actively maximizes this proxy from many Gaussian
+  starts, then native-scores the optimized tail to determine whether it reaches
+  a different regime from natural random sampling. Implementation commit is
+  `80fcb106a01fbe851035dfbfa4c4d2a7b1ee36cc`; all 86 local tests pass. Smoke
+  scored-candidate smoke is being repaired and cannot support a numerical
+  conclusion yet. Job `29885` failed before code startup because it was
+  submitted from `~/`, causing `SLURM_SUBMIT_DIR` to resolve to the wrong
+  project path. Job `29886` used the correct workdir but also exited before
+  output-directory creation; its silent bare-`test` preflight is being replaced
+  with explicit diagnostics before another submission. Future direct
+  submissions must use `--chdir` or set `PROJECT` explicitly. The
   earlier unscreened random-start experiment remains incomplete and must not be
   restarted unless the user explicitly authorizes it.
 - Fixed optimizer learning rate for this experiment: $\eta=0.003$.

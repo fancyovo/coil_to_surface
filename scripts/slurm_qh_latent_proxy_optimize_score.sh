@@ -13,6 +13,27 @@
 #SBATCH --error=logs/%x-%j.err
 
 set -euo pipefail
+if [[ "${TRACE_SHELL:-0}" == "1" ]]; then
+  set -x
+fi
+
+require_file() {
+  if [[ ! -f "$1" ]]; then
+    printf 'required file is missing: %s\n' "$1" >&2
+    exit 3
+  fi
+}
+
+verify_sha256() {
+  local path="$1"
+  local expected="$2"
+  local actual
+  actual="$(sha256sum "$path" | awk '{print $1}')"
+  if [[ "$actual" != "$expected" ]]; then
+    printf 'SHA-256 mismatch for %s: expected %s, got %s\n' "$path" "$expected" "$actual" >&2
+    exit 4
+  fi
+}
 
 project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
@@ -51,14 +72,15 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$(dirname "$run_root")"
 cd "$project"
-test -f "$proxy_checkpoint"
-test -f "$calibration_summary"
-test -f "$flow_checkpoint"
-test -f "$control_scored"
-test -f "$lib"
-test "$(sha256sum "$proxy_checkpoint" | awk '{print $1}')" = "$expected_proxy_sha"
-test "$(sha256sum "$flow_checkpoint" | awk '{print $1}')" = "$expected_flow_sha"
-test "$(sha256sum "$lib" | awk '{print $1}')" = "$expected_lib_sha"
+printf 'preflight project=%s run_root=%s\n' "$project" "$run_root"
+require_file "$proxy_checkpoint"
+require_file "$calibration_summary"
+require_file "$flow_checkpoint"
+require_file "$control_scored"
+require_file "$lib"
+verify_sha256 "$proxy_checkpoint" "$expected_proxy_sha"
+verify_sha256 "$flow_checkpoint" "$expected_flow_sha"
+verify_sha256 "$lib" "$expected_lib_sha"
 source "$HOME/coil/.venv/bin/activate"
 export PYTHONPATH="$project${PYTHONPATH:+:$PYTHONPATH}"
 export OMP_NUM_THREADS=1
@@ -67,7 +89,7 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export MPLBACKEND=Agg
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
-test -f "$cuda_wheel_lib/libcusolver.so.12"
+require_file "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 mapfile -t compute_processes < <(

@@ -379,6 +379,7 @@ def score(args: argparse.Namespace) -> None:
                 "proxy_logit": row.get("proxy_logit"),
                 "proxy_raw_logit": row.get("proxy_raw_logit"),
                 "latent_rms": row["latent_rms"],
+                "metadata": row.get("metadata", {}),
                 "score": float(compact["score"]) if compact is not None else 0.0,
                 "status": compact["status"] if compact is not None else "error",
                 "native": compact,

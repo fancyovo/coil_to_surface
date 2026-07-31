@@ -1,12 +1,29 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 
 from scripts.optimize_flow_prior_zo_adam import (
     gradient_from_pairs,
+    load_initial_noise,
     orthogonal_directions,
     prior_penalty_and_gradient,
 )
+
+
+def test_load_initial_noise_accepts_generic_start(tmp_path):
+    path = tmp_path / "start.json"
+    noise = np.arange(300, dtype=np.float32).reshape(3, 100)
+    path.write_text(
+        json.dumps({"flow_prior_start": {"noise": noise.tolist()}}),
+        encoding="utf-8",
+    )
+
+    loaded, payload = load_initial_noise(path)
+
+    np.testing.assert_array_equal(loaded, noise)
+    assert "flow_prior_start" in payload
 
 
 def test_orthogonal_directions_have_unit_rms():

@@ -51,7 +51,14 @@ once the task is accepted.
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
 - Current objective status: the latent-support proxy and active-optimization
-  experiments are complete. Baseline evidence is in
+  experiments are complete. The active follow-up studies how native-score Adam
+  depends on the **native score of an IID standard-Gaussian starting latent**;
+  proxy-selected or proxy-optimized starts are excluded. Before selecting Adam
+  starts, score 4,096 additional IID latents with the corrected native score and
+  FP32 RK4-256 flow decoder. A score of 50 or above is the intended high-score
+  tier. If several thousand IID samples contain no such case, use 40 or above
+  as the practical high tier while retaining 50 or above as an explicitly empty
+  extreme tier. Baseline proxy evidence is in
   `reports/qh_flow_latent_proxy_experiment_report.md`; active-tail evidence is
   in `reports/qh_latent_proxy_active_optimization_report.md`. Natural Gaussian
   samples retain essentially zero proxy/score correlation. Exact-gradient
@@ -130,6 +137,9 @@ once the task is accepted.
 - For QH optimization, ordinary random starts must not be pre-screened when the
   experiment is intended to measure the probability of entering an optimizable
   basin. The current `8 x 120` experiment follows this rule.
+- The current initial-score/Adam study uses only IID standard-Gaussian starts.
+  Do not mix proxy-ranked, proxy-optimized, CEM, QUASR-inverted, or otherwise
+  constructed starts into its score distribution or optimization panel.
 - Numerical training and evaluation run on the new Slurm server, not the old
   server. Use submitted jobs, not heavy computation on the login node.
 - Work only under `~/` remotely. Check that allocated GPUs are idle before a

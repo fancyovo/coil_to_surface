@@ -161,7 +161,9 @@ def load_flow_checkpoint(
 
 def load_initial_noise(path: Path) -> tuple[np.ndarray, dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if "flow_prior_zo_adam" in payload:
+    if "flow_prior_start" in payload:
+        noise = payload["flow_prior_start"]["noise"]
+    elif "flow_prior_zo_adam" in payload:
         noise = payload["flow_prior_zo_adam"]["noise"]
     elif "flow_prior_cem" in payload:
         noise = payload["flow_prior_cem"]["noise"]

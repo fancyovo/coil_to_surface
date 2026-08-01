@@ -155,6 +155,11 @@ def main() -> None:
     parser.add_argument("--max-wall-s", type=float, default=1500.0)
     parser.add_argument("--plot-every", type=int, default=10)
     parser.add_argument("--seed", type=int, default=2026073004)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume an interrupted run in --out-dir without resetting Adam state.",
+    )
     args = parser.parse_args()
 
     gpu_ids = parse_ints(args.gpus)
@@ -180,43 +185,78 @@ def main() -> None:
         raise ValueError("at least one score GPU is required")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    if any(
-        (args.out_dir / name).exists()
-        for name in ("manifest.json", "history.jsonl", "summary.json")
-    ):
-        raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
-
-    rng = np.random.default_rng(args.seed)
-    if args.initial_case is None:
-        current_noise = rng.standard_normal(
-            (args.n_base_coils, TOKEN_DIM), dtype=np.float32
+    run_paths = {
+        name: args.out_dir / name
+        for name in (
+            "manifest.json",
+            "history.jsonl",
+            "progress.json",
+            "best.json",
+            "state_latest.npz",
+            "summary.json",
         )
-        initialization = "independent_standard_normal_flow_prior"
+    }
+    if args.resume:
+        required = [path for name, path in run_paths.items() if name != "summary.json"]
+        missing = [path for path in required if not path.is_file()]
+        if missing:
+            raise FileNotFoundError(f"resume artifacts are missing: {missing}")
+        if run_paths["summary.json"].exists():
+            raise FileExistsError("refusing to resume a run that already has summary.json")
+        saved_state = np.load(run_paths["state_latest.npz"], allow_pickle=False)
+        current_noise = np.asarray(saved_state["current_noise"], dtype=np.float32)
+        best_noise = np.asarray(saved_state["best_noise"], dtype=np.float32)
+        first_moment = np.asarray(saved_state["first_moment"], dtype=np.float64)
+        second_moment = np.asarray(saved_state["second_moment"], dtype=np.float64)
+        start_iteration = int(saved_state["iteration"])
+        rng = np.random.default_rng()
+        rng.bit_generator.state = json.loads(str(saved_state["rng_state"].item()))
+        initialization = "resumed_saved_standard_adam_state"
         initial_case_metadata = None
     else:
-        current_noise, initial_payload = load_initial_noise(args.initial_case)
-        if current_noise.shape != (args.n_base_coils, TOKEN_DIM):
-            raise ValueError(
-                "initial case noise shape does not match n-base-coils: "
-                f"{current_noise.shape} != {(args.n_base_coils, TOKEN_DIM)}"
+        if any(path.exists() for path in run_paths.values()):
+            raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
+        rng = np.random.default_rng(args.seed)
+        if args.initial_case is None:
+            current_noise = rng.standard_normal(
+                (args.n_base_coils, TOKEN_DIM), dtype=np.float32
             )
-        initialization = "provided_flow_prior_noise_with_zero_adam_moments"
-        generic_start = initial_payload.get("flow_prior_start", {})
-        initial_case_metadata = {
-            "path": str(args.initial_case.resolve()),
-            "source": generic_start.get("source"),
-            "source_case_id": generic_start.get("source_case_id"),
-            "recorded_input_score": generic_start.get("recorded_score"),
-            "recorded_input_status": generic_start.get("recorded_status"),
-            "recorded_cem_score": initial_payload.get("flow_prior_cem", {}).get(
-                "best_score"
-            ),
-            "recorded_standard_adam_score": initial_payload.get(
-                "flow_prior_standard_adam", {}
-            ).get("best_score"),
-        }
-    first_moment = np.zeros_like(current_noise, dtype=np.float64)
-    second_moment = np.zeros_like(current_noise, dtype=np.float64)
+            initialization = "independent_standard_normal_flow_prior"
+            initial_case_metadata = None
+        else:
+            current_noise, initial_payload = load_initial_noise(args.initial_case)
+            initialization = "provided_flow_prior_noise_with_zero_adam_moments"
+            generic_start = initial_payload.get("flow_prior_start", {})
+            initial_case_metadata = {
+                "path": str(args.initial_case.resolve()),
+                "source": generic_start.get("source"),
+                "source_case_id": generic_start.get("source_case_id"),
+                "recorded_input_score": generic_start.get("recorded_score"),
+                "recorded_input_status": generic_start.get("recorded_status"),
+                "recorded_cem_score": initial_payload.get("flow_prior_cem", {}).get(
+                    "best_score"
+                ),
+                "recorded_standard_adam_score": initial_payload.get(
+                    "flow_prior_standard_adam", {}
+                ).get("best_score"),
+            }
+        best_noise = current_noise.copy()
+        first_moment = np.zeros_like(current_noise, dtype=np.float64)
+        second_moment = np.zeros_like(current_noise, dtype=np.float64)
+        start_iteration = 0
+    expected_shape = (args.n_base_coils, TOKEN_DIM)
+    for name, value in (
+        ("current_noise", current_noise),
+        ("best_noise", best_noise),
+        ("first_moment", first_moment),
+        ("second_moment", second_moment),
+    ):
+        if value.shape != expected_shape:
+            raise ValueError(f"{name} shape {value.shape} != {expected_shape}")
+    if args.iterations < start_iteration:
+        raise ValueError(
+            f"requested iterations {args.iterations} precede saved step {start_iteration}"
+        )
 
     torch.cuda.set_device(0)
     device = torch.device("cuda", 0)
@@ -225,7 +265,7 @@ def main() -> None:
     if normalizer_key not in normalizer.current_l1_a:
         raise ValueError(f"condition {normalizer_key} is absent from normalizer")
 
-    manifest = {
+    requested_manifest = {
         "algorithm": "standard_adam_with_orthogonal_antithetic_zo_gradient",
         "objective": "maximize_native_qh_score",
         "initialization": initialization,
@@ -258,11 +298,68 @@ def main() -> None:
         "gpu_ids": list(gpu_ids),
         "max_wall_s": args.max_wall_s,
     }
-    write_json(args.out_dir / "manifest.json", manifest)
+    if args.resume:
+        manifest = json.loads(run_paths["manifest.json"].read_text(encoding="utf-8"))
+        stable_keys = (
+            "algorithm",
+            "objective",
+            "target",
+            "nfp",
+            "n_base_coils",
+            "noise_shape",
+            "seed",
+            "directions",
+            "perturbation",
+            "learning_rate",
+            "betas",
+            "adam_epsilon",
+            "flow_method",
+            "flow_steps",
+            "checkpoint_sha256",
+            "native_lib_sha256",
+            "gpu_ids",
+        )
+        mismatches = {
+            key: {"saved": manifest.get(key), "requested": requested_manifest.get(key)}
+            for key in stable_keys
+            if manifest.get(key) != requested_manifest.get(key)
+        }
+        if mismatches:
+            raise ValueError(f"resume configuration mismatch: {mismatches}")
+    else:
+        manifest = requested_manifest
+        write_json(run_paths["manifest.json"], manifest)
 
     started = time.perf_counter()
-    history: list[dict[str, Any]] = []
-    history_path = args.out_dir / "history.jsonl"
+    history_path = run_paths["history.jsonl"]
+    if args.resume:
+        history = [
+            json.loads(line)
+            for line in history_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if not history or int(history[-1]["iteration"]) != start_iteration:
+            raise ValueError("history tail does not match saved Adam iteration")
+        prior_wall_s = float(history[-1]["total_wall_s"])
+        progress = json.loads(run_paths["progress.json"].read_text(encoding="utf-8"))
+        initial_score = float(progress["initial_score"])
+        best_payload = json.loads(run_paths["best.json"].read_text(encoding="utf-8"))
+        best_metadata = best_payload["flow_prior_standard_adam"]
+        best_score = float(best_metadata["best_score"])
+        best_iteration = int(best_metadata["iteration"])
+        best_result = best_metadata["native_score"]
+        append_jsonl(
+            args.out_dir / "resume_events.jsonl",
+            {
+                "saved_iteration": start_iteration,
+                "requested_iterations": args.iterations,
+                "prior_total_wall_s": prior_wall_s,
+                "time_unix_s": time.time(),
+            },
+        )
+    else:
+        history = []
+        prior_wall_s = 0.0
     stop_reason = "completed_iterations"
 
     with NativeScorePool(args.lib, list(gpu_ids)) as pool:
@@ -286,28 +383,46 @@ def main() -> None:
             raise RuntimeError(f"initial native-score failure: {initial_errors}")
         current_tokens = initial_tokens[0]
         current_result = initial_results[0]
-        initial_score = result_score(current_result)
-        best_score = initial_score
-        best_noise = current_noise.copy()
-        best_tokens = current_tokens.copy()
-        best_result = current_result
-        best_iteration = 0
-        write_json(
-            args.out_dir / "best.json",
-            make_best_case(
-                best_tokens,
-                best_noise,
-                best_result,
+        resumed_center_score = result_score(current_result)
+        if args.resume:
+            previous_score = float(history[-1]["current_score"])
+            if not math.isclose(resumed_center_score, previous_score, abs_tol=1e-5):
+                raise RuntimeError(
+                    "resumed center score differs from saved history: "
+                    f"{resumed_center_score} != {previous_score}"
+                )
+            best_batch, _ = decode_noise_rk4(
+                model,
+                normalizer,
+                best_noise[None],
                 nfp=args.nfp,
-                target=args.target,
-                iteration=best_iteration,
-                seed=args.seed,
-                manifest=manifest,
-            ),
-        )
+                steps=args.flow_steps,
+                device=device,
+            )
+            best_tokens = best_batch[0]
+        else:
+            initial_score = resumed_center_score
+            best_score = initial_score
+            best_noise = current_noise.copy()
+            best_tokens = current_tokens.copy()
+            best_result = current_result
+            best_iteration = 0
+            write_json(
+                args.out_dir / "best.json",
+                make_best_case(
+                    best_tokens,
+                    best_noise,
+                    best_result,
+                    nfp=args.nfp,
+                    target=args.target,
+                    iteration=best_iteration,
+                    seed=args.seed,
+                    manifest=manifest,
+                ),
+            )
 
         recent_walls: list[float] = []
-        for iteration in range(1, args.iterations + 1):
+        for iteration in range(start_iteration + 1, args.iterations + 1):
             elapsed_before = time.perf_counter() - started
             if recent_walls and args.max_wall_s > 0.0:
                 projected = 1.2 * float(np.mean(recent_walls[-5:]))
@@ -454,7 +569,7 @@ def main() -> None:
                 "center_decode_wall_s": center_decode_wall_s,
                 "center_score_wall_s": center_score_wall_s,
                 "iteration_wall_s": iteration_wall_s,
-                "total_wall_s": time.perf_counter() - started,
+                "total_wall_s": prior_wall_s + time.perf_counter() - started,
             }
             history.append(row)
             append_jsonl(history_path, row)
@@ -495,7 +610,7 @@ def main() -> None:
                 flush=True,
             )
 
-    total_wall_s = time.perf_counter() - started
+    total_wall_s = prior_wall_s + time.perf_counter() - started
     if history:
         plot_progress(history, args.out_dir / "progress.png")
         final_score = history[-1]["current_score"]
@@ -520,6 +635,8 @@ def main() -> None:
         "initial_decode_wall_s": initial_decode_wall_s,
         "initial_score_wall_s": initial_score_wall_s,
         "initial_score_elapsed_s": initial_elapsed,
+        "resumed_from_iteration": start_iteration if args.resume else None,
+        "resume_center_score": resumed_center_score if args.resume else None,
         "final_noise_rms": rms(current_noise),
         "final_noise_abs_max": float(np.max(np.abs(current_noise))),
         "best_case": str((args.out_dir / "best.json").resolve()),

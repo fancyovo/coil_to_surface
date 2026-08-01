@@ -31,6 +31,7 @@ iterations="${ITERATIONS:-40}"
 max_wall_s="${MAX_WALL_S:-1950}"
 learning_rate="${LEARNING_RATE:-0.003}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
+resume="${RESUME:-0}"
 children=()
 
 cleanup() {
@@ -82,7 +83,16 @@ fi
 nvidia-smi --id="$gpu_selector" \
   --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
   --format=csv,noheader,nounits > "$output/gpu_preflight.csv"
-git rev-parse HEAD > "$output/code_commit.txt"
+if [[ $resume == 1 ]]; then
+  git rev-parse HEAD > "$output/code_commit_resume_${SLURM_JOB_ID}.txt"
+else
+  git rev-parse HEAD > "$output/code_commit.txt"
+fi
+
+resume_args=()
+if [[ $resume == 1 ]]; then
+  resume_args+=(--resume)
+fi
 
 python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --checkpoint "$checkpoint" \
@@ -92,7 +102,8 @@ python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --iterations "$iterations" \
   --max-wall-s "$max_wall_s" \
   --learning-rate "$learning_rate" \
-  --seed "$seed" &
+  --seed "$seed" \
+  "${resume_args[@]}" &
 children+=("$!")
 wait "${children[0]}"
 children=()

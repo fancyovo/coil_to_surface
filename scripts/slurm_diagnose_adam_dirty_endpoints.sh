@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --gres=gpu:RTX5090:4
+#SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=128G
 #SBATCH --time=00:10:00
 #SBATCH --output=logs/%x-%j.out

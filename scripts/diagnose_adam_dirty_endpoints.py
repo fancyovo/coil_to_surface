@@ -14,17 +14,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.diagnose_adam_proposal import compact_result, read_jsonl
+from scripts.diagnose_adam_proposal import (
+    read_jsonl,
+    score_token_direct,
+)
 from scripts.optimize_flow_prior_zo_adam import (
     decode_noise_rk4,
     gradient_from_pairs,
     load_flow_checkpoint,
     load_initial_noise,
     orthogonal_directions,
-    result_score,
     rms,
 )
-from scripts.optimize_native_score_cem import NativeScorePool, token_case, write_json
+from scripts.optimize_native_score_cem import write_json
 
 
 def replay_invalid_endpoints(
@@ -143,39 +145,42 @@ def main() -> None:
         steps=int(manifest["flow_steps"]),
         device=device,
     )
-    cases = [
-        token_case(token, nfp=int(manifest["nfp"]), target=str(manifest["target"]))
+    gpu_ids = [int(value) for value in args.gpus.split(",") if value.strip()]
+    if not gpu_ids:
+        raise ValueError("at least one GPU is required")
+    default_scored = [
+        score_token_direct(
+            args.lib,
+            token,
+            nfp=int(manifest["nfp"]),
+            device_id=gpu_ids[0],
+        )
         for token in tokens
     ]
-    gpu_ids = [int(value) for value in args.gpus.split(",") if value.strip()]
-    with NativeScorePool(args.lib, gpu_ids) as pool:
-        default_scored = pool.map(cases, target=str(manifest["target"]), timeout_s=300.0)
-        margin_zero_scored = pool.map(
-            cases,
-            target=str(manifest["target"]),
-            timeout_s=300.0,
+    margin_zero_scored = [
+        score_token_direct(
+            args.lib,
+            token,
+            nfp=int(manifest["nfp"]),
+            device_id=gpu_ids[0],
             config_overrides={"axis_topology_margin": 0.0},
         )
+        for token in tokens
+    ]
 
     endpoints = []
     for metadata, default_item, margin_zero_item in zip(
         endpoint_metadata, default_scored, margin_zero_scored, strict=True
     ):
-        default_result, _, default_error = default_item
-        margin_zero_result, _, margin_zero_error = margin_zero_item
-        if default_error or margin_zero_error or default_result is None or margin_zero_result is None:
-            raise RuntimeError(
-                f"endpoint score failure: default={default_error}, margin0={margin_zero_error}"
-            )
         pair_scores = list(metadata["recorded_pair_scores"])
         pair_slot = 0 if metadata["sign"] > 0 else 1
-        pair_scores[pair_slot] = result_score(margin_zero_result)
+        pair_scores[pair_slot] = float(margin_zero_item["score"])
         corrected_delta = pair_scores[0] - pair_scores[1]
         endpoints.append(
             {
                 **metadata,
-                "default_recheck": compact_result(default_result),
-                "margin_zero": compact_result(margin_zero_result),
+                "default_recheck": default_item,
+                "margin_zero": margin_zero_item,
                 "margin_zero_direction_delta": corrected_delta,
                 "direction_delta_reduction_factor": abs(metadata["recorded_direction_delta"])
                 / max(abs(corrected_delta), 1.0e-30),

@@ -794,9 +794,9 @@ new physics.
   durable collection policy, Student collector `30399` remains running and
   low-priority four-GPU P107 collector `30527` was relaunched after foreground
   completion. Neither is a dependency of the other. A metadata-only recount at
-  delivery found exactly 10,564 completed samples in 167 shards from 14
-  streams (`ok=4571`, `no_axis=2953`, `no_surface=704`,
-  `drift_rejected=2266`, `flux_rejected=70`).
+  delivery found exactly 10,628 completed samples in 168 shards from 14
+  streams (`ok=4597`, `no_axis=2973`, `no_surface=707`,
+  `drift_rejected=2281`, `flux_rejected=70`).
 
 ### 2026-07-31
 

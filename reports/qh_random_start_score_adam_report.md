@@ -734,3 +734,153 @@ $$
 - 机器可读审计：[最终有界端点结果](assets/qh_adam_dirty_gradient_20260801/bounded_final/dirty_endpoint_axis_audit.json) 和 [漂移阈值扫描](assets/qh_adam_dirty_gradient_20260801/drift_boundary/drift_boundary_scan.json)。
 
 旧语料仍保留其原始库哈希，不能静默改写。新的后台收集从 jobs `30594`（Student 两卡）和 `30595`（P107 四卡、低优先级）开始使用新库；后续混合语料分析必须按记录的 score-library SHA 区分旧值和当前值。
+
+## 12. 轴修正后 61.339 样本的完整物理评估
+
+### 12.1 固定输入和当前 score
+
+本节评估第 11.6 节 16 步短跑的历史最佳样本。输入已经冻结为
+[evaluated_case.json](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/evaluated_case.json)，SHA-256 为
+`63de73980ad07d457e79c3eaa9b2ef34d731e36622d06dad7f06413afd531539`。短跑产物记录的
+`61.3389633067` 来自中间库；不改输入、改用当前生产库
+`4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708` 重算后为
+**61.33896330666827**，状态 `ok`。二者在显示精度内一致。
+
+| score 分量 | 数值 |
+| --- | ---: |
+| axis | 99.2312 |
+| $\psi$ | 97.2853 |
+| surface | 83.0218 |
+| coordinate | 85.2201 |
+| volume QS | 38.7846 |
+| $\iota$ | 100.0000 |
+| coil | 62.7895 |
+
+native 诊断给出轴残差 $5.15\times10^{-9}$、$\psi$ 验证角误差 P95
+$7.23\times10^{-5}$、$\iota=1.90479$、体 QH global/edge error
+$0.34585/0.45782$。体 QS 是全体积微分统计，不等同于后文单个标准 Boozer 面上的面 QS error，
+不能比较绝对尺度。线圈平均长度为 $3.6294\,\mathrm m$，曲率 P95/max 为
+$7.854/14.406\,\mathrm m^{-1}$，最小线圈间距为 $0.03366\,\mathrm m$，最小轴线距离为
+$0.21447\,\mathrm m$。
+
+### 12.2 从源 $\psi$ 到最大已测标准面
+
+源 $\psi$ 仍按样本自适应选择，不复用其它样本的半径。四个候选结果如下：
+
+| $a$ [m] | validation RMS | 角误差 P95 | 廉价筛选最大通过 $s$ | 对应平均半径 [m] | 首个失败 $s$ |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.04 | $6.753\times10^{-4}$ | $5.347\times10^{-5}$ | 0.64 | 0.03273 | 0.81 |
+| 0.05 | $7.156\times10^{-4}$ | $7.430\times10^{-5}$ | 0.64 | 0.04080 | 0.81 |
+| **0.06** | $8.039\times10^{-4}$ | $1.062\times10^{-4}$ | **0.64** | **0.04903** | **0.81** |
+| 0.08 | $1.202\times10^{-3}$ | $2.641\times10^{-4}$ | 0.36 | 0.04931 | 0.49 |
+
+$a=0.08$ 没有增加实际覆盖，反而显著恶化拟合，因此选 $a=0.06$。对
+$s=0.24,0.36,0.49,0.64,0.81$ 分别运行完整 $\alpha+\nu$ 初值、标准 LS/Newton 和独立密网格检查：
+
+| $s$ | 标准验收 | $|V|$ [$\mathrm{m^3}$] | $\iota$ | dense relative $L^2$ | normal $B$ P95 | 面 QH error |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 0.24 | 通过 | 0.01651 | 1.92454 | $2.17\times10^{-5}$ | $3.45\times10^{-5}$ | $8.48\times10^{-6}$ |
+| 0.36 | 通过 | 0.02546 | 1.93157 | $2.34\times10^{-5}$ | $3.84\times10^{-5}$ | $2.35\times10^{-5}$ |
+| 0.49 | 通过 | 0.03554 | 1.94060 | $2.56\times10^{-5}$ | $4.32\times10^{-5}$ | $6.99\times10^{-5}$ |
+| **0.64** | **通过并选中** | **0.04123** | **1.94669** | **$2.72\times10^{-5}$** | **$4.63\times10^{-5}$** | **$1.33\times10^{-4}$** |
+| 0.81 | 拒绝 | 0.01141 | 1.82613 | $1.13\times10^{-4}$ | $1.44\times10^{-4}$ | 未计算 |
+
+$s=0.64$ 的初值到标准解有明显形变，距离 P95 约为平均半径的 34.1%，且标准面上的拟合
+$s$ 均值变为 0.555；因此不能把它描述成“原 $\psi=0.64$ 等值面几乎不动”。但用户指定的最终存在性标准是
+LS/Newton 是否能找到磁面，而不是初始等值面误差足够小。该面保持目标体积，标准线性最小二乘直接把
+残差降到 $2.23\times10^{-13}$，Newton 在第 0 步即无需继续，随后通过独立 FP32 C++/CUDA
+密网格残差、法向场、环向绕行和法向非退化检查。相邻更外层 $s=0.81$ 被同一固定标准拒绝，故
+$s=0.64$ 是本次最大已测可行面，而不是严格数学最大面。
+
+### 12.3 场线、Boozer 场强和三维几何
+
+选中面的 8 条内侧种子在 Poincaré 截面中分别得到 23--25 个命中点，没有丢失整条场线：
+
+![最大标准面的 Poincare 复核](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/assets/poincare.png)
+
+直接标准 Boozer 面上的 $|B|$ 范围为 $0.62489$--$0.76307\,\mathrm T$。下图使用白底彩色等高线，
+颜色表示场强大小；[交互式 Boozer 图](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/assets/boozer_b.html)
+保留原始可缩放数据。
+
+![直接标准 Boozer 面的彩色场强等高线](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/assets/boozer_b.png)
+
+![完整线圈和最大标准磁面](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/assets/coils_surface.png)
+
+[三维线圈与完整对称磁面 HTML](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/assets/coils_surface.html)
+包含全部场周期，未对每个周期的截面首尾做错误连线。
+
+### 12.4 CPU DESC 复核
+
+当前远端 JAX 只有 CPU backend。第一次 GPU 严格作业 `30642` 因 `--require-desc-gpu` 正确退出，
+其 `full/` 目录不构成物理结果。正式作业 `30645` 使用 16 CPU，`COMPLETED 0:0`，总耗时
+336.49 s，其中 DESC 251.67 s、可视化 41.81 s。旧提交脚本误申请了一张未使用 GPU；固定入口现已改为
+`DESC_BACKEND=cpu-p107`，后续 CPU DESC 不再占 GPU。
+
+初始 DESC 面嵌套，初始归一化力误差 mean/P95/max 为
+$0.9099/2.566/6.827$。50 次 `lsq-exact` 后仍保持嵌套，独立终态统计降为
+
+$$
+\operatorname{mean}|F|=3.127\times10^{-3},\qquad
+\operatorname{P95}|F|=6.993\times10^{-3},\qquad
+\max|F|=1.647\times10^{-2}.
+$$
+
+优化器达到 50 次迭代上限，`success=false`、最终 cost 为 0.03331；因此结论是“DESC 明显改善且保持
+嵌套”，不是“DESC 优化器已收敛”。以下逐张引用本次成功生成的全部 8 张 DESC 图。
+
+![DESC 初始边界](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/boundary.png)
+
+![DESC Boozer 模谱](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/boozer_modes.png)
+
+![DESC Boozer 场强彩色等高线](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/boozer_B.png)
+
+![DESC QA 分量随 rho 变化](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/qs_QA.png)
+
+![DESC QH 分量随 rho 变化](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/qs_QH.png)
+
+![DESC QP 分量随 rho 变化](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/qs_QP.png)
+
+![DESC iota 随 rho 变化](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/iota.png)
+
+### 12.5 耗时、并行策略和已完成的优化
+
+当前 native score 单样本耗时 10.00 s。主要热点为 axis search 4.41 s、surface screen 3.95 s、
+flux 2.41 s 和 $\psi$ QR 0.96 s。代码审计确认：一次 score 只创建一次场对象；轴网格、候选有限差分、
+一周期轨迹和通量点均批量进入 CUDA；通量标定已经是单次批量 device 路径。16 周期验证必须用上一周期
+终点作为下一周期起点，不能简单把周期并行化。本轮没有发现可无风险删除的 CPU 回退或重复建场，因而
+没有修改生产 score 的物理定义和固定成本。
+
+完整评估入口此前错误默认 `SERIAL_CANDIDATES=1`，还让每个候选申请 16 CPU，导致候选互相阻塞。
+现在默认每候选申请 1 GPU+4 CPU 并行提交，四卡节点同时跑四个候选；串行只保留为显式资源受限选项。
+单候选正式作业本次为 4:37--5:52，五个候选的有效墙钟由最慢作业决定，而不是求和等待约 25 分钟。
+
+旧 `s=0.36` alpha 路径中，总时间 140.22 s，单独通量标定占 54.87 s。新 `gpu-ray` 路径用同一
+12 万训练点、6 万验证点运行，通量标定降至 0.56 s，alpha 总时间降至 107.35 s。最终标准面的结果为：
+
+| 路径 | alpha $\iota$ | 标准面 $\iota$ | dense relative $L^2$ | normal $B$ P95 | 面 QH error |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 旧 Cartesian | 1.918877 | 1.931570 | $2.33567\times10^{-5}$ | $3.84344\times10^{-5}$ | $2.34561\times10^{-5}$ |
+| 新 GPU-ray | 1.919758 | 1.931567 | $2.33558\times10^{-5}$ | $3.84353\times10^{-5}$ | $2.34468\times10^{-5}$ |
+
+最终 $\iota$ 只差 $3.0\times10^{-6}$，三个物理误差均在 $10^{-9}$ 量级内一致，且两条路径都通过完整
+标准验收，因此新默认值已获得同面数值交叉验证。新路径剩余的 `volume_sampling` 仍约 62.6 s，来自
+1574 模拟合 $\psi$ 在 22.6 万射线候选上的基函数构造/评估；Horner 等价改写只让 alpha 从 107.35 s
+变为 104.66 s，未产生超出波动的提速，不把它计为性能突破。该热点不属于 10 秒 native score 路径，
+后续若继续优化，应实现并单独验证专用 GPU 多项式评估，而不是在正式验收过程中临时改内核。
+
+### 12.6 验收结论和原始产物
+
+该样本不是 native score 的假高分：它具有最大已测 $|V|=0.04123\,\mathrm{m^3}$ 的标准嵌套磁面，
+$\iota=1.94669$，面 QH error 为 $1.33\times10^{-4}$，Poincaré 通过，DESC 也在保持嵌套的同时把
+归一化力误差降到 $10^{-3}$--$10^{-2}$ 量级。它仍不是接近 100 分的极优解，主要限制与 native
+volume-QS 分量 38.78 和线圈几何分量 62.79 一致。
+
+选中标准面 SHA-256 为
+`06420743e7f812ced6c7b5538f303e1976bdb5f373d6bb891f4fe30ea2a71df4`，DESC equilibrium SHA-256 为
+`96e021104c225002a09170bbe587613ba386ae888e4e77b530a84193556add2e`。机器可读结果位于
+[selection.json](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/selection.json)、
+[标准面 summary](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/candidates/s_0p64/standard_rho_1/summary.json)、
+[完整下游 summary](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/full_summary.json) 和
+[DESC summary](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/summary.json)。

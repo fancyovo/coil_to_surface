@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-01 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-02 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -57,6 +57,48 @@ once the task is accepted.
   are pinned to the new hash. The complete local suite has 113 passing tests.
   Detailed numerical evidence is in
   `reports/qh_random_start_score_adam_report.md` section 11.
+- On 2026-08-02, complete physical evaluation of the topology-fixed Adam
+  sample was accepted. The frozen input SHA-256 is
+  `63de73980ad07d457e79c3eaa9b2ef34d731e36622d06dad7f06413afd531539`;
+  its current-production native score is `61.33896330666827` with components
+  axis/psi/surface/coordinate/volume-QS/iota/coil =
+  `99.2312/97.2853/83.0218/85.2201/38.7846/100/62.7895`.
+  Sample-specific source fitting selected `a=0.06`. Standard LS/Newton plus
+  independent dense validation accepted `s=0.24,0.36,0.49,0.64` and rejected
+  adjacent `s=0.81`, so `s=0.64` was selected. The surface has
+  `|V|=0.0412330184 m^3`, `iota=1.94668607`, dense relative residual
+  `2.71927e-5`, normal-field P95 `4.63098e-5`, and surface QH error
+  `1.33268e-4`; Poincare passed. CPU DESC stayed nested and reached final
+  normalized force mean/P95/max `3.127e-3/6.993e-3/1.647e-2`, but hit its
+  50-iteration limit. Selected-surface SHA-256 is
+  `06420743e7f812ced6c7b5538f303e1976bdb5f373d6bb891f4fe30ea2a71df4`;
+  DESC-equilibrium SHA-256 is
+  `96e021104c225002a09170bbe587613ba386ae888e4e77b530a84193556add2e`.
+  Full evidence and all eight DESC figures are in
+  `reports/qh_random_start_score_adam_report.md` section 12 and
+  `reports/assets/qh_adam_topology_fixed_61p339_full_eval_20260801/`.
+- Full-evaluation orchestration was corrected on 2026-08-02. Surface candidates
+  now default to parallel one-GPU/four-CPU jobs; `SERIAL_CANDIDATES=1` is only
+  an explicit resource-limited override. Current remote JAX has no CUDA
+  backend, so DESC uses `DESC_BACKEND=cpu-p107`, requesting 16 P107 CPUs and no
+  GPU. Strict GPU attempt `30642` is invalid infrastructure evidence only;
+  CPU-DESC job `30645` completed `0:0` in 5:46. Do not silently request a GPU
+  and let JAX fall back to CPU.
+- Alpha preprocessing now defaults to equal-area `gpu-ray` sampling,
+  vectorized C++/CUDA FP32 field evaluation and flux calibration, and PyTorch
+  CUDA FP32 QR. First remote comparison job `30651` failed before nu because
+  the accelerated coordinate adapter omitted `grad_psi`; commit
+  `1b1b1a2d01de9f268774fa4f963700ddeb674d1a` fixed the interface and added a
+  regression test. Same-surface jobs `30653` and `30655` then completed and
+  matched the legacy final standard surface to about `3e-6` in iota and
+  `1e-9` in independent residual/QH metrics. Flux calibration fell from
+  `54.87 s` to `0.56 s`; alpha total fell from `140.22 s` to about `105 s`.
+  The remaining roughly `62.6 s` volume-sampling stage is 1,574-mode fitted-psi
+  basis construction/evaluation over about 226k ray candidates; a Horner
+  rewrite did not provide a measurable end-to-end gain. This is outside the
+  ten-second native-score path and needs a separately validated dedicated GPU
+  polynomial evaluator if optimized further. Current complete local suite:
+  117 passing tests.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$

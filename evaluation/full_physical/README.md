@@ -63,11 +63,13 @@ bash evaluation/full_physical/submit_surface_candidates.sh
 squeue -u "$USER" -o '%.18i %.12T %.10M %.30j %R'
 ```
 
-候选全部完成后选择最大已测可行面并提交下游。`DESC_BACKEND` 必须显式选择，不能静默回退：
+候选全部完成后选择最大已测可行面并提交下游。`DESC_BACKEND` 必须显式选择，不能静默回退。当前远端环境的
+JAX 不提供 CUDA backend，因此优先使用 `cpu-p107`：它在 P107 上申请 16 CPU 且不占 GPU。`cpu` 使用
+Students 分区，`gpu` 仅在 JAX CUDA 预检通过后使用。
 
 ```bash
 python evaluation/full_physical/select_largest_standard_surface.py --candidate-root "$OUTPUT_ROOT/candidates" --output "$OUTPUT_ROOT/selection.json"
-export DESC_BACKEND=cpu
+export DESC_BACKEND=cpu-p107
 bash evaluation/full_physical/submit_downstream.sh
 ```
 

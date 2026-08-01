@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-07-31 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-01 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -291,6 +291,13 @@ once the task is accepted.
   of its score components, and report the selected largest accepted surface's
   surface QS error explicitly. Do not make the user infer either quantity from
   plots or a scalar total score.
+- Candidate-surface existence is decided by a complete standard Simsopt
+  least-squares solve followed by full Newton convergence and independent dense
+  residual/normal-field/regularity checks. The stepwise `guarded` solver is a
+  conservative wrong-branch diagnostic only: its rejection must never be
+  reported as proof that the tested $s$ has no magnetic surface. Initial
+  $\psi$-surface distance and displacement remain branch diagnostics, not
+  per-step gates that replace final LS/Newton convergence.
 - The source-$\psi$ fit radius `a` and candidate surface levels `s` are
   **sample-specific search results, not fixed workflow constants**. The
   `a=0.08` and current `s` values recorded for the 71.7342 candidate must not
@@ -607,6 +614,10 @@ new physics.
 15. **`sbatch --wrap` shell:** Slurm may execute a wrapped command with
     `/bin/sh`. Do not put Bash-only options such as `set -o pipefail` directly
     in the wrapper; submit a real Bash script or explicitly invoke Bash.
+16. **Guard rejection misclassified as no surface:** the guarded solver's
+    one-step Newton, monotone line search, initial-$\psi$ distance, and geometry
+    gates are intentionally conservative. Use standard LS/Newton plus final
+    independent validation to decide whether an $s$ is physically acceptable.
 
 ## 11. Important Files
 

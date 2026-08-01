@@ -28,6 +28,7 @@ beta1="${BETA1:-0.9}"
 beta2="${BETA2:-0.999}"
 robust_direction_filter="${ROBUST_DIRECTION_FILTER:-0}"
 reject_invalid_center="${REJECT_INVALID_CENTER:-0}"
+invalid_center_backtracking="${INVALID_CENTER_BACKTRACKING:-0.5,0.25,0.125}"
 direction_outlier_ratio="${DIRECTION_OUTLIER_RATIO:-8.0}"
 direction_outlier_mad_factor="${DIRECTION_OUTLIER_MAD_FACTOR:-8.0}"
 seed="${SEED:-2026073004}"
@@ -70,7 +71,10 @@ if [[ "$robust_direction_filter" == "1" ]]; then
   robust_gradient_args+=(--robust-direction-filter)
 fi
 if [[ "$reject_invalid_center" == "1" ]]; then
-  robust_gradient_args+=(--reject-invalid-center)
+  robust_gradient_args+=(
+    --reject-invalid-center
+    --invalid-center-backtracking "$invalid_center_backtracking"
+  )
 fi
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 source "$HOME/coil/.venv/bin/activate"

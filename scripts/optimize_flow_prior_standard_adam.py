@@ -43,6 +43,17 @@ def parse_ints(value: str) -> tuple[int, ...]:
     return tuple(int(item) for item in value.split(",") if item.strip())
 
 
+def parse_backtracking_fractions(value: str) -> tuple[float, ...]:
+    fractions = tuple(float(item) for item in value.split(",") if item.strip())
+    if any(not 0.0 < fraction < 1.0 for fraction in fractions):
+        raise argparse.ArgumentTypeError("backtracking fractions must be in (0, 1)")
+    if any(right >= left for left, right in zip(fractions, fractions[1:])):
+        raise argparse.ArgumentTypeError(
+            "backtracking fractions must be strictly decreasing"
+        )
+    return fractions
+
+
 def robust_direction_deltas(
     raw_delta: np.ndarray,
     pair_statuses: list[str | None],
@@ -196,6 +207,15 @@ def main() -> None:
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument("--robust-direction-filter", action="store_true")
     parser.add_argument("--reject-invalid-center", action="store_true")
+    parser.add_argument(
+        "--invalid-center-backtracking",
+        type=parse_backtracking_fractions,
+        default=(),
+        help=(
+            "Comma-separated decreasing update fractions tried after a full "
+            "proposal is invalid; requires --reject-invalid-center."
+        ),
+    )
     parser.add_argument("--direction-outlier-ratio", type=float, default=8.0)
     parser.add_argument("--direction-outlier-mad-factor", type=float, default=8.0)
     parser.add_argument("--gpus", default="0,1,2,3")
@@ -231,6 +251,10 @@ def main() -> None:
         raise ValueError("direction outlier controls must be conservative and positive")
     if args.adam_epsilon <= 0.0 or args.plot_every < 1:
         raise ValueError("Adam epsilon and plot-every must be positive")
+    if args.invalid_center_backtracking and not args.reject_invalid_center:
+        raise ValueError(
+            "invalid-center backtracking requires --reject-invalid-center"
+        )
     if not gpu_ids:
         raise ValueError("at least one score GPU is required")
 
@@ -344,11 +368,14 @@ def main() -> None:
             "skip_entire_step" if args.robust_direction_filter else "use_all"
         ),
         "reject_invalid_center": args.reject_invalid_center,
+        "invalid_center_backtracking": list(args.invalid_center_backtracking),
         "direction_outlier_ratio": args.direction_outlier_ratio,
         "direction_outlier_mad_factor": args.direction_outlier_mad_factor,
         "update_clip": None,
         "parameter_clip": None,
-        "proposal_search": None,
+        "proposal_search": (
+            "validity_backtracking" if args.invalid_center_backtracking else None
+        ),
         "accept_reject": None,
         "flow_dtype": "torch.float32",
         "flow_method": "rk4",
@@ -378,6 +405,7 @@ def main() -> None:
             "robust_direction_filter",
             "invalid_direction_policy",
             "reject_invalid_center",
+            "invalid_center_backtracking",
             "direction_outlier_ratio",
             "direction_outlier_mad_factor",
             "flow_method",
@@ -596,7 +624,10 @@ def main() -> None:
                 gradient_rms = 0.0
                 update = np.zeros_like(raw_gradient)
             proposed_update_rms = rms(update)
-            current_noise = (current_noise.astype(np.float64) + update).astype(np.float32)
+            full_update = update.copy()
+            current_noise = (current_noise.astype(np.float64) + full_update).astype(
+                np.float32
+            )
 
             current_batch, center_decode_wall_s = decode_noise_rk4(
                 model,
@@ -623,20 +654,78 @@ def main() -> None:
             proposed_score = result_score(proposed_result)
             center_update_accepted = True
             center_rejection_reason = None
+            center_acceptance_fraction = 1.0
+            center_backtracking = []
             if (
                 gradient_step_applied
                 and args.reject_invalid_center
                 and not result_valid(proposed_result)
             ):
                 center_update_accepted = False
-                center_rejection_reason = "invalid_updated_center"
-                current_noise = previous_noise
-                current_tokens = previous_tokens
-                current_result = previous_result
-                first_moment = previous_first_moment
-                second_moment = previous_second_moment
-                adam_step = previous_adam_step
-                update = np.zeros_like(update)
+                center_acceptance_fraction = 0.0
+                for fraction in args.invalid_center_backtracking:
+                    trial_noise = (
+                        previous_noise.astype(np.float64) + fraction * full_update
+                    ).astype(np.float32)
+                    trial_batch, trial_decode_wall_s = decode_noise_rk4(
+                        model,
+                        normalizer,
+                        trial_noise[None],
+                        nfp=args.nfp,
+                        steps=args.flow_steps,
+                        device=device,
+                    )
+                    trial_results, trial_elapsed, trial_errors, trial_score_wall_s = (
+                        score_tokens(
+                            pool,
+                            trial_batch,
+                            nfp=args.nfp,
+                            target=args.target,
+                            timeout_s=args.batch_timeout_s,
+                            metadata={
+                                "phase": "updated_center_backtracking",
+                                "iteration": iteration,
+                                "fraction": fraction,
+                            },
+                        )
+                    )
+                    if any(error is not None for error in trial_errors) or trial_results[0] is None:
+                        raise RuntimeError(
+                            "backtracked-center score failure at iteration "
+                            f"{iteration}, fraction {fraction}: {trial_errors}"
+                        )
+                    trial_result = trial_results[0]
+                    center_backtracking.append(
+                        {
+                            "fraction": fraction,
+                            "status": trial_result.get("status"),
+                            "score": result_score(trial_result),
+                            "decode_wall_s": trial_decode_wall_s,
+                            "score_wall_s": trial_score_wall_s,
+                            "score_elapsed_s": trial_elapsed,
+                        }
+                    )
+                    center_decode_wall_s += trial_decode_wall_s
+                    center_score_wall_s += trial_score_wall_s
+                    center_elapsed.extend(trial_elapsed)
+                    if result_valid(trial_result):
+                        center_update_accepted = True
+                        center_acceptance_fraction = fraction
+                        center_rejection_reason = "invalid_full_proposal_backtracked"
+                        current_noise = trial_noise
+                        current_tokens = trial_batch[0]
+                        current_result = trial_result
+                        update = fraction * full_update
+                        break
+                if not center_update_accepted:
+                    center_rejection_reason = "invalid_updated_center"
+                    current_noise = previous_noise
+                    current_tokens = previous_tokens
+                    current_result = previous_result
+                    first_moment = previous_first_moment
+                    second_moment = previous_second_moment
+                    adam_step = previous_adam_step
+                    update = np.zeros_like(full_update)
             else:
                 current_tokens = proposed_tokens
                 current_result = proposed_result
@@ -690,6 +779,8 @@ def main() -> None:
                 "proposed_center_status": proposed_result.get("status"),
                 "center_update_accepted": center_update_accepted,
                 "center_rejection_reason": center_rejection_reason,
+                "center_acceptance_fraction": center_acceptance_fraction,
+                "center_backtracking": center_backtracking,
                 "raw_gradient_rms": rms(raw_gradient),
                 "gradient_rms": gradient_rms,
                 "first_moment_rms": rms(first_moment),

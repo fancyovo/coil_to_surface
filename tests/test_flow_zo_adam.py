@@ -10,7 +10,10 @@ from scripts.optimize_flow_prior_zo_adam import (
     orthogonal_directions,
     prior_penalty_and_gradient,
 )
-from scripts.optimize_flow_prior_standard_adam import robust_direction_deltas
+from scripts.optimize_flow_prior_standard_adam import (
+    parse_backtracking_fractions,
+    robust_direction_deltas,
+)
 
 
 def test_load_initial_noise_accepts_generic_start(tmp_path):
@@ -120,6 +123,19 @@ def test_robust_direction_filter_is_scale_invariant_for_valid_outlier():
     np.testing.assert_array_equal(scaled_outlier, outlier)
     np.testing.assert_allclose(scaled, 100.0 * used)
     assert np.isclose(scaled_limit, 100.0 * limit)
+
+
+def test_parse_backtracking_fractions_requires_decreasing_unit_interval():
+    assert parse_backtracking_fractions("0.5,0.25,0.125") == (0.5, 0.25, 0.125)
+    assert parse_backtracking_fractions("") == ()
+
+    for invalid in ("1.0", "0.0", "0.25,0.5", "0.5,0.5"):
+        try:
+            parse_backtracking_fractions(invalid)
+        except Exception as exc:
+            assert "backtracking fractions" in str(exc)
+        else:
+            raise AssertionError(f"expected invalid backtracking schedule: {invalid}")
 
 
 def test_prior_penalty_is_inactive_inside_soft_region():

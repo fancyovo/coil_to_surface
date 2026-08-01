@@ -817,6 +817,23 @@ new physics.
   skip policy and additionally rolls back parameters, both moments, and Adam
   step count whenever an updated center is non-`ok`; proposal diagnostics are
   preserved rather than hidden.
+- On 2026-08-01, independent proposal audit jobs `30551` and `30555` resolved
+  that apparent `no_axis`. Iterations 1--4 replayed with exactly zero noise and
+  update RMS error. RK4-256 and RK4-512 both placed the current score-60.6
+  proposal boundary between 0.75 and 0.875 of the Adam update, and the exact
+  RK4-512 proposal repeated as `no_axis` on all four physical GPUs. This is not
+  an Adam indexing/state bug and not physical disappearance of the magnetic
+  axis: changing only `axis_topology_margin` from the production `0.020` to
+  `0.019` finds a closed, strictly elliptic axis with residual `1.366e-8`,
+  normalized absolute Poincare-map trace `1.980828 < 2`, and full score
+  `60.7965311`. Margin `0.020` rejects it because its acceptance threshold is
+  `1.98`; a denser 96-grid/96-candidate/8-Newton fallback still rejects it under
+  that same deliberate safety margin. Therefore native status `no_axis` is
+  semantically coarse here: it means no axis passed the configured robust-axis
+  margin, not no mathematical elliptic axis. Keep the score definition fixed
+  for current corpus comparability; constrained Adam must backtrack such center
+  proposals to the largest score-valid fraction rather than treating the
+  discontinuity as a physical gradient or using a fixed gradient clip.
 
 ### 2026-07-31
 

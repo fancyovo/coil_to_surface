@@ -118,7 +118,7 @@ def _score_worker(task_q: mp.Queue, result_q: mp.Queue, lib_path: str, gpu_id: i
         task = task_q.get()
         if task is None:
             return
-        task_id, case, target = task
+        task_id, case, target, config_overrides = task
         started = time.perf_counter()
         try:
             raw = case["raw"]
@@ -133,6 +133,7 @@ def _score_worker(task_q: mp.Queue, result_q: mp.Queue, lib_path: str, gpu_id: i
                 nfp,
                 device_id=0,
                 target_helicity=target_helicity,
+                config_overrides=config_overrides,
             )
             result_q.put((task_id, result, time.perf_counter() - started, None))
         except Exception as exc:
@@ -163,9 +164,10 @@ class NativeScorePool:
         *,
         target: str,
         timeout_s: float,
+        config_overrides: dict[str, Any] | None = None,
     ) -> list[tuple[dict[str, Any] | None, float, str | None]]:
         for index, case in enumerate(cases):
-            self.task_q.put((index, case, target))
+            self.task_q.put((index, case, target, config_overrides))
         deadline = time.monotonic() + timeout_s
         results: dict[int, tuple[dict[str, Any] | None, float, str | None]] = {}
         while len(results) < len(cases):

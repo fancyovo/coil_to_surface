@@ -26,6 +26,16 @@ def test_load_initial_noise_accepts_generic_start(tmp_path):
     assert "flow_prior_start" in payload
 
 
+def test_load_initial_noise_accepts_standard_adam_and_subspace_bfgs(tmp_path):
+    noise = np.arange(300, dtype=np.float32).reshape(3, 100)
+    for key in ("flow_prior_standard_adam", "flow_prior_subspace_bfgs"):
+        path = tmp_path / f"{key}.json"
+        path.write_text(json.dumps({key: {"noise": noise.tolist()}}), encoding="utf-8")
+        loaded, payload = load_initial_noise(path)
+        np.testing.assert_array_equal(loaded, noise)
+        assert key in payload
+
+
 def test_orthogonal_directions_have_unit_rms():
     directions = orthogonal_directions(np.random.default_rng(73), (2, 3), 4)
     flat = directions.reshape(4, -1).astype(np.float64)

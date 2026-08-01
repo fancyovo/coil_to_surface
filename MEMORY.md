@@ -64,7 +64,11 @@ once the task is accepted.
   `49bf4ebe5d17ca5ebde5c76a435433efd957c03858f7e6c39d264a7c7f43f6de`.
   Full evidence, all native score components, HTML, and all eight DESC figures
   are in `reports/qh_random_start_score_adam_report.md` section 7 and
-  `reports/assets/qh_score_adam_eta001_58p151_full_eval_20260801/`.
+  `reports/assets/qh_score_adam_eta001_58p151_full_eval_20260801/`. The exact
+  evaluated input is frozen as `evaluated_case.json` there, with SHA-256
+  `e7a33bd80b660761d77b88f7308ac26720bceecc7d05fe71145b9a018d2ede18`,
+  because the live `start_10/best.json` continues to be replaced by later
+  optimizer improvements.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
 - Current objective status: the latent-support proxy, active-optimization, and
   IID-start native-score Adam experiments are complete. The 4,096-sample IID

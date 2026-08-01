@@ -295,7 +295,7 @@ DESC 使用真实 Biot--Savart 场积分得到的环向磁通 $-3.68289\times10^
 | iota | 100.00000 |
 | coil | 64.84444 |
 
-native score 的体诊断给出 $\iota_{\min}=1.86671$、有效小半径约 0.03559 m、体积 0.02539 $\mathrm{m}^3$、体 QH residual 0.45172 和边缘 residual 0.59613。这里的体 residual 与后文单个标准 Boozer 面的面 QS error 使用不同统计定义和归一化，不能直接比较绝对数值；二者一致表明“QH 占优但仍有明显误差”。原始优化样本见 [best.json](assets/qh_score_adam_eta001_start_sweep_20260731/start_10/best.json)。
+native score 的体诊断给出 $\iota_{\min}=1.86671$、有效小半径约 0.03559 m、体积 0.02539 $\mathrm{m}^3$、体 QH residual 0.45172 和边缘 residual 0.59613。这里的体 residual 与后文单个标准 Boozer 面的面 QS error 使用不同统计定义和归一化，不能直接比较绝对数值；二者一致表明“QH 占优但仍有明显误差”。本次实际评估的输入已独立固化为 [evaluated_case.json](assets/qh_score_adam_eta001_58p151_full_eval_20260801/evaluated_case.json)，SHA-256 为 `e7a33bd80b660761d77b88f7308ac26720bceecc7d05fe71145b9a018d2ede18`；它不会被后续 `start_10` 续跑覆盖。
 
 ### 7.2 修正后的选面判据
 

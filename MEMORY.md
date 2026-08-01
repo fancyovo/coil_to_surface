@@ -700,6 +700,20 @@ new physics.
   iterations. Resume smoke `30403_11` completed `0:0`: saved step-23 score
   `46.79922624460454` re-decoded as `46.799226244603915`, then step 24 reached
   `46.928647862147294`, proving state/momentum/RNG/history continuity.
+- On 2026-08-01, inspection of the active $\eta=0.01$ `start_10` trajectory
+  found that hard score gates, not only Adam beta choices, dominate some local
+  failures. Step 93 reached score `59.3632156562` with all probes `ok` and
+  update RMS `6.70e-4`; at step 94, two of eight probes became `no_axis`, two
+  directional deltas were about `-58`, gradient RMS rose to `1028.54`, update
+  RMS rose to `6.43e-3`, and the center left the best point. The same pattern
+  occurred at step 51 with `drift_rejected` probes. Current
+  $(\beta_1,\beta_2)=(0.9,0.999)$ gives second-moment memory much longer than a
+  40--200 step run, but beta tuning must be controlled against these gate
+  crossings. The planned local higher-order option is a fixed low-dimensional
+  subspace BFGS/quadratic trust region started from the saved best point after
+  an explicit smoothness check; a full 300-dimensional Hessian is out of scope.
+  Detailed evidence and the proposed beta comparison are in
+  `reports/qh_random_start_score_adam_report.md` section 8.
 
 ### 2026-07-31
 

@@ -94,6 +94,7 @@ if [[ $resume == 1 ]]; then
   resume_args+=(--resume)
 fi
 
+cd /
 python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --checkpoint "$checkpoint" \
   --lib "$lib" \

@@ -880,10 +880,11 @@ new physics.
   collectors `30594` (Student, two GPUs) and `30595` (P107, four GPUs, low
   priority) are running independently from commit `e16402e`; both launchers
   validated the production library hash before entering their collection loop.
-  A metadata-only recount at this delivery found exactly 16,324 completed
-  samples in 257 atomic shards from 20 streams (`ok=7063`, `no_axis=4584`,
-  `no_surface=1097`, `drift_rejected=3462`, `flux_rejected=118`). This is a
-  dated snapshot; refresh it from shard metadata at every later delivery.
+  A metadata-only recount after 24 minutes of the new jobs found exactly 17,092
+  completed samples in 269 atomic shards from 20 streams (`ok=7389`,
+  `no_axis=4788`, `no_surface=1148`, `drift_rejected=3645`,
+  `flux_rejected=122`). This is a dated snapshot; refresh it from shard
+  metadata at every later delivery.
 
 ### 2026-07-31
 

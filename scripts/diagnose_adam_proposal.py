@@ -103,6 +103,34 @@ def compact_result(result: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def score_token_direct(
+    lib_path: Path,
+    token: np.ndarray,
+    *,
+    nfp: int,
+    device_id: int,
+    config_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    gpu_python = REPO_ROOT / "gpu_backend" / "python"
+    if str(gpu_python) not in sys.path:
+        sys.path.insert(0, str(gpu_python))
+    from stellarator_gpu import score_coils_native
+
+    value = np.atleast_2d(np.asarray(token, dtype=np.float64))
+    result = score_coils_native(
+        lib_path,
+        value[:, :33],
+        value[:, 33:66],
+        value[:, 66:99],
+        value[:, 99],
+        nfp,
+        device_id=device_id,
+        target_helicity=(1, nfp),
+        config_overrides=config_overrides,
+    )
+    return compact_result(result)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Independently replay and rescore an Adam proposal.")
     parser.add_argument("--checkpoint", type=Path, required=True)
@@ -141,6 +169,7 @@ def main() -> None:
     device = torch.device("cuda", 0)
     model, normalizer, _ = load_flow_checkpoint(args.checkpoint, device)
     evaluations = {}
+    decoded_by_steps: dict[int, np.ndarray] = {}
     with NativeScorePool(args.lib, gpu_ids) as pool:
         for flow_steps in (256, 512):
             tokens, decode_wall = decode_noise_rk4(
@@ -151,6 +180,7 @@ def main() -> None:
                 steps=flow_steps,
                 device=device,
             )
+            decoded_by_steps[flow_steps] = tokens
             results, _, errors, score_wall = score_tokens(
                 pool,
                 tokens,
@@ -188,6 +218,45 @@ def main() -> None:
         if any(error is not None for error in pair_errors):
             raise RuntimeError(f"pair score errors: {pair_errors}")
 
+    proposal_index = int(np.flatnonzero(alphas == 1.0)[0])
+    proposal_token = decoded_by_steps[512][proposal_index]
+    device_repeats = [
+        {
+            "device_id": device_id,
+            **score_token_direct(
+                args.lib,
+                proposal_token,
+                nfp=int(manifest["nfp"]),
+                device_id=device_id,
+            ),
+        }
+        for device_id in gpu_ids
+    ]
+    topology_margin_scan = [
+        {
+            "axis_topology_margin": margin,
+            **score_token_direct(
+                args.lib,
+                proposal_token,
+                nfp=int(manifest["nfp"]),
+                device_id=gpu_ids[0],
+                config_overrides={"axis_topology_margin": margin},
+            ),
+        }
+        for margin in (0.0, 0.005, 0.01, 0.015, 0.019, 0.02, 0.025)
+    ]
+    dense_fallback = score_token_direct(
+        args.lib,
+        proposal_token,
+        nfp=int(manifest["nfp"]),
+        device_id=gpu_ids[0],
+        config_overrides={
+            "axis_fallback_grid": 96,
+            "axis_fallback_max_candidates": 96,
+            "axis_fallback_newton_iters": 8,
+        },
+    )
+
     output = {
         "target_iteration": args.iteration,
         "replay": replay,
@@ -199,6 +268,12 @@ def main() -> None:
             "decode_wall_s": pair_decode_wall,
             "score_wall_s": pair_score_wall,
             "results": [compact_result(result) for result in pair_results],
+        },
+        "proposal_axis_audit": {
+            "flow_steps": 512,
+            "device_repeats": device_repeats,
+            "topology_margin_scan": topology_margin_scan,
+            "dense_fallback": dense_fallback,
         },
     }
     args.out_dir.mkdir(parents=True, exist_ok=True)

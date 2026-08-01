@@ -105,11 +105,29 @@ python3 "$project/scripts/diagnose_alpha_toroidal_correction.py" \
     --save-surfaces
 
 cd /
+guard_status=0
 python3 "$project/scripts/guarded_boozer_from_alpha_nu.py" \
     --case-file "$CASE_FILE" \
     --run-dir "$RUN_DIR" \
     --surface-npz "$nu_dir/surfaces/rho_1_alpha_nu.npz" \
     --output-dir "$OUTPUT_DIR/guarded_rho_1" \
+    --gpu-lib "$gpu_lib" \
+    --gpu-device 0 \
+    --validation-field-precision fp32 || guard_status=$?
+printf '%s\n' "$guard_status" > "$OUTPUT_DIR/guarded_exit_code.txt"
+if (( guard_status != 0 && guard_status != 3 )); then
+    printf 'guarded diagnostic failed unexpectedly with exit %s\n' "$guard_status" >&2
+    exit "$guard_status"
+fi
+
+cd /
+python3 "$project/scripts/solve_boozer_from_alpha_nu.py" \
+    --case-file "$CASE_FILE" \
+    --run-dir "$RUN_DIR" \
+    --surface-npz "$nu_dir/surfaces/rho_1_alpha_nu.npz" \
+    --output-dir "$OUTPUT_DIR/standard_rho_1" \
+    --ls-maxiter "${LS_MAXITER:-100}" \
+    --newton-maxiter "${NEWTON_MAXITER:-30}" \
     --gpu-lib "$gpu_lib" \
     --gpu-device 0 \
     --validation-field-precision fp32

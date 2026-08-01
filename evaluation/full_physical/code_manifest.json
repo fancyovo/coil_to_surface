@@ -33,8 +33,12 @@
       "implementation": "scripts/diagnose_alpha_boozer_residual.py"
     },
     {
+      "name": "standard_boozer_acceptance",
+      "entrypoint": "scripts/solve_boozer_from_alpha_nu.py"
+    },
+    {
       "name": "surface_selection",
-      "entrypoint": "evaluation/full_physical/select_largest_guarded_surface.py"
+      "entrypoint": "evaluation/full_physical/select_largest_standard_surface.py"
     },
     {
       "name": "downstream_submission",

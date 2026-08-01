@@ -27,7 +27,7 @@ for path in "$project" "$eval_env" "$CASE_FILE" "$OUTPUT_ROOT"; do
 done
 test ! -e "$full_output_dir"
 python3 "$project/evaluation/full_physical/preflight.py"
-surface_npz=$(python3 "$project/evaluation/full_physical/select_largest_guarded_surface.py" --candidate-root "$candidate_root" --output "$selection_json")
+surface_npz=$(python3 "$project/evaluation/full_physical/select_largest_standard_surface.py" --candidate-root "$candidate_root" --output "$selection_json")
 
 cd "$project"
 sbatch --test-only --export="ALL,PROJECT=$project,EVAL_ENV=$eval_env,CASE_FILE=$CASE_FILE,SURFACE_NPZ=$surface_npz,OUTPUT_DIR=$full_output_dir" "$slurm_script" >/dev/null

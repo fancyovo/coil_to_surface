@@ -287,6 +287,10 @@ once the task is accepted.
   lines, full-device coils plus
   surface HTML, Poincare validation, DESC, all required DESC figures, and DESC
   quantities versus $\rho$.
+- Every complete evaluation must also tabulate the total native score and all
+  of its score components, and report the selected largest accepted surface's
+  surface QS error explicitly. Do not make the user infer either quantity from
+  plots or a scalar total score.
 - The source-$\psi$ fit radius `a` and candidate surface levels `s` are
   **sample-specific search results, not fixed workflow constants**. The
   `a=0.08` and current `s` values recorded for the 71.7342 candidate must not

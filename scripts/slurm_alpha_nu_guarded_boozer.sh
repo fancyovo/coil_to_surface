@@ -20,6 +20,8 @@ set -euo pipefail
 
 project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
 s_edge=${S_EDGE:-0.25}
+alpha_train_points=${ALPHA_TRAIN_POINTS:-120000}
+alpha_validation_points=${ALPHA_VALIDATION_POINTS:-60000}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 gpu_selector=${CUDA_VISIBLE_DEVICES:-}
@@ -80,8 +82,8 @@ python3 "$project/scripts/alpha_clebsch_ls_experiment.py" \
     --out-dir "$alpha_dir" \
     --orders 12:12:16 \
     --iota-degree 0 \
-    --train-points 120000 \
-    --validation-points 60000 \
+    --train-points "$alpha_train_points" \
+    --validation-points "$alpha_validation_points" \
     --precision fp32 \
     --gpu-lib "$gpu_lib" \
     --skip-fieldline-plot

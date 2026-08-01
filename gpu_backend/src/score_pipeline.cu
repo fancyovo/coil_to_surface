@@ -424,6 +424,15 @@ struct AxisCandidate {
     bool elliptic = false;
 };
 
+double axis_topology_stability_margin(const AxisCandidate& candidate) {
+    if (!(candidate.topology_det > 0.0) ||
+        !std::isfinite(candidate.topology_trace) ||
+        !std::isfinite(candidate.topology_det)) {
+        return -std::numeric_limits<double>::infinity();
+    }
+    return 2.0 - std::abs(candidate.topology_trace) / std::sqrt(candidate.topology_det);
+}
+
 double wrapped_angle_delta(double from, double to) {
     double delta = to - from;
     while (delta <= -PI) delta += TWOPI;
@@ -643,7 +652,7 @@ void classify_axis_topology(
         candidates[j].topology_trace = trace;
         candidates[j].topology_det = determinant;
         candidates[j].elliptic = determinant > 0.0 &&
-            std::abs(trace / std::sqrt(determinant)) < 2.0 - config.axis_topology_margin;
+            std::abs(trace / std::sqrt(determinant)) < 2.0;
         if (determinant > 0.0) {
             const double scale = std::sqrt(determinant);
             const double q00 = c / scale;
@@ -752,14 +761,14 @@ bool find_axis_native(
     auto eligible = [](const AxisCandidate& candidate, double tolerance) {
         return candidate.residual <= tolerance && candidate.elliptic;
     };
-    bool has_eligible = std::any_of(candidates.begin(), candidates.end(), [&](const auto& candidate) {
-        return eligible(candidate, config.axis_tolerance);
+    auto robust = [&](const AxisCandidate& candidate) {
+        return eligible(candidate, config.axis_tolerance) &&
+            axis_topology_stability_margin(candidate) >= config.axis_topology_margin;
+    };
+    bool has_robust = std::any_of(candidates.begin(), candidates.end(), [&](const auto& candidate) {
+        return robust(candidate);
     });
-    if (!has_eligible) {
-        if (nfp > config.axis_fallback_max_nfp) {
-            axis.candidate_count = static_cast<int>(candidates.size());
-            return true;
-        }
+    if (!has_robust && nfp <= config.axis_fallback_max_nfp) {
         std::vector<AxisCandidate> fallback;
         if (!search_axis_grid(
                 field, domain, nfp, config, config.axis_fallback_grid,
@@ -777,7 +786,10 @@ bool find_axis_native(
         if (eligible(candidate, config.axis_tolerance)) elliptic.push_back(candidate);
     }
     if (elliptic.empty()) return true;
-    axis.selected = *std::min_element(elliptic.begin(), elliptic.end(), [](const auto& lhs, const auto& rhs) {
+    axis.selected = *std::min_element(elliptic.begin(), elliptic.end(), [&](const auto& lhs, const auto& rhs) {
+        const bool lhs_robust = robust(lhs);
+        const bool rhs_robust = robust(rhs);
+        if (lhs_robust != rhs_robust) return lhs_robust > rhs_robust;
         if (lhs.ellipse_aspect != rhs.ellipse_aspect) return lhs.ellipse_aspect < rhs.ellipse_aspect;
         return lhs.residual < rhs.residual;
     });
@@ -1295,6 +1307,7 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.score_qh_total_helicity_floor < 0.0 ||
         config.score_qh_total_helicity_floor > 1.0 ||
         !(config.score_qh_helicity_good > config.score_qh_helicity_bad) ||
+        config.axis_topology_margin < 0.0 || config.axis_topology_margin >= 2.0 ||
         config.score_qh_helicity_exploration_fraction < 0.0 ||
         config.score_qh_helicity_exploration_fraction > 1.0) {
         reason = "invalid score configuration dimensions";
@@ -1312,7 +1325,12 @@ void fill_early_components(
     SgpuScoreResult& result
 ) {
     const double axis_residual = q_down(axis.selected.residual, config.score_axis_residual_scale, 0.8);
-    const double topology = axis.selected.elliptic ? 1.0 : 0.1;
+    const double stability_margin = axis_topology_stability_margin(axis.selected);
+    const double topology = !axis.selected.elliptic
+        ? 0.1
+        : config.axis_topology_margin > 0.0
+            ? q_saturating_up(stability_margin, config.axis_topology_margin)
+            : 1.0;
     const double aspect = q_down(std::max(axis.selected.ellipse_aspect - 1.0, 0.0), 1.0, 1.2, 0.8);
     result.components[SGPU_SCORE_COMPONENT_AXIS] = blend({{0.70, axis_residual}, {0.20, topology}, {0.10, aspect}});
     result.components[SGPU_SCORE_COMPONENT_PSI] = blend({

@@ -37,6 +37,8 @@ class AxisResult:
     topology_class: str = ""
     topology_trace: float = float("nan")
     topology_det: float = float("nan")
+    topology_stability_margin: float = float("nan")
+    topology_robust: bool = False
     topology_ellipse_aspect: float = float("nan")
     topology_time_s: float = 0.0
 
@@ -376,15 +378,21 @@ def _fixed_point_eval(gpu_field, r, z, nfp: int, cfg: AxisGAConfig, precision: s
     return dr, dz, np.hypot(dr, dz)
 
 
-def _classify_map_topology(trace: float, det: float, margin: float) -> str:
+def _topology_stability_margin(trace: float, det: float) -> float:
+    if not np.isfinite(trace) or not np.isfinite(det) or det <= 0.0:
+        return float("-inf")
+    return float(2.0 - abs(trace) / math.sqrt(det))
+
+
+def _classify_map_topology(trace: float, det: float) -> str:
     if not np.isfinite(trace) or not np.isfinite(det):
         return "invalid"
     if det <= 0.0:
         return "hyperbolic"
-    normalized_trace = trace / math.sqrt(det)
-    if abs(normalized_trace) < 2.0 - margin:
+    normalized_trace = abs(trace) / math.sqrt(det)
+    if normalized_trace < 2.0:
         return "elliptic"
-    if abs(normalized_trace) > 2.0 + margin:
+    if normalized_trace > 2.0:
         return "hyperbolic"
     return "parabolic"
 
@@ -438,10 +446,16 @@ def _fixed_point_add_topology(gpu_field, items: list[dict], nfp: int, cfg: AxisG
             float(det[i]),
         )
         normalized_trace = float(trace[i] / math.sqrt(det[i])) if np.isfinite(det[i]) and det[i] > 0.0 else float("nan")
-        item["topology_class"] = _classify_map_topology(float(trace[i]), float(det[i]), cfg.fixed_point_topology_margin)
+        stability_margin = _topology_stability_margin(float(trace[i]), float(det[i]))
+        item["topology_class"] = _classify_map_topology(float(trace[i]), float(det[i]))
         item["topology_trace"] = float(trace[i])
         item["topology_det"] = float(det[i])
         item["topology_normalized_trace"] = normalized_trace
+        item["topology_stability_margin"] = stability_margin
+        item["topology_robust"] = bool(
+            item["topology_class"] == "elliptic"
+            and stability_margin >= cfg.fixed_point_topology_margin
+        )
         item["topology_fd_h"] = float(h)
         item["topology_ellipse_aspect"] = aspect
         item["topology_invariant_q_eig"] = q_eig
@@ -455,10 +469,12 @@ def _choose_fixed_point_axis(top: list[dict], cfg: AxisGAConfig) -> dict:
         return dict(min(top, key=lambda x: x["best_residual"]))
     eligible = [item for item in top if item["best_residual"] <= cfg.tol and item.get("topology_class") == "elliptic"]
     if eligible:
+        robust = [item for item in eligible if item.get("topology_robust", False)]
+        preferred = robust or eligible
         if cfg.fixed_point_prefer_round_elliptic:
-            chosen = dict(min(eligible, key=lambda x: (x.get("topology_ellipse_aspect", float("inf")), x["best_residual"])))
+            chosen = dict(min(preferred, key=lambda x: (x.get("topology_ellipse_aspect", float("inf")), x["best_residual"])))
         else:
-            chosen = dict(min(eligible, key=lambda x: x["best_residual"]))
+            chosen = dict(min(preferred, key=lambda x: x["best_residual"]))
         chosen["topology_accepted"] = True
         return chosen
     best = dict(min(top, key=lambda x: x["best_residual"]))
@@ -467,6 +483,12 @@ def _choose_fixed_point_axis(top: list[dict], cfg: AxisGAConfig) -> dict:
 
 
 def _fixed_point_axis_prefer(candidate: dict, incumbent: dict) -> bool:
+    cand_robust = candidate.get("topology_robust", False)
+    inc_robust = incumbent.get("topology_robust", False)
+    if cand_robust and not inc_robust:
+        return True
+    if inc_robust and not cand_robust:
+        return False
     cand_ok = candidate.get("topology_accepted", False)
     inc_ok = incumbent.get("topology_accepted", False)
     if cand_ok and not inc_ok:
@@ -601,6 +623,7 @@ def search_axis_fixed_point_gpu(
             "candidate_kind": "grid_best_no_candidate",
             "topology_class": "",
             "topology_accepted": False,
+            "topology_robust": False,
         }
     best["generation"] = 0
     row = {
@@ -631,6 +654,8 @@ def search_axis_fixed_point_gpu(
                 "topology_trace": float(item.get("topology_trace", float("nan"))),
                 "topology_det": float(item.get("topology_det", float("nan"))),
                 "topology_normalized_trace": float(item.get("topology_normalized_trace", float("nan"))),
+                "topology_stability_margin": float(item.get("topology_stability_margin", float("nan"))),
+                "topology_robust": bool(item.get("topology_robust", False)),
                 "topology_ellipse_aspect": float(item.get("topology_ellipse_aspect", float("inf"))),
             }
             for i, item in enumerate(top if refined else [])
@@ -714,6 +739,8 @@ def find_axis(field, nfp: int, coil_r0: float, cfg: AxisGAConfig) -> AxisResult:
         topology_class=str(best.get("topology_class", "")),
         topology_trace=float(best.get("topology_trace", float("nan"))),
         topology_det=float(best.get("topology_det", float("nan"))),
+        topology_stability_margin=float(best.get("topology_stability_margin", float("nan"))),
+        topology_robust=bool(best.get("topology_robust", False)),
         topology_ellipse_aspect=float(best.get("topology_ellipse_aspect", float("nan"))),
         topology_time_s=float(sum(float(row.get("topology_time_s", 0.0)) for row in history)),
     )
@@ -771,7 +798,7 @@ def find_axis_gpu(field_input, trace_field, nfp: int, coil_r0: float, cfg: AxisG
                 cfg.fixed_point_topology_filter
                 and cfg.fixed_point_require_elliptic
                 and best["best_residual"] <= cfg.tol
-                and not best.get("topology_accepted", False)
+                and not best.get("topology_robust", False)
             )
             if best["best_residual"] > cfg.tol or needs_topology_fallback:
                 fb_best, fb_history = search_axis_fixed_point_gpu(
@@ -839,6 +866,8 @@ def find_axis_gpu(field_input, trace_field, nfp: int, coil_r0: float, cfg: AxisG
         topology_class=str(best.get("topology_class", "")),
         topology_trace=float(best.get("topology_trace", float("nan"))),
         topology_det=float(best.get("topology_det", float("nan"))),
+        topology_stability_margin=float(best.get("topology_stability_margin", float("nan"))),
+        topology_robust=bool(best.get("topology_robust", False)),
         topology_ellipse_aspect=float(best.get("topology_ellipse_aspect", float("nan"))),
         topology_time_s=float(sum(float(row.get("topology_time_s", 0.0)) for row in history)),
     )

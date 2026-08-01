@@ -99,6 +99,31 @@ once the task is accepted.
   ten-second native-score path and needs a separately validated dedicated GPU
   polynomial evaluator if optimized further. Current complete local suite:
   117 passing tests.
+- On 2026-08-02 the user clarified the performance boundary: DESC is allowed
+  to run on CPU. The strict GPU-throughput requirement applies to the native
+  C++/CUDA coils-to-score path; CPU DESC should request no GPU, while native
+  score code must not acquire accidental Python/CPU fallbacks or avoidable
+  serial work.
+- The requested 200-step low-momentum Adam run from the original IID
+  `start_10` is active as Slurm job `30662` under
+  `runs/qh_adam_low_momentum_start10_200_20260802_r1`. It uses current-score
+  baseline `38.6590225`, $\eta=0.01$, $\beta_1=0.5$, $\beta_2=0.999$,
+  perturbation `0.005`, four antithetic directions, FP32 RK4-256, strict
+  robust endpoint handling, and production score-library SHA-256
+  `4bf7a12e...`. All four allocated RTX 5090s were idle at preflight; iteration
+  1 completed with eight valid endpoints and improved the score to `39.50098`.
+  Low-priority P107 collector `30663` has `Nice=10000` and the exact dependency
+  `afterany:30662`, so it starts after the foreground run ends regardless of
+  exit status. The first submission `30658` is invalid: an unnecessary
+  comma-containing `--export` value was misparsed as `0.5\`, so argparse exited
+  before optimization. Its consequent collector `30659` started as designed
+  by `afterany` and was deliberately cancelled before submitting the corrected
+  pair. Do not pass `INVALID_CENTER_BACKTRACKING` through comma-delimited
+  `sbatch --export`; use the launcher's validated default.
+- Metadata-only Slurm recount job `30664` completed on 2026-08-02. The unified
+  append-only score corpus currently contains exactly 19,524 completed samples
+  in 307 shards from 20 streams: `ok=8433`, `no_axis=5449`,
+  `no_surface=1309`, `drift_rejected=4194`, and `flux_rejected=139`.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$
@@ -308,6 +333,11 @@ once the task is accepted.
   present the measured tradeoff to the user, and wait for a decision. A
   diagnostic implementation that is slower must be marked non-production and
   reverted after the audit.
+- DESC may run on CPU and is not part of the native C++/CUDA throughput
+  requirement. In the current environment it must explicitly use the 16-CPU,
+  zero-GPU `DESC_BACKEND=cpu-p107` path. Optimization and timing audits should
+  focus on the native coils-to-score chain, which must remain C++/CUDA and use
+  available GPU parallelism.
 - The production path from coils through magnetic axis and fitted $\psi$ is the
   already validated stable implementation. Do not redesign or optimize it
   unless a required physical quantity is missing.

@@ -730,6 +730,42 @@ new physics.
   from the score-59.98 `start_10` best. Only if it improves should the same
   fixed protocol be applied to prior Adam best cases above score 40, including
   the best $\eta=0.003$ endpoint.
+- Subspace-BFGS smoke job `30477` completed `0:0` in 67 s with clean four-GPU
+  postflight. It reproduced the start score as `59.97997631540494`, but the
+  fixed-subspace gradients at $h=0.0025$ and $0.00125$ had cosine `-0.2190`
+  despite all probes being `ok`, so the strict smoothness gate correctly
+  stopped before a BFGS step. A fine probe itself reached `60.13922835`, proving
+  a nearby improvement exists but not yet proving a smooth/superlinear local
+  regime. The next diagnostic must use smaller $h$ and trust radius; do not
+  classify this smoke as BFGS success.
+- Fine-scale smoke `30479` completed `0:0` in 75 s with clean postflight. At
+  $h=0.00125/0.000625$, projected-gradient cosine improved to `0.8443`, all
+  probes remained `ok`, and one accepted damped-BFGS step improved
+  `59.97997632 -> 59.99072840`. It accepted line alpha `0.125` with latent-RMS
+  step `6.25e-5`; the resulting inverse-Hessian condition number was high
+  (`2.82e5`), so this is a positive one-step result, not yet proof of sustained
+  superlinear convergence. The former instruction to continue treating these
+  as validated fine scales is superseded by the diagnostics below.
+- Medium BFGS job `30485` stopped after only two accepted steps and three line
+  rejections: `59.97997632 -> 59.99709281`, with accepted latent-RMS steps
+  `6.25e-5` and `3.125e-5`. It then shrank the trust radius to `2e-5`. This
+  `+0.0171` result is too small and too conservative to establish useful BFGS
+  convergence. More importantly, calibration-only job `30490` found gradient
+  cosine `-0.6566` for $h=0.000625/0.0003125$, while the larger
+  $0.0025/0.00125$ pair had already given `-0.2190`. Thus there is no verified
+  asymptotically smooth finite-difference range around this score-59.98 point;
+  the intermediate `0.8443` cosine was only a two-scale coincidence.
+- Empirical scale calibration on 2026-08-01: previous high-score Adam improving
+  steps have latent-RMS median/P75 about `7.13e-4/1.05e-3`; the score-69 to 72
+  standard-Adam run's final 100 steps have median `4.11e-4`; and the old hybrid
+  run averaged `8.74e-4`. The earlier landscape used $h\approx0.01$ and showed
+  the most consistent broad directional signal near $0.009$--$0.018$, while
+  the current point begins hitting hard gates by `0.005`. Therefore later
+  local comparisons use an evidence-based pattern/trust radius of `0.00125`,
+  floor `0.0002`, and cap `0.003`; the old `2e-5` floor and `0.01` cap are not
+  calibrated for this point. BFGS and PRP+ nonlinear CG remain controls, but a
+  fixed-subspace coordinate pattern search is the method whose assumptions fit
+  the observed nonsmooth objective.
 
 ### 2026-07-31
 

@@ -91,6 +91,46 @@ def gradient_cosine(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.dot(left, right) / denominator)
 
 
+def nonlinear_cg_prp_direction(
+    gradient: np.ndarray,
+    previous_gradient: np.ndarray,
+    previous_direction: np.ndarray,
+    *,
+    force_restart: bool = False,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    gradient = np.asarray(gradient, dtype=np.float64)
+    previous_gradient = np.asarray(previous_gradient, dtype=np.float64)
+    previous_direction = np.asarray(previous_direction, dtype=np.float64)
+    if not (
+        gradient.shape == previous_gradient.shape == previous_direction.shape
+        and gradient.ndim == 1
+    ):
+        raise ValueError("incompatible nonlinear-CG shapes")
+    denominator = float(np.dot(previous_gradient, previous_gradient))
+    raw_beta = (
+        float(np.dot(gradient, gradient - previous_gradient)) / denominator
+        if denominator > 1.0e-20
+        else 0.0
+    )
+    beta = max(0.0, raw_beta)
+    restarted = force_restart or not math.isfinite(beta)
+    direction = gradient.copy() if restarted else gradient + beta * previous_direction
+    gradient_norm_sq = float(np.dot(gradient, gradient))
+    slope = float(np.dot(gradient, direction))
+    if not math.isfinite(slope) or slope < 0.1 * gradient_norm_sq:
+        direction = gradient.copy()
+        slope = gradient_norm_sq
+        restarted = True
+    return direction, {
+        "updated": True,
+        "method": "polak_ribiere_plus",
+        "raw_beta": raw_beta,
+        "beta": 0.0 if restarted else beta,
+        "restarted": restarted,
+        "projected_slope": slope,
+    }
+
+
 def initial_inverse_hessian(curvature_f: np.ndarray) -> tuple[np.ndarray, float]:
     curvature_phi = -np.asarray(curvature_f, dtype=np.float64)
     positive = curvature_phi[np.isfinite(curvature_phi) & (curvature_phi > 1.0e-8)]
@@ -230,6 +270,11 @@ def main() -> None:
     parser.add_argument("--n-base-coils", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=12)
     parser.add_argument("--rank", type=int, default=4)
+    parser.add_argument(
+        "--method",
+        choices=("bfgs", "ncg_prp", "pattern"),
+        default="bfgs",
+    )
     parser.add_argument("--flow-steps", type=int, default=256)
     parser.add_argument("--perturbation", type=float, default=0.005)
     parser.add_argument("--min-perturbation", type=float, default=0.000625)
@@ -321,7 +366,7 @@ def main() -> None:
         "flow_prior_subspace_bfgs"
     ) or initial_payload.get("flow_prior_zo_adam") or initial_payload.get("flow_prior_cem") or {}
     manifest = {
-        "algorithm": "fixed_subspace_damped_bfgs_with_trust_cap",
+        "algorithm": f"fixed_subspace_{args.method}_with_trust_cap",
         "objective": "maximize_native_qh_score",
         "initial_case": {
             "path": str(args.initial_case.resolve()),
@@ -336,6 +381,7 @@ def main() -> None:
         "seed": args.seed,
         "iterations": args.iterations,
         "rank": args.rank,
+        "method": args.method,
         "perturbation": args.perturbation,
         "min_perturbation": args.min_perturbation,
         "min_gradient_cosine": args.min_gradient_cosine,
@@ -499,31 +545,48 @@ def main() -> None:
         projected_gradient = fine_gradient
         inverse_hessian, initial_hessian_scale = initial_inverse_hessian(fine_curvature)
         if (
-            coarse_info["valid_fraction"] < 1.0
-            or fine_info["valid_fraction"] < 1.0
-            or consistency < args.min_gradient_cosine
+            args.method != "pattern"
+            and (
+                coarse_info["valid_fraction"] < 1.0
+                or fine_info["valid_fraction"] < 1.0
+                or consistency < args.min_gradient_cosine
+            )
         ):
             stop_reason = "smoothness_rejected"
         else:
             coordinates = np.zeros(args.rank, dtype=np.float64)
+            search_direction = projected_gradient.copy()
+            accepted_iterations = 0
             for iteration in range(1, args.iterations + 1):
                 if time.perf_counter() - started >= args.max_wall_s:
                     stop_reason = "wall_budget"
                     break
                 iteration_started = time.perf_counter()
-                direction = inverse_hessian @ projected_gradient
-                predicted_slope = float(np.dot(projected_gradient, direction))
-                if not math.isfinite(predicted_slope) or predicted_slope <= 0.0:
-                    inverse_hessian = np.eye(args.rank) / initial_hessian_scale
-                    direction = projected_gradient.copy()
+                if args.method == "pattern":
+                    identity = np.eye(args.rank, dtype=np.float64)
+                    line_steps = trust_radius * np.concatenate([identity, -identity], axis=0)
+                    candidate_scales = [1.0] * (2 * args.rank)
+                else:
+                    if args.method == "bfgs":
+                        direction = inverse_hessian @ projected_gradient
+                    else:
+                        direction = search_direction.copy()
                     predicted_slope = float(np.dot(projected_gradient, direction))
-                direction_norm = float(np.linalg.norm(direction))
-                if direction_norm <= 1.0e-14:
-                    stop_reason = "projected_stationary"
-                    break
-                if direction_norm > trust_radius:
-                    direction *= trust_radius / direction_norm
-                line_steps = np.stack([alpha * direction for alpha in line_alphas], axis=0)
+                    if not math.isfinite(predicted_slope) or predicted_slope <= 0.0:
+                        if args.method == "bfgs":
+                            inverse_hessian = np.eye(args.rank) / initial_hessian_scale
+                        direction = projected_gradient.copy()
+                        search_direction = direction.copy()
+                    direction_norm = float(np.linalg.norm(direction))
+                    if direction_norm <= 1.0e-14:
+                        stop_reason = "projected_stationary"
+                        break
+                    if direction_norm > trust_radius:
+                        direction *= trust_radius / direction_norm
+                    line_steps = np.stack(
+                        [alpha * direction for alpha in line_alphas], axis=0
+                    )
+                    candidate_scales = list(line_alphas)
                 line_states = current_noise[None] + np.tensordot(line_steps, basis, axes=(1, 0))
                 line_tokens, line_results, line_scores, line_timing = evaluate_states(
                     pool, line_states, phase="line_search", iteration=iteration
@@ -536,7 +599,10 @@ def main() -> None:
                     min_improvement=args.min_improvement,
                 )
                 previous_score = current_score
-                bfgs_info: dict[str, Any] = {"updated": False, "reason": "no_step"}
+                optimizer_info: dict[str, Any] = {
+                    "updated": False,
+                    "reason": "no_step",
+                }
                 accepted_step = np.zeros(args.rank, dtype=np.float64)
                 gradient_info: dict[str, Any] = {
                     "valid_fraction": 1.0,
@@ -549,38 +615,63 @@ def main() -> None:
                 if selected is None:
                     rejected_steps += 1
                     trust_radius = max(args.min_trust_radius, 0.5 * trust_radius)
+                    if args.method == "ncg_prp":
+                        search_direction = projected_gradient.copy()
                     if rejected_steps >= args.max_rejections or trust_radius <= args.min_trust_radius:
                         stop_reason = "line_search_stalled"
                 else:
                     rejected_steps = 0
+                    accepted_iterations += 1
                     accepted_step = line_steps[selected]
                     coordinates += accepted_step
                     current_noise = line_states[selected].astype(np.float32)
                     current_tokens = line_tokens[selected]
                     current_result = line_results[selected]
                     current_score = float(line_scores[selected])
-                    new_gradient, _, used_h, gradient_info = gradient_at(
-                        pool,
-                        current_noise,
-                        current_score,
-                        requested_h=perturbation,
-                        phase="accepted_gradient",
-                        iteration=iteration,
-                    )
-                    perturbation = used_h
-                    if gradient_info["valid_fraction"] < 1.0:
-                        stop_reason = "left_smooth_region"
-                    inverse_hessian, bfgs_info = damped_inverse_bfgs(
-                        inverse_hessian,
-                        accepted_step,
-                        projected_gradient - new_gradient,
-                    )
-                    projected_gradient = new_gradient
-                    alpha = line_alphas[selected]
-                    if alpha == 1.0:
-                        trust_radius = min(args.max_trust_radius, 1.25 * trust_radius)
-                    elif alpha <= 0.25:
-                        trust_radius = max(args.min_trust_radius, 0.5 * trust_radius)
+                    if args.method != "pattern":
+                        previous_gradient = projected_gradient.copy()
+                        previous_direction = direction.copy()
+                        new_gradient, _, used_h, gradient_info = gradient_at(
+                            pool,
+                            current_noise,
+                            current_score,
+                            requested_h=perturbation,
+                            phase="accepted_gradient",
+                            iteration=iteration,
+                        )
+                        perturbation = used_h
+                        if gradient_info["valid_fraction"] < 1.0:
+                            stop_reason = "left_smooth_region"
+                        if args.method == "bfgs":
+                            inverse_hessian, optimizer_info = damped_inverse_bfgs(
+                                inverse_hessian,
+                                accepted_step,
+                                previous_gradient - new_gradient,
+                            )
+                        else:
+                            search_direction, optimizer_info = nonlinear_cg_prp_direction(
+                                new_gradient,
+                                previous_gradient,
+                                previous_direction,
+                                force_restart=accepted_iterations % args.rank == 0,
+                            )
+                        projected_gradient = new_gradient
+                        alpha = line_alphas[selected]
+                        if alpha == 1.0:
+                            trust_radius = min(
+                                args.max_trust_radius, 1.25 * trust_radius
+                            )
+                        elif alpha <= 0.25:
+                            trust_radius = max(
+                                args.min_trust_radius, 0.5 * trust_radius
+                            )
+                    else:
+                        optimizer_info = {
+                            "updated": True,
+                            "method": "coordinate_pattern",
+                            "coordinate": int(selected % args.rank),
+                            "sign": 1 if selected < args.rank else -1,
+                        }
                     if current_score > best_score:
                         best_score = current_score
                         best_noise = current_noise.copy()
@@ -610,17 +701,23 @@ def main() -> None:
                     "current_status": current_result.get("status"),
                     "current_qh_error": diagnostics_value(current_result, "qs_global_error"),
                     "current_iota": diagnostics_value(current_result, "iota_min"),
-                    "gradient_norm": float(np.linalg.norm(projected_gradient)),
+                    "gradient_norm": (
+                        None
+                        if args.method == "pattern"
+                        else float(np.linalg.norm(projected_gradient))
+                    ),
                     "perturbation": perturbation,
                     "trust_radius": trust_radius,
                     "accepted": selected is not None,
-                    "accepted_alpha": None if selected is None else line_alphas[selected],
+                    "accepted_alpha": (
+                        None if selected is None else candidate_scales[selected]
+                    ),
                     "accepted_step_norm": float(np.linalg.norm(accepted_step)),
                     "line_scores": line_scores.tolist(),
                     "line_statuses": [result.get("status") for result in line_results],
                     "valid_gradient_fraction": gradient_info["valid_fraction"],
                     "gradient_statuses": gradient_info["statuses"],
-                    "bfgs": bfgs_info,
+                    "optimizer": optimizer_info,
                     "line_decode_wall_s": line_timing["decode_wall_s"],
                     "line_score_wall_s": line_timing["score_wall_s"],
                     "gradient_decode_wall_s": gradient_info["decode_wall_s"],
@@ -650,7 +747,11 @@ def main() -> None:
                             "best": best_score,
                             "accepted": selected is not None,
                             "trust_radius": trust_radius,
-                            "gradient_norm": float(np.linalg.norm(projected_gradient)),
+                            "gradient_norm": (
+                                None
+                                if args.method == "pattern"
+                                else float(np.linalg.norm(projected_gradient))
+                            ),
                         },
                         separators=(",", ":"),
                     ),

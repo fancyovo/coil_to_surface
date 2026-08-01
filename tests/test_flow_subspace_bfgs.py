@@ -7,6 +7,7 @@ from scripts.optimize_flow_prior_subspace_bfgs import (
     damped_inverse_bfgs,
     gradient_cosine,
     initial_inverse_hessian,
+    nonlinear_cg_prp_direction,
     projected_central_gradient,
     rms_orthonormal_basis,
 )
@@ -79,3 +80,25 @@ def test_line_search_chooses_best_valid_improvement() -> None:
 def test_gradient_cosine_handles_regular_and_zero_vectors() -> None:
     assert gradient_cosine(np.asarray([1.0, 0.0]), np.asarray([1.0, 1.0])) > 0.7
     assert gradient_cosine(np.zeros(2), np.zeros(2)) == 1.0
+
+
+def test_nonlinear_cg_prp_plus_restarts_for_negative_beta() -> None:
+    direction, info = nonlinear_cg_prp_direction(
+        np.asarray([0.5, 0.0]),
+        np.asarray([1.0, 0.0]),
+        np.asarray([1.0, 1.0]),
+    )
+    np.testing.assert_allclose(direction, [0.5, 0.0])
+    assert info["raw_beta"] < 0.0
+    assert info["beta"] == 0.0
+
+
+def test_nonlinear_cg_prp_plus_keeps_an_ascent_direction() -> None:
+    gradient = np.asarray([1.0, 0.5])
+    direction, info = nonlinear_cg_prp_direction(
+        gradient,
+        np.asarray([0.5, -0.5]),
+        np.asarray([0.25, 1.0]),
+    )
+    assert info["beta"] >= 0.0
+    assert float(np.dot(gradient, direction)) > 0.0

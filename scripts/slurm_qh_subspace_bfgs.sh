@@ -91,9 +91,12 @@ python "$project/scripts/optimize_flow_prior_subspace_bfgs.py" \
   --n-base-coils "${N_BASE_COILS:-3}" \
   --iterations "${ITERATIONS:-12}" \
   --rank "${SUBSPACE_RANK:-4}" \
+  --method "${METHOD:-bfgs}" \
   --perturbation "${PERTURBATION:-0.005}" \
   --min-perturbation "${MIN_PERTURBATION:-0.000625}" \
   --trust-radius "${TRUST_RADIUS:-0.002}" \
+  --min-trust-radius "${MIN_TRUST_RADIUS:-0.00002}" \
+  --max-trust-radius "${MAX_TRUST_RADIUS:-0.01}" \
   --max-wall-s "${MAX_WALL_S:-1500}" \
   --seed "${SEED:-2026080101}" \
   "${state_args[@]}" &

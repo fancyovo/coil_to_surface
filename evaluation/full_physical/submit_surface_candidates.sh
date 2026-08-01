@@ -10,8 +10,18 @@ set -euo pipefail
 project=${PROJECT:-$HOME/local_surface_evaluator}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
-serial_candidates=${SERIAL_CANDIDATES:-1}
+serial_candidates=${SERIAL_CANDIDATES:-0}
+candidate_cpus_per_task=${CANDIDATE_CPUS_PER_TASK:-4}
 candidate_root=$OUTPUT_ROOT/candidates
+
+[[ $serial_candidates == 0 || $serial_candidates == 1 ]] || {
+    printf 'SERIAL_CANDIDATES must be 0 or 1\n' >&2
+    exit 2
+}
+[[ $candidate_cpus_per_task =~ ^[1-9][0-9]*$ ]] || {
+    printf 'CANDIDATE_CPUS_PER_TASK must be a positive integer\n' >&2
+    exit 2
+}
 
 require_home_path() {
     local resolved
@@ -47,6 +57,7 @@ for edge in "${edges[@]}"; do
     test ! -e "$output_dir"
     submit_args=(
         --parsable
+        --cpus-per-task="$candidate_cpus_per_task"
         --export="ALL,PROJECT=$project,GPU_LIB=$gpu_lib,EVAL_ENV=$eval_env,CASE_FILE=$CASE_FILE,RUN_DIR=$RUN_DIR,S_EDGE=$edge,OUTPUT_DIR=$output_dir"
     )
     if [[ $serial_candidates == 1 && -n $previous_job ]]; then

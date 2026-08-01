@@ -878,8 +878,41 @@ new physics.
 - Old-library Student collector `30399` was intentionally cancelled after
   `06:10:27` so the score binary could be replaced cleanly. New-library
   collectors `30594` (Student, two GPUs) and `30595` (P107, four GPUs, low
-  priority) are running independently from commit `e16402e`; both launchers
+  priority) started independently from commit `e16402e`; both launchers
   validated the production library hash before entering their collection loop.
+  On 2026-08-01, `30595` was deliberately cancelled after `00:37:12` to release
+  P107 for complete physical evaluation of the topology-fixed Adam sample;
+  `30594` remains running and must not be disturbed. The evaluated sample is
+  frozen from `runs/qh_adam_topology_fixed_short_20260801/best.json`. Its
+  recorded score `61.3389633067` came from intermediate native-library SHA-256
+  `13966f7a...`; the complete report must also re-score the unchanged sample
+  with current production library SHA-256 `4bf7a12e...` and distinguish the two.
+  The frozen input SHA-256 is
+  `63de73980ad07d457e79c3eaa9b2ef34d731e36622d06dad7f06413afd531539`.
+  Complete-evaluation root is
+  `~/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_adam_topology_fixed_61p339_full_eval_20260801`.
+  Source-psi jobs `30602/30604/30606/30608` are running for
+  sample-specific `a=0.04/0.05/0.06/0.08`; all four were confirmed on idle
+  RTX 5090 allocations. Select `a` from their measured diagnostics rather than
+  reusing an earlier sample's value.
+  All four completed `0:0` in 27--69 seconds. The selected source is `a=0.06`:
+  validation RMS/angle-P95 are `8.039e-4/1.062e-4`, its cheap screen reaches
+  mean radius `0.04903 m` at `s=0.64` and fails at `s=0.81`; `a=0.08` gives
+  virtually no extra physical coverage but materially worse fit error.
+  Serialized standard-surface jobs `30611/30613/30615/30617/30619` test
+  `s=0.24/0.36/0.49/0.64/0.81`. Current-production one-case rescore job `30621`
+  is also submitted; it is pending only on the 16-CPU P107 QOS limit while the
+  first surface job runs.
+  This serial policy was not a user requirement: it was introduced by agent
+  commit `9a3eb43` without performance evidence and conflicts with the durable
+  requirement to use available GPUs. Pending jobs `30613/30615/30617/30619`
+  were cancelled before startup. A first replacement attempt showed that an
+  environment-only CPU override did not beat the implementation script's
+  `#SBATCH --cpus-per-task=16`; `30624` therefore started with 16 CPUs and the
+  remaining `30626/30628/30630` stayed CPU-QOS blocked. The fixed entrypoint now
+  defaults to parallel candidates, adds an explicit command-line
+  `--cpus-per-task=4`, and retains `SERIAL_CANDIDATES=1` only as an explicit
+  resource-limited option. Do not restore serial evaluation as the default.
   A metadata-only recount after 24 minutes of the new jobs found exactly 17,092
   completed samples in 269 atomic shards from 20 streams (`ok=7389`,
   `no_axis=4788`, `no_surface=1148`, `drift_rejected=3645`,

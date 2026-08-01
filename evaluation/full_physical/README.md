@@ -6,8 +6,9 @@
 ## 固定阶段
 
 1. `submit_source_psi_candidates.sh`：对样本相关的 `A_VALUES` 并行运行稳定磁轴与 FP32 GPU QR $\psi$ 拟合；根据拟合误差、廉价场线筛选所覆盖的物理半径和外侧失败点选择源 $\psi$，不得复用别的样本的 `a`。
-2. `submit_surface_candidates.sh`：对给定的 `S_EDGES` 依次运行 psi -> alpha -> nu、保守 guard 诊断、标准 LS/Newton 和独立密网格验收。
-   默认使用 Slurm dependency 串行候选，任意时刻最多占一张 GPU。
+2. `submit_surface_candidates.sh`：对给定的 `S_EDGES` 运行 psi -> alpha -> nu、保守 guard 诊断、标准 LS/Newton 和独立密网格验收。
+   默认每个候选申请 4 CPU 和 1 GPU 并行运行；在四卡 P107 上同时评估四个候选。只有资源受限时才显式设置
+   `SERIAL_CANDIDATES=1`。可用 `CANDIDATE_CPUS_PER_TASK` 调整单候选 CPU 数，默认值为 4。
 3. `select_largest_standard_surface.py`：只按标准 LS/Newton 的最终验证结果选择最大已测通过面；默认要求至少有一个更外侧失败点，否则要求继续外扩。
 4. `submit_downstream.sh`：对选中的唯一 `boozer_standard.npz` 运行庞加莱、Boozer 场图、三维 HTML 和 DESC。直接 Boozer 与 DESC 的 $|B|$ 图均固定为白底彩色等高线，颜色表示 $|B|$ 大小，不使用热力图或填色等高线。
 5. `validate_delivery.sh`：检查固定原始产物，并确认全部 DESC PNG 已在报告中逐张引用。

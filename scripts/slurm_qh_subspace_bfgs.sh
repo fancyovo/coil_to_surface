@@ -22,7 +22,7 @@ output="${OUT_DIR:?OUT_DIR is required}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
 expected_flow_sha="${EXPECTED_FLOW_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}"
-expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427}"
+expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 children=()
 

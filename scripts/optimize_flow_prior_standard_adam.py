@@ -195,6 +195,7 @@ def main() -> None:
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument("--robust-direction-filter", action="store_true")
+    parser.add_argument("--reject-invalid-center", action="store_true")
     parser.add_argument("--direction-outlier-ratio", type=float, default=8.0)
     parser.add_argument("--direction-outlier-mad-factor", type=float, default=8.0)
     parser.add_argument("--gpus", default="0,1,2,3")
@@ -342,6 +343,7 @@ def main() -> None:
         "invalid_direction_policy": (
             "skip_entire_step" if args.robust_direction_filter else "use_all"
         ),
+        "reject_invalid_center": args.reject_invalid_center,
         "direction_outlier_ratio": args.direction_outlier_ratio,
         "direction_outlier_mad_factor": args.direction_outlier_mad_factor,
         "update_clip": None,
@@ -375,6 +377,7 @@ def main() -> None:
             "adam_epsilon",
             "robust_direction_filter",
             "invalid_direction_policy",
+            "reject_invalid_center",
             "direction_outlier_ratio",
             "direction_outlier_mad_factor",
             "flow_method",
@@ -554,6 +557,11 @@ def main() -> None:
                 outlier_direction = np.zeros(args.directions, dtype=bool)
                 adaptive_delta_limit = None
             previous_first_moment = first_moment.copy()
+            previous_second_moment = second_moment.copy()
+            previous_adam_step = adam_step
+            previous_noise = current_noise.copy()
+            previous_tokens = current_tokens.copy()
+            previous_result = current_result
             gradient_step_applied = not (
                 args.robust_direction_filter and np.any(invalid_direction)
             )
@@ -587,7 +595,7 @@ def main() -> None:
                 gradient = np.zeros_like(raw_gradient)
                 gradient_rms = 0.0
                 update = np.zeros_like(raw_gradient)
-            update_rms = rms(update)
+            proposed_update_rms = rms(update)
             current_noise = (current_noise.astype(np.float64) + update).astype(np.float32)
 
             current_batch, center_decode_wall_s = decode_noise_rk4(
@@ -610,8 +618,29 @@ def main() -> None:
                 raise RuntimeError(
                     f"updated-center score failure at iteration {iteration}: {center_errors}"
                 )
-            current_tokens = current_batch[0]
-            current_result = center_results[0]
+            proposed_tokens = current_batch[0]
+            proposed_result = center_results[0]
+            proposed_score = result_score(proposed_result)
+            center_update_accepted = True
+            center_rejection_reason = None
+            if (
+                gradient_step_applied
+                and args.reject_invalid_center
+                and not result_valid(proposed_result)
+            ):
+                center_update_accepted = False
+                center_rejection_reason = "invalid_updated_center"
+                current_noise = previous_noise
+                current_tokens = previous_tokens
+                current_result = previous_result
+                first_moment = previous_first_moment
+                second_moment = previous_second_moment
+                adam_step = previous_adam_step
+                update = np.zeros_like(update)
+            else:
+                current_tokens = proposed_tokens
+                current_result = proposed_result
+            update_rms = rms(update)
             current_score = result_score(current_result)
             if current_score > best_score:
                 best_score = current_score
@@ -657,6 +686,10 @@ def main() -> None:
                 "adaptive_direction_delta_limit": adaptive_delta_limit,
                 "gradient_step_applied": gradient_step_applied,
                 "adam_step": adam_step,
+                "proposed_center_score": proposed_score,
+                "proposed_center_status": proposed_result.get("status"),
+                "center_update_accepted": center_update_accepted,
+                "center_rejection_reason": center_rejection_reason,
                 "raw_gradient_rms": rms(raw_gradient),
                 "gradient_rms": gradient_rms,
                 "first_moment_rms": rms(first_moment),
@@ -669,6 +702,7 @@ def main() -> None:
                     update, previous_first_moment
                 ),
                 "update_rms": update_rms,
+                "proposed_update_rms": proposed_update_rms,
                 "learning_rate": args.learning_rate,
                 "perturbation": args.perturbation,
                 "noise_rms": rms(current_noise),

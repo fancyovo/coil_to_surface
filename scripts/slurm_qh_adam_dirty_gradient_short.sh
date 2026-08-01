@@ -48,6 +48,7 @@ export SEED=2026080101
 export BETA1="${beta1[$task_id]}"
 export BETA2=0.999
 export ROBUST_DIRECTION_FILTER="${robust[$task_id]}"
+export REJECT_INVALID_CENTER="${robust[$task_id]}"
 export PERTURBATION="${perturbation[$task_id]}"
 
 exec bash "$project/scripts/slurm_flow_prior_standard_adam.sh"

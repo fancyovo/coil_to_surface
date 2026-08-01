@@ -808,7 +808,15 @@ new physics.
   any directional pair has a non-`ok` endpoint; all-`ok` directional outliers
   are still winsorized using a scale-adaptive median/MAD ratio. P107 collector
   `30527` remains cancelled during foreground work; Student collector `30399`
-  remains independent and running.
+  remains independent and running. In replacement array `30543`, beta1=0.9
+  and 0.5 with robust filtering at perturbation 0.01 completed by safely
+  skipping every post-best dirty step, but froze at their step-2 best scores.
+  The perturbation-0.005 element then found a separate failure: an all-`ok`,
+  ordinary-scale gradient proposed an updated center with `no_axis`. Element 5
+  and pending element 6 were cancelled. The next corrected version retains the
+  skip policy and additionally rolls back parameters, both moments, and Adam
+  step count whenever an updated center is non-`ok`; proposal diagnostics are
+  preserved rather than hidden.
 
 ### 2026-07-31
 

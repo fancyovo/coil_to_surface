@@ -1,0 +1,330 @@
+{
+  "case": "best.json",
+  "run_dir": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_eta001_58p151_full_eval_20260801/source_psi_candidates/a_0p06",
+  "s_edge": 0.16,
+  "nfp": 4,
+  "sampling": {
+    "kind": "shifted_uniform_cartesian_lattice_filtered_by_s",
+    "train_points": 120000,
+    "validation_points": 60000,
+    "grid_xy": 144,
+    "grid_phi": 96,
+    "rho_min": 0.06
+  },
+  "backends": {
+    "flux_calibration_field": "C++/CUDA fp32",
+    "training_and_validation_field": "C++/CUDA fp32",
+    "alpha_design_and_qr": "PyTorch CUDA fp32 gels",
+    "coordinate_sampling_and_diagnostics": "NumPy/SciPy CPU"
+  },
+  "calibration": {
+    "time_s": 52.26385987736285,
+    "edge_s": 0.16,
+    "edge_psi_toroidal_per_radian": -0.00012440253706508277,
+    "edge_flux_weber": -0.000781644193063192,
+    "fit_relative_rms": 1.907066578924114e-07,
+    "section_relative_std_max": 0.001601612782032759,
+    "derivative_min": -0.000812144786925906,
+    "derivative_max": -0.0007454358333622439,
+    "monotone": true,
+    "pchip_comparison": {
+      "relative_l2": 8.179400412418795e-06,
+      "max_abs": 1.57348534912281e-09
+    }
+  },
+  "calibration_polynomial_coeffs": [
+    -0.0007444325490891017,
+    -0.00020059193603650367,
+    -1.6858316491285602e-05,
+    -0.00013599240714065047
+  ],
+  "baseline_lambda0_iota0": {
+    "training": {
+      "point_count": 120000,
+      "relative_l2": 0.3163802374186233,
+      "relative_point_mean": 0.2718203714233535,
+      "relative_point_p95": 0.5911992430958151,
+      "relative_point_max": 1.951461913617985,
+      "normal_floor_relative_l2": 0.0005273451919330206,
+      "tangent_relative_l2": 0.31637984191816404,
+      "lambda_rms": 0.0,
+      "lambda_max_abs": 0.0,
+      "lambda_theta_min": 0.0,
+      "one_plus_lambda_theta_min": 1.0,
+      "one_plus_lambda_theta_p01": 1.0,
+      "one_plus_lambda_theta_p05": 1.0,
+      "noninvertible_fraction": 0.0,
+      "iota_min": 0.0,
+      "iota_max": 0.0,
+      "components": {
+        "R": {
+          "rms": 0.1251463376400071,
+          "relative_l2": 0.33627312823711725
+        },
+        "phi": {
+          "rms": 0.14276940130795115,
+          "relative_l2": 0.31405782372134705
+        },
+        "Z": {
+          "rms": 0.11616271822273495,
+          "relative_l2": 0.30018175450540047
+        }
+      },
+      "radial_bins": [
+        {
+          "rho_min": 0.0,
+          "rho_max": 0.2,
+          "count": 4385,
+          "relative_l2": 0.31668093238318923
+        },
+        {
+          "rho_min": 0.2,
+          "rho_max": 0.4,
+          "count": 14357,
+          "relative_l2": 0.3155748205628808
+        },
+        {
+          "rho_min": 0.4,
+          "rho_max": 0.6000000000000001,
+          "count": 24081,
+          "relative_l2": 0.3169742519393912
+        },
+        {
+          "rho_min": 0.6000000000000001,
+          "rho_max": 0.8,
+          "count": 33709,
+          "relative_l2": 0.3158877563920764
+        },
+        {
+          "rho_min": 0.8,
+          "rho_max": 1.0,
+          "count": 43468,
+          "relative_l2": 0.31666832513749066
+        }
+      ]
+    },
+    "validation": {
+      "point_count": 60000,
+      "relative_l2": 0.3169360177496989,
+      "relative_point_mean": 0.2721234338473647,
+      "relative_point_p95": 0.5918880856917804,
+      "relative_point_max": 1.9685988656162627,
+      "normal_floor_relative_l2": 0.0005959289246226438,
+      "tangent_relative_l2": 0.31693551376900664,
+      "lambda_rms": 0.0,
+      "lambda_max_abs": 0.0,
+      "lambda_theta_min": 0.0,
+      "one_plus_lambda_theta_min": 1.0,
+      "one_plus_lambda_theta_p01": 1.0,
+      "one_plus_lambda_theta_p05": 1.0,
+      "noninvertible_fraction": 0.0,
+      "iota_min": 0.0,
+      "iota_max": 0.0,
+      "components": {
+        "R": {
+          "rms": 0.1254626912893034,
+          "relative_l2": 0.33717168990731705
+        },
+        "phi": {
+          "rms": 0.14300184653772177,
+          "relative_l2": 0.31457445673938966
+        },
+        "Z": {
+          "rms": 0.11628385579570415,
+          "relative_l2": 0.300451163301255
+        }
+      },
+      "radial_bins": [
+        {
+          "rho_min": 0.0,
+          "rho_max": 0.2,
+          "count": 2182,
+          "relative_l2": 0.31591546562237016
+        },
+        {
+          "rho_min": 0.2,
+          "rho_max": 0.4,
+          "count": 7262,
+          "relative_l2": 0.3176994940583469
+        },
+        {
+          "rho_min": 0.4,
+          "rho_max": 0.6000000000000001,
+          "count": 11954,
+          "relative_l2": 0.31584155682194903
+        },
+        {
+          "rho_min": 0.6000000000000001,
+          "rho_max": 0.8,
+          "count": 16882,
+          "relative_l2": 0.3155547500771514
+        },
+        {
+          "rho_min": 0.8,
+          "rho_max": 1.0,
+          "count": 21720,
+          "relative_l2": 0.3184550448603356
+        }
+      ]
+    }
+  },
+  "orders": [
+    {
+      "label": "L12_M12_N16",
+      "orders": [
+        12,
+        12,
+        16
+      ],
+      "fit": {
+        "point_count": 120000,
+        "row_count": 360000,
+        "column_count": 2997,
+        "assemble_s": 1.4150937553495169,
+        "solve_s": 2.348994478583336,
+        "total_s": 4.239555582404137,
+        "solver": "torch.linalg.lstsq(gels)",
+        "precision": "fp32",
+        "relative_weighting": false,
+        "weighted_residual_rms": 0.021121850237250328,
+        "column_scale_min": 2.244544744491577,
+        "column_scale_max": 604.37451171875
+      },
+      "training": {
+        "point_count": 120000,
+        "relative_l2": 0.05200326256052019,
+        "relative_point_mean": 0.02204349839988881,
+        "relative_point_p95": 0.08083658157829995,
+        "relative_point_max": 1.5582999202663834,
+        "normal_floor_relative_l2": 0.0005273451919330206,
+        "tangent_relative_l2": 0.052000595919350155,
+        "lambda_rms": 0.3082844246299021,
+        "lambda_max_abs": 0.726919335589546,
+        "lambda_theta_min": -0.6241732002278985,
+        "one_plus_lambda_theta_min": 0.37582679977210154,
+        "one_plus_lambda_theta_p01": 0.5704620329037373,
+        "one_plus_lambda_theta_p05": 0.6289787030141983,
+        "noninvertible_fraction": 0.0,
+        "iota_min": 1.8827943801879883,
+        "iota_max": 1.8827943801879883,
+        "components": {
+          "R": {
+            "rms": 0.0220717985074458,
+            "relative_l2": 0.0593077901429966
+          },
+          "phi": {
+            "rms": 0.023297029334430095,
+            "relative_l2": 0.051247776238563116
+          },
+          "Z": {
+            "rms": 0.017563653146093195,
+            "relative_l2": 0.04538709404861945
+          }
+        },
+        "radial_bins": [
+          {
+            "rho_min": 0.0,
+            "rho_max": 0.2,
+            "count": 4385,
+            "relative_l2": 0.1961824991708214
+          },
+          {
+            "rho_min": 0.2,
+            "rho_max": 0.4,
+            "count": 14357,
+            "relative_l2": 0.05728244387292008
+          },
+          {
+            "rho_min": 0.4,
+            "rho_max": 0.6000000000000001,
+            "count": 24081,
+            "relative_l2": 0.024209156747457175
+          },
+          {
+            "rho_min": 0.6000000000000001,
+            "rho_max": 0.8,
+            "count": 33709,
+            "relative_l2": 0.020851688800545016
+          },
+          {
+            "rho_min": 0.8,
+            "rho_max": 1.0,
+            "count": 43468,
+            "relative_l2": 0.04273410233011645
+          }
+        ]
+      },
+      "validation": {
+        "point_count": 60000,
+        "relative_l2": 0.05394374025326734,
+        "relative_point_mean": 0.022393532760262857,
+        "relative_point_p95": 0.08220010540891232,
+        "relative_point_max": 1.5016476360904125,
+        "normal_floor_relative_l2": 0.0005959289246226438,
+        "tangent_relative_l2": 0.05394045804875205,
+        "lambda_rms": 0.30810721454868706,
+        "lambda_max_abs": 0.7273763482932399,
+        "lambda_theta_min": -0.5983796935294813,
+        "one_plus_lambda_theta_min": 0.4016203064705187,
+        "one_plus_lambda_theta_p01": 0.5710521999783991,
+        "one_plus_lambda_theta_p05": 0.6286039311921403,
+        "noninvertible_fraction": 0.0,
+        "iota_min": 1.8827943801879883,
+        "iota_max": 1.8827943801879883,
+        "components": {
+          "R": {
+            "rms": 0.022999765453737678,
+            "relative_l2": 0.06181016608058227
+          },
+          "phi": {
+            "rms": 0.02411940775008497,
+            "relative_l2": 0.05305770361403951
+          },
+          "Z": {
+            "rms": 0.01814937965007313,
+            "relative_l2": 0.04689388902480861
+          }
+        },
+        "radial_bins": [
+          {
+            "rho_min": 0.0,
+            "rho_max": 0.2,
+            "count": 2182,
+            "relative_l2": 0.19762376754599106
+          },
+          {
+            "rho_min": 0.2,
+            "rho_max": 0.4,
+            "count": 7262,
+            "relative_l2": 0.05743152546455277
+          },
+          {
+            "rho_min": 0.4,
+            "rho_max": 0.6000000000000001,
+            "count": 11954,
+            "relative_l2": 0.024107714035946914
+          },
+          {
+            "rho_min": 0.6000000000000001,
+            "rho_max": 0.8,
+            "count": 16882,
+            "relative_l2": 0.019292083137573066
+          },
+          {
+            "rho_min": 0.8,
+            "rho_max": 1.0,
+            "count": 21720,
+            "relative_l2": 0.04890565322852411
+          }
+        ]
+      },
+      "iota_coeffs": [
+        1.8827943801879883
+      ]
+    }
+  ],
+  "best_index": 0,
+  "best_label": "L12_M12_N16",
+  "straightness": null,
+  "total_time_s": 161.1727188155055
+}

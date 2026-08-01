@@ -273,3 +273,107 @@ DESC 使用真实 Biot--Savart 场积分得到的环向磁通 $-3.68289\times10^
 选中候选内部，$\alpha$ 总耗时 148.05 s，其中磁通标定 63.28 s、FP32 GPU QR 0.87 s；$\nu$ 总耗时 82.87 s。下游内部可视化 41.92 s、DESC 232.51 s，其中 DESC solve 为 142.38 s。
 
 完整原始产物位于 [47.2006 完整评估目录](assets/qh_score_adam_start10_47p200_full_eval_20260731/)。选中 `boozer_guarded.npz` 的 SHA-256 为 `db0895246a74d93622763292292ee03d26e7ff0348e15f9bac02b54755af3965`，DESC `equilibrium.h5` 的 SHA-256 为 `399ddbb4afaeeaa5a497145c4ee74ea0587ef2a18ba5d2a9bc72d2ed64ecf7c7`。
+
+## 7. $\eta=0.01$ 阶段最佳 58.1514 样本的完整评估
+
+### 7.1 结论和 score 分解
+
+该样本来自 `start_10` 的中断长轨迹，在第 52 步达到当前最佳 score 58.15137。这里先完成物理验收；后续 Adam 补跑尚在进行，因此 58.15137 不是 200 步最终上限。
+
+完整评估结论为：**该线圈具有可由标准 LS/Newton 找到并经离网格验证的较大嵌套 QH 磁面；庞加莱和 DESC 都保持嵌套，DESC 最终力误差进入 $10^{-2}$ 量级。它明显优于普通随机样本，但面上仍有可见非 QH 起伏，不是接近完美的 QH 位形。**
+
+当前 native score 及全部分量如下。所有分量均为 0--100 且越大越好。
+
+| 项目 | 数值 |
+| --- | ---: |
+| total | **58.15137** |
+| axis | 98.26035 |
+| psi | 96.90558 |
+| surface | 96.69667 |
+| coordinate | 85.54687 |
+| volume QS | 33.28596 |
+| iota | 100.00000 |
+| coil | 64.84444 |
+
+native score 的体诊断给出 $\iota_{\min}=1.86671$、有效小半径约 0.03559 m、体积 0.02539 $\mathrm{m}^3$、体 QH residual 0.45172 和边缘 residual 0.59613。这里的体 residual 与后文单个标准 Boozer 面的面 QS error 使用不同统计定义和归一化，不能直接比较绝对数值；二者一致表明“QH 占优但仍有明显误差”。原始优化样本见 [best.json](assets/qh_score_adam_eta001_start_sweep_20260731/start_10/best.json)。
+
+### 7.2 修正后的选面判据
+
+本次源 $\psi$ 独立测试了 $a=0.04,0.05,0.06,0.08$，最终选择 $a=0.06$。其验证 RMS 为 $8.45\times10^{-4}$，方向误差 P95 为 $1.30\times10^{-4}$；廉价场线筛选通过到 $s=0.49$，对应平均小半径 0.04281 m，并在 $s=0.64$ 明确失败。选择依据仍是误差与物理覆盖范围的折中，不复用别的样本的 $a$ 或 $s$。
+
+旧 `guarded` 求解器每次只允许一步 Newton，并要求中间残差单调、位移小且始终贴近初始 $\psi$ 面。它适合防止跳支，但不能判断磁面是否存在。本样本的 guard 对多个内层候选也给出拒绝；改用完整标准 LS/Newton 后，$s=0.24$ 和 0.36 均收敛并通过独立 $97\times97$ 网格检查。因此正式判据已改为：
+
+1. 从 $\alpha+\nu$ 曲面开始，标准 LS 最多 100 步、完整 Newton 最多 30 步；
+2. 最终独立网格 relative $L^2$ 和法向场 P95 均不高于 $10^{-4}$；
+3. 环向绕行方向正确、曲面法向不退化；
+4. 初始 $\psi$ 误差和最终位移只作跳支诊断，不作逐步硬门槛。
+
+四个较大候选的结果如下：
+
+| $s$ | 标准 LS/Newton | $|V|$ / $\mathrm{m}^3$ | $\iota$ | 离网格 relative $L^2$ | 法向场 P95 | 面 QH error |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 0.24 | 通过 | 0.01679 | 1.88299 | $2.77\times10^{-5}$ | $4.42\times10^{-5}$ | $7.44\times10^{-5}$ |
+| **0.36** | **通过并选中** | **0.02623** | **1.89480** | **$3.06\times10^{-5}$** | **$4.99\times10^{-5}$** | **$1.675\times10^{-4}$** |
+| 0.49 | 离网格拒绝 | 0.03767 | 1.98791 | $7.94\times10^{-4}$ | $1.19\times10^{-3}$ | 未采用 |
+| 0.64 | 离网格拒绝 | 0.05028 | 1.99231 | $1.65\times10^{-3}$ | $2.91\times10^{-3}$ | 未采用 |
+
+$s=0.49/0.64$ 在求解配点网格上也返回 `success=true` 且残差约 $10^{-13}$，但离网格误差高出门槛 8--29 倍，并分别偏离初始面约 0.33、0.50 个小半径。这是欠分辨配点伪解，说明最终标准不能简化成只看 Simsopt 的 `success`；有效定义是“LS/Newton 收敛并通过独立连续场近似检查”。
+
+选中面的 QH error 为 $1.67508\times10^{-4}$；同一面上的 QA/QP error 分别为 $2.31213\times10^{-3}$ 和 $2.40960\times10^{-3}$，QH 比两个竞争对称性约低一个数量级。标准 LS 用时 7.06 s，随后 Newton 在第 0 步已满足精确方程；这说明 $\alpha+\nu$ 初值位于正确吸引域，但初值本身尚未达到最终离网格精度。
+
+### 7.3 庞加莱、$|B|$ 和三维几何
+
+8 条场线在四个截面上各得到 25 个命中，全部保持在选中边界内；图中没有宏观逃逸或明显磁岛散射。它仍是验收级稀疏追踪，不替代专门的高分辨拓扑研究。
+
+![58.1514 样本选中面庞加莱验证](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/assets/poincare.png)
+
+直接标准 Boozer 面上的 $|B|$ 为 0.63950--0.76461 T，平均 0.70192 T。白底彩色等高线呈稳定 QH 斜条纹，同时保留局部闭合畸变，和中等 `volume_qs` 分量一致。
+
+![58.1514 样本直接 Boozer 面彩色 |B| 等高线](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/assets/boozer_b.png)
+
+![58.1514 样本完整线圈和选中磁面](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/assets/coils_surface.png)
+
+交互产物：[Boozer $|B|$ HTML](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/assets/boozer_b.html)；[完整设备线圈与磁面 HTML](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/assets/coils_surface.html)。
+
+### 7.4 DESC 复核
+
+DESC 使用环向磁通 $-1.86018\times10^{-3}\,\mathrm{Wb}$，当前明确走 16 CPU 路径。初始和最终体都保持嵌套。优化器达到 50 步上限而形式上 `success=false`，但最终归一化力误差已通过当前默认验收：
+
+| DESC 指标 | 结果 |
+| --- | ---: |
+| 初始 / 最终嵌套 | true / true |
+| 初始 mean / P95 / max 归一化力误差 | 0.9123 / 2.0203 / 4.2988 |
+| 最终 mean / P95 / max 归一化力误差 | $3.04\times10^{-3}$ / $6.63\times10^{-3}$ / $1.31\times10^{-2}$ |
+| optimizer cost / optimality | 0.06282 / 0.00622 |
+| 迭代 / 函数评估 | 50 / 62 |
+| optimizer success | false，达到迭代上限 |
+
+以下逐张引用本次全部 8 张成功 DESC 图：
+
+![DESC initial boundary, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/boundary_initial.png)
+
+![DESC final boundary, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/boundary.png)
+
+![DESC iota versus rho, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/iota.png)
+
+![DESC Boozer |B| colored contours, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/boozer_B.png)
+
+![DESC Boozer modes versus rho, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/boozer_modes.png)
+
+![DESC QA components versus rho, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/qs_QA.png)
+
+![DESC QH components versus rho, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/qs_QH.png)
+
+![DESC QP components versus rho, score 58.1514](assets/qh_score_adam_eta001_58p151_full_eval_20260801/full_standard_s_0p36/desc/qs_QP.png)
+
+### 7.5 耗时和产物
+
+| 阶段 | 资源 | 墙钟 |
+| --- | --- | ---: |
+| 4 个 source $\psi$ 候选 | 4 x RTX 5090 并行 | 1 min 17--20 s |
+| 单候选 $\alpha$ | 1 x RTX 5090，FP32 | 166.0 s |
+| 三半径 $\nu$ 和曲面重参数化 | 1 x RTX 5090 + CPU | 617.5 s |
+| 4 个标准 LS/Newton 候选 | 4 x RTX 5090 并行 | 1 min 04--22 s |
+| 可视化、庞加莱与 CPU DESC | 16 CPU | 5 min 40 s |
+
+完整原始产物位于 [58.1514 完整评估目录](assets/qh_score_adam_eta001_58p151_full_eval_20260801/)。选中 `boozer_standard.npz` 的 SHA-256 为 `ac7fa3430e0ce3ed8ef3a44a4a655adb20b20067b30485e6941336d9d727f5f7`；DESC `equilibrium.h5` 的 SHA-256 为 `49bf4ebe5d17ca5ebde5c76a435433efd957c03858f7e6c39d264a7c7f43f6de`。下游内部可视化为 38.18 s、DESC 为 239.08 s，总计 330.40 s。

@@ -49,6 +49,22 @@ once the task is accepted.
   the actual tip rather than writing a self-referential commit hash here.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
+- On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$
+  `start_10` best sample (current native score `58.151369810251744`) passed the
+  corrected standard-surface workflow. Sample-specific source fitting selected
+  `a=0.06`; complete standard LS/Newton plus independent dense validation
+  accepted `s=0.24,0.36` and rejected `s=0.49,0.64`, so `s=0.36` was selected.
+  Its $|V|$ is `0.0262317417 m^3`, $\iota=1.89480243$, dense relative residual
+  `3.05807e-5`, normal-field P95 `4.98981e-5`, and surface QH error
+  `1.67507696e-4`. Poincare passed. DESC stayed nested and reached normalized
+  force mean/P95/max `3.043e-3/6.631e-3/1.311e-2`, while its optimizer hit the
+  50-iteration limit. The standard-surface SHA-256 is
+  `ac7fa3430e0ce3ed8ef3a44a4a655adb20b20067b30485e6941336d9d727f5f7`;
+  DESC equilibrium SHA-256 is
+  `49bf4ebe5d17ca5ebde5c76a435433efd957c03858f7e6c39d264a7c7f43f6de`.
+  Full evidence, all native score components, HTML, and all eight DESC figures
+  are in `reports/qh_random_start_score_adam_report.md` section 7 and
+  `reports/assets/qh_score_adam_eta001_58p151_full_eval_20260801/`.
 - Local `main`: `8c20859f9c66ca690d5c22cce862c055b634c1d0`.
 - Current objective status: the latent-support proxy, active-optimization, and
   IID-start native-score Adam experiments are complete. The 4,096-sample IID
@@ -659,6 +675,27 @@ new physics.
    completed seed from `29709` is only partial evidence.
 
 ## 13. Dated Change Log
+
+### 2026-08-01
+
+- Corrected complete-evaluation surface acceptance. The old guarded solver is
+  retained only as a wrong-branch diagnostic. Production now runs full
+  standard Simsopt LS/Newton and requires independent dense-grid residual,
+  normal-field, winding, and regularity checks. For the 58.1514 sample, the
+  old guard rejected inner candidates that standard LS/Newton validated, while
+  `s=0.49/0.64` produced collocation residuals near machine precision but failed
+  off-grid checks; solver `success` alone is therefore also insufficient.
+- Job `30395` completed the 58.1514 sample's fixed downstream evaluation `0:0`
+  in 5 min 40 s. Delivery validation passed and found all eight successful DESC
+  PNGs cited in the report.
+- Student background collector `30399` was submitted after full evaluation and
+  is running independently. Foreground array `30406_[5-7]` is filling in the missing
+  40-step $\eta=0.01$ starts; task 5 failed before scoring from a transient
+  multiprocessing current-working-directory `ENOENT`, while task 6 continued.
+  Dependent array `30411_[10-11]` will resume saved Adam state to 200 total
+  iterations. Resume smoke `30403_11` completed `0:0`: saved step-23 score
+  `46.79922624460454` re-decoded as `46.799226244603915`, then step 24 reached
+  `46.928647862147294`, proving state/momentum/RNG/history continuity.
 
 ### 2026-07-31
 

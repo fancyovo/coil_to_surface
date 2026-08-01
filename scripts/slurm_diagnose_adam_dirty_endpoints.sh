@@ -63,13 +63,19 @@ nvidia-smi --id="$gpu_selector" \
   --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
   --format=csv,noheader,nounits > "$out_dir/gpu_preflight.csv"
 
+drift_scan_args=()
+if [[ "${SCAN_DRIFT_BOUNDARY:-0}" == "1" ]]; then
+  drift_scan_args+=(--scan-drift-boundary)
+fi
+
 python "$project/scripts/diagnose_adam_dirty_endpoints.py" \
   --checkpoint "$checkpoint" \
   --lib "$lib" \
   --initial-case "$initial_case" \
   --history "$run_dir/history.jsonl" \
   --manifest "$run_dir/manifest.json" \
-  --out-dir "$out_dir" &
+  --out-dir "$out_dir" \
+  "${drift_scan_args[@]}" &
 children+=("$!")
 wait "${children[0]}"
 children=()

@@ -766,6 +766,37 @@ new physics.
   calibrated for this point. BFGS and PRP+ nonlinear CG remain controls, but a
   fixed-subspace coordinate pattern search is the method whose assumptions fit
   the observed nonsmooth objective.
+- Method-control implementation commit `e2effc2` adds PRP+ nonlinear CG and
+  derivative-free coordinate pattern search alongside BFGS; all three use the
+  same fixed subspace, decoder, score, and trust cap. The complete local suite
+  has 109 passing tests. On the score-59.98 point, calibrated 12-step pilots
+  reached `60.2558895` with BFGS, `60.1833348` with pattern search, and
+  `60.1037672` with NCG. These are real accepted score gains, but not evidence
+  of superlinear convergence: BFGS gradient norms rose and NCG's PRP+ beta
+  reached `11.60` under noisy gradients.
+- The calibrated BFGS/pattern protocol was applied once to the five remaining
+  prior Adam endpoints above score 40 and is complete; do not expand to more
+  starts unless requested. For eta=0.01 starts 7/8/9, BFGS gains were
+  `+0.2999/0/+0.1603` and pattern gains `+0.3290/0/+0.1668`. For eta=0.003
+  starts 10/11, BFGS gains were `+5.8091/+1.7510` and pattern gains
+  `+3.2673/+1.1767`. The large eta=0.003 gains primarily show those 40-step
+  trajectories were unfinished, not that BFGS is generally superlinear.
+- Same-start zero-momentum standard-Adam controls are complete. From score
+  `59.9799763`, 12-step eta=0.003 reached historical best `60.3312508` at step
+  4 in `102.3 s` but ended `59.6463478`; eta=0.01 reached the overall best
+  `60.5642672` at step 2 in `57.6 s` but ended `59.0384841`. Both crossed
+  `no_axis` probe gates after their best. Thus zero-momentum Adam with a
+  preserved running best beat BFGS on this mature point, while final current
+  states are invalid choices. Full evidence and figures are in
+  `reports/qh_random_start_score_adam_report.md` section 10 and
+  `reports/assets/qh_local_subspace_followup_20260801/`.
+- Foreground local-optimizer work ended after jobs `30501`--`30513`. Per the
+  durable collection policy, Student collector `30399` remains running and
+  low-priority four-GPU P107 collector `30527` was relaunched after foreground
+  completion. Neither is a dependency of the other. A metadata-only recount at
+  delivery found exactly 10,180 completed samples in 161 shards from 14
+  streams (`ok=4403`, `no_axis=2844`, `no_surface=678`,
+  `drift_rejected=2187`, `flux_rejected=68`).
 
 ### 2026-07-31
 

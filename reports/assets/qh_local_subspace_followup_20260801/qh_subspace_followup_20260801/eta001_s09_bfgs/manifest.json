@@ -1,0 +1,52 @@
+{
+  "algorithm": "fixed_subspace_bfgs_with_trust_cap",
+  "objective": "maximize_native_qh_score",
+  "initial_case": {
+    "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_09/best.json",
+    "sha256": "c61d3be8d343c5b8f51d343e4c6a9f2cf45fb7abcae2c188f5ff2352e969b923",
+    "recorded_score": 43.08922098582828
+  },
+  "adam_state": {
+    "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_09/state_latest.npz",
+    "sha256": "5bebedd12c926c95acbbf02a4939a6f21ad7c5f8f467b8c4572236bcc07451aa",
+    "iteration": 40
+  },
+  "target": "QH",
+  "nfp": 4,
+  "n_base_coils": 3,
+  "noise_shape": [
+    3,
+    100
+  ],
+  "seed": 2026080101,
+  "iterations": 12,
+  "rank": 4,
+  "method": "bfgs",
+  "perturbation": 0.00125,
+  "min_perturbation": 0.000625,
+  "min_gradient_cosine": 0.5,
+  "initial_trust_radius": 0.00125,
+  "min_trust_radius": 0.0002,
+  "max_trust_radius": 0.003,
+  "line_alphas": [
+    1.0,
+    0.5,
+    0.25,
+    0.125
+  ],
+  "min_improvement": 1e-05,
+  "max_rejections": 3,
+  "flow_dtype": "torch.float32",
+  "flow_method": "rk4",
+  "flow_steps": 256,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "native_lib_sha256": "0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427",
+  "gpu_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "max_wall_s": 1200.0
+}

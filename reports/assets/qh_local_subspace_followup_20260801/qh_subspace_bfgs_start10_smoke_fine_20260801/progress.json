@@ -1,0 +1,185 @@
+{
+  "manifest": {
+    "algorithm": "fixed_subspace_damped_bfgs_with_trust_cap",
+    "objective": "maximize_native_qh_score",
+    "initial_case": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_10/best.json",
+      "sha256": "7ad5236c7009564e0875676eb53df2cc9026ae503929852e16a97d9c4dc0551a",
+      "recorded_score": 59.97997631540441
+    },
+    "adam_state": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_10/state_latest.npz",
+      "sha256": "3a2f317aafb576a2d3c673246f995c7ede6664575e0b8f34cb5f2b59cc7d3a30",
+      "iteration": 200
+    },
+    "target": "QH",
+    "nfp": 4,
+    "n_base_coils": 3,
+    "noise_shape": [
+      3,
+      100
+    ],
+    "seed": 2026080101,
+    "iterations": 1,
+    "rank": 4,
+    "perturbation": 0.00125,
+    "min_perturbation": 0.00015625,
+    "min_gradient_cosine": 0.5,
+    "initial_trust_radius": 0.0005,
+    "min_trust_radius": 2e-05,
+    "max_trust_radius": 0.01,
+    "line_alphas": [
+      1.0,
+      0.5,
+      0.25,
+      0.125
+    ],
+    "min_improvement": 1e-05,
+    "max_rejections": 3,
+    "flow_dtype": "torch.float32",
+    "flow_method": "rk4",
+    "flow_steps": 256,
+    "checkpoint_step": 30000,
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib_sha256": "0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427",
+    "gpu_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "max_wall_s": 500.0
+  },
+  "smoothness": {
+    "coarse_h": 0.00125,
+    "fine_h": 0.000625,
+    "gradient_cosine": 0.8443039617034219,
+    "gradient_norm_ratio_fine_over_coarse": 1.9390784159458625,
+    "coarse": {
+      "scores": [
+        60.13922835378287,
+        60.09514642755978,
+        59.880899420970636,
+        60.0238163066844,
+        59.88831191455338,
+        59.93723909863224,
+        59.629657403752155,
+        59.95166907816162
+      ],
+      "statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_fraction": 1.0,
+      "decode_wall_s": 2.4480681890272535,
+      "score_wall_s": 13.918817592959385,
+      "score_elapsed_s": [
+        6.809066432993859,
+        6.841102647013031,
+        5.7506730780005455,
+        6.103197150980122,
+        6.016429372015409,
+        6.102886256005149,
+        7.108159052033443,
+        6.158718973980285
+      ]
+    },
+    "fine": {
+      "scores": [
+        60.05602943461405,
+        60.01324632427256,
+        59.93607504979887,
+        60.032590733334736,
+        59.94435901564048,
+        59.97681799105531,
+        59.57385958489016,
+        59.98955707445111
+      ],
+      "statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_fraction": 1.0,
+      "decode_wall_s": 2.431071919039823,
+      "score_wall_s": 13.166764167021029,
+      "score_elapsed_s": [
+        6.01373219199013,
+        6.101685574976727,
+        5.191372911038343,
+        6.140121805015951,
+        6.158426365989726,
+        6.0159871249925345,
+        7.064247819012962,
+        6.149306294042617
+      ]
+    }
+  },
+  "initial_score": 59.97997631540431,
+  "best_score": 59.990728403399686,
+  "best_iteration": 1,
+  "iterations": [
+    {
+      "iteration": 1,
+      "current_score": 59.990728403399686,
+      "best_score": 59.990728403399686,
+      "best_iteration": 1,
+      "score_improvement": 0.01075208799537819,
+      "current_status": "ok",
+      "current_qh_error": 0.418267622513045,
+      "current_iota": 1.8796755075454712,
+      "gradient_norm": 308.8509860621092,
+      "perturbation": 0.000625,
+      "trust_radius": 0.00025,
+      "accepted": true,
+      "accepted_alpha": 0.125,
+      "accepted_step_norm": 6.25e-05,
+      "line_scores": [
+        59.9697494687191,
+        59.975737332144774,
+        59.98892425280698,
+        59.990728403399686
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "bfgs": {
+        "updated": true,
+        "damped": true,
+        "step_gradient_delta": 7.812499999999992e-06,
+        "condition_number": 281872.4974600979
+      },
+      "line_decode_wall_s": 2.2539128430071287,
+      "line_score_wall_s": 6.151698759000283,
+      "gradient_decode_wall_s": 2.4290912649594247,
+      "gradient_score_wall_s": 13.268686556024477,
+      "iteration_wall_s": 24.16151370102307,
+      "total_wall_s": 65.3931621100055
+    }
+  ]
+}

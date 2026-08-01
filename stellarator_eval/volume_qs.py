@@ -516,11 +516,22 @@ def calibrate_toroidal_flux_gpu(
     model: PsiModel,
     gpu_field,
     config: VolumeQSConfig,
+    *,
+    levels=None,
 ) -> FluxCalibration:
     """Calibrate fitted s to signed toroidal flux in two vectorized batches."""
     start = time.perf_counter()
-    level_fraction = (np.arange(1, config.flux_level_count + 1) / config.flux_level_count) ** 2
-    levels = config.s_edge * level_fraction
+    if levels is None:
+        level_fraction = (
+            np.arange(1, config.flux_level_count + 1) / config.flux_level_count
+        ) ** 2
+        levels = config.s_edge * level_fraction
+    else:
+        levels = np.asarray(levels, dtype=float)
+        if np.any(levels <= 0.0) or np.any(np.diff(levels) <= 0.0):
+            raise ValueError("flux calibration levels must be positive and increasing")
+        if levels[-1] > config.s_edge * (1.0 + 1e-12):
+            raise ValueError("flux calibration levels must not exceed config.s_edge")
     phis = np.linspace(0.0, TWOPI / model.nfp, config.flux_phi_count, endpoint=False)
     theta = (np.arange(config.flux_theta_count) + 0.5) * TWOPI / config.flux_theta_count
     phi_grid, theta_grid = np.meshgrid(phis, theta, indexing="ij")

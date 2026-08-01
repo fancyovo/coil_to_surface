@@ -913,6 +913,16 @@ new physics.
   defaults to parallel candidates, adds an explicit command-line
   `--cpus-per-task=4`, and retains `SERIAL_CANDIDATES=1` only as an explicit
   resource-limited option. Do not restore serial evaluation as the default.
+  The first legacy candidate exposed the next bottleneck: alpha took `152.65 s`
+  while its GPU QR took only `3.79 s`; flux calibration took `52.88 s`, and
+  roughly `96 s` remained in oversized CPU Cartesian-lattice filtering and
+  coordinate setup plus field sampling. `alpha_clebsch_ls_experiment.py` now
+  defaults to `gpu-ray`, reusing the already tested `volume_qs` equal-area ray
+  sampler, GPU psi/gradient evaluation, one batched GPU field evaluation, and
+  vectorized GPU flux calibration. `--sampling-backend legacy-cartesian`
+  remains for controlled comparison. The complete local suite has 115 passing
+  tests. A same-surface remote speed and physics comparison is still required
+  before treating the new default as numerically accepted.
   A metadata-only recount after 24 minutes of the new jobs found exactly 17,092
   completed samples in 269 atomic shards from 20 streams (`ok=7389`,
   `no_axis=4788`, `no_surface=1148`, `drift_rejected=3645`,

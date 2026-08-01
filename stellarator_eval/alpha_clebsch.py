@@ -292,6 +292,26 @@ def sample_uniform_volume(
     return tuple(np.asarray(array) for array in arrays)  # type: ignore[return-value]
 
 
+def disjoint_train_validation_indices(
+    point_count: int, train_count: int, validation_count: int
+) -> tuple[np.ndarray, np.ndarray]:
+    requested = int(train_count) + int(validation_count)
+    if requested > int(point_count):
+        raise ValueError("train and validation counts exceed sampled point count")
+    validation = np.floor(
+        np.linspace(0, point_count, validation_count, endpoint=False)
+    ).astype(int)
+    keep = np.ones(point_count, dtype=bool)
+    keep[validation] = False
+    training_pool = np.flatnonzero(keep)
+    if len(training_pool) > train_count:
+        choose = np.floor(
+            np.linspace(0, len(training_pool), train_count, endpoint=False)
+        ).astype(int)
+        training_pool = training_pool[choose]
+    return training_pool, validation
+
+
 def physical_coordinate_data(
     model: PsiModel,
     calibration: FluxCalibration,

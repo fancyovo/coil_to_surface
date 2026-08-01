@@ -24,6 +24,7 @@ from stellarator_eval.alpha_clebsch import (
     AlphaFitResult,
     FluxCalibration,
     calibrate_toroidal_flux,
+    disjoint_train_validation_indices,
     evaluate_alpha_fit,
     evaluate_lambda,
     fit_alpha_gpu_qr,
@@ -32,11 +33,16 @@ from stellarator_eval.alpha_clebsch import (
     sample_uniform_volume,
 )
 from stellarator_eval.axis import rk4_period_samples
-from stellarator_eval.config import PsiFitConfig, SurfaceScanConfig
+from stellarator_eval.config import PsiFitConfig, SurfaceScanConfig, VolumeQSConfig
 from stellarator_eval.field import build_field
 from stellarator_eval.psi import _b_components_gpu
 from stellarator_eval.serialization import write_json
 from stellarator_eval.surface import level_curve_phi0
+from stellarator_eval.volume_qs import (
+    apply_flux_coordinates,
+    calibrate_toroidal_flux_gpu,
+    sample_volume_points,
+)
 from scripts.desc_psi_volume_initial_guess_experiment import load_field_input, load_psi_model
 
 TWOPI = 2.0 * np.pi
@@ -61,6 +67,16 @@ def sample_bfield(gpu_field, R, Z, phi, *, precision: str) -> np.ndarray:
         gpu_field, R, Z, phi, precision=precision
     )
     return np.column_stack([br, bphi, bz])
+
+
+def alpha_coordinates_from_volume_points(points: dict) -> dict[str, np.ndarray]:
+    return {
+        "rho": np.asarray(points["rho"]),
+        "theta": np.asarray(points["theta"]),
+        "phi": np.asarray(points["phi"]),
+        "cross_theta": np.cross(points["grad_psi"], points["grad_theta"]),
+        "cross_phi": np.cross(points["grad_psi"], points["grad_phi"]),
+    }
 
 
 def save_fit(path: Path, result: AlphaFitResult) -> None:
@@ -285,6 +301,11 @@ def main() -> None:
     parser.add_argument("--grid-xy", type=int, default=144)
     parser.add_argument("--grid-phi", type=int, default=96)
     parser.add_argument("--rho-min", type=float, default=0.06)
+    parser.add_argument(
+        "--sampling-backend",
+        choices=("gpu-ray", "legacy-cartesian"),
+        default="gpu-ray",
+    )
     parser.add_argument("--relative-weighting", action="store_true")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--precision", choices=("fp32", "fp64"), default="fp32")
@@ -310,21 +331,43 @@ def main() -> None:
 
     gpu_field = _make_gpu_field(field_input, model.nfp, psi_cfg, args.current_unit)
     try:
+        stage_timings = {}
         b_sampler = lambda r, z, p: _b_components_gpu(
             gpu_field, r, z, p, precision=args.precision
         )
         calibration_levels = args.s_edge * np.asarray(
             [0.015625, 0.03125, 0.0625, 0.10, 0.16, 0.25, 0.36, 0.49, 0.64, 0.81, 1.0]
         )
-        calibration = calibrate_toroidal_flux(
-            model,
-            calibration_levels,
-            b_sampler,
-            phi_count=8,
-            theta_count=256,
-            radial_quadrature=24,
-            polynomial_degree=4,
-        )
+        stage_start = time.perf_counter()
+        if args.sampling_backend == "gpu-ray":
+            volume_config = VolumeQSConfig(
+                s_edge=args.s_edge,
+                rho_min=args.rho_min,
+                point_count=args.train_points + args.validation_points,
+                alpha_fit_point_count=args.train_points + args.validation_points,
+                grid_xy=args.grid_xy,
+                grid_phi=args.grid_phi,
+                precision=args.precision,
+                gpu_device=0,
+                gpu_lib_path=str(resolve_project_path(args.gpu_lib)),
+            )
+            calibration = calibrate_toroidal_flux_gpu(
+                model,
+                gpu_field,
+                volume_config,
+                levels=calibration_levels,
+            )
+        else:
+            calibration = calibrate_toroidal_flux(
+                model,
+                calibration_levels,
+                b_sampler,
+                phi_count=8,
+                theta_count=256,
+                radial_quadrature=24,
+                polynomial_degree=4,
+            )
+        stage_timings["flux_calibration_s"] = float(time.perf_counter() - stage_start)
         calibration.diagnostics["pchip_comparison"] = pchip_flux_diagnostic(calibration)
         plot_flux_calibration(calibration, args.out_dir / "flux_calibration.png")
         np.savez(
@@ -336,36 +379,75 @@ def main() -> None:
             polynomial_coeffs=calibration.polynomial_coeffs,
         )
 
-        train = sample_uniform_volume(
-            model,
-            args.s_edge,
-            count=args.train_points,
-            grid_xy=args.grid_xy,
-            grid_phi=args.grid_phi,
-            rho_min=args.rho_min,
-            offset_seed=1,
-        )
-        validation = sample_uniform_volume(
-            model,
-            args.s_edge,
-            count=args.validation_points,
-            grid_xy=args.grid_xy + 1,
-            grid_phi=args.grid_phi + 1,
-            rho_min=args.rho_min,
-            offset_seed=7,
-        )
-        train_coordinates = physical_coordinate_data(model, calibration, *train)
-        validation_coordinates = physical_coordinate_data(model, calibration, *validation)
-        train_B = sample_bfield(
-            gpu_field, train[0], train[1], train[2], precision=args.precision
-        )
-        validation_B = sample_bfield(
-            gpu_field,
-            validation[0],
-            validation[1],
-            validation[2],
-            precision=args.precision,
-        )
+        if args.sampling_backend == "gpu-ray":
+            stage_start = time.perf_counter()
+            points = sample_volume_points(model, volume_config, device=args.device)
+            stage_timings["volume_sampling_s"] = float(time.perf_counter() - stage_start)
+            stage_start = time.perf_counter()
+            apply_flux_coordinates(points, calibration)
+            coordinates = alpha_coordinates_from_volume_points(points)
+            stage_timings["coordinate_construction_s"] = float(
+                time.perf_counter() - stage_start
+            )
+            stage_start = time.perf_counter()
+            sampled_B = gpu_field.eval_B(points["xyz"], precision=args.precision)
+            stage_timings["field_sampling_s"] = float(time.perf_counter() - stage_start)
+            train_indices, validation_indices = disjoint_train_validation_indices(
+                len(sampled_B), args.train_points, args.validation_points
+            )
+            train_coordinates = {
+                key: value[train_indices] for key, value in coordinates.items()
+            }
+            validation_coordinates = {
+                key: value[validation_indices] for key, value in coordinates.items()
+            }
+            train_B = sampled_B[train_indices]
+            validation_B = sampled_B[validation_indices]
+            sampling_diagnostics = {
+                "candidate_points": int(points["candidate_count"][0]),
+                "available_points": int(points["available_count"][0]),
+                "sampled_points": int(len(sampled_B)),
+            }
+        else:
+            stage_start = time.perf_counter()
+            train = sample_uniform_volume(
+                model,
+                args.s_edge,
+                count=args.train_points,
+                grid_xy=args.grid_xy,
+                grid_phi=args.grid_phi,
+                rho_min=args.rho_min,
+                offset_seed=1,
+            )
+            validation = sample_uniform_volume(
+                model,
+                args.s_edge,
+                count=args.validation_points,
+                grid_xy=args.grid_xy + 1,
+                grid_phi=args.grid_phi + 1,
+                rho_min=args.rho_min,
+                offset_seed=7,
+            )
+            stage_timings["volume_sampling_s"] = float(time.perf_counter() - stage_start)
+            stage_start = time.perf_counter()
+            train_coordinates = physical_coordinate_data(model, calibration, *train)
+            validation_coordinates = physical_coordinate_data(model, calibration, *validation)
+            stage_timings["coordinate_construction_s"] = float(
+                time.perf_counter() - stage_start
+            )
+            stage_start = time.perf_counter()
+            train_B = sample_bfield(
+                gpu_field, train[0], train[1], train[2], precision=args.precision
+            )
+            validation_B = sample_bfield(
+                gpu_field,
+                validation[0],
+                validation[1],
+                validation[2],
+                precision=args.precision,
+            )
+            stage_timings["field_sampling_s"] = float(time.perf_counter() - stage_start)
+            sampling_diagnostics = {}
 
         baseline = AlphaFitResult(
             modes=[],
@@ -444,19 +526,34 @@ def main() -> None:
             "s_edge": args.s_edge,
             "nfp": model.nfp,
             "sampling": {
-                "kind": "shifted_uniform_cartesian_lattice_filtered_by_s",
+                "backend": args.sampling_backend,
+                "kind": (
+                    "equal_area_ray_lattice_gpu_psi"
+                    if args.sampling_backend == "gpu-ray"
+                    else "shifted_uniform_cartesian_lattice_filtered_by_s"
+                ),
                 "train_points": args.train_points,
                 "validation_points": args.validation_points,
                 "grid_xy": args.grid_xy,
                 "grid_phi": args.grid_phi,
                 "rho_min": args.rho_min,
+                **sampling_diagnostics,
             },
             "backends": {
-                "flux_calibration_field": f"C++/CUDA {args.precision}",
+                "flux_calibration_field": (
+                    f"vectorized C++/CUDA {args.precision}"
+                    if args.sampling_backend == "gpu-ray"
+                    else f"batched C++/CUDA {args.precision}"
+                ),
                 "training_and_validation_field": f"C++/CUDA {args.precision}",
                 "alpha_design_and_qr": f"PyTorch CUDA {args.precision} gels",
-                "coordinate_sampling_and_diagnostics": "NumPy/SciPy CPU",
+                "coordinate_sampling_and_diagnostics": (
+                    f"PyTorch CUDA {args.precision} psi + NumPy geometry"
+                    if args.sampling_backend == "gpu-ray"
+                    else "NumPy/SciPy CPU"
+                ),
             },
+            "stage_timings": stage_timings,
             "calibration": calibration.diagnostics,
             "calibration_polynomial_coeffs": calibration.polynomial_coeffs.tolist(),
             "baseline_lambda0_iota0": {

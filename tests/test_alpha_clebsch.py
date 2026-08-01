@@ -4,6 +4,7 @@ from stellarator_eval.alpha_clebsch import (
     AlphaFitResult,
     ClebschMode,
     build_clebsch_modes,
+    disjoint_train_validation_indices,
     evaluate_alpha_fit,
     evaluate_lambda,
     zernike_radial,
@@ -66,3 +67,11 @@ def test_exact_alpha_reconstruction_has_zero_residual():
     }
     metrics, _ = evaluate_alpha_fit(result, coordinates, B, nfp=3)
     assert metrics["relative_l2"] < 1e-14
+
+
+def test_accelerated_alpha_sampling_uses_disjoint_splits():
+    training, validation = disjoint_train_validation_indices(180, 120, 60)
+    assert len(training) == 120
+    assert len(validation) == 60
+    assert len(np.intersect1d(training, validation)) == 0
+    np.testing.assert_array_equal(np.sort(np.r_[training, validation]), np.arange(180))

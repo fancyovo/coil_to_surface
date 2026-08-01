@@ -154,6 +154,28 @@ def test_batched_flux_calibration_for_circular_surfaces():
     )
 
 
+def test_batched_flux_calibration_preserves_explicit_levels():
+    phi_axis = np.linspace(0.0, 2.0 * np.pi / 3.0, 32, endpoint=False)
+    model = PsiModel(
+        coeffs=np.asarray([1.0]),
+        modes=[PolyMode(0, 2, 0, "cos")],
+        nfp=3,
+        a=0.2,
+        phi_axis=phi_axis,
+        R_axis=np.ones_like(phi_axis),
+        Z_axis=np.zeros_like(phi_axis),
+        R_axis_phi=np.zeros_like(phi_axis),
+        Z_axis_phi=np.zeros_like(phi_axis),
+        fit_info={},
+    )
+    config = VolumeQSConfig(s_edge=0.25, flux_phi_count=2, flux_theta_count=32)
+    levels = np.asarray([0.01, 0.04, 0.09, 0.16, 0.25])
+    calibration = calibrate_toroidal_flux_gpu(
+        model, UniformToroidalField(1.7), config, levels=levels
+    )
+    np.testing.assert_array_equal(calibration.s_knots, levels)
+
+
 def test_compute_f_c_matches_direct_formula():
     count = 20
     rng = np.random.default_rng(91)

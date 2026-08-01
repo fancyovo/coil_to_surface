@@ -3092,6 +3092,7 @@ bool run_downstream_gpu(
     auto started = Clock::now();
     FluxCalibrationNative flux;
     SurfaceScreen* selected_surface = nullptr;
+    SurfaceScreen* closest_rejected_surface = nullptr;
     bool flux_ok = false;
     for (SurfaceScreen* candidate : candidates) {
         const auto trace_started = Clock::now();
@@ -3102,6 +3103,10 @@ bool run_downstream_gpu(
         result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] += seconds_since(trace_started);
         if (!candidate->strict) {
             ++result.surface_long_trace_rejected_count;
+            if (!closest_rejected_surface ||
+                candidate->relative_drift_p95 < closest_rejected_surface->relative_drift_p95) {
+                closest_rejected_surface = candidate;
+            }
             continue;
         }
         ++result.flux_attempt_count;
@@ -3121,6 +3126,14 @@ bool run_downstream_gpu(
     }
     result.timings[SGPU_SCORE_TIME_FLUX] = seconds_since(started);
     if (!selected_surface) {
+        if (closest_rejected_surface) {
+            result.surface_level = closest_rejected_surface->level;
+            result.surface_drift_relative_p95 = closest_rejected_surface->relative_drift_p95;
+            result.surface_one_period_drift_relative_p95 =
+                closest_rejected_surface->one_period_relative_drift_p95;
+            result.surface_long_trace_periods_completed =
+                closest_rejected_surface->long_trace_periods_completed;
+        }
         result.status = SGPU_SCORE_DRIFT_REJECTED;
         return false;
     }

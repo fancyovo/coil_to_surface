@@ -108,6 +108,38 @@ def test_surface_radius_solver_lands_on_requested_level():
     np.testing.assert_allclose(values, 0.04, rtol=0.0, atol=1e-10)
 
 
+def test_surface_radius_solver_handles_higher_order_radial_terms():
+    phi_axis = np.linspace(0.0, 2.0 * np.pi / 4.0, 32, endpoint=False)
+    model = PsiModel(
+        coeffs=np.asarray([1.0, 0.08, -0.015]),
+        modes=[
+            PolyMode(0, 2, 0, "cos"),
+            PolyMode(4, 0, 0, "cos"),
+            PolyMode(2, 2, 1, "cos"),
+        ],
+        nfp=4,
+        a=0.2,
+        phi_axis=phi_axis,
+        R_axis=np.ones_like(phi_axis),
+        Z_axis=np.zeros_like(phi_axis),
+        R_axis_phi=np.zeros_like(phi_axis),
+        Z_axis_phi=np.zeros_like(phi_axis),
+        fit_info={},
+    )
+    theta = np.linspace(0.0, 2.0 * np.pi, 513, endpoint=False)
+    phi = np.linspace(0.0, 2.0 * np.pi / model.nfp, len(theta), endpoint=False)
+    radius, residual = _surface_radius_on_rays(model, 0.36, theta, phi)
+    ra, za, _, _ = model.axis_at(phi)
+    values, *_ = evaluate_psi_tensor_numpy(
+        model,
+        ra + radius * np.cos(theta),
+        za + radius * np.sin(theta),
+        phi,
+    )
+    assert np.max(residual) < 1e-10
+    np.testing.assert_allclose(values, 0.36, rtol=0.0, atol=1e-10)
+
+
 def test_flux_level_budget_keeps_outer_neighbors_and_spaced_fallbacks():
     levels = [0.001, 0.002, 0.004, 0.008, 0.012, 0.02, 0.04, 0.08, 0.12, 0.16,
               0.25, 0.36, 0.49, 0.64, 0.81]

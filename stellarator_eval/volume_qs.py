@@ -222,16 +222,12 @@ def _surface_radius_on_rays(
     residual = np.full_like(radius, np.inf)
     for _ in range(30):
         normalized = radius / model.a
-        value = np.zeros_like(radius)
+        value = coefficients[-1].copy()
         derivative = np.zeros_like(radius)
-        for power in range(2, degree + 1):
-            value += coefficients[power] * normalized**power
-            derivative += (
-                power
-                * coefficients[power]
-                * normalized ** (power - 1)
-                / model.a
-            )
+        for power in range(degree - 1, -1, -1):
+            derivative = derivative * normalized + value
+            value = value * normalized + coefficients[power]
+        derivative /= model.a
         residual = value - level
         if float(np.max(np.abs(residual))) <= 1e-12:
             break

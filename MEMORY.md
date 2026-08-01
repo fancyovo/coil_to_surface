@@ -47,6 +47,16 @@ once the task is accepted.
   (`Pin Adam jobs to corrected score library`). The branch also contains this
   living-memory documentation; query `git rev-parse HEAD` at session start for
   the actual tip rather than writing a self-referential commit hash here.
+- On 2026-08-01, the current validated production native-score library became
+  SHA-256 `4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708`.
+  It uses the strict mathematical elliptic-axis condition, a continuous
+  topology-quality margin, the original fixed maximum of six high-precision
+  surface candidates, and preserved diagnostics for the closest rejected
+  long-trace candidate. The old library `0b7342db...aa427` is archived and must
+  not be the default for new optimization or collection. All launch wrappers
+  are pinned to the new hash. The complete local suite has 113 passing tests.
+  Detailed numerical evidence is in
+  `reports/qh_random_start_score_adam_report.md` section 11.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$
@@ -250,6 +260,12 @@ once the task is accepted.
 
 - Prefer stable, bounded algorithms: dense linear least squares and fixed-cost
   GPU kernels are preferred over nonlinear solves with long-tailed iteration.
+- Native score changes must not increase ordinary latency or introduce even a
+  rare long-latency tail. If a correctness change cannot be made with
+  essentially unchanged bounded cost, keep the production score unchanged,
+  present the measured tradeoff to the user, and wait for a decision. A
+  diagnostic implementation that is slower must be marked non-production and
+  reverted after the audit.
 - The production path from coils through magnetic axis and fitted $\psi$ is the
   already validated stable implementation. Do not redesign or optimize it
   unless a required physical quantity is missing.
@@ -817,23 +833,53 @@ new physics.
   skip policy and additionally rolls back parameters, both moments, and Adam
   step count whenever an updated center is non-`ok`; proposal diagnostics are
   preserved rather than hidden.
-- On 2026-08-01, independent proposal audit jobs `30551` and `30555` resolved
-  that apparent `no_axis`. Iterations 1--4 replayed with exactly zero noise and
-  update RMS error. RK4-256 and RK4-512 both placed the current score-60.6
-  proposal boundary between 0.75 and 0.875 of the Adam update, and the exact
-  RK4-512 proposal repeated as `no_axis` on all four physical GPUs. This is not
-  an Adam indexing/state bug and not physical disappearance of the magnetic
-  axis: changing only `axis_topology_margin` from the production `0.020` to
-  `0.019` finds a closed, strictly elliptic axis with residual `1.366e-8`,
-  normalized absolute Poincare-map trace `1.980828 < 2`, and full score
-  `60.7965311`. Margin `0.020` rejects it because its acceptance threshold is
-  `1.98`; a denser 96-grid/96-candidate/8-Newton fallback still rejects it under
-  that same deliberate safety margin. Therefore native status `no_axis` is
-  semantically coarse here: it means no axis passed the configured robust-axis
-  margin, not no mathematical elliptic axis. Keep the score definition fixed
-  for current corpus comparability; constrained Adam must backtrack such center
-  proposals to the largest score-valid fraction rather than treating the
-  discontinuity as a physical gradient or using a fixed gradient clip.
+- On 2026-08-01, independent proposal audit jobs `30551` and `30555` proved a
+  native axis-topology bug. Iterations 1--4 replayed with exactly zero noise and
+  update RMS error, RK4-256/RK4-512 agreed, and all four GPUs repeated the same
+  state. The old implementation incorrectly used
+  `abs(trace)/sqrt(det) < 2 - axis_topology_margin`, so the default margin 0.02
+  changed mathematical existence into a hard threshold at 1.98. The exact
+  proposal has residual `1.366e-8` and normalized absolute trace `1.980828 < 2`:
+  it is a strict elliptic axis. Production now uses strict `<2` for existence;
+  the 0.02 margin only defines candidate preference and a continuous quality
+  scale. The exact proposal is then `status=ok` on all GPUs. This supersedes the
+  earlier instruction to keep the buggy score definition for corpus
+  comparability; old rows remain immutable and are distinguished by their
+  recorded library hash.
+- Exact replay of the five historical invalid Adam endpoints found that the
+  topology fix restores two old `no_axis` probes to scores `57.7851` and
+  `59.6424`, reducing their directional score jumps by factors 131 and 1768.
+  A third old `no_axis` becomes the accurate `drift_rejected`; the other two
+  historical drift rejections remain. All three remaining cases have closed
+  elliptic axes with residuals `1e-9`--`5e-8` and psi-angle P95 near
+  `1.2e-4`--`1.4e-4`. They pass the 5% drift criterion through 8 periods and
+  require about `5.070%`, `7.063%`, and `7.574%` at 16 periods. Thus
+  `drift_rejected` means the fitted-psi surface seeds did not pass the bounded
+  long-trace screen; it does not mean no axis and does not prove that full
+  LS/Newton cannot find a magnetic surface.
+- An experimental all-candidate surface verifier was built only for diagnosis.
+  It tried all 9--10 one-period candidates and restored none of the three drift
+  endpoints, while the same audit slowed from 81 seconds to 97 seconds. This
+  change was reverted before production. SHA values
+  `15278af22326655eeb91473ff2b344c2ffc7b543c525f3d8ba5c211f90cd81f0`
+  and `53de3ff55954174fcc629b7c03de025f3819becc051aa491ac22565f22d080bd`
+  are diagnostic-only and must not be deployed. Final bounded audit job `30589`
+  completed `0:0` in 82 seconds and preserves the failed candidate's already
+  computed level, one-period drift, long drift, and crossing period without
+  adding traces.
+- The corrected robust Adam policy skips the whole gradient/moment/parameter
+  step if any directional endpoint is non-`ok`, uses only scale-adaptive
+  median/MAD winsorization for valid directional outliers, and rolls back
+  parameters, both moments, and Adam step count if an updated center remains
+  invalid after bounded feasibility backtracking. Topology-fixed short job
+  `30569` completed all 16 steps from `59.97998` to `61.33896` with no
+  `no_axis` proposal or long drawdown. This validates the immediate fix but is
+  not a long-run beta optimum claim.
+- Old-library Student collector `30399` was intentionally cancelled after
+  `06:10:27` so the score binary could be replaced cleanly. New-library
+  collectors `30594` (Student, two GPUs) and `30595` (P107, four GPUs, low
+  priority) are running independently from commit `e16402e`; both launchers
+  validated the production library hash before entering their collection loop.
 
 ### 2026-07-31
 

@@ -714,6 +714,14 @@ new physics.
   an explicit smoothness check; a full 300-dimensional Hessian is out of scope.
   Detailed evidence and the proposed beta comparison are in
   `reports/qh_random_start_score_adam_report.md` section 8.
+- On 2026-08-01, the user changed the active experiment after `start_10` was
+  nearly complete. Array element `30411_11` was cancelled before startup
+  (`CANCELLED`, zero elapsed); `30411_10` remains the only foreground Adam
+  element and must finish normally. The next objective is to report the other
+  11 Adam starts, then test a genuinely local superlinear method from the
+  saved `start_10` best. If it improves score, apply the same fixed protocol
+  to prior Adam best cases with current native score above 40, including the
+  best $\eta=0.003$ endpoint. Do not restart `start_11` unless requested.
 
 ### 2026-07-31
 

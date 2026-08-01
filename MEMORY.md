@@ -797,6 +797,18 @@ new physics.
   delivery found exactly 10,628 completed samples in 168 shards from 14
   streams (`ok=4597`, `no_axis=2973`, `no_surface=707`,
   `drift_rejected=2281`, `flux_rejected=70`).
+- On 2026-08-01, dirty-gradient Adam follow-up array `30532` ran the exact
+  beta1=0.9 baseline and beta1=0.7/0.5 controls to completion from the fixed
+  score-59.97998 start. Its first robust-filter implementation was invalid:
+  retaining and rescaling only the two valid directions at step 3 drove the
+  updated center to `no_axis` even though it reduced gradient RMS from about
+  1056 to 22.8. Element 3 and pending elements 4--6 were cancelled. This result
+  is superseded and must not be treated as evidence against robust filtering.
+  The replacement policy skips the entire Adam/moment/parameter step whenever
+  any directional pair has a non-`ok` endpoint; all-`ok` directional outliers
+  are still winsorized using a scale-adaptive median/MAD ratio. P107 collector
+  `30527` remains cancelled during foreground work; Student collector `30399`
+  remains independent and running.
 
 ### 2026-07-31
 

@@ -100,7 +100,7 @@ def test_robust_direction_filter_drops_invalid_and_rescales_valid_directions():
 
     np.testing.assert_array_equal(invalid, [True, False, True, False])
     np.testing.assert_array_equal(outlier, [False, False, False, False])
-    np.testing.assert_allclose(used, [0.0, -1.0, 0.0, -0.4])
+    np.testing.assert_allclose(used, [0.0, -0.5, 0.0, -0.2])
     assert limit is None
 
 

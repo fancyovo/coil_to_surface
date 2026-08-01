@@ -76,8 +76,6 @@ def robust_direction_deltas(
         )
         outlier = valid & (np.abs(raw_delta) > adaptive_limit)
         used[outlier] = np.sign(used[outlier]) * adaptive_limit
-    if valid_count > 0:
-        used *= count / valid_count
     return used, ~valid, outlier, adaptive_limit
 
 
@@ -112,6 +110,7 @@ def save_state(
     best_noise: np.ndarray,
     first_moment: np.ndarray,
     second_moment: np.ndarray,
+    adam_step: int,
     iteration: int,
     rng: np.random.Generator,
 ) -> None:
@@ -121,6 +120,7 @@ def save_state(
         best_noise=best_noise,
         first_moment=first_moment,
         second_moment=second_moment,
+        adam_step=np.asarray(adam_step, dtype=np.int64),
         iteration=np.asarray(iteration, dtype=np.int64),
         rng_state=np.asarray(json.dumps(rng.bit_generator.state)),
     )
@@ -258,6 +258,11 @@ def main() -> None:
         first_moment = np.asarray(saved_state["first_moment"], dtype=np.float64)
         second_moment = np.asarray(saved_state["second_moment"], dtype=np.float64)
         start_iteration = int(saved_state["iteration"])
+        adam_step = (
+            int(saved_state["adam_step"])
+            if "adam_step" in saved_state.files
+            else start_iteration
+        )
         rng = np.random.default_rng()
         rng.bit_generator.state = json.loads(str(saved_state["rng_state"].item()))
         initialization = "resumed_saved_standard_adam_state"
@@ -293,6 +298,7 @@ def main() -> None:
         first_moment = np.zeros_like(current_noise, dtype=np.float64)
         second_moment = np.zeros_like(current_noise, dtype=np.float64)
         start_iteration = 0
+        adam_step = 0
     expected_shape = (args.n_base_coils, TOKEN_DIM)
     for name, value in (
         ("current_noise", current_noise),
@@ -333,6 +339,9 @@ def main() -> None:
         "learning_rate_schedule": "constant",
         "weight_decay": 0.0,
         "robust_direction_filter": args.robust_direction_filter,
+        "invalid_direction_policy": (
+            "skip_entire_step" if args.robust_direction_filter else "use_all"
+        ),
         "direction_outlier_ratio": args.direction_outlier_ratio,
         "direction_outlier_mad_factor": args.direction_outlier_mad_factor,
         "update_clip": None,
@@ -365,6 +374,7 @@ def main() -> None:
             "betas",
             "adam_epsilon",
             "robust_direction_filter",
+            "invalid_direction_policy",
             "direction_outlier_ratio",
             "direction_outlier_mad_factor",
             "flow_method",
@@ -543,32 +553,40 @@ def main() -> None:
                 invalid_direction = np.zeros(args.directions, dtype=bool)
                 outlier_direction = np.zeros(args.directions, dtype=bool)
                 adaptive_delta_limit = None
-            gradient, _ = gradient_from_pairs(
-                0.5 * used_delta,
-                -0.5 * used_delta,
-                directions,
-                args.perturbation,
-                delta_clip=None,
-            )
-            gradient_rms = rms(gradient)
-            if not math.isfinite(gradient_rms):
-                raise RuntimeError(f"non-finite gradient at iteration {iteration}")
-
             previous_first_moment = first_moment.copy()
-            first_moment = (
-                args.beta1 * first_moment + (1.0 - args.beta1) * gradient
+            gradient_step_applied = not (
+                args.robust_direction_filter and np.any(invalid_direction)
             )
-            second_moment = (
-                args.beta2 * second_moment
-                + (1.0 - args.beta2) * gradient * gradient
-            )
-            first_hat = first_moment / (1.0 - args.beta1**iteration)
-            second_hat = second_moment / (1.0 - args.beta2**iteration)
-            update = (
-                args.learning_rate
-                * first_hat
-                / (np.sqrt(second_hat) + args.adam_epsilon)
-            )
+            if gradient_step_applied:
+                gradient, _ = gradient_from_pairs(
+                    0.5 * used_delta,
+                    -0.5 * used_delta,
+                    directions,
+                    args.perturbation,
+                    delta_clip=None,
+                )
+                gradient_rms = rms(gradient)
+                if not math.isfinite(gradient_rms):
+                    raise RuntimeError(f"non-finite gradient at iteration {iteration}")
+                adam_step += 1
+                first_moment = (
+                    args.beta1 * first_moment + (1.0 - args.beta1) * gradient
+                )
+                second_moment = (
+                    args.beta2 * second_moment
+                    + (1.0 - args.beta2) * gradient * gradient
+                )
+                first_hat = first_moment / (1.0 - args.beta1**adam_step)
+                second_hat = second_moment / (1.0 - args.beta2**adam_step)
+                update = (
+                    args.learning_rate
+                    * first_hat
+                    / (np.sqrt(second_hat) + args.adam_epsilon)
+                )
+            else:
+                gradient = np.zeros_like(raw_gradient)
+                gradient_rms = 0.0
+                update = np.zeros_like(raw_gradient)
             update_rms = rms(update)
             current_noise = (current_noise.astype(np.float64) + update).astype(np.float32)
 
@@ -637,6 +655,8 @@ def main() -> None:
                 "filtered_invalid_directions": invalid_direction.tolist(),
                 "filtered_outlier_directions": outlier_direction.tolist(),
                 "adaptive_direction_delta_limit": adaptive_delta_limit,
+                "gradient_step_applied": gradient_step_applied,
+                "adam_step": adam_step,
                 "raw_gradient_rms": rms(raw_gradient),
                 "gradient_rms": gradient_rms,
                 "first_moment_rms": rms(first_moment),
@@ -680,6 +700,7 @@ def main() -> None:
                 best_noise=best_noise,
                 first_moment=first_moment,
                 second_moment=second_moment,
+                adam_step=adam_step,
                 iteration=iteration,
                 rng=rng,
             )
@@ -717,6 +738,7 @@ def main() -> None:
         "best_score": best_score,
         "best_iteration": best_iteration,
         "completed_iterations": completed_iterations,
+        "completed_adam_steps": adam_step,
         "total_wall_s": total_wall_s,
         "mean_iteration_wall_s": (
             float(np.mean([row["iteration_wall_s"] for row in history]))

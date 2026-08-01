@@ -312,6 +312,18 @@ def disjoint_train_validation_indices(
     return training_pool, validation
 
 
+def alpha_coordinates_from_volume_points(points: dict) -> dict[str, np.ndarray]:
+    grad_psi = np.asarray(points["grad_psi"])
+    return {
+        "rho": np.asarray(points["rho"]),
+        "theta": np.asarray(points["theta"]),
+        "phi": np.asarray(points["phi"]),
+        "grad_psi": grad_psi,
+        "cross_theta": np.cross(grad_psi, points["grad_theta"]),
+        "cross_phi": np.cross(grad_psi, points["grad_phi"]),
+    }
+
+
 def physical_coordinate_data(
     model: PsiModel,
     calibration: FluxCalibration,

@@ -23,6 +23,7 @@ if str(ROOT) not in sys.path:
 from stellarator_eval.alpha_clebsch import (
     AlphaFitResult,
     FluxCalibration,
+    alpha_coordinates_from_volume_points,
     calibrate_toroidal_flux,
     disjoint_train_validation_indices,
     evaluate_alpha_fit,
@@ -67,16 +68,6 @@ def sample_bfield(gpu_field, R, Z, phi, *, precision: str) -> np.ndarray:
         gpu_field, R, Z, phi, precision=precision
     )
     return np.column_stack([br, bphi, bz])
-
-
-def alpha_coordinates_from_volume_points(points: dict) -> dict[str, np.ndarray]:
-    return {
-        "rho": np.asarray(points["rho"]),
-        "theta": np.asarray(points["theta"]),
-        "phi": np.asarray(points["phi"]),
-        "cross_theta": np.cross(points["grad_psi"], points["grad_theta"]),
-        "cross_phi": np.cross(points["grad_psi"], points["grad_phi"]),
-    }
 
 
 def save_fit(path: Path, result: AlphaFitResult) -> None:

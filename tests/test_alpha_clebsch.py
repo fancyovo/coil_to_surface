@@ -3,6 +3,7 @@ import numpy as np
 from stellarator_eval.alpha_clebsch import (
     AlphaFitResult,
     ClebschMode,
+    alpha_coordinates_from_volume_points,
     build_clebsch_modes,
     disjoint_train_validation_indices,
     evaluate_alpha_fit,
@@ -75,3 +76,24 @@ def test_accelerated_alpha_sampling_uses_disjoint_splits():
     assert len(validation) == 60
     assert len(np.intersect1d(training, validation)) == 0
     np.testing.assert_array_equal(np.sort(np.r_[training, validation]), np.arange(180))
+
+
+def test_accelerated_alpha_coordinates_preserve_physical_flux_gradient():
+    points = {
+        "rho": np.asarray([0.2, 0.8]),
+        "theta": np.asarray([0.1, -0.3]),
+        "phi": np.asarray([0.0, 0.2]),
+        "grad_psi": np.asarray([[1.0, 2.0, 3.0], [0.5, -1.0, 2.0]]),
+        "grad_theta": np.asarray([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]),
+        "grad_phi": np.asarray([[0.0, 0.0, 1.0], [0.0, 2.0, 0.0]]),
+    }
+    coordinates = alpha_coordinates_from_volume_points(points)
+    np.testing.assert_array_equal(coordinates["grad_psi"], points["grad_psi"])
+    np.testing.assert_allclose(
+        coordinates["cross_theta"],
+        np.cross(points["grad_psi"], points["grad_theta"]),
+    )
+    np.testing.assert_allclose(
+        coordinates["cross_phi"],
+        np.cross(points["grad_psi"], points["grad_phi"]),
+    )

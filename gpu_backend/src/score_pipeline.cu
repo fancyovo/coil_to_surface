@@ -1169,7 +1169,9 @@ bool screen_surfaces_native(
     }
 
     std::vector<int> verify_indices;
-    for (int index = levels - 1; index >= 0 && verify_indices.size() < 6; --index) {
+    // Long-horizon selection walks inward, so every strict candidate needs
+    // high-precision verification before it can participate in that search.
+    for (int index = levels - 1; index >= 0; --index) {
         if (screens[index].strict) verify_indices.push_back(index);
     }
     if (!verify_indices.empty()) {

@@ -140,12 +140,27 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Analyze native-score Adam trajectories across IID start scores.")
     parser.add_argument("--panel-manifest", type=Path, required=True)
     parser.add_argument("--run-root", type=Path, required=True)
+    parser.add_argument(
+        "--start-ids",
+        help="Optional comma-separated subset of panel start IDs to analyze.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     panel = load_json(args.panel_manifest)
+    if args.start_ids:
+        selected_ids = {int(value) for value in args.start_ids.split(",")}
+        panel = {
+            **panel,
+            "starts": [
+                start for start in panel["starts"] if int(start["start_id"]) in selected_ids
+            ],
+        }
+        found_ids = {int(start["start_id"]) for start in panel["starts"]}
+        if found_ids != selected_ids:
+            raise ValueError(f"requested start IDs are absent from panel: {selected_ids - found_ids}")
     summary, rows = analyze(panel, args.run_root)
     (args.run_root / "sweep_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     with (args.run_root / "trajectory_summary.jsonl").open("w", encoding="utf-8") as stream:

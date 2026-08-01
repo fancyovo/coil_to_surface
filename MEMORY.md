@@ -692,14 +692,12 @@ new physics.
 - Job `30395` completed the 58.1514 sample's fixed downstream evaluation `0:0`
   in 5 min 40 s. Delivery validation passed and found all eight successful DESC
   PNGs cited in the report.
-- Student background collector `30399` was submitted after full evaluation and
-  is running independently. Foreground array `30406_[5-7]` is filling in the missing
-  40-step $\eta=0.01$ starts; task 5 failed before scoring from a transient
-  multiprocessing current-working-directory `ENOENT`, while task 6 continued.
-  Dependent array `30411_[10-11]` will resume saved Adam state to 200 total
-  iterations. Resume smoke `30403_11` completed `0:0`: saved step-23 score
-  `46.79922624460454` re-decoded as `46.799226244603915`, then step 24 reached
-  `46.928647862147294`, proving state/momentum/RNG/history continuity.
+- Student background collector `30399` is running independently. The corrected
+  $\eta=0.01$ panel now has complete starts 0--10. Jobs `30406_6/7` completed;
+  task 5's pre-score cwd `ENOENT` failure was archived and replacement
+  `30455_5` completed `0:0` in 13 min 58 s, improving `11.97646 -> 25.58460`.
+  The cwd fix is to launch optimizer workers from `/`. Resume smoke `30403_11`
+  proved state/momentum/RNG/history continuity before the long resume.
 - On 2026-08-01, inspection of the active $\eta=0.01$ `start_10` trajectory
   found that hard score gates, not only Adam beta choices, dominate some local
   failures. Step 93 reached score `59.3632156562` with all probes `ok` and
@@ -714,14 +712,24 @@ new physics.
   an explicit smoothness check; a full 300-dimensional Hessian is out of scope.
   Detailed evidence and the proposed beta comparison are in
   `reports/qh_random_start_score_adam_report.md` section 8.
-- On 2026-08-01, the user changed the active experiment after `start_10` was
-  nearly complete. Array element `30411_11` was cancelled before startup
-  (`CANCELLED`, zero elapsed); `30411_10` remains the only foreground Adam
-  element and must finish normally. The next objective is to report the other
-  11 Adam starts, then test a genuinely local superlinear method from the
-  saved `start_10` best. If it improves score, apply the same fixed protocol
-  to prior Adam best cases with current native score above 40, including the
-  best $\eta=0.003$ endpoint. Do not restart `start_11` unless requested.
+- Long-resume element `30411_10` completed `0:0` at 200/200 steps in 51 min
+  58 s for the resumed segment. Its re-decoded initial score was `38.65902`,
+  step-40 best was `55.41755`, and final/best score was `59.9799763154` at
+  step 200; total trajectory numerical wall time was `4902.43 s`. Exactly
+  3/200 iterations contained invalid probes, but they produced gradient RMS
+  `743--1029` and update RMS about `0.006`, dominating local regressions despite
+  99.6875% mean endpoint validity. Array element `30411_11` was cancelled
+  before startup (`CANCELLED`, zero elapsed) by user request and must not be
+  restarted unless requested. Across starts 0--10, the mean 40-step best gain
+  was `12.2813` for $\eta=0.01$ versus `7.2086` for $\eta=0.003$; detailed
+  trajectories are in `reports/qh_random_start_score_adam_report.md` sections
+  8--9 and `reports/assets/qh_score_adam_eta001_start_sweep_20260731/`.
+- Local fixed-subspace damped BFGS with $h/h/2$ smoothness checks, trust-radius
+  capping, and batched line search was implemented at commit `771c4d3`; the
+  complete local suite has 107 passing tests. The immediate task is to pilot it
+  from the score-59.98 `start_10` best. Only if it improves should the same
+  fixed protocol be applied to prior Adam best cases above score 40, including
+  the best $\eta=0.003$ endpoint.
 
 ### 2026-07-31
 

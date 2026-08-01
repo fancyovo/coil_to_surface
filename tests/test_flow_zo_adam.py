@@ -10,6 +10,7 @@ from scripts.optimize_flow_prior_zo_adam import (
     orthogonal_directions,
     prior_penalty_and_gradient,
 )
+from scripts.optimize_flow_prior_standard_adam import robust_direction_deltas
 
 
 def test_load_initial_noise_accepts_generic_start(tmp_path):
@@ -87,6 +88,38 @@ def test_direction_delta_clipping_limits_gradient_contribution():
     )
     np.testing.assert_allclose(raw_delta, [100.0])
     np.testing.assert_allclose(gradient, [[4.0, -4.0]])
+
+
+def test_robust_direction_filter_drops_invalid_and_rescales_valid_directions():
+    used, invalid, outlier, limit = robust_direction_deltas(
+        np.asarray([-58.0, -0.5, -57.0, -0.2]),
+        ["no_axis", "ok", "no_axis", "ok", "ok", "ok", "ok", "ok"],
+        outlier_ratio=8.0,
+        mad_factor=8.0,
+    )
+
+    np.testing.assert_array_equal(invalid, [True, False, True, False])
+    np.testing.assert_array_equal(outlier, [False, False, False, False])
+    np.testing.assert_allclose(used, [0.0, -1.0, 0.0, -0.4])
+    assert limit is None
+
+
+def test_robust_direction_filter_is_scale_invariant_for_valid_outlier():
+    statuses = ["ok"] * 8
+    delta = np.asarray([0.4, 0.5, 0.6, 100.0])
+    used, invalid, outlier, limit = robust_direction_deltas(
+        delta, statuses, outlier_ratio=8.0, mad_factor=8.0
+    )
+    scaled, scaled_invalid, scaled_outlier, scaled_limit = robust_direction_deltas(
+        100.0 * delta, statuses, outlier_ratio=8.0, mad_factor=8.0
+    )
+
+    np.testing.assert_array_equal(invalid, np.zeros(4, dtype=bool))
+    np.testing.assert_array_equal(outlier, [False, False, False, True])
+    np.testing.assert_array_equal(scaled_invalid, invalid)
+    np.testing.assert_array_equal(scaled_outlier, outlier)
+    np.testing.assert_allclose(scaled, 100.0 * used)
+    assert np.isclose(scaled_limit, 100.0 * limit)
 
 
 def test_prior_penalty_is_inactive_inside_soft_region():

@@ -23,6 +23,12 @@ run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam/${SLURM_JOB_ID}}"
 iterations="${ITERATIONS:-60}"
 max_wall_s="${MAX_WALL_S:-1500}"
 learning_rate="${LEARNING_RATE:?LEARNING_RATE is required}"
+perturbation="${PERTURBATION:-0.01}"
+beta1="${BETA1:-0.9}"
+beta2="${BETA2:-0.999}"
+robust_direction_filter="${ROBUST_DIRECTION_FILTER:-0}"
+direction_outlier_ratio="${DIRECTION_OUTLIER_RATIO:-8.0}"
+direction_outlier_mad_factor="${DIRECTION_OUTLIER_MAD_FACTOR:-8.0}"
 seed="${SEED:-2026073004}"
 initial_case="${INITIAL_CASE:-}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
@@ -54,6 +60,13 @@ initial_args=()
 if [[ -n "$initial_case" ]]; then
   test -f "$initial_case"
   initial_args+=(--initial-case "$initial_case")
+fi
+robust_gradient_args=(
+  --direction-outlier-ratio "$direction_outlier_ratio"
+  --direction-outlier-mad-factor "$direction_outlier_mad_factor"
+)
+if [[ "$robust_direction_filter" == "1" ]]; then
+  robust_gradient_args+=(--robust-direction-filter)
 fi
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 source "$HOME/coil/.venv/bin/activate"
@@ -87,7 +100,11 @@ python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --iterations "$iterations" \
   --max-wall-s "$max_wall_s" \
   --learning-rate "$learning_rate" \
+  --perturbation "$perturbation" \
+  --beta1 "$beta1" \
+  --beta2 "$beta2" \
   --seed "$seed" \
+  "${robust_gradient_args[@]}" \
   "${initial_args[@]}" &
 children+=("$!")
 wait "${children[0]}"

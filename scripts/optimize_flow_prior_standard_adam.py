@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.optimize_flow_prior_zo_adam import (
     TOKEN_DIM,
+    cosine_similarity,
     decode_noise_rk4,
     diagnostics_value,
     gradient_from_pairs,
@@ -40,6 +41,44 @@ from scripts.optimize_native_score_cem import (
 
 def parse_ints(value: str) -> tuple[int, ...]:
     return tuple(int(item) for item in value.split(",") if item.strip())
+
+
+def robust_direction_deltas(
+    raw_delta: np.ndarray,
+    pair_statuses: list[str | None],
+    *,
+    outlier_ratio: float,
+    mad_factor: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float | None]:
+    raw_delta = np.asarray(raw_delta, dtype=np.float64)
+    count = raw_delta.size
+    if len(pair_statuses) != 2 * count:
+        raise ValueError("pair status count does not match directional deltas")
+    valid = np.asarray(
+        [
+            pair_statuses[index] == "ok" and pair_statuses[index + count] == "ok"
+            for index in range(count)
+        ],
+        dtype=bool,
+    )
+    used = raw_delta.copy()
+    used[~valid] = 0.0
+    outlier = np.zeros(count, dtype=bool)
+    adaptive_limit = None
+    valid_count = int(np.count_nonzero(valid))
+    if valid_count >= 3:
+        magnitudes = np.abs(raw_delta[valid])
+        median = float(np.median(magnitudes))
+        mad = float(np.median(np.abs(magnitudes - median)))
+        adaptive_limit = max(
+            outlier_ratio * max(median, np.finfo(np.float64).eps),
+            median + mad_factor * 1.4826 * mad,
+        )
+        outlier = valid & (np.abs(raw_delta) > adaptive_limit)
+        used[outlier] = np.sign(used[outlier]) * adaptive_limit
+    if valid_count > 0:
+        used *= count / valid_count
+    return used, ~valid, outlier, adaptive_limit
 
 
 def make_best_case(
@@ -106,7 +145,12 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
     axes[0, 1].plot(iterations, [row["current_qp_error"] for row in rows], label="QP")
     axes[0, 1].set(ylabel="volume residual", title="Helicity diagnostics")
     axes[0, 1].legend()
-    axes[1, 0].plot(iterations, [row["gradient_rms"] for row in rows], label="gradient RMS")
+    axes[1, 0].plot(
+        iterations,
+        [row.get("raw_gradient_rms", row["gradient_rms"]) for row in rows],
+        label="raw gradient RMS",
+    )
+    axes[1, 0].plot(iterations, [row["gradient_rms"] for row in rows], label="used gradient RMS")
     axes[1, 0].plot(iterations, [row["update_rms"] for row in rows], label="update RMS")
     axes[1, 0].set(yscale="log", ylabel="latent scale", xlabel="iteration")
     axes[1, 0].legend()
@@ -150,6 +194,9 @@ def main() -> None:
     parser.add_argument("--beta1", type=float, default=0.9)
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
+    parser.add_argument("--robust-direction-filter", action="store_true")
+    parser.add_argument("--direction-outlier-ratio", type=float, default=8.0)
+    parser.add_argument("--direction-outlier-mad-factor", type=float, default=8.0)
     parser.add_argument("--gpus", default="0,1,2,3")
     parser.add_argument("--batch-timeout-s", type=float, default=300.0)
     parser.add_argument("--max-wall-s", type=float, default=1500.0)
@@ -179,6 +226,8 @@ def main() -> None:
         raise ValueError("learning rate and perturbation must be positive")
     if not 0.0 < args.beta1 < 1.0 or not 0.0 < args.beta2 < 1.0:
         raise ValueError("Adam betas must be in (0, 1)")
+    if args.direction_outlier_ratio <= 1.0 or args.direction_outlier_mad_factor <= 0.0:
+        raise ValueError("direction outlier controls must be conservative and positive")
     if args.adam_epsilon <= 0.0 or args.plot_every < 1:
         raise ValueError("Adam epsilon and plot-every must be positive")
     if not gpu_ids:
@@ -283,7 +332,9 @@ def main() -> None:
         "adam_epsilon": args.adam_epsilon,
         "learning_rate_schedule": "constant",
         "weight_decay": 0.0,
-        "gradient_delta_clip": None,
+        "robust_direction_filter": args.robust_direction_filter,
+        "direction_outlier_ratio": args.direction_outlier_ratio,
+        "direction_outlier_mad_factor": args.direction_outlier_mad_factor,
         "update_clip": None,
         "parameter_clip": None,
         "proposal_search": None,
@@ -313,6 +364,9 @@ def main() -> None:
             "learning_rate",
             "betas",
             "adam_epsilon",
+            "robust_direction_filter",
+            "direction_outlier_ratio",
+            "direction_outlier_mad_factor",
             "flow_method",
             "flow_steps",
             "checkpoint_sha256",
@@ -464,9 +518,34 @@ def main() -> None:
             pair_scores = np.asarray(
                 [result_score(result) for result in pair_results], dtype=np.float64
             )
-            gradient, raw_delta = gradient_from_pairs(
+            raw_gradient, raw_delta = gradient_from_pairs(
                 pair_scores[: args.directions],
                 pair_scores[args.directions :],
+                directions,
+                args.perturbation,
+                delta_clip=None,
+            )
+            pair_statuses = [
+                None if result is None else result.get("status")
+                for result in pair_results
+            ]
+            if args.robust_direction_filter:
+                used_delta, invalid_direction, outlier_direction, adaptive_delta_limit = (
+                    robust_direction_deltas(
+                        raw_delta,
+                        pair_statuses,
+                        outlier_ratio=args.direction_outlier_ratio,
+                        mad_factor=args.direction_outlier_mad_factor,
+                    )
+                )
+            else:
+                used_delta = raw_delta
+                invalid_direction = np.zeros(args.directions, dtype=bool)
+                outlier_direction = np.zeros(args.directions, dtype=bool)
+                adaptive_delta_limit = None
+            gradient, _ = gradient_from_pairs(
+                0.5 * used_delta,
+                -0.5 * used_delta,
                 directions,
                 args.perturbation,
                 delta_clip=None,
@@ -475,6 +554,7 @@ def main() -> None:
             if not math.isfinite(gradient_rms):
                 raise RuntimeError(f"non-finite gradient at iteration {iteration}")
 
+            previous_first_moment = first_moment.copy()
             first_moment = (
                 args.beta1 * first_moment + (1.0 - args.beta1) * gradient
             )
@@ -551,12 +631,23 @@ def main() -> None:
                     np.mean([result_valid(result) for result in pair_results])
                 ),
                 "pair_scores": pair_scores.tolist(),
-                "pair_statuses": [
-                    None if result is None else result.get("status")
-                    for result in pair_results
-                ],
+                "pair_statuses": pair_statuses,
                 "raw_direction_deltas": raw_delta.tolist(),
+                "used_direction_deltas": used_delta.tolist(),
+                "filtered_invalid_directions": invalid_direction.tolist(),
+                "filtered_outlier_directions": outlier_direction.tolist(),
+                "adaptive_direction_delta_limit": adaptive_delta_limit,
+                "raw_gradient_rms": rms(raw_gradient),
                 "gradient_rms": gradient_rms,
+                "first_moment_rms": rms(first_moment),
+                "second_moment_root_mean": float(np.sqrt(np.mean(second_moment))),
+                "gradient_previous_moment_cosine": cosine_similarity(
+                    gradient, previous_first_moment
+                ),
+                "update_gradient_cosine": cosine_similarity(update, gradient),
+                "update_previous_moment_cosine": cosine_similarity(
+                    update, previous_first_moment
+                ),
                 "update_rms": update_rms,
                 "learning_rate": args.learning_rate,
                 "perturbation": args.perturbation,

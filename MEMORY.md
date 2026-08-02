@@ -38,7 +38,19 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- Active local and remote branch: `qh-flow-score-regression-proxy`, created from
+- Active local branch: `qh-flow-screened-adam`, created from
+  `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
+  on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-
+  coil condition and, for each independent seed, decodes and native-scores 128
+  IID Gaussian flow latents on CUDA, selects the highest current-production
+  score, then runs 50 steps of the validated robust low-momentum Adam policy
+  (`eta=0.01`, `beta1=0.5`, `beta2=0.999`, perturbation `0.005`, four
+  antithetic directions, FP32 RK4-256). It records candidate-selection, Adam,
+  and exact end-to-end wall times. No full physical evaluation belongs to this
+  experiment unless the user explicitly requests one. Remote submission and
+  numerical results are pending.
+
+- Previous completed branch: `qh-flow-score-regression-proxy`, created from
   `qh-flow-latent-proxy` at `da734e4a89a883237e0a65177a7b40795174e312`
   on 2026-08-02. This branch owns the completed frozen-corpus
   latent-to-native-score regression experiment. Delivery commit

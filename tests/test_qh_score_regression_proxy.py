@@ -195,7 +195,7 @@ def test_cpu_regression_training_writes_heldout_outputs(tmp_path: Path, monkeypa
     train_qh_latent_score_regressor.main()
     summary = json.loads((output / "evaluation_summary.json").read_text(encoding="utf-8"))
     assert summary["test"]["count"] == manifest["splits"]["test"]["count"]
-    assert summary["checkpoint"]["step"] >= 1
+    assert summary["checkpoint"]["step"] >= 0
     assert (output / "test_prediction_scatter.png").is_file()
     assert (output / "test_calibration_distribution.png").is_file()
     assert (output / "test_high_prediction_tail.png").is_file()

@@ -343,14 +343,14 @@ def plot_test(
     figure.savefig(output_dir / "test_prediction_scatter.png", dpi=210)
     plt.close(figure)
 
-    edges = np.quantile(predicted, np.linspace(0.0, 1.0, 11))
-    bins = np.digitize(predicted, edges[1:-1], right=True)
     bin_predicted = []
     bin_actual = []
     bin_p10 = []
     bin_p90 = []
-    for index in range(10):
-        selected = bins == index
+    ranked_bins = np.array_split(
+        np.argsort(predicted, kind="stable"), min(10, len(predicted))
+    )
+    for selected in ranked_bins:
         bin_predicted.append(float(np.mean(predicted[selected])))
         bin_actual.append(float(np.mean(actual[selected])))
         bin_p10.append(float(np.quantile(actual[selected], 0.10)))

@@ -164,18 +164,25 @@ once the task is accepted.
   `ok=24060`, `no_axis=14970`, `no_surface=3975`,
   `drift_rejected=12253`, and `flux_rejected=426`. Refresh this count at every
   later delivery because both collectors continue to append shards.
-- The active 2026-08-02 proxy experiment replaces the earlier inverse-QUASR
-  binary label with the current production native score divided by 100. Its
-  output is sigmoid-bounded to `(0,1)` and trained with MSE. The frozen dataset
-  must include only rows labeled by score library SHA-256 `4bf7a12e...`, use
-  disjoint deterministic train/validation/test splits, and ignore shards
-  appended after the snapshot. Checkpoint selection uses validation MSE only;
-  training may stop before its generous hard cap only after validation loss
-  has risen persistently beyond the best point and all scheduled learning-rate
-  reductions have been exhausted. The new report must include the full frozen
-  score distribution, independent test scatter/calibration, overall and
-  stratified correlations, and actual-score behavior for predictions above 20
-  and 30.
+- The 2026-08-02 latent-score regression experiment is complete. It used the
+  current production native score divided by 100, sigmoid output, and MSE on a
+  frozen 43,584-row current-library snapshot with disjoint deterministic
+  34,868/4,358/4,358 train/validation/test splits. The final 717,415-parameter
+  model explicitly conditions on `nfp` and `n_coils`, starts exactly from the
+  train-set `(nfp,n_coils)` score-mean baseline, and learns only a latent
+  residual. Job `30769` completed `0:0` in 1:40; it selected step 75, continued
+  through step 2,475 and all four LR reductions, and observed a persistent
+  validation rise. Its checkpoint SHA-256 is
+  `73a523acb34635fd95f630d44eab48c79d51917b05be8b435d2dfe9f5ed201e3`.
+  On independent test it reached RMSE/MAE/R2/Pearson/Spearman
+  `4.0255/3.0882/0.1573/0.3971/0.3975`, only slightly better than the condition
+  baseline `4.0467/3.1057/0.1484/0.3854/0.3808`. Its prediction range is only
+  `0.450--7.226`, so it emitted no prediction above 10 despite 34 actual test
+  scores above 20 and seven above 30. The model is valid negative evidence for
+  absolute high-score regression, not an accepted high-score proxy. Full
+  frozen-corpus distribution, convergence evidence, test plots, and tail
+  analysis are in `reports/qh_latent_score_regression_proxy_report.md` and
+  `reports/assets/qh_score_regression_proxy_30767/`, `30768/`, and `30769/`.
 - Foreground four-GPU score-regression job `30767` completed `0:0` on
   `anode01` in 2:55. It froze 43,584 current-library rows from 681 shards and
   excluded 15,556 old-library rows; the deterministic split is
@@ -186,9 +193,10 @@ once the task is accepted.
   baseline (`4.0467/0.3854/0.3808/0.1484`). It emitted no test prediction above
   10 even though test contains 34 actual scores above 20 and seven above 30;
   this first checkpoint SHA-256 `57e0a2a8...e286e22` is valid negative evidence,
-  not an accepted screening proxy. A second controlled run must reuse the same
-  frozen split, explicitly embed `n_coils`, and reduce model capacity while
-  preserving sigmoid output and MSE. Low-priority
+  not an accepted screening proxy. Controlled job `30768` added explicit
+  `n_coils` and reduced capacity; it completed `0:0` in 1:30 and improved test
+  RMSE to `4.0593` but still did not beat the condition-mean baseline. Job
+  `30769` is the final baseline-anchored result recorded above. Low-priority
   P107 collector `30747` was intentionally cancelled after 1:12:18 to release
   the four GPUs and must be restored after foreground acceptance; Student
   collector `30594` remains running. Jobs `30765` and `30766` are invalid
@@ -198,6 +206,10 @@ once the task is accepted.
   `SLURM_SUBMIT_DIR`. Future submissions must use
   `scripts/submit_qh_score_regressor.sh`, which pins both `--chdir` and the
   exported `PROJECT` path.
+- Delivery code fixes rank-based calibration bins so tied predictions cannot
+  create empty quantile bins, and accepts step 0 as the valid selected
+  checkpoint when no learned residual beats the condition baseline. The full
+  local suite passes: `122 passed`.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$

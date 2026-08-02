@@ -155,10 +155,11 @@ once the task is accepted.
   `30594` and independent low-priority P107 four-GPU job `30777` are running;
   `30777` has `Nice=10000`, no dependency, uses synchronized commit `a56b160`,
   and passed stable-production acceptance by atomically writing one 64-row
-  shard on each rank. Metadata-only recount job `30781` completed `0:0` on
-  2026-08-02: the unified append-only corpus contained exactly 60,548 completed
-  samples in 948 shards from 32 streams, with `ok=26121`, `no_axis=16268`,
-  `no_surface=4340`, `drift_rejected=13356`, and `flux_rejected=463`. Refresh
+  shard on each rank. Final metadata-only recount job `30783` completed `0:0`
+  on 2026-08-02: the unified append-only corpus contained exactly 60,740
+  completed samples in 951 shards from 32 streams, with `ok=26207`,
+  `no_axis=16318`, `no_surface=4357`, `drift_rejected=13394`, and
+  `flux_rejected=464`. Refresh
   this count at every later delivery because both collectors continue to append
   shards. Recount job `30780` is invalid launch-only evidence (`127:0`, zero
   seconds, no numerical work): Slurm `--wrap` used `/bin/sh`, where `source`

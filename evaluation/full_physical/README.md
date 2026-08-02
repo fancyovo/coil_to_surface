@@ -12,7 +12,7 @@
    alpha 默认使用 `gpu-ray`。若某个外层候选仅因固定点数采样器的 95% 有效射线预算而在 alpha 前失败，
    可对该候选显式设置 `ALPHA_SAMPLING_BACKEND=legacy-cartesian` 后写入新的重跑目录；不得降低有效射线门槛，
    也不得覆盖原失败目录。该回退只改变 alpha 取点实现，后续标准 LS/Newton 和独立验收不变。
-3. `select_largest_standard_surface.py`：只按标准 LS/Newton 的最终验证结果选择最大已测通过面；默认要求至少有一个更外侧失败点，否则要求继续外扩。
+3. `select_largest_standard_surface.py`：按标准 LS/Newton 的最终验证结果和嵌套分支连续性选择最大已测通过面；形式上收敛但封闭体积随 `s` 外扩反而减小的结果会被判为内支跳转。默认要求至少有一个更外侧失败点，否则要求继续外扩。
 4. `submit_downstream.sh`：对选中的唯一 `boozer_standard.npz` 运行庞加莱、Boozer 场图、三维 HTML 和 DESC。直接 Boozer 与 DESC 的 $|B|$ 图均固定为白底彩色等高线，颜色表示 $|B|$ 大小，不使用热力图或填色等高线。
 5. `validate_delivery.sh`：检查固定原始产物，并确认全部 DESC PNG 已在报告中逐张引用。
 

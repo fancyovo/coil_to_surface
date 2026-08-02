@@ -235,7 +235,9 @@ def test_vacuum_G_uses_signed_toroidal_flux():
     currents = np.asarray([2.0, -3.0, 5.0])
     positive = vacuum_G(currents, 4, 0.02)
     negative = vacuum_G(currents, 4, -0.02)
-    assert positive > 0.0
+    linked_current = 2 * 4 * np.sum(np.abs(currents))
+    expected = 4.0e-7 * np.pi * linked_current / (2.0 * np.pi)
+    np.testing.assert_allclose(positive, expected, rtol=0.0, atol=1.0e-20)
     np.testing.assert_allclose(negative, -positive)
 
 

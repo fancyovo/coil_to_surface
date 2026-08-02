@@ -38,6 +38,19 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-02 the user permanently stopped routine latent-score collection
+  because the shared $G$ convention bug invalidates the old score calibration
+  and prior proxy experiments did not justify further accumulation. Known
+  collectors `30594` (Students) and `30859` (P107) were explicitly cancelled
+  and confirmed `CANCELLED` with `0:0` after elapsed times `21:26:18` and
+  `04:00:33`. Do not launch or report corpus collectors again unless the user
+  explicitly reverses this instruction. Ignore unrelated future Student jobs;
+  project GPU work should use the four P107 RTX 5090 GPUs only.
+- Active local branch: `qh-volume-qs-g-fix`, created from
+  `qh-flow-screened-adam` at `d5e5689` on 2026-08-02. It owns the versioned
+  correction of the differential volume-QS convention, fixed 1024+1024 score
+  calibration, same-start 200-step Adam comparison, and complete physical
+  evaluation requested after the audit.
 - On 2026-08-02, a focused audit of the differential volume-QS metric found a
   definitive shared Python/C++/CUDA convention bug. The volume pipeline uses
   radian angles and toroidal flux divided by $2\pi$, so the Boozer covariant
@@ -56,7 +69,12 @@ once the task is accepted.
   below QA/QP. Therefore old volume-QS components, QH competitor gates, and
   total-score physical calibration are superseded pending a versioned fix and
   threshold recalibration; old geometries and independent full evaluations
-  remain valid. No production code or score ABI was changed in this audit.
+  remain valid. The audit-only state is now superseded by the active
+  `qh-volume-qs-g-fix` branch: Python and CUDA use
+  $G=\mu_0I_{\mathrm{link}}/(2\pi)$, score ABI is 9, explicit raw and
+  per-helicity diagnostics are exposed, and score composition consumes only
+  the explicit per-helicity fields. The complete local suite passes with
+  `126 passed`; remote compilation and numerical acceptance are still pending.
   Collector rows preserve `nfp`, `n_base_coils`, and every coil's complete
   decoded `x[33],y[33],z[33],current_A` token, so all collected cases can be
   exactly re-scored with a corrected versioned CUDA library without re-running
@@ -65,7 +83,7 @@ once the task is accepted.
   not stored; rescoring from the preserved decoded tokens is required.
   Full evidence and the correction plan are in
   `reports/qh_differential_qs_metric_investigation.md`.
-- Active local branch: `qh-flow-screened-adam`, created from
+- Previous completed branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-
   coil condition and, for each independent seed, decodes and native-scores 128

@@ -27,7 +27,7 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 8
+SGPU_SCORE_ABI_VERSION = 9
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",
@@ -205,7 +205,14 @@ class _SgpuScoreResult(ctypes.Structure):
         ("qs_edge_error", ctypes.c_double),
         ("qs_qa_global_error", ctypes.c_double),
         ("qs_qp_global_error", ctypes.c_double),
+        ("qs_vacuum_G", ctypes.c_double),
+        ("qs_target_global_error_per_helicity", ctypes.c_double),
+        ("qs_target_edge_error_per_helicity", ctypes.c_double),
+        ("qs_qa_global_error_per_helicity", ctypes.c_double),
+        ("qs_qp_global_error_raw", ctypes.c_double),
+        ("qs_qp_global_error_per_helicity", ctypes.c_double),
         ("qs_abs_p95", ctypes.c_double),
+        ("qs_abs_p95_per_helicity", ctypes.c_double),
         ("volume_valid_fraction", ctypes.c_double),
         ("volume_weight_effective_fraction", ctypes.c_double),
         ("edge_weight_effective_fraction", ctypes.c_double),

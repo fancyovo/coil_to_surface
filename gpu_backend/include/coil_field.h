@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 8u
+#define SGPU_SCORE_ABI_VERSION 9u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
@@ -197,7 +197,14 @@ struct SgpuScoreResult {
     double qs_edge_error;
     double qs_qa_global_error;
     double qs_qp_global_error;
+    double qs_vacuum_G;
+    double qs_target_global_error_per_helicity;
+    double qs_target_edge_error_per_helicity;
+    double qs_qa_global_error_per_helicity;
+    double qs_qp_global_error_raw;
+    double qs_qp_global_error_per_helicity;
     double qs_abs_p95;
+    double qs_abs_p95_per_helicity;
     double volume_valid_fraction;
     double volume_weight_effective_fraction;
     double edge_weight_effective_fraction;

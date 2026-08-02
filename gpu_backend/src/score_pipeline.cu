@@ -133,7 +133,14 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->qs_edge_error = nan;
     result->qs_qa_global_error = nan;
     result->qs_qp_global_error = nan;
+    result->qs_vacuum_G = nan;
+    result->qs_target_global_error_per_helicity = nan;
+    result->qs_target_edge_error_per_helicity = nan;
+    result->qs_qa_global_error_per_helicity = nan;
+    result->qs_qp_global_error_raw = nan;
+    result->qs_qp_global_error_per_helicity = nan;
     result->qs_abs_p95 = nan;
+    result->qs_abs_p95_per_helicity = nan;
     result->volume_valid_fraction = nan;
     result->volume_weight_effective_fraction = nan;
     result->edge_weight_effective_fraction = nan;
@@ -3030,7 +3037,8 @@ bool compute_qs_metric_native(
         fail_result(&result, "QS metric requires nonzero signed toroidal flux");
         return false;
     }
-    const double G_magnitude = 4.0e-7 * PI * 2.0 * nfp * current_sum;
+    // The volume coordinates use radian angles, so G = mu0 I_link / (2 pi).
+    const double G_magnitude = 2.0e-7 * 2.0 * nfp * current_sum;
     const double G = std::copysign(G_magnitude, edge_toroidal_flux);
     const float edge_threshold = static_cast<float>(
         config.volume_rho_min + (1.0 - config.volume_rho_min) *
@@ -3056,13 +3064,25 @@ bool compute_qs_metric_native(
     result.qs_global_error = std::sqrt(sums[1] / std::max(sums[0], 1.0e-300));
     result.qs_edge_error = std::sqrt(sums[3] / std::max(sums[2], 1.0e-300));
     result.qs_qa_global_error = std::sqrt(sums[7] / std::max(sums[0], 1.0e-300));
-    result.qs_qp_global_error =
-        std::sqrt(sums[8] / std::max(sums[0], 1.0e-300)) / std::max(nfp, 1);
+    result.qs_qp_global_error_raw = std::sqrt(sums[8] / std::max(sums[0], 1.0e-300));
+    const double target_helicity_norm = std::max(
+        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
+        1.0
+    );
+    const double qp_helicity_norm = std::max(std::abs(nfp), 1);
+    result.qs_vacuum_G = G;
+    result.qs_target_global_error_per_helicity = result.qs_global_error / target_helicity_norm;
+    result.qs_target_edge_error_per_helicity = result.qs_edge_error / target_helicity_norm;
+    result.qs_qa_global_error_per_helicity = result.qs_qa_global_error;
+    result.qs_qp_global_error_per_helicity = result.qs_qp_global_error_raw / qp_helicity_norm;
+    // Preserve the ABI-8 field semantics while exposing both explicit forms above.
+    result.qs_qp_global_error = result.qs_qp_global_error_per_helicity;
     result.volume_weight_effective_fraction =
         sums[0] * sums[0] / std::max(points.count * sums[4], 1.0e-300);
     result.edge_weight_effective_fraction =
         sums[2] * sums[2] / std::max(sums[6] * sums[5], 1.0e-300);
     result.qs_abs_p95 = p95;
+    result.qs_abs_p95_per_helicity = p95 / target_helicity_norm;
     return true;
 }
 
@@ -3235,24 +3255,19 @@ bool run_downstream_gpu(
     result.score_iota = iota_score;
     result.components[SGPU_SCORE_COMPONENT_IOTA] = iota_score;
     // f_C is linear in the helicity pair, so score its magnitude per unit (M, N).
-    const double helicity_norm = std::max(
-        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
-        1.0
-    );
     const double global_score = q_down(
-        result.qs_global_error, config.score_qs_global_scale * helicity_norm, 0.9
+        result.qs_target_global_error_per_helicity, config.score_qs_global_scale, 0.9
     );
     const double edge_score = q_down(
-        result.qs_edge_error, config.score_qs_edge_scale * helicity_norm, 0.9, global_score
+        result.qs_target_edge_error_per_helicity, config.score_qs_edge_scale, 0.9, global_score
     );
     const double residual_score = blend({{0.80, global_score}, {0.20, edge_score}});
-    const double target_error_per_helicity = result.qs_global_error / helicity_norm;
     const double competitor_error = std::min(
-        result.qs_qa_global_error, result.qs_qp_global_error
+        result.qs_qa_global_error_per_helicity, result.qs_qp_global_error_per_helicity
     );
     const double helicity_advantage = !qh_target ? 1.0 :
         competitor_error / std::max(
-            target_error_per_helicity + competitor_error, 1.0e-300
+            result.qs_target_global_error_per_helicity + competitor_error, 1.0e-300
         );
     const double size_score = q_saturating_up(
         result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_saturation

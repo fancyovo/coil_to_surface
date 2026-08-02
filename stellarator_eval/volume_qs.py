@@ -881,10 +881,12 @@ def fit_flux_scale(points: dict, B, alpha_fit: StraightFieldFit, config: VolumeQ
 
 
 def vacuum_G(currents_a, nfp: int, toroidal_flux: float) -> float:
+    """Return the vacuum Boozer G for radian angular coordinates."""
     toroidal_flux = float(toroidal_flux)
     if not np.isfinite(toroidal_flux) or toroidal_flux == 0.0:
         raise ValueError("vacuum G requires nonzero signed toroidal flux")
-    magnitude = MU0 * 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float)))
+    linked_current = 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float)))
+    magnitude = MU0 * linked_current / TWOPI
     return float(np.copysign(magnitude, toroidal_flux))
 
 

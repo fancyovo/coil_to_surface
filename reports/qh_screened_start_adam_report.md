@@ -1,8 +1,8 @@
 # 128 候选筛选 + 50-step Adam 多种子实验报告
 
-日期：2026-08-02  
-分支：`qh-flow-screened-adam`  
-远端结果：`~/local_surface_evaluator/runs/qh_screened_start_adam_20260802_nfp4_nc3`
+- 日期：2026-08-02
+- 分支：`qh-flow-screened-adam`
+- 远端结果：`~/local_surface_evaluator/runs/qh_screened_start_adam_20260802_nfp4_nc3`
 
 ## 1. 结论
 

@@ -115,7 +115,13 @@ once the task is accepted.
   matches old job `30662`: same `start_10`, seed `20260804`, 200 iterations,
   eta `0.01`, beta1/beta2 `0.5/0.999`, perturbation `0.005`, four directions,
   FP32 RK4-256, robust whole-step skipping, and center backtracking
-  `[0.5,0.25,0.125]`; only the score library/objective changed to ABI 9.
+  `[0.5,0.25,0.125]`; only the score library/objective changed to ABI 9. Last
+  successful scheduler check on 2026-08-02 showed `RUNNING 0:0` at elapsed
+  `00:42:30`; history reached at least iteration 97 with current/best score
+  `92.0514/92.0556`, QH raw error `0.0143531`, and iota `1.64349`. Subsequent
+  remote command channels timed out even though `ssh -O check ustc107` still
+  reported master PID 10695; do not resubmit or alter job `31058` after a
+  reconnect without first checking `squeue`, `sacct`, and the existing run.
 - Previous completed branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-

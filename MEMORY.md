@@ -74,7 +74,7 @@ once the task is accepted.
   $G=\mu_0I_{\mathrm{link}}/(2\pi)$, score ABI is 9, explicit raw and
   per-helicity diagnostics are exposed, and score composition consumes only
   the explicit per-helicity fields. The complete local suite passes with
-  `126 passed`; remote compilation and numerical acceptance are still pending.
+  `128 passed`; remote compilation and numerical acceptance are complete.
   Collector rows preserve `nfp`, `n_base_coils`, and every coil's complete
   decoded `x[33],y[33],z[33],current_A` token, so all collected cases can be
   exactly re-scored with a corrected versioned CUDA library without re-running
@@ -96,9 +96,19 @@ once the task is accepted.
   startup utilization counters were transiently 100% despite 2 MiB memory and
   no compute PID. Commit `412cd4b` therefore requires three consecutive fully
   idle probes. Formal matched 1024 held-out QUASR QH plus 1024 FP32 RK4-256
-  random-flow calibration job `30994` started only after all four GPUs recorded
-  0%, 2 MiB, and no compute process; it is active. All recovery results append
-  to `reports/qh_differential_qs_metric_investigation.md`, not a new report.
+  random-flow calibration job `30994` completed `0:0` in `44:07`; all four GPUs
+  were 0%, 2 MiB with no process both before and after. QUASR versus random-flow
+  all-sample score mean/median/max are `48.019/75.520/95.262` versus
+  `24.087/0.372/87.362`; status-ok rates are `56.93%` versus `45.41%`.
+  Score at least 80 occurs in `443/1024` QUASR and `17/1024` random cases, a
+  26.1x enrichment. Among status-ok cases, median QH error per helicity is
+  `0.002545` versus `0.04918`. Eight score workers sustained `0.7882` samples/s
+  for 2050 cases; random-flow decode took 17.00 s. Frozen summary and plot are
+  in `reports/assets/qh_corrected_score_calibration_30994/`; full remote rows
+  are in `runs/corrected_score_calibration_1024x2_20260802/results`. All
+  recovery results append to `reports/qh_differential_qs_metric_investigation.md`,
+  not a new report. The same-start corrected 200-step Adam run is the next
+  active stage and has not yet been submitted.
 - Previous completed branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-

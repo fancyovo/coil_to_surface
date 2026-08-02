@@ -72,11 +72,15 @@ nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total 
   --format=csv,noheader,nounits > "$preflight"
 git rev-parse HEAD > "$commit_file"
 
-python scripts/prepare_qh_score_regression_dataset.py \
-  --corpus-root "$corpus_root" \
-  --output-dir "$dataset_root" \
-  --score-library-sha256 "$score_sha" \
-  --seed "${REGRESSION_SPLIT_SEED:-20260802}"
+if [[ "${REUSE_FROZEN_DATASET:-0}" == 1 ]]; then
+  test -f "$dataset_root/manifest.json"
+else
+  python scripts/prepare_qh_score_regression_dataset.py \
+    --corpus-root "$corpus_root" \
+    --output-dir "$dataset_root" \
+    --score-library-sha256 "$score_sha" \
+    --seed "${REGRESSION_SPLIT_SEED:-20260802}"
+fi
 
 python -m torch.distributed.run --standalone --nproc-per-node=4 \
   scripts/train_qh_latent_score_regressor.py \
@@ -89,7 +93,11 @@ python -m torch.distributed.run --standalone --nproc-per-node=4 \
   --validation-interval "${REGRESSION_VALIDATION_INTERVAL:-25}" \
   --plateau-validations "${REGRESSION_PLATEAU_VALIDATIONS:-16}" \
   --final-plateau-validations "${REGRESSION_FINAL_PLATEAU_VALIDATIONS:-32}" \
-  --max-lr-reductions "${REGRESSION_MAX_LR_REDUCTIONS:-4}" &
+  --max-lr-reductions "${REGRESSION_MAX_LR_REDUCTIONS:-4}" \
+  --width "${REGRESSION_WIDTH:-128}" \
+  --layers "${REGRESSION_LAYERS:-3}" \
+  --heads "${REGRESSION_HEADS:-8}" \
+  --hidden "${REGRESSION_HIDDEN:-352}" &
 children+=("$!")
 wait "${children[0]}"
 children=()

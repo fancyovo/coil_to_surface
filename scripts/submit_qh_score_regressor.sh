@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project="$(git rev-parse --show-toplevel)"
+project="${PROJECT:-$(git rev-parse --show-toplevel)}"
 exec sbatch \
   --chdir="$project" \
   --export="ALL,PROJECT=$project" \

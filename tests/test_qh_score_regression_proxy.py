@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 import torch
 
-from flow_matching.proxy import LatentProxyTransformer
+from flow_matching.proxy import LatentScoreRegressorTransformer
 from scripts.prepare_qh_score_regression_dataset import (
     CORPUS_FORMAT,
     DATASET_FORMAT,
@@ -139,7 +139,9 @@ def test_regression_metrics_and_bounded_model_evaluation():
     assert summary["predicted_thresholds"]["gt_20"]["count"] == 2
     assert summary["predicted_thresholds"]["gt_30"]["actual_min"] == 40.0
 
-    model = LatentProxyTransformer(width=32, layers=1, heads=4, hidden=64).eval()
+    model = LatentScoreRegressorTransformer(
+        width=32, layers=1, heads=4, hidden=64, max_coils=3
+    ).eval()
     data = {
         "tokens": torch.randn(6, 3, 100),
         "mask": torch.tensor([[True, True, False]]).expand(6, -1),

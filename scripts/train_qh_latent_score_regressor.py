@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from flow_matching.proxy import LatentProxyTransformer
+from flow_matching.proxy import LatentScoreRegressorTransformer
 from scripts.prepare_qh_score_regression_dataset import (
     DATASET_FORMAT,
     SCORE_BINS,
@@ -190,6 +190,7 @@ def evaluate_model(
         logits = model(
             data["tokens"][start:stop],
             data["nfp"][start:stop],
+            data["n_coils"][start:stop],
             data["mask"][start:stop],
         )
         predictions.append((100.0 * torch.sigmoid(logits.float())).cpu().numpy())
@@ -224,7 +225,7 @@ def epoch_indices(
 def save_checkpoint(
     path: Path,
     *,
-    model: LatentProxyTransformer,
+    model: LatentScoreRegressorTransformer,
     optimizer: torch.optim.Optimizer,
     step: int,
     epoch: int,
@@ -403,10 +404,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--minimum-improvement", type=float, default=1.0e-7)
     parser.add_argument("--rise-relative-margin", type=float, default=0.002)
     parser.add_argument("--rise-window", type=int, default=5)
-    parser.add_argument("--width", type=int, default=256)
-    parser.add_argument("--layers", type=int, default=4)
+    parser.add_argument("--width", type=int, default=128)
+    parser.add_argument("--layers", type=int, default=3)
     parser.add_argument("--heads", type=int, default=8)
-    parser.add_argument("--hidden", type=int, default=704)
+    parser.add_argument("--hidden", type=int, default=352)
     parser.add_argument("--seed", type=int, default=20260802)
     parser.add_argument("--no-bf16", action="store_true")
     return parser.parse_args()
@@ -440,8 +441,9 @@ def main() -> None:
         "heads": args.heads,
         "hidden": args.hidden,
         "max_nfp": 16,
+        "max_coils": int(dataset_manifest["representation"]["max_coils"]),
     }
-    base_model = LatentProxyTransformer(**model_config).to(device)
+    base_model = LatentScoreRegressorTransformer(**model_config).to(device)
     train_model: nn.Module = base_model
     if world_size > 1:
         train_model = torch.nn.parallel.DistributedDataParallel(
@@ -513,6 +515,7 @@ def main() -> None:
                 logits = train_model(
                     train_data["tokens"][batch_indices],
                     train_data["nfp"][batch_indices],
+                    train_data["n_coils"][batch_indices],
                     train_data["mask"][batch_indices],
                 )
             prediction = torch.sigmoid(logits.float())

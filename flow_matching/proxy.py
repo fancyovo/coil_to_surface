@@ -71,6 +71,74 @@ class LatentProxyTransformer(nn.Module):
         return sum(parameter.numel() for parameter in self.parameters())
 
 
+class LatentScoreRegressorTransformer(nn.Module):
+    """Permutation-invariant latent regressor with explicit discrete conditions."""
+
+    def __init__(
+        self,
+        *,
+        token_dim: int = 100,
+        width: int = 128,
+        layers: int = 3,
+        heads: int = 8,
+        hidden: int = 352,
+        max_nfp: int = 16,
+        max_coils: int = 8,
+    ):
+        super().__init__()
+        self.config = {
+            "token_dim": token_dim,
+            "width": width,
+            "layers": layers,
+            "heads": heads,
+            "hidden": hidden,
+            "max_nfp": max_nfp,
+            "max_coils": max_coils,
+        }
+        self.input = nn.Linear(token_dim, width)
+        self.nfp_embedding = nn.Embedding(max_nfp + 1, width)
+        self.coil_count_embedding = nn.Embedding(max_coils + 1, width)
+        self.blocks = nn.ModuleList(
+            [FlowBlock(width, heads, hidden) for _ in range(layers)]
+        )
+        self.final_norm = nn.RMSNorm(width, eps=1.0e-6)
+        self.output = nn.Linear(width, 1)
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        nfp: torch.Tensor,
+        n_coils: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        batch = tokens.shape[0]
+        if tokens.ndim != 3 or nfp.shape != (batch,) or n_coils.shape != (batch,):
+            raise ValueError("tokens, nfp, and n_coils batch dimensions must match")
+        if torch.any((nfp < 1) | (nfp > self.config["max_nfp"])):
+            raise ValueError("nfp is outside the model embedding range")
+        if torch.any((n_coils < 1) | (n_coils > self.config["max_coils"])):
+            raise ValueError("n_coils is outside the model embedding range")
+        condition = self.nfp_embedding(nfp) + self.coil_count_embedding(n_coils)
+        x = self.input(tokens)
+        if mask is not None:
+            if mask.shape != tokens.shape[:2]:
+                raise ValueError("mask shape must match the token axes")
+            x = x * mask[..., None]
+        for block in self.blocks:
+            x = block(x, condition, mask)
+        x = self.final_norm(x)
+        if mask is None:
+            pooled = x.mean(dim=1)
+        else:
+            weights = mask.to(dtype=x.dtype)[..., None]
+            pooled = (x * weights).sum(dim=1) / weights.sum(dim=1).clamp_min(1.0)
+        return self.output(pooled).squeeze(-1)
+
+    @property
+    def parameter_count(self) -> int:
+        return sum(parameter.numel() for parameter in self.parameters())
+
+
 def _as_binary_arrays(
     probabilities: np.ndarray, labels: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:

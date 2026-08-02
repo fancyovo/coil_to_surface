@@ -176,8 +176,19 @@ once the task is accepted.
   score distribution, independent test scatter/calibration, overall and
   stratified correlations, and actual-score behavior for predictions above 20
   and 30.
-- Foreground four-GPU score-regression job `30767` is running on `anode01`.
-  It freezes the corpus at job start, then trains with four-GPU DDP. Low-priority
+- Foreground four-GPU score-regression job `30767` completed `0:0` on
+  `anode01` in 2:55. It froze 43,584 current-library rows from 681 shards and
+  excluded 15,556 old-library rows; the deterministic split is
+  34,868/4,358/4,358. The first reused-classifier regressor selected step 175
+  after continuing to step 2,575 and observing a clear validation-loss rise.
+  On test it reached RMSE `4.0891`, Pearson `0.3737`, Spearman `0.3810`, and
+  R2 `0.1305`, which does not beat the simple `(nfp,n_coils)` train-mean
+  baseline (`4.0467/0.3854/0.3808/0.1484`). It emitted no test prediction above
+  10 even though test contains 34 actual scores above 20 and seven above 30;
+  this first checkpoint SHA-256 `57e0a2a8...e286e22` is valid negative evidence,
+  not an accepted screening proxy. A second controlled run must reuse the same
+  frozen split, explicitly embed `n_coils`, and reduce model capacity while
+  preserving sigmoid output and MSE. Low-priority
   P107 collector `30747` was intentionally cancelled after 1:12:18 to release
   the four GPUs and must be restored after foreground acceptance; Student
   collector `30594` remains running. Jobs `30765` and `30766` are invalid

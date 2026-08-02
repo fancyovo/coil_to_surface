@@ -38,10 +38,11 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- Active local and remote branch: `qh-flow-latent-proxy`, created from
-  `qh-flow-zo-adam` at `e0b21ca1ebf72a32c73b8448c731942fedf1c889` on
-  2026-07-31. The remote worktree was switched after synchronizing implementation
-  commit `eb6dbb0e56b01da4df2ad0bf9fef4af665a1bb4c`.
+- Active local branch: `qh-flow-score-regression-proxy`, created from
+  `qh-flow-latent-proxy` at `da734e4a89a883237e0a65177a7b40795174e312`
+  on 2026-08-02. This branch owns the new frozen-corpus latent-to-native-score
+  regression experiment. The remote worktree must be switched to this branch
+  when its implementation commit is synchronized.
 - Current experiment implementation baseline:
   `cc69110d0a5663a50fa56ac97a671973bd6f064d`
   (`Pin Adam jobs to corrected score library`). The branch also contains this
@@ -162,6 +163,18 @@ once the task is accepted.
   `ok=24060`, `no_axis=14970`, `no_surface=3975`,
   `drift_rejected=12253`, and `flux_rejected=426`. Refresh this count at every
   later delivery because both collectors continue to append shards.
+- The active 2026-08-02 proxy experiment replaces the earlier inverse-QUASR
+  binary label with the current production native score divided by 100. Its
+  output is sigmoid-bounded to `(0,1)` and trained with MSE. The frozen dataset
+  must include only rows labeled by score library SHA-256 `4bf7a12e...`, use
+  disjoint deterministic train/validation/test splits, and ignore shards
+  appended after the snapshot. Checkpoint selection uses validation MSE only;
+  training may stop before its generous hard cap only after validation loss
+  has risen persistently beyond the best point and all scheduled learning-rate
+  reductions have been exhausted. The new report must include the full frozen
+  score distribution, independent test scatter/calibration, overall and
+  stratified correlations, and actual-score behavior for predictions above 20
+  and 30.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$

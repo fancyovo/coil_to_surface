@@ -222,6 +222,28 @@ def epoch_indices(
     return order[rank:total:world_size]
 
 
+@torch.no_grad()
+def initialize_condition_baseline(
+    model: LatentScoreRegressorTransformer,
+    train_data: dict[str, torch.Tensor],
+) -> dict[str, float]:
+    if model.condition_output is None:
+        return {}
+    global_mean = train_data["target"].mean().clamp(1.0e-5, 1.0 - 1.0e-5)
+    model.condition_output.weight.fill_(torch.logit(global_mean))
+    means: dict[str, float] = {}
+    for nfp in torch.unique(train_data["nfp"]).tolist():
+        for n_coils in torch.unique(train_data["n_coils"]).tolist():
+            selected = (train_data["nfp"] == nfp) & (train_data["n_coils"] == n_coils)
+            if not torch.any(selected):
+                continue
+            mean = train_data["target"][selected].mean().clamp(1.0e-5, 1.0 - 1.0e-5)
+            index = int(nfp) * (model.config["max_coils"] + 1) + int(n_coils)
+            model.condition_output.weight[index] = torch.logit(mean)
+            means[f"nfp{int(nfp)}_nc{int(n_coils)}"] = float(100.0 * mean.item())
+    return means
+
+
 def save_checkpoint(
     path: Path,
     *,
@@ -410,6 +432,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden", type=int, default=352)
     parser.add_argument("--seed", type=int, default=20260802)
     parser.add_argument("--no-bf16", action="store_true")
+    parser.add_argument(
+        "--condition-mean-baseline",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     return parser.parse_args()
 
 
@@ -442,8 +469,10 @@ def main() -> None:
         "hidden": args.hidden,
         "max_nfp": 16,
         "max_coils": int(dataset_manifest["representation"]["max_coils"]),
+        "condition_baseline": args.condition_mean_baseline,
     }
     base_model = LatentScoreRegressorTransformer(**model_config).to(device)
+    initialized_condition_means = initialize_condition_baseline(base_model, train_data)
     train_model: nn.Module = base_model
     if world_size > 1:
         train_model = torch.nn.parallel.DistributedDataParallel(
@@ -474,6 +503,7 @@ def main() -> None:
             "dataset_snapshot_digest": dataset_manifest["snapshot"]["included_shard_digest"],
             "score_library_sha256": dataset_manifest["score_library_sha256"],
             "split_counts": {name: dataset_manifest["splits"][name]["count"] for name in ("train", "validation", "test")},
+            "initialized_condition_means": initialized_condition_means,
         }
         (args.output_dir / "run_manifest.json").write_text(
             json.dumps(run_manifest, indent=2, default=str) + "\n", encoding="utf-8"
@@ -493,6 +523,47 @@ def main() -> None:
     interval_squared_error = torch.zeros(3, dtype=torch.float64, device=device)
     interval_started = time.perf_counter()
     training_started = time.perf_counter()
+    if args.condition_mean_baseline:
+        barrier(world_size, local_rank)
+        initial_control = torch.zeros(1, dtype=torch.float64, device=device)
+        if rank == 0:
+            assert validation_data is not None
+            initial_values = evaluate_model(base_model, validation_data, batch_size=args.eval_batch)
+            initial_validation = basic_regression_metrics(
+                initial_values["predicted"], initial_values["actual"]
+            )
+            best_validation_mse = float(initial_validation["mse_normalized"])
+            save_checkpoint(
+                args.output_dir / "checkpoint_best_validation.pt",
+                model=base_model,
+                optimizer=optimizer,
+                step=0,
+                epoch=0,
+                best_validation_mse=best_validation_mse,
+                validation=initial_validation,
+                args=args,
+                dataset_manifest=dataset_manifest,
+            )
+            row = {
+                "event": "validation",
+                "step": 0,
+                "epoch": 0,
+                **initial_validation,
+                "learning_rate": float(optimizer.param_groups[0]["lr"]),
+                "best_validation_mse_normalized": best_validation_mse,
+                "best_validation_step": 0,
+                "stale_validations": 0,
+                "lr_reductions": 0,
+                "validation_rise_observed": False,
+                "initial_condition_mean_baseline": True,
+            }
+            append_jsonl(metrics_path, row)
+            print(json.dumps(row), flush=True)
+            initial_control[0] = best_validation_mse
+        if world_size > 1:
+            dist.broadcast(initial_control, src=0)
+        best_validation_mse = float(initial_control[0].item())
+        barrier(world_size, local_rank)
     while step < args.max_steps and not stop_requested:
         indices = epoch_indices(
             len(train_data["target"]),
@@ -674,8 +745,22 @@ def main() -> None:
             dtype=np.float64,
         )
         baselines = {
-            "global_train_mean": basic_regression_metrics(global_prediction, test_values["actual"]),
-            "condition_train_mean": basic_regression_metrics(condition_prediction, test_values["actual"]),
+            "global_train_mean": complete_regression_metrics(
+                global_prediction,
+                test_values["actual"],
+                nfp=test_values["nfp"],
+                n_coils=test_values["n_coils"],
+                status=test_values["status"],
+                status_names=status_names,
+            ),
+            "condition_train_mean": complete_regression_metrics(
+                condition_prediction,
+                test_values["actual"],
+                nfp=test_values["nfp"],
+                n_coils=test_values["n_coils"],
+                status=test_values["status"],
+                status_names=status_names,
+            ),
         }
         sample_ids = (args.dataset_dir / "test_sample_ids.txt").read_text(encoding="utf-8").splitlines()
         if len(sample_ids) != len(test_values["actual"]):
@@ -688,6 +773,8 @@ def main() -> None:
             nfp=test_values["nfp"],
             n_coils=test_values["n_coils"],
             status=test_values["status"],
+            global_mean_prediction=global_prediction,
+            condition_mean_prediction=condition_prediction,
         )
         plot_training(metrics_path, args.output_dir / "training_monitor.png")
         plot_test(test_values, test_summary, args.output_dir, status_names)

@@ -84,6 +84,7 @@ class LatentScoreRegressorTransformer(nn.Module):
         hidden: int = 352,
         max_nfp: int = 16,
         max_coils: int = 8,
+        condition_baseline: bool = False,
     ):
         super().__init__()
         self.config = {
@@ -94,6 +95,7 @@ class LatentScoreRegressorTransformer(nn.Module):
             "hidden": hidden,
             "max_nfp": max_nfp,
             "max_coils": max_coils,
+            "condition_baseline": condition_baseline,
         }
         self.input = nn.Linear(token_dim, width)
         self.nfp_embedding = nn.Embedding(max_nfp + 1, width)
@@ -103,6 +105,14 @@ class LatentScoreRegressorTransformer(nn.Module):
         )
         self.final_norm = nn.RMSNorm(width, eps=1.0e-6)
         self.output = nn.Linear(width, 1)
+        self.condition_output = (
+            nn.Embedding((max_nfp + 1) * (max_coils + 1), 1)
+            if condition_baseline
+            else None
+        )
+        if condition_baseline:
+            nn.init.zeros_(self.output.weight)
+            nn.init.zeros_(self.output.bias)
 
     def forward(
         self,
@@ -132,7 +142,11 @@ class LatentScoreRegressorTransformer(nn.Module):
         else:
             weights = mask.to(dtype=x.dtype)[..., None]
             pooled = (x * weights).sum(dim=1) / weights.sum(dim=1).clamp_min(1.0)
-        return self.output(pooled).squeeze(-1)
+        output = self.output(pooled).squeeze(-1)
+        if self.condition_output is not None:
+            condition_index = nfp * (self.config["max_coils"] + 1) + n_coils
+            output = output + self.condition_output(condition_index).squeeze(-1)
+        return output
 
     @property
     def parameter_count(self) -> int:

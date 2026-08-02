@@ -57,6 +57,12 @@ once the task is accepted.
   total-score physical calibration are superseded pending a versioned fix and
   threshold recalibration; old geometries and independent full evaluations
   remain valid. No production code or score ABI was changed in this audit.
+  Collector rows preserve `nfp`, `n_base_coils`, and every coil's complete
+  decoded `x[33],y[33],z[33],current_A` token, so all collected cases can be
+  exactly re-scored with a corrected versioned CUDA library without re-running
+  flow decoding. The saved scalar diagnostics alone cannot reconstruct the
+  corrected total score because edge QA/QP moments and their covariance were
+  not stored; rescoring from the preserved decoded tokens is required.
   Full evidence and the correction plan are in
   `reports/qh_differential_qs_metric_investigation.md`.
 - Active local branch: `qh-flow-screened-adam`, created from

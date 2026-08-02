@@ -83,6 +83,22 @@ once the task is accepted.
   not stored; rescoring from the preserved decoded tokens is required.
   Full evidence and the correction plan are in
   `reports/qh_differential_qs_metric_investigation.md`.
+- Corrected ABI-9 CUDA build job `30990` completed `0:0` in 46 seconds. The
+  accepted library SHA-256 is
+  `40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5`.
+  Four-GPU smoke job `30992` completed `0:0`; its two known full-evaluation
+  cases reproduced the audit's algebraic predictions to displayed precision:
+  old-score 61.339 became score `88.9614871` with corrected
+  QH-per-helicity/QA/QP `0.0049513402/0.119168541/0.029613844`, and old-score
+  63.691 became `90.9812895` with
+  `0.0029377588/0.120479481/0.030117924`. Both report
+  $|G|=1.1051014\ \mathrm{T\,m}$. Smoke timing is not accepted because two
+  startup utilization counters were transiently 100% despite 2 MiB memory and
+  no compute PID. Commit `412cd4b` therefore requires three consecutive fully
+  idle probes. Formal matched 1024 held-out QUASR QH plus 1024 FP32 RK4-256
+  random-flow calibration job `30994` started only after all four GPUs recorded
+  0%, 2 MiB, and no compute process; it is active. All recovery results append
+  to `reports/qh_differential_qs_metric_investigation.md`, not a new report.
 - Previous completed branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-

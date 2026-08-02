@@ -74,7 +74,9 @@ once the task is accepted.
   `~/local_surface_evaluator/runs/qh_screened_start_adam_20260802_nfp4_nc3`.
   Report and frozen local-asset delivery commit
   `2bcbd79bd2bb22acac3e19a5cb47c9b8244dccb9` is synchronized to the remote
-  worktree.
+  worktree. Combined eight-seed score curves, tail-progress metrics, and raw
+  histories were added in commit
+  `32856ae129c162558a0a4bf4e9e07c1e5c6f92f5`, also synchronized remotely.
   Low-priority P107 collector `30859` was restored after foreground completion,
   retains `Nice=10000`, and atomically wrote one 64-row shard on each of four
   ranks; independent Student collector `30594` remained active throughout.
@@ -193,10 +195,10 @@ once the task is accepted.
   venv; failed job `30742` exited in one second before numerical work and is
   invalid infrastructure evidence only.
 - Background collection is active through Student job `30594` and low-priority
-  P107 job `30859`. Metadata-only recount job `30876` completed `0:0` on
-  2026-08-02: the unified append-only corpus contained exactly 68,804 completed
-  samples in 1,077 shards from 36 streams, with `ok=29714`, `no_axis=18451`,
-  `no_surface=4927`, `drift_rejected=15190`, and `flux_rejected=522`. Refresh
+  P107 job `30859`. Metadata-only recount job `30889` completed `0:0` on
+  2026-08-02: the unified append-only corpus contained exactly 70,724 completed
+  samples in 1,107 shards from 36 streams, with `ok=30553`, `no_axis=18927`,
+  `no_surface=5064`, `drift_rejected=15635`, and `flux_rejected=545`. Refresh
   this count at every later delivery because both collectors continue to append
   shards. Earlier recount job `30780` is invalid launch-only evidence (`127:0`, zero
   seconds, no numerical work): Slurm `--wrap` used `/bin/sh`, where `source`

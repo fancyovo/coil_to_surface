@@ -156,11 +156,11 @@ once the task is accepted.
   invalid infrastructure evidence only.
 - Background collection was restored after foreground completion. Student job
   `30594` and independent low-priority P107 four-GPU job `30747` are running;
-  `30747` has `Nice=10000` and no dependency. Metadata-only recount job `30749`
+  `30747` has `Nice=10000` and no dependency. Metadata-only recount job `30753`
   completed `0:0` on 2026-08-02: the unified append-only corpus contains
-  exactly 54,532 completed samples in 854 shards from 28 streams, with
-  `ok=23554`, `no_axis=14657`, `no_surface=3890`,
-  `drift_rejected=12016`, and `flux_rejected=415`. Refresh this count at every
+  exactly 55,684 completed samples in 872 shards from 28 streams, with
+  `ok=24060`, `no_axis=14970`, `no_surface=3975`,
+  `drift_rejected=12253`, and `flux_rejected=426`. Refresh this count at every
   later delivery because both collectors continue to append shards.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.

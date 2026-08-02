@@ -89,6 +89,7 @@ printf '%s\n' "$candidate_seed" > "$run_root/candidate_seed.txt"
 printf '%s\n' "$optimizer_seed" > "$run_root/optimizer_seed.txt"
 
 run_started_ns="$(date +%s%N)"
+printf '%s\n' "$run_started_ns" > "$run_root/run_started_ns.txt"
 python scripts/evaluate_qh_random_score_pool.py \
   --mode prepare \
   --output-dir "$pool_root" \
@@ -123,8 +124,10 @@ python scripts/select_qh_screened_adam_start.py \
   --nfp "$nfp" \
   --n-base-coils "$n_base_coils"
 selection_finished_ns="$(date +%s%N)"
+printf '%s\n' "$selection_finished_ns" > "$run_root/selection_finished_ns.txt"
 
 adam_started_ns="$(date +%s%N)"
+printf '%s\n' "$adam_started_ns" > "$run_root/adam_started_ns.txt"
 python scripts/optimize_flow_prior_standard_adam.py \
   --checkpoint "$checkpoint" \
   --lib "$lib" \
@@ -149,6 +152,7 @@ children+=("$!")
 wait "${children[0]}"
 children=()
 run_finished_ns="$(date +%s%N)"
+printf '%s\n' "$run_finished_ns" > "$run_root/run_finished_ns.txt"
 
 python scripts/summarize_qh_screened_start_adam.py \
   --selection-summary "$run_root/selection_summary.json" \

@@ -47,8 +47,18 @@ once the task is accepted.
   (`eta=0.01`, `beta1=0.5`, `beta2=0.999`, perturbation `0.005`, four
   antithetic directions, FP32 RK4-256). It records candidate-selection, Adam,
   and exact end-to-end wall times. No full physical evaluation belongs to this
-  experiment unless the user explicitly requests one. Remote submission and
-  numerical results are pending.
+  experiment unless the user explicitly requests one. Implementation commit
+  `afd6db8a61ea802dda8ef2392df7d3729cd5a498` is synchronized to the remote
+  worktree. Full local validation is `125 passed`. Four-GPU smoke job `30788_0`
+  and sequential follow-up array `30790_[1-7]` are active, using candidate
+  seeds `2026080200` through `2026080207`; the smoke passed CUDA/hash preflight,
+  screened 128 candidates to a `21.9873` start, and entered Adam normally.
+  Results root:
+  `~/local_surface_evaluator/runs/qh_screened_start_adam_20260802_nfp4_nc3`.
+  Low-priority P107 collector `30777` was intentionally cancelled after
+  `00:49:39` to release the four foreground GPUs and must be restored after
+  experiment acceptance. Independent Student collector `30594` remains active
+  and must not be disturbed.
 
 - Previous completed branch: `qh-flow-score-regression-proxy`, created from
   `qh-flow-latent-proxy` at `da734e4a89a883237e0a65177a7b40795174e312`
@@ -163,11 +173,11 @@ once the task is accepted.
   base-repository DESC environment rather than a nonexistent worktree-local
   venv; failed job `30742` exited in one second before numerical work and is
   invalid infrastructure evidence only.
-- Background collection was restored after foreground completion. Student job
-  `30594` and independent low-priority P107 four-GPU job `30777` are running;
-  `30777` has `Nice=10000`, no dependency, uses synchronized commit `a56b160`,
-  and passed stable-production acceptance by atomically writing one 64-row
-  shard on each rank. Final metadata-only recount job `30783` completed `0:0`
+- Background collection had been restored after the prior foreground work.
+  Student job `30594` remains running; low-priority P107 job `30777` passed
+  stable-production acceptance but is now intentionally cancelled for the
+  active screened-start Adam foreground experiment as recorded above. Final
+  metadata-only recount job `30783` completed `0:0`
   on 2026-08-02: the unified append-only corpus contained exactly 60,740
   completed samples in 951 shards from 32 streams, with `ok=26207`,
   `no_axis=16318`, `no_surface=4357`, `drift_rejected=13394`, and

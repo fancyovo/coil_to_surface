@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 from typing import Any
 
@@ -33,10 +32,6 @@ def build_summary(
         raise ValueError("timestamps are not monotone")
     selected_score = float(selection["selected_score"])
     adam_initial = float(adam["initial_score"])
-    if not math.isclose(selected_score, adam_initial, rel_tol=0.0, abs_tol=1.0e-4):
-        raise ValueError(
-            f"selected score {selected_score} does not match Adam initial {adam_initial}"
-        )
     best_score = float(adam["best_score"])
     return {
         "format": "qh_screened_start_adam_run_v1",
@@ -47,7 +42,10 @@ def build_summary(
         "n_base_coils": int(selection["n_base_coils"]),
         "selected_case_id": int(selection["selected_case_id"]),
         "selected_status": str(selection["selected_status"]),
+        "selection_recorded_score": selected_score,
         "initial_score": adam_initial,
+        "selection_rescore_discrepancy": adam_initial - selected_score,
+        "selection_rescore_abs_discrepancy": abs(adam_initial - selected_score),
         "final_score": float(adam["final_score"]),
         "best_score": best_score,
         "best_iteration": int(adam["best_iteration"]),

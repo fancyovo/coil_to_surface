@@ -45,6 +45,7 @@ def test_build_summary_checks_thresholds_and_exact_timing() -> None:
     )
     assert summary["crossed_40"]
     assert summary["crossed_50"]
+    assert abs(summary["selection_rescore_discrepancy"] - 1.0e-5) < 1.0e-12
     assert summary["timing_s"]["candidate_selection"] == 3.0
     assert summary["timing_s"]["end_to_end"] == 94.0
 

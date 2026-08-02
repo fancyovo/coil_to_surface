@@ -40,15 +40,10 @@ once the task is accepted.
 
 - Active local and remote branch: `qh-flow-score-regression-proxy`, created from
   `qh-flow-latent-proxy` at `da734e4a89a883237e0a65177a7b40795174e312`
-  on 2026-08-02. This branch owns the new frozen-corpus latent-to-native-score
-  regression experiment. Initial implementation commit
-  `d8d9915e2e2bb086d4e1777c32e6efaf833b6291` is synchronized to the remote
-  worktree.
-- Current experiment implementation baseline:
-  `cc69110d0a5663a50fa56ac97a671973bd6f064d`
-  (`Pin Adam jobs to corrected score library`). The branch also contains this
-  living-memory documentation; query `git rev-parse HEAD` at session start for
-  the actual tip rather than writing a self-referential commit hash here.
+  on 2026-08-02. This branch owns the completed frozen-corpus
+  latent-to-native-score regression experiment. Delivery commit
+  `a56b160213ed70b3540cc7ac4dabcec651400b6e` is synchronized to the remote
+  worktree. Query `git rev-parse HEAD` at session start for any later tip.
 - On 2026-08-01, the current validated production native-score library became
   SHA-256 `4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708`.
   It uses the strict mathematical elliptic-axis condition, a continuous
@@ -56,7 +51,7 @@ once the task is accepted.
   surface candidates, and preserved diagnostics for the closest rejected
   long-trace candidate. The old library `0b7342db...aa427` is archived and must
   not be the default for new optimization or collection. All launch wrappers
-  are pinned to the new hash. The complete local suite has 113 passing tests.
+  are pinned to the new hash. The complete local suite has 122 passing tests.
   Detailed numerical evidence is in
   `reports/qh_random_start_score_adam_report.md` section 11.
 - On 2026-08-02, complete physical evaluation of the topology-fixed Adam
@@ -157,13 +152,17 @@ once the task is accepted.
   venv; failed job `30742` exited in one second before numerical work and is
   invalid infrastructure evidence only.
 - Background collection was restored after foreground completion. Student job
-  `30594` and independent low-priority P107 four-GPU job `30747` are running;
-  `30747` has `Nice=10000` and no dependency. Metadata-only recount job `30753`
-  completed `0:0` on 2026-08-02: the unified append-only corpus contains
-  exactly 55,684 completed samples in 872 shards from 28 streams, with
-  `ok=24060`, `no_axis=14970`, `no_surface=3975`,
-  `drift_rejected=12253`, and `flux_rejected=426`. Refresh this count at every
-  later delivery because both collectors continue to append shards.
+  `30594` and independent low-priority P107 four-GPU job `30777` are running;
+  `30777` has `Nice=10000`, no dependency, uses synchronized commit `a56b160`,
+  and passed stable-production acceptance by atomically writing one 64-row
+  shard on each rank. Metadata-only recount job `30781` completed `0:0` on
+  2026-08-02: the unified append-only corpus contained exactly 60,548 completed
+  samples in 948 shards from 32 streams, with `ok=26121`, `no_axis=16268`,
+  `no_surface=4340`, `drift_rejected=13356`, and `flux_rejected=463`. Refresh
+  this count at every later delivery because both collectors continue to append
+  shards. Recount job `30780` is invalid launch-only evidence (`127:0`, zero
+  seconds, no numerical work): Slurm `--wrap` used `/bin/sh`, where `source`
+  was unavailable; use POSIX `. /path/to/activate` in future metadata wraps.
 - The 2026-08-02 latent-score regression experiment is complete. It used the
   current production native score divided by 100, sigmoid output, and MSE on a
   frozen 43,584-row current-library snapshot with disjoint deterministic

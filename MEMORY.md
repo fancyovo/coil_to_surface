@@ -186,10 +186,10 @@ once the task is accepted.
   venv; failed job `30742` exited in one second before numerical work and is
   invalid infrastructure evidence only.
 - Background collection is active through Student job `30594` and low-priority
-  P107 job `30859`. Metadata-only recount job `30865` completed `0:0` on
-  2026-08-02: the unified append-only corpus contained exactly 68,420 completed
-  samples in 1,071 shards from 36 streams, with `ok=29538`, `no_axis=18362`,
-  `no_surface=4906`, `drift_rejected=15094`, and `flux_rejected=520`. Refresh
+  P107 job `30859`. Metadata-only recount job `30876` completed `0:0` on
+  2026-08-02: the unified append-only corpus contained exactly 68,804 completed
+  samples in 1,077 shards from 36 streams, with `ok=29714`, `no_axis=18451`,
+  `no_surface=4927`, `drift_rejected=15190`, and `flux_rejected=522`. Refresh
   this count at every later delivery because both collectors continue to append
   shards. Earlier recount job `30780` is invalid launch-only evidence (`127:0`, zero
   seconds, no numerical work): Slurm `--wrap` used `/bin/sh`, where `source`

@@ -18,7 +18,7 @@ project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
-expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708}"
+expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5}"
 run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam/${SLURM_JOB_ID}}"
 iterations="${ITERATIONS:-60}"
 max_wall_s="${MAX_WALL_S:-1500}"
@@ -88,13 +88,31 @@ cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-mapfile -t compute_processes < <(
-  nvidia-smi --id="$gpu_selector" \
-    --query-compute-apps=pid --format=csv,noheader,nounits |
-    sed '/^[[:space:]]*$/d'
-)
-if (( ${#compute_processes[@]} != 0 )); then
-  printf 'allocated GPUs are not idle; compute PIDs: %s\n' "${compute_processes[*]}" >&2
+idle_streak=0
+for _ in {1..60}; do
+  idle=1
+  while IFS=',' read -r utilization memory_used; do
+    utilization="${utilization// /}"
+    memory_used="${memory_used// /}"
+    if (( utilization != 0 || memory_used > 16 )); then idle=0; fi
+  done < <(
+    nvidia-smi --id="$gpu_selector" \
+      --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits
+  )
+  if nvidia-smi --id="$gpu_selector" \
+      --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
+    idle=0
+  fi
+  if (( idle )); then
+    ((idle_streak += 1))
+    if (( idle_streak >= 3 )); then break; fi
+  else
+    idle_streak=0
+  fi
+  sleep 2
+done
+if (( idle_streak < 3 )); then
+  echo "allocated GPUs did not reach three consecutive idle probes" >&2
   exit 42
 fi
 nvidia-smi --id="$gpu_selector" \

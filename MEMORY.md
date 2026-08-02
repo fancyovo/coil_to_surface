@@ -65,6 +65,9 @@ once the task is accepted.
   assets under `reports/assets/qh_screened_start_adam_20260802/`, and remote
   results under
   `~/local_surface_evaluator/runs/qh_screened_start_adam_20260802_nfp4_nc3`.
+  Report and frozen local-asset delivery commit
+  `2bcbd79bd2bb22acac3e19a5cb47c9b8244dccb9` is synchronized to the remote
+  worktree.
   Low-priority P107 collector `30859` was restored after foreground completion,
   retains `Nice=10000`, and atomically wrote one 64-row shard on each of four
   ranks; independent Student collector `30594` remained active throughout.

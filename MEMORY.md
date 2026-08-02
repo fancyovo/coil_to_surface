@@ -38,11 +38,12 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- Active local branch: `qh-flow-score-regression-proxy`, created from
+- Active local and remote branch: `qh-flow-score-regression-proxy`, created from
   `qh-flow-latent-proxy` at `da734e4a89a883237e0a65177a7b40795174e312`
   on 2026-08-02. This branch owns the new frozen-corpus latent-to-native-score
-  regression experiment. The remote worktree must be switched to this branch
-  when its implementation commit is synchronized.
+  regression experiment. Initial implementation commit
+  `d8d9915e2e2bb086d4e1777c32e6efaf833b6291` is synchronized to the remote
+  worktree.
 - Current experiment implementation baseline:
   `cc69110d0a5663a50fa56ac97a671973bd6f064d`
   (`Pin Adam jobs to corrected score library`). The branch also contains this
@@ -175,6 +176,17 @@ once the task is accepted.
   score distribution, independent test scatter/calibration, overall and
   stratified correlations, and actual-score behavior for predictions above 20
   and 30.
+- Foreground four-GPU score-regression job `30767` is running on `anode01`.
+  It freezes the corpus at job start, then trains with four-GPU DDP. Low-priority
+  P107 collector `30747` was intentionally cancelled after 1:12:18 to release
+  the four GPUs and must be restored after foreground acceptance; Student
+  collector `30594` remains running. Jobs `30765` and `30766` are invalid
+  launch-only failures (`128:0`, zero or one second, no numerical work): the
+  first was submitted outside the project so its relative log directory did
+  not exist, and the second changed Slurm's working directory without fixing
+  `SLURM_SUBMIT_DIR`. Future submissions must use
+  `scripts/submit_qh_score_regressor.sh`, which pins both `--chdir` and the
+  exported `PROJECT` path.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$

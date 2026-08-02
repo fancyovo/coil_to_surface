@@ -48,17 +48,26 @@ once the task is accepted.
   antithetic directions, FP32 RK4-256). It records candidate-selection, Adam,
   and exact end-to-end wall times. No full physical evaluation belongs to this
   experiment unless the user explicitly requests one. Implementation commit
-  `afd6db8a61ea802dda8ef2392df7d3729cd5a498` is synchronized to the remote
-  worktree. Full local validation is `125 passed`. Four-GPU smoke job `30788_0`
-  and sequential follow-up array `30790_[1-7]` are active, using candidate
-  seeds `2026080200` through `2026080207`; the smoke passed CUDA/hash preflight,
-  screened 128 candidates to a `21.9873` start, and entered Adam normally.
-  Results root:
+  `afd6db8a61ea802dda8ef2392df7d3729cd5a498` and metadata-recovery correction
+  `cf57f34486e6d0b1ec8c3bae82fa145f09aebb0c` are synchronized to the remote
+  worktree. Full local validation is `125 passed`. Four-GPU jobs `30788_0` and
+  `30790_[1-7]` completed all eight candidate seeds `2026080200--2026080207`.
+  Six of eight runs reached score 40, none reached 50, and best scores had
+  min/median/mean/max `32.9074/44.3686/43.1026/49.5427`; median gain was
+  `20.7762`. Mean candidate-screen and complete end-to-end times were
+  `178.35 s` and `1375.26 s`. Seed `2026080203` applied only 25 of 50 Adam
+  updates because dirty endpoints correctly skipped the other rounds. The
+  first job's numerical run completed 50/50 steps but its original summary
+  assertion rejected the `0.0585` FP32 batch-versus-single decode score
+  discrepancy; its summary was recovered from unchanged artifacts without a
+  rerun. The other seven jobs completed `0:0`. No full evaluation was run.
+  Detailed evidence is in `reports/qh_screened_start_adam_report.md`, local
+  assets under `reports/assets/qh_screened_start_adam_20260802/`, and remote
+  results under
   `~/local_surface_evaluator/runs/qh_screened_start_adam_20260802_nfp4_nc3`.
-  Low-priority P107 collector `30777` was intentionally cancelled after
-  `00:49:39` to release the four foreground GPUs and must be restored after
-  experiment acceptance. Independent Student collector `30594` remains active
-  and must not be disturbed.
+  Low-priority P107 collector `30859` was restored after foreground completion,
+  retains `Nice=10000`, and atomically wrote one 64-row shard on each of four
+  ranks; independent Student collector `30594` remained active throughout.
 
 - Previous completed branch: `qh-flow-score-regression-proxy`, created from
   `qh-flow-latent-proxy` at `da734e4a89a883237e0a65177a7b40795174e312`
@@ -173,17 +182,13 @@ once the task is accepted.
   base-repository DESC environment rather than a nonexistent worktree-local
   venv; failed job `30742` exited in one second before numerical work and is
   invalid infrastructure evidence only.
-- Background collection had been restored after the prior foreground work.
-  Student job `30594` remains running; low-priority P107 job `30777` passed
-  stable-production acceptance but is now intentionally cancelled for the
-  active screened-start Adam foreground experiment as recorded above. Final
-  metadata-only recount job `30783` completed `0:0`
-  on 2026-08-02: the unified append-only corpus contained exactly 60,740
-  completed samples in 951 shards from 32 streams, with `ok=26207`,
-  `no_axis=16318`, `no_surface=4357`, `drift_rejected=13394`, and
-  `flux_rejected=464`. Refresh
+- Background collection is active through Student job `30594` and low-priority
+  P107 job `30859`. Metadata-only recount job `30865` completed `0:0` on
+  2026-08-02: the unified append-only corpus contained exactly 68,420 completed
+  samples in 1,071 shards from 36 streams, with `ok=29538`, `no_axis=18362`,
+  `no_surface=4906`, `drift_rejected=15094`, and `flux_rejected=520`. Refresh
   this count at every later delivery because both collectors continue to append
-  shards. Recount job `30780` is invalid launch-only evidence (`127:0`, zero
+  shards. Earlier recount job `30780` is invalid launch-only evidence (`127:0`, zero
   seconds, no numerical work): Slurm `--wrap` used `/bin/sh`, where `source`
   was unavailable; use POSIX `. /path/to/activate` in future metadata wraps.
 - The 2026-08-02 latent-score regression experiment is complete. It used the

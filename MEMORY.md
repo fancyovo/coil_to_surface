@@ -77,9 +77,9 @@ once the task is accepted.
   worktree. Combined eight-seed score curves, tail-progress metrics, and raw
   histories were added in commit
   `32856ae129c162558a0a4bf4e9e07c1e5c6f92f5`, also synchronized remotely.
-  Final delivery metadata, including the 70,724-row corpus snapshot, is commit
-  `b8ef79b67c8bb2a66bcf3627b7e8b699f3de9319`; local and remote worktrees are
-  synchronized to this commit.
+  Final report/artifact delivery metadata, including the 70,724-row corpus
+  snapshot, is commit `b8ef79b67c8bb2a66bcf3627b7e8b699f3de9319`; this
+  commit is included in both local and remote worktrees.
   Low-priority P107 collector `30859` was restored after foreground completion,
   retains `Nice=10000`, and atomically wrote one 64-row shard on each of four
   ranks; independent Student collector `30594` remained active throughout.

@@ -107,8 +107,15 @@ once the task is accepted.
   in `reports/assets/qh_corrected_score_calibration_30994/`; full remote rows
   are in `runs/corrected_score_calibration_1024x2_20260802/results`. All
   recovery results append to `reports/qh_differential_qs_metric_investigation.md`,
-  not a new report. The same-start corrected 200-step Adam run is the next
-  active stage and has not yet been submitted.
+  not a new report. First Adam submission `31051` is invalid launch evidence:
+  Slurm comma-separated `--export` truncated the center-backtracking sequence
+  to `[0.5]`; it was cancelled after two iterations and must not enter the
+  comparison. Replacement job `31058` is active in
+  `runs/qh_corrected_score_adam_start10_200_20260802_r1`. Its manifest exactly
+  matches old job `30662`: same `start_10`, seed `20260804`, 200 iterations,
+  eta `0.01`, beta1/beta2 `0.5/0.999`, perturbation `0.005`, four directions,
+  FP32 RK4-256, robust whole-step skipping, and center backtracking
+  `[0.5,0.25,0.125]`; only the score library/objective changed to ABI 9.
 - Previous completed branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-

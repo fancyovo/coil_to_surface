@@ -54,11 +54,27 @@ cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-mapfile -t compute_processes < <(
-  nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | sed '/^[[:space:]]*$/d'
-)
-if (( ${#compute_processes[@]} != 0 )); then
-  printf 'allocated GPUs are not idle; compute PIDs: %s\n' "${compute_processes[*]}" >&2
+idle_streak=0
+for _ in {1..60}; do
+  idle=1
+  while IFS=',' read -r utilization memory_used; do
+    utilization="${utilization// /}"
+    memory_used="${memory_used// /}"
+    if (( utilization != 0 || memory_used > 16 )); then idle=0; fi
+  done < <(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits)
+  if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
+    idle=0
+  fi
+  if (( idle )); then
+    ((idle_streak += 1))
+    if (( idle_streak >= 3 )); then break; fi
+  else
+    idle_streak=0
+  fi
+  sleep 2
+done
+if (( idle_streak < 3 )); then
+  echo "allocated GPUs did not reach three consecutive idle probes" >&2
   exit 42
 fi
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \

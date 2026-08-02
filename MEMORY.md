@@ -38,6 +38,27 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-02, a focused audit of the differential volume-QS metric found a
+  definitive shared Python/C++/CUDA convention bug. The volume pipeline uses
+  radian angles and toroidal flux divided by $2\pi$, so the Boozer covariant
+  current function must be
+  $G=\mu_0 I_{\mathrm{link}}/(2\pi)$. Both
+  `stellarator_eval/volume_qs.py` and `gpu_backend/src/score_pipeline.cu`
+  instead use $G=\mu_0 I_{\mathrm{link}}$, i.e. the normalized-turn value is
+  too large by exactly $2\pi$. This inflates QA and QH while leaving QP
+  unchanged. Human-facing outputs also mix helicity normalization: target QH
+  is raw, QA has unit norm, and QP is already divided by `nfp`. Exact offline
+  reconstruction under the current constant-iota configuration changes the
+  score-61.339 sample's QA/QH-raw/QH-per-helicity errors to
+  `0.119169/0.020415/0.004951`, and the score-63.691 sample's to
+  `0.120479/0.012113/0.002938`; normalized QH is respectively about 6.0x and
+  10.3x lower than QP. Independent accepted Boozer surfaces also put QH 26--94x
+  below QA/QP. Therefore old volume-QS components, QH competitor gates, and
+  total-score physical calibration are superseded pending a versioned fix and
+  threshold recalibration; old geometries and independent full evaluations
+  remain valid. No production code or score ABI was changed in this audit.
+  Full evidence and the correction plan are in
+  `reports/qh_differential_qs_metric_investigation.md`.
 - Active local branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-

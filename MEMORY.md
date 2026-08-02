@@ -50,7 +50,7 @@ once the task is accepted.
   experiment unless the user explicitly requests one. Implementation commit
   `afd6db8a61ea802dda8ef2392df7d3729cd5a498` and metadata-recovery correction
   `cf57f34486e6d0b1ec8c3bae82fa145f09aebb0c` are synchronized to the remote
-  worktree. Full local validation is `125 passed`. Four-GPU jobs `30788_0` and
+  worktree. Full local validation is `126 passed`. Four-GPU jobs `30788_0` and
   `30790_[1-7]` completed all eight candidate seeds `2026080200--2026080207`.
   Six of eight runs reached score 40, none reached 50, and best scores had
   min/median/mean/max `32.9074/44.3686/43.1026/49.5427`; median gain was
@@ -61,6 +61,13 @@ once the task is accepted.
   assertion rejected the `0.0585` FP32 batch-versus-single decode score
   discrepancy; its summary was recovered from unchanged artifacts without a
   rerun. The other seven jobs completed `0:0`. No full evaluation was run.
+  Combined score-history analysis shows that all runs except seed `2026080203`
+  achieved their running best at step 50. Last-10-step best-score gains for
+  seed suffixes `00--07` were
+  `1.038/3.964/0.679/0/0.607/1.527/4.140/3.609`; thus 50 steps truncated most
+  trajectories rather than demonstrating convergence. Seed `03` is the
+  exception: all final ten rounds were skipped by the invalid-endpoint gate,
+  so its flat tail is feasibility-boundary stalling, not ordinary saturation.
   Detailed evidence is in `reports/qh_screened_start_adam_report.md`, local
   assets under `reports/assets/qh_screened_start_adam_20260802/`, and remote
   results under

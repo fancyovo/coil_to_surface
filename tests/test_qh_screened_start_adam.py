@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.analyze_qh_screened_start_adam import analyze
+from scripts.analyze_qh_screened_start_adam import analyze, score_curve, tail_progress
 from scripts.select_qh_screened_adam_start import select_best_row
 from scripts.summarize_qh_screened_start_adam import build_summary
 
@@ -67,3 +67,27 @@ def test_analyze_reports_multiseed_success_rates() -> None:
     assert summary["thresholds"]["best_ge_40_count"] == 2
     assert summary["thresholds"]["best_ge_50_count"] == 1
     assert summary["timing_s"]["end_to_end_median"] == 110.0
+
+
+def test_tail_progress_reports_running_best_gain_and_applied_steps() -> None:
+    history = []
+    running_best = 10.0
+    for iteration in range(1, 51):
+        if iteration > 40:
+            running_best += 0.2
+        history.append(
+            {
+                "iteration": iteration,
+                "current_score": running_best - (0.1 if iteration % 2 else 0.0),
+                "best_score": running_best,
+                "gradient_step_applied": iteration not in (42, 49),
+            }
+        )
+
+    iterations, current, best = score_curve(10.0, history)
+    progress = tail_progress(10.0, history)
+
+    assert iterations.shape == current.shape == best.shape == (51,)
+    assert abs(progress["best_gain_last_10_steps"] - 2.0) < 1.0e-12
+    assert abs(progress["best_gain_last_5_steps"] - 1.0) < 1.0e-12
+    assert progress["applied_adam_steps_last_10"] == 8

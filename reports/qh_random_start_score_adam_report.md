@@ -884,3 +884,174 @@ volume-QS 分量 38.78 和线圈几何分量 62.79 一致。
 [标准面 summary](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/candidates/s_0p64/standard_rho_1/summary.json)、
 [完整下游 summary](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/full_summary.json) 和
 [DESC summary](assets/qh_adam_topology_fixed_61p339_full_eval_20260801/full_cpu_p107/desc/summary.json)。
+
+## 13. 低动量 200 步长跑与 63.6915 样本完整验收
+
+### 13.1 同一 IID 起点的 200 步结果
+
+作业 `30662` 从第 4.2 节完全相同的 IID `start_10` 出发，零动量初始化，固定使用
+$\eta=0.01$、$\beta_1=0.5$、$\beta_2=0.999$、扰动尺度 $c=0.005$、4 个正交反对称方向和
+FP32 RK4-256。生产 score 库 SHA-256 为
+`4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708`。
+
+| 指标 | 结果 |
+| --- | ---: |
+| 初始 score | 38.6590 |
+| 最佳 score | **63.6915**，第 195 步 |
+| 最终 score | 63.6786 |
+| 首次达到 50 / 55 / 60 / 61 | 第 16 / 27 / 64 / 71 步 |
+| 实际 Adam 更新 / 跳过脏方向轮次 | 184 / 16 |
+| 非法中心 / 中心回溯 | 0 / 0 |
+| 最大 current-score 回撤 | 0.7625 |
+| 优化器墙钟 | 5511.0 s，平均 27.40 s/轮 |
+
+16 个跳过轮次均来自至少一个正负扰动端点未通过 score 有效性门槛；实现按固定策略整轮跳过梯度、
+一阶矩、二阶矩和参数更新。所有真正提交的中心都保持 `status=ok`，没有再次出现旧轴判定 bug 导致的
+错误 `no_axis` 或长达数十步的动量污染。四张 RTX 5090 在作业前后均为 2 MiB、0% 利用率，没有遗留
+worker。Python 退出时仅出现重复 semaphore unlink 警告，不影响 `COMPLETED 0:0` 和 GPU postflight。
+
+![低动量 200 步 Adam 轨迹](assets/qh_adam_low_momentum_start10_200_30662/progress.png)
+
+和同一 IID 起点旧的 200 步结果对比如下：
+
+| 版本 | $\beta_1$ | $c$ | 最佳 score | 最大回撤 | 200 步结果 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 旧版本 | 0.9 | 0.01 | 59.9800 | 4.2007 | 从未达到 60 |
+| 当前稳健版本 | 0.5 | 0.005 | **63.6915** | **0.7625** | 第 64 步达到 60 |
+
+这是整个修正包的结果，不是干净的 $\beta_1$ 单因素消融。两次运行还同时不同于轴拓扑判定、扰动尺度、
+脏方向整轮跳过、中心回滚和 score 库版本；因此可以结论性地说“当前生产组合明显更好”，不能把
+$+3.71$ 分全部归因于降低 $\beta_1$。
+
+### 13.2 当前 native score 以及相对 61.339 样本的变化
+
+最佳输入已冻结为 [best.json](assets/qh_adam_low_momentum_start10_200_30662/best.json)，SHA-256 为
+`3e1843b2b8ae2a603bf1150daa0de6bdc16d9c8c7e5ce1805711a05cb04f4693`。以下使用当前生产库比较
+本样本和第 12 节的 61.339 样本：
+
+| score 分量 | 61.339 样本 | 63.6915 样本 | 变化 |
+| --- | ---: | ---: | ---: |
+| axis | 99.2312 | 98.8288 | -0.4024 |
+| $\psi$ | 97.2853 | 97.4849 | +0.1996 |
+| surface | 83.0218 | 86.0973 | **+3.0755** |
+| coordinate | 85.2201 | 85.8548 | +0.6348 |
+| volume QS | 38.7846 | 39.1543 | +0.3697 |
+| $\iota$ | 100.0000 | 100.0000 | 0 |
+| coil | 62.7895 | 64.1133 | **+1.3238** |
+| 总 score | 61.3390 | **63.6915** | **+2.3525** |
+
+各分量并非等权相加，因此最后一列不能直接求和解释总分。最清楚的提升来自 surface 和 coil，随后是
+coordinate。native 体 QH global/edge error 从 $0.34585/0.45782$ 降至
+$0.33930/0.45537$，分别改善约 1.9% 和 0.5%。最小线圈间距从 $0.03366\,\mathrm m$ 增至
+$0.04657\,\mathrm m$，增加 38.4%；曲率最大值从 $14.406$ 降至
+$13.429\,\mathrm m^{-1}$，但曲率 P95 从 $7.854$ 略增至 $8.015\,\mathrm m^{-1}$。
+
+### 13.3 样本自适应源 $\psi$ 和标准外层面
+
+本次没有复用第 12 节的 $a=0.06$。四个源拟合各自独立运行，结果为：
+
+| $a$ [m] | validation RMS | 角误差 P95 | 廉价筛选最大通过 $s$ | 对应平均半径 [m] | 首个失败 $s$ |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.04 | $6.398\times10^{-4}$ | $5.229\times10^{-5}$ | 0.49 | 0.02856 | 0.64 |
+| 0.05 | $6.626\times10^{-4}$ | $6.921\times10^{-5}$ | 0.49 | 0.03568 | 0.64 |
+| 0.06 | $7.066\times10^{-4}$ | $9.131\times10^{-5}$ | 0.49 | 0.04280 | 0.64 |
+| **0.08** | **$1.004\times10^{-3}$** | **$1.946\times10^{-4}$** | **0.36** | **0.04914** | **0.49** |
+
+$a=0.08$ 的误差仍约为 $10^{-3}$，同时把已验证物理半径相对 $a=0.06$ 扩大约 15%，所以本样本选择
+$a=0.08$。随后标准面检查得到：
+
+| 目标 $s$ | 最终判定 | $|V|$ [$\mathrm{m^3}$] | $\iota$ | dense relative $L^2$ | normal $B$ P95 | 面 QH error / 备注 |
+| ---: | --- | ---: | ---: | ---: | ---: | --- |
+| 0.24 | 通过 | 0.03115 | 1.92987 | $2.46\times10^{-5}$ | $4.02\times10^{-5}$ | $4.81\times10^{-6}$ |
+| **0.36** | **通过并选中** | **0.04914** | **1.94509** | **$2.88\times10^{-5}$** | **$4.78\times10^{-5}$** | **$4.41\times10^{-5}$** |
+| 0.49 | guarded 拒绝 | 0.06865 | 1.94043 | $1.70\times10^{-2}$ | $8.56\times10^{-3}$ | 未进入可接受标准面 |
+| 0.64 | Newton 形式成功但拒绝内支 | 0.03636 | 1.93400 | $2.57\times10^{-5}$ | $4.22\times10^{-5}$ | 回代 $s$ 均值仅 0.274 |
+| 0.81 | Newton 形式成功但拒绝内支 | 0.00963 | 1.91396 | $2.07\times10^{-5}$ | $3.17\times10^{-5}$ | 回代 $s$ 均值仅 0.0795 |
+
+$s=0.64/0.81$ 的小残差不是优质大磁面：当目标 $s$ 增大时，它们的封闭体积反而从
+$0.04914\,\mathrm{m^3}$ 降至 $0.03636$ 和 $0.00963\,\mathrm{m^3}$，且拟合 $\psi$ 回到内层，证明
+Newton 跳到了错误内支。选择器原先只看 solver 成功和最大的 $s$，可能误选这种结果。提交 DESC 前已修正为
+同时要求嵌套分支的封闭体积随外扩严格增加，并保存 `solver_accepted` 与
+`branch_consistency` 两套状态；回归测试已通过。该判定不使用“初值距离必须很小”的任意硬阈值。
+
+本轮外层 `gpu-ray` 在固定 95% 有效射线预算上提前退出后，曾未经用户许可回退到旧
+`legacy-cartesian` alpha。它在约 400 万 Cartesian 候选点上用 CPU 计算并筛选拟合 $\psi$，还做多截面
+磁通标定；$s=0.49/0.64/0.81$ 的 alpha 单步分别耗时 194.8、214.8、289.0 s，完整候选达到
+16--28 分钟。`s=0.49` 已出现明确 guarded 拒绝，后续标准 Newton 仍长尾，故在 28:07 主动终止。
+这次回退按用户要求作为一次性例外：今后任何可大批量 CUDA 并行且 CPU 慢一个到两个数量级的完整评估
+步骤，禁止未经允许回退 CPU 或旧慢路径；若不能简单补齐 GPU 实现，必须保留问题并交由用户决定。
+用户明确允许的 CPU DESC 不受此条影响。
+
+### 13.4 Poincaré、直接 Boozer 图和三维几何
+
+选中 $s=0.36$ 面的 8 条内侧种子在四个环向截面均得到 23--25 个命中点，未显示逃逸或宏观磁岛：
+
+![63.6915 样本最大标准面的 Poincare 复核](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/assets/poincare.png)
+
+直接标准 Boozer 面上的 $|B|$ 范围为 $0.62295$--$0.76353\,\mathrm T$，平均值为
+$0.69170\,\mathrm T$。图中使用白底彩色等高线，颜色表示 $|B|$ 大小。
+
+![63.6915 样本直接 Boozer 面的彩色场强等高线](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/assets/boozer_b.png)
+
+![63.6915 样本完整线圈和最大标准磁面](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/assets/coils_surface.png)
+
+[交互式 Boozer $|B|$ 图](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/assets/boozer_b.html)和
+[完整线圈与磁面 HTML](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/assets/coils_surface.html)均已冻结。
+
+### 13.5 CPU DESC 复核及全部输出图
+
+正式下游作业 `30745` 使用 16 CPU，不占 GPU，`COMPLETED 0:0`，墙钟 4:35。初始和最终均保持嵌套；
+初始归一化力误差 mean/P95/max 为 $0.9328/2.462/6.407$，50 次 `lsq-exact` 后为
+
+$$
+\operatorname{mean}|F|=2.725\times10^{-3},\qquad
+\operatorname{P95}|F|=6.124\times10^{-3},\qquad
+\max|F|=1.484\times10^{-2}.
+$$
+
+优化器仍达到 50 次迭代上限，`success=false`、cost 为 0.01773；结论仍是“DESC 显著改善并保持嵌套”，
+不是“优化器形式收敛”。以下逐张引用全部 8 张 DESC 图：
+
+![DESC 初始边界](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/boundary.png)
+
+![DESC Boozer 模谱](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/boozer_modes.png)
+
+![DESC Boozer 场强彩色等高线](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/boozer_B.png)
+
+![DESC QA 分量随 rho 变化](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/qs_QA.png)
+
+![DESC QH 分量随 rho 变化](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/qs_QH.png)
+
+![DESC QP 分量随 rho 变化](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/qs_QP.png)
+
+![DESC iota 随 rho 变化](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/iota.png)
+
+### 13.6 相比 61.339 样本，提分具体体现在哪里
+
+| 完整物理量 | 61.339 样本 | 63.6915 样本 | 变化 |
+| --- | ---: | ---: | ---: |
+| 最大验收 $|V|$ [$\mathrm{m^3}$] | 0.04123 | **0.04914** | **+19.2%** |
+| 标准面 $\iota$ | 1.94669 | 1.94509 | 基本不变 |
+| 面 QH error | $1.33\times10^{-4}$ | **$4.41\times10^{-5}$** | **降低 66.9%，约好 3.0 倍** |
+| dense relative $L^2$ | $2.72\times10^{-5}$ | $2.88\times10^{-5}$ | 略差 5.8% |
+| normal $B$ P95 | $4.63\times10^{-5}$ | $4.78\times10^{-5}$ | 略差 3.2% |
+| DESC 最终力误差 mean | $3.13\times10^{-3}$ | **$2.72\times10^{-3}$** | **降低 12.9%** |
+| DESC 最终力误差 P95 | $6.99\times10^{-3}$ | **$6.12\times10^{-3}$** | **降低 12.4%** |
+| DESC 最终力误差 max | $1.65\times10^{-2}$ | **$1.48\times10^{-2}$** | **降低 9.9%** |
+
+因此这次从 61.339 到 63.6915 的提升不是只发生在评分器内部：新样本找到了更大的标准嵌套面，单面 QH
+误差约降到原来的三分之一，线圈间距显著改善，DESC 终态力误差也整体下降。代价是标准面的 dense
+残差和法向场 P95 略差约 3%--6%，但仍稳定低于固定的 $10^{-4}$ 验收门槛。总体上，score 提升方向与
+独立完整评估一致。
+
+下游数值计算本身耗时 270.66 s，其中 DESC 212.56 s、直接可视化 30.39 s。第一次提交 `30742` 因
+提交器错误地把 DESC 虚拟环境默认到工作树内而在 1 s 内启动失败，没有进行数值计算；默认路径现已统一
+为已验证的基础仓库环境，避免下次再靠手工覆盖。选中标准面 SHA-256 为
+`c5d9b6eb12c57637c5c61831cf5c046fb592c7046d29976d2c28c44666e9e279`，DESC equilibrium SHA-256 为
+`a5115b395cd39c83b47e9c38698e23427b81a329b8cbb09e4629c352565ff05d`。机器可读证据位于
+[selection.json](assets/qh_adam_low_momentum_63p691_full_eval_20260802/selection.json)、
+[标准面 summary](assets/qh_adam_low_momentum_63p691_full_eval_20260802/candidates/s_0p36/standard_rho_1/summary.json)、
+[完整下游 summary](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/full_summary.json)和
+[DESC summary](assets/qh_adam_low_momentum_63p691_full_eval_20260802/full/desc/summary.json)。

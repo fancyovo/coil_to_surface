@@ -98,32 +98,70 @@ once the task is accepted.
   rewrite did not provide a measurable end-to-end gain. This is outside the
   ten-second native-score path and needs a separately validated dedicated GPU
   polynomial evaluator if optimized further. Current complete local suite:
-  117 passing tests.
+  118 passing tests.
 - On 2026-08-02 the user clarified the performance boundary: DESC is allowed
   to run on CPU. The strict GPU-throughput requirement applies to the native
   C++/CUDA coils-to-score path; CPU DESC should request no GPU, while native
   score code must not acquire accidental Python/CPU fallbacks or avoidable
   serial work.
-- The requested 200-step low-momentum Adam run from the original IID
-  `start_10` is active as Slurm job `30662` under
-  `runs/qh_adam_low_momentum_start10_200_20260802_r1`. It uses current-score
-  baseline `38.6590225`, $\eta=0.01$, $\beta_1=0.5$, $\beta_2=0.999$,
-  perturbation `0.005`, four antithetic directions, FP32 RK4-256, strict
-  robust endpoint handling, and production score-library SHA-256
-  `4bf7a12e...`. All four allocated RTX 5090s were idle at preflight; iteration
-  1 completed with eight valid endpoints and improved the score to `39.50098`.
-  Low-priority P107 collector `30663` has `Nice=10000` and the exact dependency
-  `afterany:30662`, so it starts after the foreground run ends regardless of
-  exit status. The first submission `30658` is invalid: an unnecessary
-  comma-containing `--export` value was misparsed as `0.5\`, so argparse exited
-  before optimization. Its consequent collector `30659` started as designed
-  by `afterany` and was deliberately cancelled before submitting the corrected
-  pair. Do not pass `INVALID_CENTER_BACKTRACKING` through comma-delimited
-  `sbatch --export`; use the launcher's validated default.
-- Metadata-only Slurm recount job `30664` completed on 2026-08-02. The unified
-  append-only score corpus currently contains exactly 19,524 completed samples
-  in 307 shards from 20 streams: `ok=8433`, `no_axis=5449`,
-  `no_surface=1309`, `drift_rejected=4194`, and `flux_rejected=139`.
+- On 2026-08-02 the user added a hard full-evaluation fallback rule. For any
+  stage that is naturally batch-parallel on CUDA and whose CPU implementation
+  is roughly one to two orders of magnitude slower, do not autonomously fall
+  back to the CPU or an old slow backend for any reason. If a CUDA path can be
+  added or repaired with a simple code change, implement and validate it;
+  otherwise stop at that stage, preserve the evidence, and ask the user to
+  choose between accepting the slow CPU path and designing a GPU algorithm.
+  The `legacy-cartesian` alpha fallback used during the 63.69 full evaluation
+  is a one-time explicitly forgiven exception and must not become precedent.
+  This rule does not supersede the user's explicit permission for DESC itself
+  to run on CPU.
+- Slurm job `30662`, the requested 200-step low-momentum Adam run from the
+  original IID `start_10`, completed `0:0` in 1:32:00. With $\eta=0.01$,
+  $\beta_1=0.5$, $\beta_2=0.999$, perturbation `0.005`, four antithetic
+  directions, FP32 RK4-256, robust whole-step skipping, and production score
+  library `4bf7a12e...`, it improved `38.6590225 -> 63.6914797` (best at step
+  195; final `63.6786003`). It applied 184 updates, skipped 16 dirty-endpoint
+  rounds, had no invalid center or center rollback, and reduced maximum
+  drawdown to `0.7625`. The old same-IID 200-step package reached only
+  `59.97998` with drawdown `4.2007`; this is a package-level comparison, not a
+  beta1-only ablation. Frozen optimizer evidence is in
+  `reports/assets/qh_adam_low_momentum_start10_200_30662/`.
+- Complete physical evaluation of the `63.6914797` sample was accepted on
+  2026-08-02. Frozen input SHA-256 is
+  `3e1843b2b8ae2a603bf1150daa0de6bdc16d9c8c7e5ce1805711a05cb04f4693`.
+  Sample-specific source fitting selected `a=0.08`; nested standard surfaces
+  passed at `s=0.24,0.36`, guarded `s=0.49` failed, and formal Newton successes
+  at `s=0.64,0.81` were rejected as inner-branch jumps because enclosed volume
+  decreased and fitted psi collapsed inward. The selected `s=0.36` surface has
+  `|V|=0.0491435318 m^3`, `iota=1.94508971`, dense residual `2.87594e-5`,
+  normal-field P95 `4.78143e-5`, and surface QH error `4.41025e-5`; Poincare
+  passed. CPU DESC job `30745` completed `0:0` in 4:35, remained nested, and
+  reached normalized force mean/P95/max
+  `2.725e-3/6.124e-3/1.484e-2` at its 50-iteration limit. Relative to the
+  61.339 sample, volume is 19.2% larger, surface QH error is 66.9% lower, and
+  all three final DESC force summaries improve by about 10--13%. Selected
+  surface SHA-256 is
+  `c5d9b6eb12c57637c5c61831cf5c046fb592c7046d29976d2c28c44666e9e279`;
+  DESC equilibrium SHA-256 is
+  `a5115b395cd39c83b47e9c38698e23427b81a329b8cbb09e4629c352565ff05d`.
+  Full evidence and all eight DESC figures are in report section 13 and
+  `reports/assets/qh_adam_low_momentum_63p691_full_eval_20260802/`.
+- Full-evaluation branch selection now rejects formal solver successes whose
+  absolute enclosed volume does not increase with outward target `s`, while
+  preserving the raw `solver_accepted` state and not imposing an arbitrary
+  initial-distance threshold. Implementation commit `fab3751` includes the
+  regression test. Full-evaluation submitters now default to the validated
+  base-repository DESC environment rather than a nonexistent worktree-local
+  venv; failed job `30742` exited in one second before numerical work and is
+  invalid infrastructure evidence only.
+- Background collection was restored after foreground completion. Student job
+  `30594` and independent low-priority P107 four-GPU job `30747` are running;
+  `30747` has `Nice=10000` and no dependency. Metadata-only recount job `30749`
+  completed `0:0` on 2026-08-02: the unified append-only corpus contains
+  exactly 54,532 completed samples in 854 shards from 28 streams, with
+  `ok=23554`, `no_axis=14657`, `no_surface=3890`,
+  `drift_rejected=12016`, and `flux_rejected=415`. Refresh this count at every
+  later delivery because both collectors continue to append shards.
 - Complete physical-evaluation report and assets were delivered in commit
   `4071dcc9c1132f4bf1f05e85580aa140b19477b3`.
 - On 2026-08-01, complete physical evaluation of the interrupted $\eta=0.01$

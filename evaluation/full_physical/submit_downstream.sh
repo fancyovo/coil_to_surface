@@ -7,7 +7,7 @@ set -euo pipefail
 : "${DESC_BACKEND:?DESC_BACKEND must be explicitly set to cpu, cpu-p107, or gpu}"
 
 project=${PROJECT:-$HOME/local_surface_evaluator}
-eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
+eval_env=${EVAL_ENV:-$HOME/local_surface_evaluator/.venv-desc016-py312}
 candidate_root=${CANDIDATE_ROOT:-$OUTPUT_ROOT/candidates}
 selection_json=${SELECTION_JSON:-$OUTPUT_ROOT/selection.json}
 full_output_dir=${FULL_OUTPUT_DIR:-$OUTPUT_ROOT/full}

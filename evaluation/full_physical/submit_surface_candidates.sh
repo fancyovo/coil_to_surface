@@ -9,7 +9,7 @@ set -euo pipefail
 
 project=${PROJECT:-$HOME/local_surface_evaluator}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
-eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
+eval_env=${EVAL_ENV:-$HOME/local_surface_evaluator/.venv-desc016-py312}
 serial_candidates=${SERIAL_CANDIDATES:-0}
 candidate_cpus_per_task=${CANDIDATE_CPUS_PER_TASK:-4}
 candidate_root=$OUTPUT_ROOT/candidates

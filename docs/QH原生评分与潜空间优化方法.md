@@ -432,7 +432,30 @@ x_*+aJ_F(z_*)u,\qquad
 x_*+av,
 $$
 
-其中 $v$ 是匹配一阶物理位移尺度的原参数空间随机方向。最终数值和图将在 ABI-9 正式作业验收后填入本节。
+其中 $v$ 是匹配一阶物理位移尺度的原参数空间随机方向。正式作业 `31233` 使用 3 个 QUASR
+QH 参考点、每例 4 个方向和每条路径 31 个对称步长点，共形成 1128 个逻辑点、1095 个去重
+后的原生评分。运行固定了 corrected ABI-9 库与 30k physical-loss checkpoint 的 SHA-256，
+并使用 FP32 RK4-256。
+
+![corrected ABI-9 三路径 landscape](../reports/assets/qh_flow_landscape_abi9_31233/landscape_score_vs_alpha.png)
+
+![参考点附近的 corrected ABI-9 landscape](../reports/assets/qh_flow_landscape_abi9_31233/landscape_score_vs_alpha_zoom.png)
+
+逐样本、逐方向配对后，latent 相对 random direct 的下降 5/10 分宽度比中位数为
+8.630/6.522；以真实线圈位置 RMS 位移衡量仍为 3.427/2.584，四项均为 12/12 个方向由
+latent 更宽。非均匀网格二阶导 RMS 比中位数为 0.257，11/12 个方向更平滑；完整扫描中的
+`status=ok` 比例为 74.73%，而 random direct 为 52.69%。
+
+相对同一 flow Jacobian 切线，下降 5 分坐标宽度和物理半径比只有 0.951 和 0.973，二阶导
+RMS 比为 1.0005，说明 latent 路径与其一阶物理切线近似等价。256 步反向--正向线圈位置
+闭环 RMS 为 $2.26\times10^{-8}$--$4.57\times10^{-8}\,\mathrm m$，三个参考点的 QH error
+重建差均小于 $10^{-8}$。因此 flow 的优化优势来自学到的多线圈、Fourier 模态和电流相关
+方向，而不是坐标单位、ODE 误差或旧 score bug。完整配对统计与证据边界见
+[landscape 专项报告](../reports/qh_flow_landscape_report.md)。
+
+![按相同线圈物理位移比较 score 保持](../reports/assets/qh_flow_landscape_abi9_31233/landscape_score_vs_displacement.png)
+
+![FP32 RK4 反向--正向闭环收敛](../reports/assets/qh_flow_landscape_abi9_31233/closure_convergence.png)
 
 ### 6.4 三线圈、四场周期优化
 

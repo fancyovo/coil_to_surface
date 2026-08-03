@@ -38,17 +38,18 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-03, local `main` now contains non-fast-forward merge commit
+- On 2026-08-03, local `main` contains non-fast-forward merge commit
   `2e83d21` (`Merge native QH scoring and latent optimization`). The merge
   preserves the original Simsopt LS/Newton and DESC route while adding the
   ABI-9 native QH score, flow-matching tooling, robust latent Adam, complete-
   evaluation entrypoints, and the methodology/future-direction documents.
   Post-merge interface inspection confirms score ABI 9, corrected
   $G=\mu_0I_{\rm link}/(2\pi)$, explicit per-helicity diagnostics, physical
-  volume weights $Rr_b^2$, and the fixed 100000-point volume budget. The full
-  merged test suite passes with `134 passed`. The nfp6/nc2 result is complete
-  on the feature branch and still needs its final report/artifact commit
-  applied to `main`; corrected landscape job `31233` remains active.
+  volume weights $Rr_b^2$, and the fixed 100000-point volume budget. The nfp6/
+  nc2 result and its report are applied to `main` at `9910ec9`. The full merged
+  test suite passes with `134 passed`. Corrected landscape job `31233` has now
+  completed and its report/assets are being finalized for the last mainline
+  integration commit.
 - On 2026-08-03, commits `701b6e7`, `7fb5214`, and `96453fb` prepared
   the current paradigm for mainline delivery. The landscape launcher now pins
   the validated 30k physical-loss flow checkpoint and corrected ABI-9 score
@@ -61,17 +62,30 @@ once the task is accepted.
   `reports/qh_future_directions_feasibility.md` separately analyzes the
   validated proxy results, conditional Reflow, and component-wise approximate
   gradient/VJP feasibility. README links these documents while preserving the
-  original LS/Newton/DESC route. The nfp6/nc2 section is now filled from the
-  formal run; only the corrected landscape section remains pending.
-- On 2026-08-03, P107 job `31233` started after completed dependency
-  `31227_0`, so the two formal four-GPU jobs did not overlap. It reruns the
+  original LS/Newton/DESC route. The nfp6/nc2 and corrected ABI-9 landscape
+  sections are now both filled from their formal runs.
+- On 2026-08-03, P107 job `31233` completed `0:0` in `00:29:21` after completed
+  dependency `31227_0`, so the two formal four-GPU jobs did not overlap. It
+  reran the
   three-reference/four-direction landscape with FP32
   RK4-256, the validated checkpoint SHA
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`,
   and corrected ABI-9 library SHA
   `40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5`.
   Its output root is
-  `~/local_surface_evaluator/runs/qh_flow_landscape_abi9_20260803`.
+  `~/local_surface_evaluator/runs/qh_flow_landscape_abi9_20260803`. All 1095
+  unique scores and 1128 logical points are complete. Relative to independent
+  random data-space directions, the latent drop-5 coordinate/physical-radius
+  width ratios have medians `8.630/3.427`, both wider in 12/12 directions;
+  the second-derivative RMS ratio median is `0.257`, smoother in 11/12.
+  Relative to the matched flow-Jacobian tangent, corresponding ratios are
+  `0.951/0.973` and roughness ratio `1.0005`, so the benefit is learned
+  correlated directions rather than coordinate scaling. Latent/tangent/random
+  `status=ok` rates are `74.73/75.54/52.69%`. FP32 RK4-256 round-trip position
+  RMS is `2.26e-8`--`4.57e-8 m`; QH reconstruction differences are below
+  `1e-8`. Four GPUs were 0%, 2 MiB with no compute process before and after.
+  Evidence is in `reports/qh_flow_landscape_report.md` section 10 and
+  `reports/assets/qh_flow_landscape_abi9_31233/`.
 - On 2026-08-03, active branch `qh-small-condition-adam` commit `b3b5223`
   fixes the all-`ok` cross-step dirty-gradient failure in standard latent Adam.
   The optimizer now defaults to a rolling, scale-invariant median/MAD guard

@@ -110,18 +110,24 @@ once the task is accepted.
   not a new report. First Adam submission `31051` is invalid launch evidence:
   Slurm comma-separated `--export` truncated the center-backtracking sequence
   to `[0.5]`; it was cancelled after two iterations and must not enter the
-  comparison. Replacement job `31058` is active in
-  `runs/qh_corrected_score_adam_start10_200_20260802_r1`. Its manifest exactly
-  matches old job `30662`: same `start_10`, seed `20260804`, 200 iterations,
-  eta `0.01`, beta1/beta2 `0.5/0.999`, perturbation `0.005`, four directions,
-  FP32 RK4-256, robust whole-step skipping, and center backtracking
-  `[0.5,0.25,0.125]`; only the score library/objective changed to ABI 9. Last
-  successful scheduler check on 2026-08-02 showed `RUNNING 0:0` at elapsed
-  `00:42:30`; history reached at least iteration 97 with current/best score
-  `92.0514/92.0556`, QH raw error `0.0143531`, and iota `1.64349`. Subsequent
-  remote command channels timed out even though `ssh -O check ustc107` still
-  reported master PID 10695; do not resubmit or alter job `31058` after a
-  reconnect without first checking `squeue`, `sacct`, and the existing run.
+  comparison. Replacement job `31058` completed `0:0` in `01:29:37` under the
+  exact old-job-30662 settings: same `start_10`, seed `20260804`, 200
+  iterations, eta `0.01`, beta1/beta2 `0.5/0.999`, perturbation `0.005`, four
+  directions, FP32 RK4-256, robust whole-step skipping, and center backtracking
+  `[0.5,0.25,0.125]`; only the score library/objective changed to ABI 9. It
+  improved `85.88325 -> 93.16556` (best at iteration 197; final `93.16016`),
+  applied all 200 updates with zero invalid pair endpoint, and had maximum
+  drawdown `0.4084`. The best native components axis/psi/surface/coordinate/
+  volume-QS/iota/coil are `97.910/98.532/97.874/89.436/94.202/100/65.318`;
+  iota is `1.64627` and QH/QA/QP errors per helicity are
+  `0.0023003/0.115880/0.0289945`. Four-GPU postflight was 0%, 2 MiB on every
+  card. Python emitted only harmless duplicate semaphore cleanup warnings at
+  interpreter shutdown; all 200 history rows and artifacts are complete.
+  Frozen artifacts and same-start comparison plot are in
+  `reports/assets/qh_corrected_score_adam_start10_200_31058/`. The next active
+  stage is the maintained complete physical evaluation of this `best.json`;
+  source `a` and surface `s` must be selected for this sample, not copied from
+  earlier cases.
 - Previous completed branch: `qh-flow-screened-adam`, created from
   `qh-flow-score-regression-proxy` at `53c95a00041ce0b9082d6e1b0b177dc41ba66741`
   on 2026-08-02. The active experiment uses the familiar `nfp=4`, three-base-

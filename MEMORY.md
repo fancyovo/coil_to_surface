@@ -56,13 +56,36 @@ once the task is accepted.
   `~/local_surface_evaluator_worktrees/qh-small-condition-adam`. Four-GPU smoke
   job `31146` completed `0:0` in 1:44 with all two Adam updates, exactly three
   trajectory snapshots, empty stderr, and no surviving GPU compute process.
-  Formal four-GPU job `31148` is running the single requested `nfp=4`, two-base-
-  coil experiment with candidate/optimizer seeds `2026080320/2026180320`.
-  Its result root is
+  Formal four-GPU job `31148` completed `0:0` in `01:00:08` for the single
+  requested `nfp=4`, two-base-coil experiment with candidate/optimizer seeds
+  `2026080320/2026180320`. The 128-case screen selected case 43 at corrected
+  score `78.83857`; Adam re-scored it at `78.84175` and reached best
+  `85.77307` at step 184, final `85.10663`, with 200 iterations and 199 applied
+  updates. Candidate selection/Adam/end-to-end times were
+  `138.72/3460.78/3599.50 s`. Best axis/psi/surface/coordinate/volume-QS/iota/
+  coil components are `93.435/97.531/97.235/87.599/77.069/100/72.799`, with
+  `iota=1.47284` and QH/QA/QP error per helicity
+  `0.0136752/0.131211/0.0297222`. All 201 trajectory snapshots exist; the
+  postflight is 0%, 2 MiB on all four GPUs with no compute process. Its result root is
   `~/local_surface_evaluator/runs/qh_small_condition_adam_nfp4_nc2_200_20260803/seed_2026080320`.
-  After completion it requires the same full physical evaluation and report as
-  the preceding corrected-score Adam case, plus a true per-step coil-score-QH
-  trajectory generated from the saved trajectory cases.
+  Full evaluation selected source `a=0.08`: source jobs
+  `31157/31159/31161/31163` all completed `0:0` in 9--12 seconds; all four
+  source radii screened through `s=0.36` and failed first at `0.49`, while
+  `a=0.08` provides the largest physical radius (`0.04798 m` mean at `s=0.36`)
+  with validation RMS/angle-P95 `6.828e-4/1.166e-4`. Standard surface jobs
+  `31165/31167/31169/31171/31173/31175` completed `0:0` in about three minutes
+  each and accepted every tested level through `s=0.49`; accepted enclosed
+  volume increases monotonically to `0.0671413 m^3`. Job `31177` at `s=0.64`
+  failed before alpha fitting because the GPU-ray sampler produced 166,595
+  candidates, below the fixed 180,000-point budget; this is not a standard-
+  surface physical failure. The Slurm alpha wrapper now exposes positive-
+  integer `ALPHA_GRID_XY` while retaining default 144. Re-evaluate `s=0.64` in
+  a fresh directory with grid 160: this only increases the GPU ray candidate
+  pool and preserves the fixed 120,000/60,000 train/validation counts, FP32
+  solver, and downstream algorithms. Then select the largest continuous
+  validated surface with an outer standard failure, run Poincare/plots/DESC,
+  and deliver the same report package as the preceding case plus the true
+  per-step coil-score-QH trajectory.
 - On 2026-08-03, commit `07deab9` added the corrected-score Adam
   `score-QH` landscape and fixed an overly strict complete-evaluation sampling
   gate without changing production native-score defaults. The final plot

@@ -3,6 +3,7 @@ import numpy as np
 from stellarator_eval.config import VolumeQSConfig
 from stellarator_eval.psi import PolyMode, PsiModel, build_modes, psi_and_gradient
 from stellarator_eval.volume_qs import (
+    _volume_candidate_lattice_shape,
     FluxScaleFit,
     StraightFieldFit,
     calibrate_toroidal_flux_gpu,
@@ -14,6 +15,16 @@ from stellarator_eval.volume_qs import (
     _budget_flux_levels,
     vacuum_G,
 )
+
+
+def test_volume_candidate_oversampling_preserves_default_and_scales_pool() -> None:
+    default_shape = _volume_candidate_lattice_shape(180_000, 96, 1.25)
+    expanded_shape = _volume_candidate_lattice_shape(180_000, 96, 1.6)
+
+    assert np.prod(default_shape) == 225_792
+    assert np.prod(expanded_shape) >= 288_000
+    assert expanded_shape[0] == default_shape[0] == 96
+    assert np.prod(expanded_shape) > np.prod(default_shape)
 
 
 class UniformToroidalField:

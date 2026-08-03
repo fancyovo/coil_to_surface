@@ -131,6 +131,7 @@ class VolumeQSConfig:
     point_count: int = 100000
     alpha_fit_point_count: int = 30000
     minimum_candidate_valid_fraction: float = 0.95
+    ray_candidate_oversampling: float = 1.25
     grid_xy: int = 144
     grid_phi: int = 96
     radial_extent_factor: float = 1.65

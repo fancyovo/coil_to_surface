@@ -22,7 +22,7 @@ project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
 s_edge=${S_EDGE:-0.25}
 alpha_train_points=${ALPHA_TRAIN_POINTS:-120000}
 alpha_validation_points=${ALPHA_VALIDATION_POINTS:-60000}
-alpha_grid_xy=${ALPHA_GRID_XY:-144}
+alpha_ray_candidate_oversampling=${ALPHA_RAY_CANDIDATE_OVERSAMPLING:-1.25}
 alpha_sampling_backend=${ALPHA_SAMPLING_BACKEND:-gpu-ray}
 alpha_min_candidate_valid_fraction=${ALPHA_MIN_CANDIDATE_VALID_FRACTION:-0.0}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
@@ -31,10 +31,6 @@ gpu_selector=${CUDA_VISIBLE_DEVICES:-}
 
 [[ $alpha_sampling_backend == gpu-ray || $alpha_sampling_backend == legacy-cartesian ]] || {
     printf 'ALPHA_SAMPLING_BACKEND must be gpu-ray or legacy-cartesian\n' >&2
-    exit 2
-}
-[[ $alpha_grid_xy =~ ^[1-9][0-9]*$ ]] || {
-    printf 'ALPHA_GRID_XY must be a positive integer\n' >&2
     exit 2
 }
 
@@ -96,7 +92,7 @@ python3 "$project/scripts/alpha_clebsch_ls_experiment.py" \
     --iota-degree 0 \
     --train-points "$alpha_train_points" \
     --validation-points "$alpha_validation_points" \
-    --grid-xy "$alpha_grid_xy" \
+    --ray-candidate-oversampling "$alpha_ray_candidate_oversampling" \
     --minimum-candidate-valid-fraction "$alpha_min_candidate_valid_fraction" \
     --sampling-backend "$alpha_sampling_backend" \
     --precision fp32 \

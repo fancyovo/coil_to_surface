@@ -254,11 +254,11 @@ def sample_volume_points(
 ) -> dict[str, np.ndarray]:
     extent = model.a if extent is None else min(float(extent), model.a)
     lower = config.s_edge * config.rho_min**2
-    candidate_target = int(np.ceil(config.point_count * 1.25))
-    n_phi = max(8, int(config.grid_phi))
-    per_phi = int(np.ceil(candidate_target / n_phi))
-    n_theta = max(16, int(np.ceil(np.sqrt(per_phi))))
-    n_radial = int(np.ceil(per_phi / n_theta))
+    n_phi, n_theta, n_radial = _volume_candidate_lattice_shape(
+        config.point_count,
+        config.grid_phi,
+        config.ray_candidate_oversampling,
+    )
     p_index, t_index, r_index = np.meshgrid(
         np.arange(n_phi),
         np.arange(n_theta),
@@ -360,6 +360,23 @@ def sample_volume_points(
         "minimum_count": np.asarray([minimum_count]),
         "candidate_valid_fraction": np.asarray([available / len(phi_flat)]),
     }
+
+
+def _volume_candidate_lattice_shape(
+    point_count: int,
+    grid_phi: int,
+    oversampling: float,
+) -> tuple[int, int, int]:
+    if point_count < 1:
+        raise ValueError("point_count must be positive")
+    if not np.isfinite(oversampling) or oversampling < 1.0:
+        raise ValueError("ray candidate oversampling must be at least 1")
+    candidate_target = int(np.ceil(point_count * oversampling))
+    n_phi = max(8, int(grid_phi))
+    per_phi = int(np.ceil(candidate_target / n_phi))
+    n_theta = max(16, int(np.ceil(np.sqrt(per_phi))))
+    n_radial = int(np.ceil(per_phi / n_theta))
+    return n_phi, n_theta, n_radial
 
 
 def _physical_volume_weights(R, boundary_radius):

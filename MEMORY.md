@@ -78,14 +78,21 @@ once the task is accepted.
   volume increases monotonically to `0.0671413 m^3`. Job `31177` at `s=0.64`
   failed before alpha fitting because the GPU-ray sampler produced 166,595
   candidates, below the fixed 180,000-point budget; this is not a standard-
-  surface physical failure. The Slurm alpha wrapper now exposes positive-
-  integer `ALPHA_GRID_XY` while retaining default 144. Re-evaluate `s=0.64` in
-  a fresh directory with grid 160: this only increases the GPU ray candidate
-  pool and preserves the fixed 120,000/60,000 train/validation counts, FP32
-  solver, and downstream algorithms. Then select the largest continuous
-  validated surface with an outer standard failure, run Poincare/plots/DESC,
-  and deliver the same report package as the preceding case plus the true
-  per-step coil-score-QH trajectory.
+  surface physical failure. Job `31183` proved that `ALPHA_GRID_XY=160` does
+  not affect the GPU-ray candidate count; `grid_xy` belongs to the legacy
+  Cartesian backend and must not be presented as the GPU-ray density control.
+  The actual sampler had a hard-coded 1.25 candidate oversampling factor. The
+  versioned fix adds `VolumeQSConfig.ray_candidate_oversampling`, alpha CLI
+  `--ray-candidate-oversampling`, and Slurm
+  `ALPHA_RAY_CANDIDATE_OVERSAMPLING`, all defaulting to the exact old value
+  1.25. Re-evaluate `s=0.64` in a fresh directory with factor 1.6: this only
+  increases the ray candidate lattice and preserves the fixed 120,000/60,000
+  train/validation counts, FP32 solver, and downstream algorithms. Unit tests
+  prove the default still generates exactly 225,792 candidates for a 180,000
+  point budget and factor 1.6 generates at least 288,000. Then select the
+  largest continuous validated surface with an outer standard failure, run
+  Poincare/plots/DESC, and deliver the same report package as the preceding
+  case plus the true per-step coil-score-QH trajectory.
 - On 2026-08-03, commit `07deab9` added the corrected-score Adam
   `score-QH` landscape and fixed an overly strict complete-evaluation sampling
   gate without changing production native-score defaults. The final plot

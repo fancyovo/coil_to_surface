@@ -291,6 +291,7 @@ def main() -> None:
     parser.add_argument("--validation-points", type=int, default=60000)
     parser.add_argument("--grid-xy", type=int, default=144)
     parser.add_argument("--grid-phi", type=int, default=96)
+    parser.add_argument("--ray-candidate-oversampling", type=float, default=1.25)
     parser.add_argument("--rho-min", type=float, default=0.06)
     parser.add_argument(
         "--minimum-candidate-valid-fraction",
@@ -316,6 +317,8 @@ def main() -> None:
     )
     parser.add_argument("--skip-fieldline-plot", action="store_true")
     args = parser.parse_args()
+    if args.ray_candidate_oversampling < 1.0:
+        parser.error("--ray-candidate-oversampling must be at least 1")
 
     args.out_dir.mkdir(parents=True, exist_ok=False)
     started = time.perf_counter()
@@ -348,6 +351,7 @@ def main() -> None:
                 minimum_candidate_valid_fraction=(
                     args.minimum_candidate_valid_fraction
                 ),
+                ray_candidate_oversampling=args.ray_candidate_oversampling,
                 grid_xy=args.grid_xy,
                 grid_phi=args.grid_phi,
                 precision=args.precision,
@@ -413,6 +417,7 @@ def main() -> None:
                 "candidate_valid_fraction": float(
                     points["candidate_valid_fraction"][0]
                 ),
+                "ray_candidate_oversampling": args.ray_candidate_oversampling,
                 "sampled_points": int(len(sampled_B)),
             }
         else:

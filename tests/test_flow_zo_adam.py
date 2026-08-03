@@ -13,6 +13,7 @@ from scripts.optimize_flow_prior_zo_adam import (
 from scripts.optimize_flow_prior_standard_adam import (
     parse_backtracking_fractions,
     robust_direction_deltas,
+    rolling_robust_limit,
     write_trajectory_case,
 )
 
@@ -123,6 +124,58 @@ def test_robust_direction_filter_is_scale_invariant_for_valid_outlier():
     np.testing.assert_array_equal(scaled_invalid, invalid)
     np.testing.assert_array_equal(scaled_outlier, outlier)
     np.testing.assert_allclose(scaled, 100.0 * used)
+    assert np.isclose(scaled_limit, 100.0 * limit)
+
+
+def test_rolling_robust_limit_rejects_step_185_scale_spike():
+    prior_gradient_rms = [4.7 + 0.03 * index for index in range(20)]
+    prior_update_rms = [0.0021 + 0.00002 * index for index in range(20)]
+
+    gradient_limit = rolling_robust_limit(
+        prior_gradient_rms,
+        window=20,
+        min_history=20,
+        ratio=8.0,
+        mad_factor=8.0,
+    )
+    update_limit = rolling_robust_limit(
+        prior_update_rms,
+        window=20,
+        min_history=20,
+        ratio=8.0,
+        mad_factor=8.0,
+    )
+
+    assert gradient_limit is not None and 337.109 > gradient_limit
+    assert update_limit is not None and 0.042175 > update_limit
+
+
+def test_rolling_robust_limit_has_warmup_and_is_scale_invariant():
+    values = [1.0 + 0.01 * index for index in range(20)]
+    assert (
+        rolling_robust_limit(
+            values[:19],
+            window=20,
+            min_history=20,
+            ratio=8.0,
+            mad_factor=8.0,
+        )
+        is None
+    )
+    limit = rolling_robust_limit(
+        values,
+        window=20,
+        min_history=20,
+        ratio=8.0,
+        mad_factor=8.0,
+    )
+    scaled_limit = rolling_robust_limit(
+        [100.0 * value for value in values],
+        window=20,
+        min_history=20,
+        ratio=8.0,
+        mad_factor=8.0,
+    )
     assert np.isclose(scaled_limit, 100.0 * limit)
 
 

@@ -90,6 +90,29 @@ def robust_direction_deltas(
     return used, ~valid, outlier, adaptive_limit
 
 
+def rolling_robust_limit(
+    values: list[float],
+    *,
+    window: int,
+    min_history: int,
+    ratio: float,
+    mad_factor: float,
+) -> float | None:
+    finite_positive = np.asarray(
+        [value for value in values if math.isfinite(value) and value > 0.0],
+        dtype=np.float64,
+    )
+    if finite_positive.size < min_history:
+        return None
+    recent = finite_positive[-window:]
+    median = float(np.median(recent))
+    mad = float(np.median(np.abs(recent - median)))
+    return max(
+        ratio * max(median, np.finfo(np.float64).eps),
+        median + mad_factor * 1.4826 * mad,
+    )
+
+
 def make_best_case(
     tokens: np.ndarray,
     noise: np.ndarray,
@@ -247,6 +270,18 @@ def main() -> None:
     )
     parser.add_argument("--direction-outlier-ratio", type=float, default=8.0)
     parser.add_argument("--direction-outlier-mad-factor", type=float, default=8.0)
+    parser.add_argument(
+        "--no-temporal-scale-guard",
+        action="store_false",
+        dest="temporal_scale_guard",
+        help="Disable the rolling cross-step gradient/update outlier guard.",
+    )
+    parser.set_defaults(temporal_scale_guard=True)
+    parser.add_argument("--temporal-guard-window", type=int, default=20)
+    parser.add_argument("--temporal-guard-min-history", type=int, default=20)
+    parser.add_argument("--temporal-gradient-ratio", type=float, default=8.0)
+    parser.add_argument("--temporal-update-ratio", type=float, default=8.0)
+    parser.add_argument("--temporal-guard-mad-factor", type=float, default=8.0)
     parser.add_argument("--gpus", default="0,1,2,3")
     parser.add_argument("--batch-timeout-s", type=float, default=300.0)
     parser.add_argument("--max-wall-s", type=float, default=1500.0)
@@ -278,6 +313,18 @@ def main() -> None:
         raise ValueError("Adam betas must be in (0, 1)")
     if args.direction_outlier_ratio <= 1.0 or args.direction_outlier_mad_factor <= 0.0:
         raise ValueError("direction outlier controls must be conservative and positive")
+    if (
+        args.temporal_guard_window < 1
+        or args.temporal_guard_min_history < 1
+        or args.temporal_guard_min_history > args.temporal_guard_window
+    ):
+        raise ValueError("temporal guard history must satisfy 1 <= min <= window")
+    if (
+        args.temporal_gradient_ratio <= 1.0
+        or args.temporal_update_ratio <= 1.0
+        or args.temporal_guard_mad_factor <= 0.0
+    ):
+        raise ValueError("temporal guard controls must be conservative and positive")
     if args.adam_epsilon <= 0.0 or args.plot_every < 1:
         raise ValueError("Adam epsilon and plot-every must be positive")
     if args.invalid_center_backtracking and not args.reject_invalid_center:
@@ -405,6 +452,17 @@ def main() -> None:
         "invalid_center_backtracking": list(args.invalid_center_backtracking),
         "direction_outlier_ratio": args.direction_outlier_ratio,
         "direction_outlier_mad_factor": args.direction_outlier_mad_factor,
+        "temporal_scale_guard": args.temporal_scale_guard,
+        "temporal_guard_window": args.temporal_guard_window,
+        "temporal_guard_min_history": args.temporal_guard_min_history,
+        "temporal_gradient_ratio": args.temporal_gradient_ratio,
+        "temporal_update_ratio": args.temporal_update_ratio,
+        "temporal_guard_mad_factor": args.temporal_guard_mad_factor,
+        "temporal_guard_policy": (
+            "rolling_accepted_step_median_mad_v1"
+            if args.temporal_scale_guard
+            else None
+        ),
         "update_clip": None,
         "parameter_clip": None,
         "proposal_search": (
@@ -447,6 +505,13 @@ def main() -> None:
             "invalid_center_backtracking",
             "direction_outlier_ratio",
             "direction_outlier_mad_factor",
+            "temporal_scale_guard",
+            "temporal_guard_window",
+            "temporal_guard_min_history",
+            "temporal_gradient_ratio",
+            "temporal_update_ratio",
+            "temporal_guard_mad_factor",
+            "temporal_guard_policy",
             "flow_method",
             "flow_steps",
             "checkpoint_sha256",
@@ -494,6 +559,20 @@ def main() -> None:
     else:
         history = []
         prior_wall_s = 0.0
+    accepted_gradient_scales = [
+        float(row["gradient_rms"])
+        for row in history
+        if row.get("gradient_step_applied", False)
+        and row.get("center_update_accepted", False)
+        and not row.get("temporal_step_rejected", False)
+    ]
+    accepted_update_scales = [
+        float(row["update_rms"])
+        for row in history
+        if row.get("gradient_step_applied", False)
+        and row.get("center_update_accepted", False)
+        and not row.get("temporal_step_rejected", False)
+    ]
     stop_reason = "completed_iterations"
 
     with NativeScorePool(args.lib, list(gpu_ids)) as pool:
@@ -654,6 +733,11 @@ def main() -> None:
             gradient_step_applied = not (
                 args.robust_direction_filter and np.any(invalid_direction)
             )
+            temporal_gradient_limit = None
+            temporal_update_limit = None
+            temporal_gradient_outlier = False
+            temporal_update_outlier = False
+            temporal_step_rejected = False
             if gradient_step_applied:
                 gradient, _ = gradient_from_pairs(
                     0.5 * used_delta,
@@ -665,58 +749,124 @@ def main() -> None:
                 gradient_rms = rms(gradient)
                 if not math.isfinite(gradient_rms):
                     raise RuntimeError(f"non-finite gradient at iteration {iteration}")
-                adam_step += 1
-                first_moment = (
+                candidate_adam_step = adam_step + 1
+                candidate_first_moment = (
                     args.beta1 * first_moment + (1.0 - args.beta1) * gradient
                 )
-                second_moment = (
+                candidate_second_moment = (
                     args.beta2 * second_moment
                     + (1.0 - args.beta2) * gradient * gradient
                 )
-                first_hat = first_moment / (1.0 - args.beta1**adam_step)
-                second_hat = second_moment / (1.0 - args.beta2**adam_step)
-                update = (
+                first_hat = candidate_first_moment / (
+                    1.0 - args.beta1**candidate_adam_step
+                )
+                second_hat = candidate_second_moment / (
+                    1.0 - args.beta2**candidate_adam_step
+                )
+                candidate_update = (
                     args.learning_rate
                     * first_hat
                     / (np.sqrt(second_hat) + args.adam_epsilon)
                 )
+                proposed_update_rms = rms(candidate_update)
+                if args.temporal_scale_guard:
+                    temporal_gradient_limit = rolling_robust_limit(
+                        accepted_gradient_scales,
+                        window=args.temporal_guard_window,
+                        min_history=args.temporal_guard_min_history,
+                        ratio=args.temporal_gradient_ratio,
+                        mad_factor=args.temporal_guard_mad_factor,
+                    )
+                    temporal_update_limit = rolling_robust_limit(
+                        accepted_update_scales,
+                        window=args.temporal_guard_window,
+                        min_history=args.temporal_guard_min_history,
+                        ratio=args.temporal_update_ratio,
+                        mad_factor=args.temporal_guard_mad_factor,
+                    )
+                    temporal_gradient_outlier = (
+                        temporal_gradient_limit is not None
+                        and gradient_rms > temporal_gradient_limit
+                    )
+                    temporal_update_outlier = (
+                        temporal_update_limit is not None
+                        and proposed_update_rms > temporal_update_limit
+                    )
+                    temporal_step_rejected = (
+                        temporal_gradient_outlier or temporal_update_outlier
+                    )
+                if temporal_step_rejected:
+                    gradient_step_applied = False
+                    update = np.zeros_like(candidate_update)
+                else:
+                    adam_step = candidate_adam_step
+                    first_moment = candidate_first_moment
+                    second_moment = candidate_second_moment
+                    update = candidate_update
             else:
                 gradient = np.zeros_like(raw_gradient)
                 gradient_rms = 0.0
                 update = np.zeros_like(raw_gradient)
-            proposed_update_rms = rms(update)
+                proposed_update_rms = 0.0
             full_update = update.copy()
-            current_noise = (current_noise.astype(np.float64) + full_update).astype(
-                np.float32
-            )
-
-            current_batch, center_decode_wall_s = decode_noise_rk4(
-                model,
-                normalizer,
-                current_noise[None],
-                nfp=args.nfp,
-                steps=args.flow_steps,
-                device=device,
-            )
-            center_results, center_elapsed, center_errors, center_score_wall_s = score_tokens(
-                pool,
-                current_batch,
-                nfp=args.nfp,
-                target=args.target,
-                timeout_s=args.batch_timeout_s,
-                metadata={"phase": "updated_center", "iteration": iteration},
-            )
-            if any(error is not None for error in center_errors) or center_results[0] is None:
-                raise RuntimeError(
-                    f"updated-center score failure at iteration {iteration}: {center_errors}"
-                )
-            proposed_tokens = current_batch[0]
-            proposed_result = center_results[0]
-            proposed_score = result_score(proposed_result)
-            center_update_accepted = True
-            center_rejection_reason = None
-            center_acceptance_fraction = 1.0
+            center_decode_wall_s = 0.0
+            center_score_wall_s = 0.0
+            center_elapsed = []
             center_backtracking = []
+            if temporal_step_rejected:
+                current_noise = previous_noise
+                current_tokens = previous_tokens
+                current_result = previous_result
+                proposed_tokens = previous_tokens
+                proposed_result = previous_result
+                proposed_score = result_score(previous_result)
+                center_update_accepted = False
+                center_rejection_reason = (
+                    "temporal_gradient_and_update_outlier"
+                    if temporal_gradient_outlier and temporal_update_outlier
+                    else (
+                        "temporal_gradient_outlier"
+                        if temporal_gradient_outlier
+                        else "temporal_update_outlier"
+                    )
+                )
+                center_acceptance_fraction = 0.0
+            else:
+                current_noise = (
+                    current_noise.astype(np.float64) + full_update
+                ).astype(np.float32)
+                current_batch, center_decode_wall_s = decode_noise_rk4(
+                    model,
+                    normalizer,
+                    current_noise[None],
+                    nfp=args.nfp,
+                    steps=args.flow_steps,
+                    device=device,
+                )
+                center_results, center_elapsed, center_errors, center_score_wall_s = (
+                    score_tokens(
+                        pool,
+                        current_batch,
+                        nfp=args.nfp,
+                        target=args.target,
+                        timeout_s=args.batch_timeout_s,
+                        metadata={"phase": "updated_center", "iteration": iteration},
+                    )
+                )
+                if (
+                    any(error is not None for error in center_errors)
+                    or center_results[0] is None
+                ):
+                    raise RuntimeError(
+                        "updated-center score failure at iteration "
+                        f"{iteration}: {center_errors}"
+                    )
+                proposed_tokens = current_batch[0]
+                proposed_result = center_results[0]
+                proposed_score = result_score(proposed_result)
+                center_update_accepted = True
+                center_rejection_reason = None
+                center_acceptance_fraction = 1.0
             if (
                 gradient_step_applied
                 and args.reject_invalid_center
@@ -834,6 +984,11 @@ def main() -> None:
                 "filtered_invalid_directions": invalid_direction.tolist(),
                 "filtered_outlier_directions": outlier_direction.tolist(),
                 "adaptive_direction_delta_limit": adaptive_delta_limit,
+                "temporal_gradient_limit": temporal_gradient_limit,
+                "temporal_update_limit": temporal_update_limit,
+                "temporal_gradient_outlier": temporal_gradient_outlier,
+                "temporal_update_outlier": temporal_update_outlier,
+                "temporal_step_rejected": temporal_step_rejected,
                 "gradient_step_applied": gradient_step_applied,
                 "adam_step": adam_step,
                 "proposed_center_score": proposed_score,
@@ -882,6 +1037,7 @@ def main() -> None:
                     "best_score": best_score,
                     "best_iteration": best_iteration,
                     "gradient_step_applied": gradient_step_applied,
+                    "temporal_step_rejected": temporal_step_rejected,
                     "center_update_accepted": center_update_accepted,
                     "center_acceptance_fraction": center_acceptance_fraction,
                 },
@@ -889,6 +1045,9 @@ def main() -> None:
             row["trajectory_case"] = str(
                 trajectory_path.relative_to(args.out_dir)
             )
+            if gradient_step_applied and center_update_accepted:
+                accepted_gradient_scales.append(gradient_rms)
+                accepted_update_scales.append(update_rms)
             history.append(row)
             append_jsonl(history_path, row)
             write_json(

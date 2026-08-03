@@ -38,6 +38,20 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, commits `701b6e7`, `7fb5214`, and `96453fb` prepared
+  the current paradigm for mainline delivery. The landscape launcher now pins
+  the validated 30k physical-loss flow checkpoint and corrected ABI-9 score
+  library by SHA-256, records both hashes and the score definition, and labels
+  plots as corrected ABI-9 rather than the ambiguous old `score v3`; its seven
+  focused tests and shell syntax check pass, and remote `sbatch --test-only`
+  accepts the four-GPU job. `docs/QH原生评分与潜空间优化方法.md` is the
+  rigorous Chinese methodology/experiments document for the native score,
+  alpha+nu full-evaluation branch, flow matching, and latent Adam.
+  `reports/qh_future_directions_feasibility.md` separately analyzes the
+  validated proxy results, conditional Reflow, and component-wise approximate
+  gradient/VJP feasibility. README links these documents while preserving the
+  original LS/Newton/DESC route. The corrected landscape and nfp6/nc2 result
+  sections remain explicitly pending until their formal jobs finish.
 - On 2026-08-03, active branch `qh-small-condition-adam` commit `b3b5223`
   fixes the all-`ok` cross-step dirty-gradient failure in standard latent Adam.
   The optimizer now defaults to a rolling, scale-invariant median/MAD guard

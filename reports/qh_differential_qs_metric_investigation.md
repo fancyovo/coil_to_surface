@@ -405,7 +405,7 @@ $$
 
 下图把第 11 节中 1024 个 QUASR QH 样本、1024 个条件匹配随机 flow 样本与本次 200 步 Adam 轨迹放在相同坐标系中。只有 `status=ok` 的 583 个 QUASR 样本和 465 个随机样本具有可定义的体 QH 坐标，因此进入散点背景；其余 1000 个样本在 QH 计算之前已被 axis、surface、drift 或 flux 门槛拒绝，另有两个作业内部校验案例，不应伪造 QH 坐标后画入该图。完整 2048 个校准样本的失败比例仍由第 11 节状态分布图表示。
 
-![1024+1024 校准样本背景上的 score-QH、iota-QH、竞争 QS 和工程分量二维图，以及修复版 Adam 轨迹](assets/qh_corrected_score_adam_start10_200_31058/score_qh_landscape.png)
+![1024+1024 校准样本背景上的 score-QH、iota-QH、竞争 QS 与 QH 相对优势二维图，以及修复版 Adam 的六条完整轨迹](assets/qh_corrected_score_adam_start10_200_31058/score_qh_landscape.png)
 
 从轨迹和背景分布可得四个直接结论：
 
@@ -414,8 +414,106 @@ $$
 3. 在 583 个 `status=ok` QUASR 背景样本中，最佳点总分位于 P88.3，但 QH 误差按“数值越小越好”只约处于中位水平（其经验累积分位为 P47.5）。高总分来自多项性质共同良好，不能把 `93.17` 解读为 QUASR 中最小的一档 QH 误差。
 4. 最佳点的 surface 分量位于 QUASR 可行样本 P96.7，而 coil 工程分量仅位于 P1.5。快速 score 找到了非常强的近轴/磁面与 QH 组合，但明显牺牲了线圈工程质量；这是后续完整物理评估和未来权重调整必须显式报告的代价。
 
-历史文件没有逐步保存七个 score 分量，所以 coil-QH 和 surface-QH 两幅图只能叠加最终最佳点，不能诚实恢复整条轨迹；score、QH、QA、QP 和 $\iota$ 的 200 步轨迹则全部来自原始 history，没有插值。
+六幅图现在都使用原始 history 中完整的 200 步轨迹，没有插值。后两幅分别画出 $\epsilon_{\mathrm{QA}}/\epsilon_{\mathrm{QH}}$ 和 $\epsilon_{\mathrm{QP}}/\epsilon_{\mathrm{QH}}$，可直接观察目标 QH 相对两个竞争对称性的优势从约 10.2、2.35 增至 50.4、12.6。历史文件没有逐步保存七个 score 分量，也没有逐步保存可重评分的潜变量或线圈参数，因此不能无损恢复 coil/surface 的移动轨迹；这里不再用“只有终点”的面板暗示存在该轨迹，工程分量只保留最终点相对校准背景的分位统计。
 
 ### 12.4 当前判断
 
 修复后的 score 不仅重新标定了绝对尺度，也给出了比旧目标更连续的同起点优化轨迹。最优 `93.17` 位于第 11 节 QUASR 全体分布的 P90 与 P95 之间，属于数据集高分段；但它仍不是物理验收。下一节必须用该 `best.json` 重新选择样本自己的 source $a$、寻找尽量大的标准 LS/Newton 可行面，并报告面 QH、Poincare 和 DESC，才能判断高分是否对应实用的大 QH 磁面。
+
+## 13. 修复版 score-93.166 样本的完整物理评估
+
+### 13.1 固定输入与原生 score
+
+完整评估使用作业 `31058` 的唯一 `best.json`，没有重新解码或改线圈。当前 ABI 9 原生 score 及分量为：
+
+| 项目 | 数值 |
+|---|---:|
+| 总 score | 93.16556 |
+| axis | 97.9100 |
+| psi | 98.5318 |
+| surface | 97.8742 |
+| coordinate | 89.4363 |
+| volume QS | 94.2022 |
+| iota | 100.0000 |
+| coil | 65.3177 |
+| 体 QH 单位螺旋度误差 | $2.3003\times10^{-3}$ |
+
+这再次说明 score 很高不代表线圈工程性质同样优秀：coil 分量只有 65.3，在第 11 节可行 QUASR 背景中约为 P1.5。
+
+### 13.2 样本相关的 $a$ 与最大连续磁面
+
+source $\psi$ 仍按固定流程并行测试 $a=0.04,0.05,0.06,0.08$，而不是复用旧样本参数。选择 $a=0.08$：其 $\psi$ 验证 RMS 为 $4.7166\times10^{-4}$，角度误差 P95 为 $6.5334\times10^{-5}$；廉价场线筛选在 $s=0.49$ 达到平均半径 $0.05647\,\mathrm m$，相邻 $s=0.64$ 首次失败。
+
+第一次候选作业暴露了一个评估流程 bug：`s=0.49/0.64` 分别已有 209,413/181,980 个有效 GPU-ray 候选，均足够填满固定的 120,000 个训练点和 60,000 个验证点，却被额外的 95% 候选有效率门槛在 alpha 之前拒绝。提交 `07deab9` 将完整评估改为只硬性要求固定 180,000 点，同时继续记录有效比例；生产原生 score 的默认 95% 门槛没有变化，也没有启用 `legacy-cartesian` CPU 回退。修复后四个候选均在独立空闲 RTX 5090 上运行，前后均为 0% 利用率、2 MiB 显存。
+
+| $s$ | 有效候选/225,792 | 标准 solver | 连续分支 | $|V|\,[\mathrm m^3]$ | 面 QH error |
+|---:|---:|---|---|---:|---:|
+| 0.24 | 225,792 (100.0%) | 通过 | 通过 | 0.0308050 | $2.231\times10^{-6}$ |
+| 0.36 | 225,792 (100.0%) | 通过 | 通过 | 0.0469449 | $3.924\times10^{-6}$ |
+| 0.49 | 209,413 (92.75%) | 通过 | **通过并选中** | **0.0639922** | **$6.524\times10^{-6}$** |
+| 0.64 | 181,980 (80.60%) | 形式通过 | **内支跳转，拒绝** | 0.0614881 | $6.072\times10^{-6}$ |
+
+`s=0.64` 不是由于初值误差阈值而被拒绝。它的最终 enclosed volume 比 `s=0.49` 更小，且最终 $\psi$ 均值从目标 0.64 塌到 0.463，明确跳回内支。由此 `s=0.49` 是本次已测的最大连续标准面，并已有相邻外侧失败点。
+
+### 13.3 选中面与独立诊断
+
+alpha+nu 初值在 97 点离网格上的相对残差为 $1.435\times10^{-2}$，normal-field P95 为 $6.344\times10^{-3}$。标准 LS/Newton 将它们降至 $2.651\times10^{-5}$ 和 $4.296\times10^{-5}$；最终 $\iota=1.68783$、$G=-6.94356\,\mathrm{T\,m}$。独立面 QS 为
+
+$$
+\epsilon_{\mathrm{QA}}=5.1400\times10^{-3},\qquad
+\epsilon_{\mathrm{QH}}=6.5239\times10^{-6},\qquad
+\epsilon_{\mathrm{QP}}=5.1787\times10^{-3}.
+$$
+
+面 QH 分别比 QA、QP 小约 788 和 794 倍。Poincare 的 8 条场线在四个截面均给出 25 次穿越且保持在所选边界内；直接 Boozer $|B|$ 等高线也呈清楚的 QH 斜条纹。
+
+![所选 s=0.49 面的 Poincare 截面](assets/qh_corrected_adam_93p166_full_eval_20260803/full/assets/poincare.png)
+
+![所选面上的白底彩色 Boozer |B| 等高线](assets/qh_corrected_adam_93p166_full_eval_20260803/full/assets/boozer_b.png)
+
+![三维线圈与最大连续可行磁面](assets/qh_corrected_adam_93p166_full_eval_20260803/full/assets/coils_surface.png)
+
+交互文件：[Boozer $|B|$ HTML](assets/qh_corrected_adam_93p166_full_eval_20260803/full/assets/boozer_b.html)，[三维线圈与磁面 HTML](assets/qh_corrected_adam_93p166_full_eval_20260803/full/assets/coils_surface.html)。静态三维图中的复杂线圈形状与偏低的 coil 分量一致，因此该样本是很强的物理 QH 解，但不是工程上已经成熟的线圈解。
+
+### 13.4 CPU DESC 复核
+
+DESC 明确运行在 JAX CPU，输入环向磁通为 $-4.91193\times10^{-3}\,\mathrm{Wb}$。初始和最终体均保持嵌套。归一化力误差变化为：
+
+| 指标 | 初始 | 最终 |
+|---|---:|---:|
+| mean | 1.13010 | $2.3306\times10^{-3}$ |
+| P95 | 1.96867 | $4.8506\times10^{-3}$ |
+| max | 4.57123 | $1.7489\times10^{-2}$ |
+
+优化器达到 50 步上限，返回 `success=false`、cost `0.0036663`；因此准确结论是“DESC 显著改善且保持嵌套”，不是“DESC 形式收敛”。以下逐张引用本次全部 8 张成功 DESC 图：
+
+![DESC 初始边界](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/boundary.png)
+
+![DESC Boozer 模谱](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/boozer_modes.png)
+
+![DESC Boozer 场强白底彩色等高线](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/boozer_B.png)
+
+![DESC QA 分量随 rho 变化](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/qs_QA.png)
+
+![DESC QH 分量随 rho 变化](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/qs_QH.png)
+
+![DESC QP 分量随 rho 变化](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/qs_QP.png)
+
+![DESC iota 随 rho 变化](assets/qh_corrected_adam_93p166_full_eval_20260803/full/desc/iota.png)
+
+### 13.5 耗时、对比与结论
+
+| 阶段 | 并行策略 | 墙钟 |
+|---|---|---:|
+| 四个 source $a$ | 4 卡并行 | 47 s |
+| 四个 surface $s$ | 4 卡并行 | 3 min 25 s |
+| Poincare、可视化与 CPU DESC | 16 CPU | 4 min 46 s |
+| 最优样本完整评估总墙钟 | 分阶段串接 | 约 8 min 58 s |
+
+选中候选内部，alpha 总耗时 85.68 s，其中 GPU flux calibration 0.56 s、体取点 44.52 s；nu 为 84.18 s；标准 LS/Newton 为 5.98/0.19 s。下游内部可视化 30.68 s、DESC 223.58 s，总计 279.01 s。没有任何慢速 alpha/nu CPU 回退。
+
+与同一潜空间起点、旧 ABI 8 目标优化所得的 score-63.691 样本相比，新样本的最大连续面体积增加 30.2%，面 QH error 降低 85.2%（约 6.76 倍），DESC 最终 mean/P95 分别降低 14.5%/20.8%；但 DESC max 增加 17.9%，且线圈工程分量仍低。因此最终结论是：**修复后的体 QH score 确实把同一起点推向了更大、面 QH 显著更低且 DESC 可保持嵌套的解，物理代理方向得到完整链路验证；当前主要短板已经转为线圈工程几何，而不是 QH 磁面不存在。**
+
+机器可读产物位于 [完整评估目录](assets/qh_corrected_adam_93p166_full_eval_20260803/)。选中 `boozer_standard.npz` 的 SHA-256 为 `794751c7dec47ce021d273cef4a6d700e06d71949c80683426b7b596d26e53a5`，DESC `equilibrium.h5` 的 SHA-256 为 `2b0993a7576498d95f9483e2794e83f3d21799beaa31cb28c4159707fe753c1a`。

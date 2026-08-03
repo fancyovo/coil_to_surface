@@ -72,6 +72,12 @@ def main() -> None:
             "coil": np.asarray([row["components"]["coil"] for row in rows]),
             "surface": np.asarray([row["components"]["surface"] for row in rows]),
         }
+        background[kind]["qa_over_qh"] = (
+            background[kind]["qa"] / background[kind]["qh"]
+        )
+        background[kind]["qp_over_qh"] = (
+            background[kind]["qp"] / background[kind]["qh"]
+        )
 
     nfp = int(best_case["nfp"])
     helicity_norm = math.hypot(1.0, nfp)
@@ -83,6 +89,8 @@ def main() -> None:
         "qa": np.asarray([row["current_qa_error"] for row in history]),
         "qp": np.asarray([row["current_qp_error"] for row in history]),
     }
+    trajectory["qa_over_qh"] = trajectory["qa"] / trajectory["qh"]
+    trajectory["qp_over_qh"] = trajectory["qp"] / trajectory["qh"]
     best = best_case["flow_prior_standard_adam"]["native_score"]
     best_diag = best["diagnostics"]
     best_point = {
@@ -95,6 +103,8 @@ def main() -> None:
         "coil": float(best["components"]["coil"]),
         "surface": float(best["components"]["surface"]),
     }
+    best_point["qa_over_qh"] = best_point["qa"] / best_point["qh"]
+    best_point["qp_over_qh"] = best_point["qp"] / best_point["qh"]
 
     import matplotlib
 
@@ -109,8 +119,8 @@ def main() -> None:
         ("iota", r"$|\iota|$", False, "Rotational transform and QH"),
         ("qa", "QA error per helicity", True, "QA competitor and QH"),
         ("qp", "QP error per helicity", True, "QP competitor and QH"),
-        ("coil", "coil component score", False, "Coil engineering and QH"),
-        ("surface", "surface component score", False, "Surface quality and QH"),
+        ("qa_over_qh", "QA error / QH error", True, "QH advantage over QA"),
+        ("qp_over_qh", "QP error / QH error", True, "QH advantage over QP"),
     )
     trajectory_scatter = None
     for axis, (metric, ylabel, ylog, title) in zip(axes.flat, panels, strict=True):
@@ -199,7 +209,7 @@ def main() -> None:
             "coil_lower_or_equal_percent": percentile(quasr["coil"], best_point["coil"]),
             "surface_lower_or_equal_percent": percentile(quasr["surface"], best_point["surface"]),
         },
-        "note": "Full optimizer trajectory is available for score/iota/QA/QP; only the final best marker is available for coil/surface components because per-step native component vectors were not recorded.",
+        "note": "All six panels contain the full optimizer trajectory. Per-step coil and surface component vectors were not recorded, so those quantities are retained only as final-best background percentiles rather than shown as incomplete trajectories.",
     }
     args.summary_output.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 

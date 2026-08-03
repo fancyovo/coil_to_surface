@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-02 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-03 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,6 +38,42 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, commit `07deab9` added the corrected-score Adam
+  `score-QH` landscape and fixed an overly strict complete-evaluation sampling
+  gate without changing production native-score defaults. The final plot
+  overlays all 583 QUASR and 465 random-flow `status=ok` calibration cases with
+  six complete 200-step trajectories: score, iota, QA, QP, QA/QH, and QP/QH
+  versus QH. Do not restore the incomplete endpoint-only coil/surface panels;
+  history did not preserve per-step components, latents, or decoded coils.
+  The best score/QH point is `93.16556/0.00230032`, with stable `|iota|` near
+  1.6. Among status-ok QUASR cases its score, QH empirical CDF, coil, and surface
+  percentiles are P88.3, P47.5, P1.5, and P96.7, so the high score carries a
+  clear coil-engineering cost. Cases rejected before volume-QS have no honest
+  QH coordinate and are omitted from these scatter panels, while remaining in
+  the full status-distribution figure.
+- The same sample's complete physical evaluation is accepted. It found that
+  `s=0.49/0.64` had 209,413/181,980 valid GPU-ray candidates, both enough for
+  the fixed 180,000 alpha train plus validation budget, but the generic
+  production sampler's separate 95% gate rejected them before LS/Newton.
+  `VolumeQSConfig` retains 0.95 by default; only the maintained full-evaluation
+  launcher sets the extra fraction to zero and still requires the complete
+  fixed point budget. It records candidate count/fraction and never falls back
+  to `legacy-cartesian`. Uniform-code jobs `31119/31121/31123/31125` completed
+  `0:0` in 3:21--3:25 with clean idle GPU pre/postflights. Standard LS/Newton
+  accepted the continuous `s=0.24/0.36/0.49` sequence; `s=0.64` formally
+  solved but was rejected as an inner-branch jump because volume decreased.
+  Selected `s=0.49` has `|V|=0.06399216 m^3`, `iota=1.68782777`, dense relative
+  residual `2.6514e-5`, normal-field P95 `4.2959e-5`, and surface QH error
+  `6.5239e-6`; Poincare passed. CPU-DESC job `31135` completed `0:0` in 4:46,
+  stayed nested, and reached final normalized force mean/P95/max
+  `0.0023306/0.0048506/0.0174893` at its 50-iteration limit. Selected-surface
+  SHA-256 is `794751c7dec47ce021d273cef4a6d700e06d71949c80683426b7b596d26e53a5`;
+  DESC-equilibrium SHA-256 is
+  `2b0993a7576498d95f9483e2794e83f3d21799beaa31cb28c4159707fe753c1a`.
+  Detailed evidence and all eight DESC figures are in
+  `reports/qh_differential_qs_metric_investigation.md` section 13 and
+  `reports/assets/qh_corrected_adam_93p166_full_eval_20260803/`. Local
+  validation is `129 passed`.
 - On 2026-08-02 the user permanently stopped routine latent-score collection
   because the shared $G$ convention bug invalidates the old score calibration
   and prior proxy experiments did not justify further accumulation. Known

@@ -38,6 +38,20 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, root `README.md` was comprehensively rewritten on branch
+  `qh-small-condition-adam` by commit `fcab3ee`. It now treats ABI-9 native
+  C++/CUDA scoring and sample-specific full physical evaluation as the two
+  official paths; documents the current `coils -> axis -> s -> psi ->
+  (alpha,iota)` split, native build/single/batch interfaces, fixed
+  `evaluation/full_physical/` entrypoints, flow/low-momentum Adam usage,
+  validated score/optimization results, and current feasibility-boundary
+  limitation. The old Python CLI is explicitly retained only as a legacy
+  research path. All 10 local Markdown links and 11 referenced command paths
+  exist, code fences are balanced, `git diff --check` passes, and the fixed
+  full-evaluation preflight passes under WSL with 20 files validated. Direct
+  Windows execution of that Linux/Slurm preflight fails only because its Bash
+  subprocess receives a Windows backslash path; this is not a README or
+  production Linux workflow failure.
 - On 2026-08-03, P107 four-GPU continuation job `31401` completed `0:0` in
   `01:44:16`, exactly extending the corrected ABI-9 `nfp=6`, two-base-coil
   state from iteration 400 to 700 under

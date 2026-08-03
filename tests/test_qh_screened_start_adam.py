@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from scripts.analyze_qh_screened_start_adam import analyze, score_curve, tail_progress
+from scripts.plot_corrected_score_adam_landscape import load_saved_trajectory
 from scripts.select_qh_screened_adam_start import select_best_row
 from scripts.summarize_qh_screened_start_adam import build_summary
 
@@ -91,3 +92,25 @@ def test_tail_progress_reports_running_best_gain_and_applied_steps() -> None:
     assert abs(progress["best_gain_last_10_steps"] - 2.0) < 1.0e-12
     assert abs(progress["best_gain_last_5_steps"] - 1.0) < 1.0e-12
     assert progress["applied_adam_steps_last_10"] == 8
+
+
+def test_load_saved_trajectory_requires_consecutive_steps(tmp_path) -> None:
+    trajectory = tmp_path / "trajectory"
+    trajectory.mkdir()
+    for iteration in (0, 1):
+        (trajectory / f"step_{iteration:04d}.json").write_text(
+            __import__("json").dumps(
+                {
+                    "flow_prior_standard_adam_trajectory": {
+                        "iteration": iteration,
+                        "native_score": {"score": 10.0 + iteration},
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    rows = load_saved_trajectory(trajectory)
+
+    assert [row["iteration"] for row in rows] == [0, 1]
+    assert rows[1]["native_score"]["score"] == 11.0

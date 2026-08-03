@@ -51,8 +51,18 @@ once the task is accepted.
   preserves latent noise, all decoded coil Fourier coefficients and currents,
   the complete ABI-9 native score/components/diagnostics, and compact optimizer
   state. This is required so the delivered score-QH and coil-score-QH plots use
-  the real full trajectory. Local validation is `130 passed`; no remote job has
-  yet been submitted at this recorded point.
+  the real full trajectory. Local validation is `130 passed`; implementation
+  commit `dd62ab9` is synchronized to remote worktree
+  `~/local_surface_evaluator_worktrees/qh-small-condition-adam`. Four-GPU smoke
+  job `31146` completed `0:0` in 1:44 with all two Adam updates, exactly three
+  trajectory snapshots, empty stderr, and no surviving GPU compute process.
+  Formal four-GPU job `31148` is running the single requested `nfp=4`, two-base-
+  coil experiment with candidate/optimizer seeds `2026080320/2026180320`.
+  Its result root is
+  `~/local_surface_evaluator/runs/qh_small_condition_adam_nfp4_nc2_200_20260803/seed_2026080320`.
+  After completion it requires the same full physical evaluation and report as
+  the preceding corrected-score Adam case, plus a true per-step coil-score-QH
+  trajectory generated from the saved trajectory cases.
 - On 2026-08-03, commit `07deab9` added the corrected-score Adam
   `score-QH` landscape and fixed an overly strict complete-evaluation sampling
   gate without changing production native-score defaults. The final plot

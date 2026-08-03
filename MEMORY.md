@@ -38,20 +38,51 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-03, P107 four-GPU job `31401` is actively extending the same
-  corrected ABI-9 `nfp=6`, two-base-coil trajectory from iteration 400 to 700
-  under
+- On 2026-08-03, P107 four-GPU continuation job `31401` completed `0:0` in
+  `01:44:16`, exactly extending the corrected ABI-9 `nfp=6`, two-base-coil
+  state from iteration 400 to 700 under
   `~/local_surface_evaluator/runs/qh_nfp6_nc2_adam_continue700_20260803/`.
-  It uses an immutable copy of the completed step-400 Adam directory, with
-  source state/best SHA-256
-  `d490cf388b6d93266d756b306cb40edbe0db3fbad53fbf7f81f63460ea0dc40d` /
-  `34156733d0c5a3bbd87caa4f51e62f9298b67b38842953dd6d55eca2fe0038e8`,
-  the same flow checkpoint SHA `39a3293a...`, and pinned score-library SHA
-  `40dca742...`. The resume event confirms `saved_iteration=400` and
-  `requested_iterations=700`, so current/best latents, FP64 Adam moments,
-  bias correction, RNG, and temporal-guard history are all inherited rather
-  than restarted. Monitor with
-  `squeue -j 31401 -o '%.18i %.16P %.24j %.10T %.10M %.4D %R'`.
+  The score improved from `86.1233491` at resume to a best `86.6414447` at
+  iteration 491, then ended at `85.9452858`. Only 110 of the 300 continuation
+  rounds applied an Adam update; 190 were skipped. After iteration 491 the
+  antithetic endpoints increasingly crossed the `no_surface` boundary, and
+  the final 67 rounds applied no update at all. Thus the run is operationally
+  complete but does not prove a smooth-objective optimum: it reached a
+  feasibility-boundary lock under the current `skip_entire_step` policy.
+  The best native components axis/psi/surface/coordinate/volume-QS/iota/coil
+  are `92.018/98.353/88.679/80.192/85.444/100/60.385`; its per-helicity QH
+  error is `0.00539963`, iota `1.97317`, and selected native surface level
+  `0.16`. Source state/best, flow checkpoint, and score-library SHA-256 values
+  remain respectively `d490cf38...` / `34156733...`, `39a3293a...`, and
+  `40dca742...`. Complete physical acceptance of iteration 491 is under
+  `~/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/`.
+  Sample-specific FP32 GPU source-psi jobs `31457--31460` completed `0:0`;
+  `a=0.08` was selected for maximum tested coverage with validation RMS and
+  angle-P95 `6.1418e-4/1.2636e-4`. Standard alpha+nu plus LS/Newton jobs
+  `31465--31468` accepted a continuous, volume-increasing branch through
+  `s=0.12/0.24/0.36/0.49`. At selected `s=0.49`, `|V|=0.0706051 m^3`,
+  `iota=2.13315`, dense relative residual `8.6456e-6`, normal-field P95
+  `1.1955e-5`, and face QA/QH/QP errors are
+  `8.3154e-3/1.88224e-4/8.4723e-3`. Outer jobs `31472/31473` failed
+  explicitly in the nu-coordinate invertibility check at `s=0.56/0.64`
+  (minimum Jacobian `-0.002586/-0.410405`), establishing the nearest tested
+  outer boundary without a CPU point-cloud fallback. Fixed-surface full
+  evaluation job `31477` completed `0:0` in `00:11:02` on selected `s=0.49`.
+  The direct vacuum field has `|B|=0.80877--1.10608 T` (mean `0.93200 T`),
+  and all eight Poincare lines produced 29 hits at all four sections. DESC used
+  the allowed CPU backend, stayed nested, and reduced normalized force
+  mean/P95/max from `1.31003/2.18179/796.284` to
+  `6.4162e-4/1.5648e-3/8.2683e-3`. It reached the 50-iteration cap, so
+  `optimizer_success=false` must remain explicit despite the useful final
+  residual. Relative to step 400, the step-491 quick native score is `+0.5181`
+  higher and its volume-QH component is better, but independent accepted
+  volume is `2.48%` smaller, face QH squared error is `6.33%` worse, and DESC
+  final residuals are essentially tied. Therefore step 491 is physically
+  valid but not independently better than step 400. Selected-surface and DESC
+  equilibrium SHA-256 values are `464c1e73...` and `ef2f3366...`. Complete
+  evidence and all eight DESC figures are in
+  `reports/qh_small_condition_adam_report.md` section 13 and
+  `reports/assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/`.
 - On 2026-08-03, P107 four-GPU continuation job `31330` completed `0:0` in
   `01:08:54`. It exactly resumed the corrected ABI-9 `nfp=6`, two-base-coil
   Adam state at iteration 200 and reached its best/final score `86.1233491` at

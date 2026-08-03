@@ -39,7 +39,7 @@ once the task is accepted.
 ## 2. Current Snapshot
 
 - On 2026-08-03, complete physical evaluation of the corrected ABI-9
-  `nfp=6`, two-base-coil Adam best case is active on branch
+  `nfp=6`, two-base-coil Adam best case was completed on branch
   `qh-small-condition-adam`. The immutable input is
   `runs/qh_nfp6_nc2_screen128_adam200_20260803/seed_2026080360/adam/best.json`
   with SHA-256
@@ -78,6 +78,8 @@ once the task is accepted.
   validation references all eight successful DESC PNGs. Remote outputs remain
   at
   `~/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/`.
+  Feature-branch delivery commit is `ad38905` (`Add nfp6 complete physical
+  evaluation`).
 - On 2026-08-03, local `main` contains non-fast-forward merge commit
   `2e83d21` (`Merge native QH scoring and latent optimization`). The merge
   preserves the original Simsopt LS/Newton and DESC route while adding the

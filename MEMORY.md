@@ -38,6 +38,35 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, P107 four-GPU job `31330` is actively extending the corrected
+  ABI-9 `nfp=6`, two-base-coil Adam trajectory from iteration 200 to 400. It
+  uses an immutable clone of
+  `~/local_surface_evaluator/runs/qh_nfp6_nc2_screen128_adam200_20260803/seed_2026080360/adam/`
+  at
+  `~/local_surface_evaluator/runs/qh_nfp6_nc2_adam_continue400_20260803/`;
+  the original completed run is unchanged. Resume state includes current and
+  best latents, FP64 first/second moments, Adam bias-correction step 199, RNG
+  state, all 200 history rows, and the temporal-guard history. The resume event
+  confirms `saved_iteration=200` and `requested_iterations=400`; iteration 201
+  completed normally with score `83.4791708` versus `83.4688737` at iteration
+  200. All four allocated RTX 5090 GPUs were idle at `0%`, 2 MiB before timing.
+  The exact score library remains SHA-256 `40dca742...` from the
+  `qh-volume-qs-g-fix` worktree; the base repository's later `build_mixed`
+  binary has a different SHA and must not be substituted. Local continuation
+  launcher commits are `5ee403a` and `f92dcff`; corresponding remote commits
+  are `d33f57d` and `502b226`. Monitor with
+  `squeue -j 31330 -o '%.18i %.16P %.24j %.12q %.10T %.10M %.4D %R'`.
+- The apparent mismatch between the `nfp=6` direct Boozer contour plot and its
+  surface QH metric is mostly a scale-reading issue, not evidence that the plot
+  is already high-quality QH. `helical_qs_metric` reports an area-weighted
+  relative *squared* error. Thus QH `2.3357e-4` corresponds to `1.53%` RMS
+  amplitude, while QA/QP `6.1462e-3/6.5015e-3` correspond to `7.84%/8.06%`;
+  QH is about five times better in RMS amplitude, not orders of magnitude. The
+  dominant contour slope follows the expected
+  $\theta-N_{\rm FP}\phi=\mathrm{const}$ direction, but visible curvature and
+  closed islands remain physically meaningful non-QH content. This agrees
+  with the native volume-QS component being only `78.777/100` and motivates
+  the active continuation job.
 - On 2026-08-03, complete physical evaluation of the corrected ABI-9
   `nfp=6`, two-base-coil Adam best case was completed on branch
   `qh-small-condition-adam`. The immutable input is

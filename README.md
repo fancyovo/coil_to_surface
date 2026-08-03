@@ -1,242 +1,311 @@
 # Local Surface Evaluator
 
-从线圈到局部磁面和体 QS 的一站式评估器。输入线圈 Fourier 系数、电流和 `nfp`，程序可以走两条互不覆盖的路径：ABI-9 C++/CUDA 原生主线用固定成本计算 0--100 score；完整评估支线通过 $\alpha+\nu$ 构造近 Boozer 初值，再接入原有 Simsopt LS/Newton 与 DESC。
+从 Fourier 线圈参数出发，快速评估局部磁面、旋转变换和体准对称性，并为高价值样本执行完整的 Boozer 磁面与 DESC 物理验收。
 
-重点特性：
+当前项目有两条边界清晰、互不替代的正式路径：
 
-- **从线圈到体 QS**：原生链路依次完成批量磁轴追踪、局部不变量 $s$ 拟合、物理磁通 $\psi(s)$ 标定、$\alpha$ 与 $\iota$ 联合线性拟合和体 QA/QH/QP 微分 QS 统计。
-- **连续品质分数**：ABI-9 score 把 axis、$s/\psi$、surface、coordinate、volume-QS、$\iota$ 和 coil 七个分量压缩为 0--100 分，并对 QH 的低 $\iota$、小磁面和错误 helicity 退化解施加显式防作弊约束。
-- **可逆潜空间优化**：训练后的 flow matching 不作为高质量样本保证，而作为 Fourier 参数空间的可逆预条件器；标准入口使用 FP32 RK4-256 和鲁棒低动量 Adam 搜索高分 QH 线圈。
-- **Boozer 初值自动估计**：如果没有提供推荐 `initial_iota`，程序会从 $\psi_0$ 筛选阶段已有的一周期磁力线端点中便宜估计 $\iota$，避免默认 `-2` 把 Boozer LS 带入慢分支。
-- **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；当前 RTX 5090 代表样本的 ABI-9 原生评分约 7.2 秒，满足单样本 10 秒内目标。
-- **快速失败而不是卡住**：对找不到磁轴、局部 $\psi$ 质量差、没有可信候选磁面或 Boozer 阶段失败的样本，返回结构化失败原因、最好残差和细粒度计时。
-- **诊断图可选导出**：显式加参数后，可以额外导出高分辨率磁轴 residual heatmap 和细粒度 $\psi$ 截面图；默认不导图，避免影响批量测速。
+| 路径 | 用途 | 数值方法 | 典型成本 |
+|---|---|---|---:|
+| ABI-9 原生 score | 大批量筛选和优化 | C++/CUDA 定长追踪、FP32 QR、固定规模归约 | 空闲 RTX 5090 上代表性高分样本约 5--8 s |
+| 完整物理评估 | 验收单个高分样本 | 样本自适应 $\psi$、GPU FP32 $\alpha+\nu$、Simsopt LS/Newton、DESC | 通常数分钟，DESC 可使用 CPU |
 
-快速 score 用于筛选和优化，不替代逐样本较大磁面搜索与平衡求解。正式验收统一使用 `evaluation/full_physical/`，原有 CLI、Simsopt LS/Newton 和 DESC 路径继续保留。
+快速 score 是有物理含义的排序代理，但不是平衡存在性的证明。正式结论必须来自完整评估支线。
 
-## 安装
+## 计算流程
+
+共享前端和两条后端可以概括为
+
+$$
+\text{coils}
+\rightarrow \boldsymbol B
+\rightarrow \text{magnetic axis}
+\rightarrow s
+\rightarrow \psi(s)
+\rightarrow (\alpha,\iota)
+\begin{cases}
+\rightarrow \text{volume QS}\rightarrow \text{score},\\
+\rightarrow \nu\rightarrow \text{Simsopt LS/Newton}\rightarrow \text{DESC}.
+\end{cases}
+$$
+
+核心步骤如下：
+
+1. **磁轴**：在一个场周期的 Poincare 映射上批量搜索椭圆固定点，再作有界 Newton 精修和轴追踪。
+2. **局部磁面标签 $s$**：在磁轴附近用完整的二维多项式和环向 Fourier 基底拟合 $\boldsymbol B\cdot\nabla s=0$。
+3. **物理磁通 $\psi$**：通过多截面环向磁通积分标定 $\psi(s)=\Phi_t(s)/(2\pi)$。$s$ 是几何标签，不是物理磁通。
+4. **$\alpha$ 与 $\iota$**：以 Zernike--Fourier 基底对 $\boldsymbol B\cdot\nabla\alpha=0$ 做一次联合线性最小二乘，直接得到全体积直线场线角修正和旋转变换。
+5. **快速 score 分支**：不求 $\nu$，直接用 $\psi$、$\iota$、$\boldsymbol B$ 和 $\nabla\boldsymbol B$ 计算体微分 QA/QH/QP。
+6. **完整评估分支**：求环向修正 $\nu$，构造近 Boozer 面，再交给标准 Simsopt LS/Newton 和 DESC 独立验收。
+
+评分主线的大规模数值步骤都在 C++/CUDA 中完成。Python 只负责输入输出和作业编排，不会把可批量并行步骤静默回退到慢一至两个数量级的 CPU 实现。
+
+## 当前状态
+
+当前正式评分接口为 **ABI 9**。它包含以下已验证修正：
+
+- 真空协变电流函数使用 $G=\mu_0 I_{\rm link}/(2\pi)$，且电流整体符号约定已经统一。
+- 体 QS 使用柱坐标物理体积权重；达到预算后固定压紧为 100000 个点，不能通过减少有效点数刷低误差。
+- 椭圆磁轴存在性使用严格的 $|\operatorname{tr}J|/\sqrt{\det J}<2$，拓扑 margin 只参与连续质量评分。
+- QH score 对 $\iota\simeq0$、过小磁面和错误 helicity 优势施加显式门控，磁面尺寸达到有效逆纵横比 0.03 后饱和。
+
+独立的 1024 个 QUASR QH 样本与 1024 个同条件随机 flow 样本上，QUASR 的平均分为 48.019、中位数为 75.520，随机样本分别为 24.087 和 0.372；`score >= 80` 的样本数为 443 对 17。该结果证明 score 有明确区分梯度，但仍需对高分样本做完整物理评估。
+
+flow matching 当前不被视为“一次采样即可生成优质线圈”的生成器。它的主要作用是可逆地重参数化 Fourier 参数空间：修正后的 landscape 实验中，潜空间相对随机原空间方向的下降 5 分盆地宽度中位数放大 8.63 倍，且 FP32 RK4-256 的反向--正向线圈位置闭环 RMS 为 $2.26\times10^{-8}$--$4.57\times10^{-8}\,\mathrm m$。
+
+当前标准优化器在潜空间使用四个正交反向差分方向、$\beta_1=0.5$ 的 Adam、无效端点整步跳过和跨步 median/MAD 脏梯度保护。代表性结果包括：
+
+| 条件 | 起点 | 最佳 ABI-9 score | 独立物理验收 |
+|---|---:|---:|---|
+| $N_{\rm FP}=4$，3 个基本线圈 | 85.883 | 93.166 | 选中 $s=0.49$；面 QH error $6.52\times10^{-6}$；DESC 保持嵌套 |
+| $N_{\rm FP}=6$，2 个基本线圈 | 74.436 | 86.641 | 选中 $s=0.49$；体积 $0.07061\,\mathrm m^3$；面 QH error $1.88\times10^{-4}$；DESC 最终力残差均值 $6.42\times10^{-4}$ |
+
+第二个实验在第 491 步后逐渐锁在 `no_surface` 可行性边界；从第 400 步到第 700 步的 300 步续跑中，只有 110 个更新被接受。其快速分数虽高于第 400 步，独立磁面体积和面 QH 并未更好。因此当前优化仍受离散可行性分支限制，不能只按快速分数宣称物理改进。
+
+详细方法、实验和图见 [QH 原生评分与潜空间优化](docs/QH原生评分与潜空间优化方法.md) 与 [小条件潜空间 Adam 报告](reports/qh_small_condition_adam_report.md)。
+
+## 输入格式
+
+每个基本线圈由 100 个参数表示：$x/y/z$ 各 33 个实 Fourier 系数，再加一个电流。JSON 输入采用以下结构：
+
+```json
+{
+  "raw": {
+    "x": [[0.0, 0.0]],
+    "y": [[0.0, 0.0]],
+    "z": [[0.0, 0.0]],
+    "current": [100000.0],
+    "current_unit": "A",
+    "metadata": {"helicity": 1}
+  },
+  "nfp": 4
+}
+```
+
+实际 `x/y/z` 每行必须等长，正式模型使用 33 项。`current_unit` 支持 `A` 和 `MA`。基本线圈之外的线圈由恒星器对称和场周期旋转生成。
+
+对于 `scripts/smoke_native_score.py` 和 `scripts/batch_native_score.py`，`helicity=0` 对应 QA 目标 $(M,N)=(1,0)$，非零值对应 QH 目标 $(1,N_{\rm FP})$。若 case 内没有 metadata，必须显式传入 metadata 文件，避免目标对称性默认为 QA。
+
+## 安装与构建
+
+基础 Python 包需要 Python 3.10 或更高版本：
 
 ```bash
 python -m pip install -e .
 ```
 
-完整 Boozer/QS 评估需要 `simsopt`。ABI-9 原生 score 必须先编译 `gpu_backend` 下的 CUDA/C++ 库；正式评分和完整评估中的可批量并行前端禁止静默回退到慢速 CPU 实现。CPU 路径只保留给显式选择的历史对照、后处理和允许使用 CPU 的 DESC。
-
-## 最小运行示例
-
-不加额外参数即可跑默认 `examples/01.json`，并得到主流程测速和最终结果：
+按用途安装可选依赖：
 
 ```bash
-python -m stellarator_eval.cli
+python -m pip install -e '.[plot]'
+python -m pip install -e '.[train]'
+python -m pip install -e '.[simsopt]'
 ```
 
-典型输出：
-
-```text
-summary: runs/01_raw/summary.json
-axis residual: 1.7e-08, has_axis=True
-quality score: 92.4, status=surface
-best surface: psi=0.12, iota=-2.90768, volume=0.00615026, G=7.63113
-```
-
-完整计时在 `runs/01_raw/summary.json` 的 `timing` 和 `total_time_s` 字段中。例如：
+ABI-9 score 需要 CUDA、CMake、cuBLAS 和 cuSOLVER。RTX 5090 的参考构建命令为：
 
 ```bash
-python - <<'PY'
-import json
-with open("runs/01_raw/summary.json", encoding="utf-8") as f:
-    s = json.load(f)
-print("total_time_s =", s["total_time_s"])
-print("timing =", s["timing"])
-PY
+cmake -S gpu_backend -B gpu_backend/build_native_score \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CUDA_ARCHITECTURES=120
+cmake --build gpu_backend/build_native_score --parallel
 ```
 
-在 RTX 5090 上，当前 ABI-9 代表样本总墙钟为 7.236 秒；主要时间在磁轴和定长磁面追踪，具体数值会随线圈条件、CUDA 版本和候选面状态变化。
+输出库为 `gpu_backend/build_native_score/libstellarator_gpu.so`。集群上可直接提交固定构建脚本：
 
-## 导出诊断图
+```bash
+mkdir -p logs
+sbatch scripts/slurm_build_native_score.sh
+```
 
-默认命令不会画图。需要诊断磁轴搜索 landscape 和 $\psi$ 截面时，显式加参数：
+正式实验应记录代码 commit、score 库 SHA-256、flow checkpoint SHA-256 和 GPU 空闲 pre/postflight；不同 ABI 或不同库哈希的分数不能直接比较。
+
+## 快速评分
+
+### 单个样本
+
+以下入口把原生 C++/CUDA 评分器作为黑箱调用，并输出 `score`、`status`、七个分量、计时和诊断量：
+
+```bash
+python scripts/smoke_native_score.py path/to/case.json \
+  --metadata path/to/metadata.json \
+  --lib gpu_backend/build_native_score/libstellarator_gpu.so \
+  --device 0 \
+  --output runs/native_score/case.json
+```
+
+也可以直接调用 Python ctypes 包装层：
+
+```python
+import sys
+sys.path.insert(0, "gpu_backend/python")
+
+from stellarator_gpu import score_coils_native
+
+result = score_coils_native(
+    "gpu_backend/build_native_score/libstellarator_gpu.so",
+    coeffs_x,
+    coeffs_y,
+    coeffs_z,
+    currents_a,
+    nfp,
+    device_id=0,
+    target_helicity=(1, nfp),
+)
+print(result["score"], result["status"], result["components"])
+```
+
+### 批量样本
+
+```bash
+python scripts/batch_native_score.py \
+  --case-dir /path/to/cases \
+  --metadata /path/to/metadata.json \
+  --split validation \
+  --lib gpu_backend/build_native_score/libstellarator_gpu.so \
+  --device 0 \
+  --warmup \
+  --output runs/native_score/worker0.jsonl
+```
+
+多卡时为每张卡启动一个 worker，并设置相同的 `--worker-count` 和不同的 `--worker-index`。测速前必须确认分配到的 GPU 空闲；结束后必须确认没有残留计算进程。
+
+原生输出的主要字段为：
+
+- `score`：0--100，越高表示越可能是实用的高质量线圈。
+- `status`：`ok`、`no_axis`、`no_surface`、`drift_rejected`、`flux_rejected`、`alpha_failed` 或 `internal_error`。
+- `components`：`axis`、`psi`、`surface`、`coordinate`、`volume_qs`、`iota`、`coil`。
+- `diagnostics`：$\iota$、QA/QH/QP 误差、选中磁面层、有效点数和数值质量指标。
+- `timing`：分阶段耗时；部分 surface/flux 字段是嵌套计时，不能直接逐项相加。
+
+七个分量的权重依次为 $(10,10,10,10,42,10,8)$。总分还会乘 QH 的 $\iota$ gate 和 helicity-advantage gate，因此不能只对分量做线性加权来复算 QH 总分。
+
+## 完整物理评估
+
+正式入口固定在 [`evaluation/full_physical/`](evaluation/full_physical/README.md)，不要在验收时临时拼接脚本。每个样本都必须重新选择自己的 $a$ 和最大已测可行 $s$，不能复用历史样本的数值。
+
+### 1. 样本自适应 source $\psi$
+
+```bash
+export PROJECT=$HOME/local_surface_evaluator_worktrees/<branch>
+export GPU_LIB=$HOME/local_surface_evaluator/gpu_backend/build_mixed/libstellarator_gpu.so
+export EVAL_ENV=$HOME/local_surface_evaluator/.venv-desc016-py312
+export CASE_FILE=$PROJECT/runs/<optimizer>/best.json
+export OUTPUT_ROOT=$PROJECT/runs/<evaluation_name>
+export A_VALUES=0.04,0.05,0.06,0.08
+bash evaluation/full_physical/submit_source_psi_candidates.sh
+```
+
+根据验证误差、物理覆盖半径和更外侧失败点选择本样本的 `RUN_DIR`。
+
+### 2. 并行搜索标准磁面
+
+```bash
+export RUN_DIR=$OUTPUT_ROOT/source_psi_candidates/a_<selected>
+export S_EDGES=0.12,0.20,0.30,0.36,0.49
+bash evaluation/full_physical/submit_surface_candidates.sh
+```
+
+默认每个候选使用 1 张 GPU 和 4 核 CPU，可在四卡上并行四个候选。`SERIAL_CANDIDATES=1` 只用于明确的资源限制，不是保守默认值。候选先走 GPU FP32 $\alpha+\nu$，最终是否存在磁面只由标准 LS/Newton、独立密网格残差和嵌套分支连续性决定。
+
+### 3. 选择最大已测通过面并运行下游
+
+```bash
+python evaluation/full_physical/select_largest_standard_surface.py \
+  --candidate-root "$OUTPUT_ROOT/candidates" \
+  --output "$OUTPUT_ROOT/selection.json"
+
+export DESC_BACKEND=cpu-p107
+bash evaluation/full_physical/submit_downstream.sh
+```
+
+`DESC_BACKEND` 必须显式选择 `cpu`、`cpu-p107` 或已验证可用的 `gpu`，禁止静默回退。DESC 允许使用 CPU；磁轴、$\psi$、$\alpha+\nu$ 和可批量并行的完整评估前端不得未经允许回退到旧 CPU 路径。
+
+完整交付至少包含：
+
+- 最大已测通过面的选择依据、score 七个分量和面 QS error。
+- Poincare 图以及各条线在各截面的命中统计。
+- 白底彩色 $|B|$ 等高线图；颜色表示 $|B|$，不使用热力图或填色等高线。
+- 完整线圈和大磁面的三维 PNG/HTML。
+- DESC 初始/最终残差、嵌套性、优化器退出原因，以及 DESC 生成的全部图。
+
+报告完成后运行交付校验：
+
+```bash
+export REPORT=reports/<report>.md
+export DESC_DIR=reports/assets/<case>/desc
+bash evaluation/full_physical/validate_delivery.sh
+```
+
+完整约束、选择规则和故障处理见 [完整评估固定流程](docs/精简线圈评估流程.md)。
+
+## Flow Matching 与潜空间优化
+
+模型把一根 100 维基本线圈视为一个 token，主体采用无因果注意力、无 RoPE 的 Llama 风格 Transformer：PreNorm、RMSNorm、multi-head attention 和 SwiGLU。$N_{\rm FP}$ 通过条件嵌入注入；训练数据覆盖 QUASR QH 的 $N_{\rm FP}=2\ldots8$ 和 1--5 个基本线圈。
+
+逐维标准化仅用于改善输入分布。训练损失按 Fourier Parseval 权重和原始尺度方差恢复曲线积分 $L^2$ 的物理意义，避免高频尾项因标准化而获得不合理权重。四卡训练入口为：
+
+```bash
+export QH_FLOW_REPO=$HOME/local_surface_evaluator
+export QH_FLOW_DATA=$HOME/local_surface_evaluator_data/quasr_qh_flow_v1
+export QH_FLOW_OUTPUT=$QH_FLOW_REPO/runs/qh_flow_<name>
+sbatch scripts/slurm_train_qh_flow.sh
+```
+
+当前推荐的优化协议是先从 128 个 IID 潜变量中选最高分起点，再运行低动量 Adam：
+
+```bash
+export PROJECT=$HOME/local_surface_evaluator_worktrees/<branch>
+export NFP=6
+export N_BASE_COILS=2
+export CANDIDATE_COUNT=128
+export ITERATIONS=200
+export RUN_ROOT_BASE=$HOME/local_surface_evaluator/runs/qh_screen_adam_<name>
+sbatch scripts/slurm_qh_screened_start_adam.sh
+```
+
+固定实现使用 FP32 RK4-256 解码、4 个正交反向差分方向、学习率 0.01、扰动 0.005、$\beta_1=0.5$、$\beta_2=0.999$，并保存每一步完整线圈、潜变量、score 分量和优化器状态。精确续跑使用 `scripts/slurm_qh_standard_adam_continue.sh`，不得只从 `best.json` 重启并丢失 Adam 动量。
+
+## 旧 Python 研究路径
+
+原有 Python CLI、Simsopt LS/Newton 和 DESC 接口仍被保留，用于历史示例和局部算法研究：
 
 ```bash
 python -m stellarator_eval.cli \
-  --export-axis-heatmap \
-  --axis-heatmap-grid 512 \
-  --export-psi-slices \
-  --psi-slice-grid 321 \
-  --psi-slice-phi-count 21
-```
-
-这会在 `runs/01_raw/` 中额外生成：
-
-- `axis_residual_heatmap.png`：第一步找磁轴时，一周期闭合 residual 的高分辨率热力图。
-- `psi_slices.png`：沿一个场周期的局部 $\psi$ 截面图，颜色使用 signed-sqrt 缩放以保留小 $\psi$ 区域的可见性。
-
-示例 residual heatmap：
-
-![axis residual heatmap example](docs/assets/axis_residual_heatmap_example.png)
-
-示例 $\psi$ 截面图：
-
-![psi slices example](docs/assets/psi_slices_example.png)
-
-## 常用显式运行
-
-`01` 示例：
-
-```bash
-python -m stellarator_eval.cli \
-  --case-file examples/01.json --key raw \
+  --case-file examples/01.json \
+  --key raw \
   --output-dir runs/01_raw \
-  --a 0.05 \
-  --initial-iota -2.0
+  --a 0.05
 ```
 
-`debug` 示例更极端，建议先用较小半径：
+该入口不是 ABI-9 原生 score，也不是当前正式完整评估编排。批量筛选应使用 `scripts/smoke_native_score.py` / `scripts/batch_native_score.py`，物理验收应使用 `evaluation/full_physical/`。
 
-```bash
-python -m stellarator_eval.cli \
-  --case-file examples/debug.json --key raw \
-  --output-dir runs/debug_raw \
-  --a 0.02 \
-  --initial-iota -4.0 \
-  --levels 0.001,0.002,0.004,0.008,0.012
-```
+## 仓库结构
 
-默认会把 `OMP_NUM_THREADS`、`OPENBLAS_NUM_THREADS`、`MKL_NUM_THREADS`、`NUMEXPR_NUM_THREADS` 设为 `1`。这是有意的：当前很多小批量磁场计算在多线程下会被同步开销拖慢。
+| 目录 | 内容 |
+|---|---|
+| `gpu_backend/` | CUDA 磁场、追踪、QR 和 ABI-9 score；ctypes 包装层 |
+| `stellarator_eval/` | Python 物理模块、旧研究 API 和完整评估支撑代码 |
+| `flow_matching/` | flow 模型、归一化、ODE 正反向积分 |
+| `evaluation/full_physical/` | 正式单样本完整评估固定入口 |
+| `scripts/` | 构建、评分、训练、优化、Slurm 和分析脚本 |
+| `examples/` | 小型输入示例 |
+| `tests/` | 单元测试和接口回归测试 |
+| `docs/` | 方法、流程和性能文档 |
+| `reports/` | 实验报告及版本化图表/验收产物 |
 
-默认还会启用 `auto_initial_iota`：当 Boozer 初值仍是默认 `-2` 时，程序会用 field-line screen 中估计出的 `iota_estimate` 替代它；如果你显式传入其它 `--initial-iota`，则不会覆盖。需要强制使用 `-2` 或其它配置值时，可加：
+## 文档索引
 
-```bash
-python -m stellarator_eval.cli --disable-auto-iota
-```
+- [QH 原生评分与潜空间优化：方法与实验](docs/QH原生评分与潜空间优化方法.md)：当前核心方法、ABI-9 定义和主要实验结论。
+- [完整评估固定流程](docs/精简线圈评估流程.md)：从样本自适应 $\psi$ 到 $\alpha+\nu$、LS/Newton、Poincare 和 DESC 的唯一正式流程。
+- [小条件潜空间 Adam 实验](reports/qh_small_condition_adam_report.md)：两线圈条件、脏梯度修复、续跑与完整验收。
+- [修正后潜空间 landscape](reports/qh_flow_landscape_report.md)：FP32 RK4 闭环、潜空间/原空间宽度与平滑性对照。
+- [微分体 QS 指标诊断](reports/qh_differential_qs_metric_investigation.md)：QA/QH/QP 尺度、$G$ 约定和体积权重审计。
+- [后续研究方向可行性](reports/qh_future_directions_feasibility.md)：proxy、Reflow 和近似梯度/VJP 的证据与难度。
 
-## Python API
+## 结果解释边界
 
-```python
-from stellarator_eval import EvalConfig, evaluate_case_file
-
-cfg = EvalConfig()
-cfg.psi.a = 0.05
-cfg.psi.poly_degree = 10
-cfg.psi.m_tor = 12
-cfg.diagnostics.export_axis_heatmap = True
-cfg.diagnostics.export_psi_slices = True
-
-result = evaluate_case_file(
-    "examples/01.json",
-    key="raw",
-    config=cfg,
-    output_dir="runs/01_raw",
-)
-```
-
-也可以直接传线圈，并只取压缩后的品质分数：
-
-```python
-from stellarator_eval import evaluate_coil_quality
-
-out = evaluate_coil_quality(
-    coil_coefficients,
-    currents,
-    nfp=8,
-    output_dir="runs/my_coils",
-)
-print(out["score"], out["status"])
-```
-
-`coil_coefficients` 可以是 `{"x": x, "y": y, "z": z}`，也可以是形状为 `(n_base_coils, 3, n_coeff)` 的数组。扁平输入格式按每根基础线圈组织：
-
-```text
-x[0:33], y[0:33], z[0:33], current
-```
-
-因此线圈部分总长度为 `n_base_coils * 100`，`nfp` 作为额外参数传入。
-
-如果你的优化器更方便输出一个 packed vector，也可以把 `nfp` 放在最后一位：
-
-```python
-from stellarator_eval import evaluate_coil_quality
-
-# packed = [coil_0_x/y/z/current, coil_1_x/y/z/current, ..., nfp]
-out = evaluate_coil_quality(packed, output_dir="runs/my_packed_coils")
-score = out["score"]
-components = out["quality_score"]["components"]
-```
-
-## 输出
-
-每次运行会在 `output-dir` 中生成：
-
-- `summary.json`：完整结构化结果。
-- `axis_data.npz`：磁轴采样、轴点和闭合残差。
-- `psi_model.npz`：$\psi$ 模数、系数和磁轴数据。
-- `level_*/boozer_surface.npz`：候选 Boozer surface 的自由度、$\iota$、$G$ 等。
-
-常用字段：
-
-- `axis.has_axis`
-- `axis.best_residual`
-- `axis.topology_class`
-- `axis.topology_ellipse_aspect`
-- `psi.fit_info`
-- `surface_screen.levels`
-- `best_surface.iota`
-- `best_surface.volume`
-- `best_surface.G`
-- `best_surface.qs_error_QA_1_0`
-- `best_surface.qs_error_QH_1_1`
-- `best_surface.qs_error_QP_0_1`
-- `quality_score.score`
-- `quality_score.components`
-- `quality_score.details`
-- `diagnostics`
-- `timing`
-
-`axis.best_residual` 是一周期追踪后的最好闭合距离；即使 `has_axis=false`，这个值仍会输出，用于判断是“接近但未达阈值”还是“完全没有可用闭合点”。
-
-`quality_score.score` 是 0-100 分，经验解释如下：
-
-| score | 含义 |
-| ---: | --- |
-| `90-100` | 高质量候选，通常全流程成功且 QS/工程项较好。 |
-| `80-90` | 可用候选，但 QS、volume、iota 或线圈工程项至少一项不顶尖。 |
-| `65-80` | 边缘但有诊断价值，可能是较弱 surface 或较好的 no_surface。 |
-| `45-65` | 明显有问题，但通常仍有磁轴或局部 $\psi$ 结构信息。 |
-| `25-45` | 较差，常见于弱闭合、差磁面或扰动后退化样本。 |
-| `0-25` | 基本不可用，通常找不到可靠磁轴。 |
- 
-该分数不是学习型黑盒代理，而是多个软阈值分量的加权组合。当前七个分量为 `axis`、`psi`、`surface`、`coordinate`、`volume_qs`、`iota`、`coil`，其中 `coil` 包含长度、曲率、线圈间距、线圈到轴距离、高阶模能量和电流尺度等工程项。准确公式、默认参数和 ABI-9 约定见下方方法文档。
-
-## QUASR 批量评估
-
-QUASR 数据集不随仓库发布。运行批量评估时显式传入数据位置，或设置环境变量：
-
-```bash
-export QUASR_ROOT=/path/to/quasr/data
-export QUASR_METADATA=/path/to/quasr/metadata.csv
-```
-
-示例：
-
-```bash
-python scripts/eval_quasr.py \
-  --quasr-root "$QUASR_ROOT" \
-  --metadata "$QUASR_METADATA" \
-  --sample-size 128 \
-  --sample-seed 20260705 \
-  --helicity 1 \
-  --output-dir runs/quasr_qh128 \
-  --gpu-device 0 \
-  --psi-n-r 80 --psi-n-z 80 --psi-n-phi 80 \
-  --qs-sdim 16
-```
-
-批量输出包括 `batch_summary.json`、`batch_summary.csv`、每个样本的 `summary.json`，以及导出的失败样本 JSON。导出的失败样本默认写入本地 `examples/`，但 `examples/debug_*.json` 已被 `.gitignore` 忽略。
-
-## 文档
-
-- [QH 原生评分与潜空间优化：方法与实验](docs/QH原生评分与潜空间优化方法.md)
-- [完整评估固定流程](docs/精简线圈评估流程.md)
-- [后续研究方向可行性分析](reports/qh_future_directions_feasibility.md)
-- [计算流程](docs/计算流程.md)
-- [性能报告](docs/性能报告.md)
+- 固定成本 score 的 `a=0.05` 和定长筛面只适合排序；完整评估必须按样本重新选择 $a$ 和较大的可行面。
+- `drift_rejected` 表示快速场线筛选未通过，不等价于“没有磁轴”，也不能证明标准 LS/Newton 一定找不到磁面。
+- score 含候选选择、拓扑和有效性分支，不是全局光滑目标；高分区仍可能出现可行性边界和离散跳变。
+- ABI-9 之前受电流符号、$G$ 尺度或体积 QS 权重问题影响的 score、landscape、proxy 标签和优化结果均为历史结果，不能与当前分数直接比较。
+- flow checkpoint、score 动态库和代码 commit 共同定义一次实验；缺少其中任一哈希时，结果不能作为可复现实验基线。

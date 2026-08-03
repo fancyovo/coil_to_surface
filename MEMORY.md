@@ -38,61 +38,48 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-03, the active experiment moved to branch
-  `qh-small-condition-adam` from corrected-score commit `1a3a1f6`. It will run
-  exactly one smaller-condition case: `nfp=4`, two base coils, with 128 IID
-  flow-prior starts followed by the validated 200-step robust low-momentum
-  Adam (`eta=0.01`, `beta1/beta2=0.5/0.999`, perturbation `0.005`, four
-  antithetic directions, FP32 RK4-256). This condition was selected from the
-  fixed corrected 1024-QUASR calibration: 102 cases, 74.5% `status=ok`, with
-  status-ok native-score median/max `84.943/94.464` and coil-score median/max
-  `70.145/77.712`. Standard Adam now atomically writes step 0 and every
-  completed iteration under `adam/trajectory/step_NNNN.json`; each file
-  preserves latent noise, all decoded coil Fourier coefficients and currents,
-  the complete ABI-9 native score/components/diagnostics, and compact optimizer
-  state. This is required so the delivered score-QH and coil-score-QH plots use
-  the real full trajectory. Local validation is `130 passed`; implementation
-  commit `dd62ab9` is synchronized to remote worktree
-  `~/local_surface_evaluator_worktrees/qh-small-condition-adam`. Four-GPU smoke
-  job `31146` completed `0:0` in 1:44 with all two Adam updates, exactly three
-  trajectory snapshots, empty stderr, and no surviving GPU compute process.
-  Formal four-GPU job `31148` completed `0:0` in `01:00:08` for the single
-  requested `nfp=4`, two-base-coil experiment with candidate/optimizer seeds
-  `2026080320/2026180320`. The 128-case screen selected case 43 at corrected
-  score `78.83857`; Adam re-scored it at `78.84175` and reached best
-  `85.77307` at step 184, final `85.10663`, with 200 iterations and 199 applied
-  updates. Candidate selection/Adam/end-to-end times were
+- On 2026-08-03, branch `qh-small-condition-adam` completed the requested single
+  smaller-condition experiment at `nfp=4`, two base coils. Implementation
+  commits `dd62ab9`, `988d115`, and `eb6901e` respectively preserve every Adam
+  step's complete coil/noise/native-score state, plot the true coil-score--QH
+  trajectory, and expose GPU-ray candidate oversampling while preserving the
+  old default 1.25 exactly. Delivery commit `312c735` versions the report and
+  all 201 trajectory snapshots plus complete-evaluation artifacts. Four-GPU
+  job `31148` completed `0:0` in `01:00:08`: the 128-IID screen selected case
+  43 at corrected score `78.83857`; low-momentum Adam re-scored it at
+  `78.84175`, reached `85.77307` at step 184, and ended at `85.10663`, with
+  199 applied updates. Candidate/Adam/end-to-end times were
   `138.72/3460.78/3599.50 s`. Best axis/psi/surface/coordinate/volume-QS/iota/
-  coil components are `93.435/97.531/97.235/87.599/77.069/100/72.799`, with
-  `iota=1.47284` and QH/QA/QP error per helicity
-  `0.0136752/0.131211/0.0297222`. All 201 trajectory snapshots exist; the
-  postflight is 0%, 2 MiB on all four GPUs with no compute process. Its result root is
-  `~/local_surface_evaluator/runs/qh_small_condition_adam_nfp4_nc2_200_20260803/seed_2026080320`.
-  Full evaluation selected source `a=0.08`: source jobs
-  `31157/31159/31161/31163` all completed `0:0` in 9--12 seconds; all four
-  source radii screened through `s=0.36` and failed first at `0.49`, while
-  `a=0.08` provides the largest physical radius (`0.04798 m` mean at `s=0.36`)
-  with validation RMS/angle-P95 `6.828e-4/1.166e-4`. Standard surface jobs
-  `31165/31167/31169/31171/31173/31175` completed `0:0` in about three minutes
-  each and accepted every tested level through `s=0.49`; accepted enclosed
-  volume increases monotonically to `0.0671413 m^3`. Job `31177` at `s=0.64`
-  failed before alpha fitting because the GPU-ray sampler produced 166,595
-  candidates, below the fixed 180,000-point budget; this is not a standard-
-  surface physical failure. Job `31183` proved that `ALPHA_GRID_XY=160` does
-  not affect the GPU-ray candidate count; `grid_xy` belongs to the legacy
-  Cartesian backend and must not be presented as the GPU-ray density control.
-  The actual sampler had a hard-coded 1.25 candidate oversampling factor. The
-  versioned fix adds `VolumeQSConfig.ray_candidate_oversampling`, alpha CLI
-  `--ray-candidate-oversampling`, and Slurm
-  `ALPHA_RAY_CANDIDATE_OVERSAMPLING`, all defaulting to the exact old value
-  1.25. Re-evaluate `s=0.64` in a fresh directory with factor 1.6: this only
-  increases the ray candidate lattice and preserves the fixed 120,000/60,000
-  train/validation counts, FP32 solver, and downstream algorithms. Unit tests
-  prove the default still generates exactly 225,792 candidates for a 180,000
-  point budget and factor 1.6 generates at least 288,000. Then select the
-  largest continuous validated surface with an outer standard failure, run
-  Poincare/plots/DESC, and deliver the same report package as the preceding
-  case plus the true per-step coil-score-QH trajectory.
+  coil components are `93.435/97.531/97.235/87.599/77.069/100/72.799`; native
+  `iota=1.47284`, and QH/QA/QP per-helicity errors are
+  `0.0136752/0.131211/0.0297222`. All four GPUs were idle before formal timing
+  and returned to 0%, 2 MiB with no compute process after it.
+  Complete evaluation independently selected sample-specific source `a=0.08`
+  (389,440-point FP32 GPU QR, validation RMS/angle-P95
+  `6.828e-4/1.166e-4`). Standard alpha+nu plus LS/Newton accepted the continuous
+  `s=0.12--0.49` sequence, selecting `s=0.49` with
+  `|V|=0.0671413 m^3`, `iota=1.5270221`, dense relative residual
+  `3.8360e-5`, normal-field P95 `5.7532e-5`, and surface QA/QH/QP errors
+  `5.4361e-3/4.6577e-5/5.4660e-3`. Initial `s=0.64` attempts exposed that
+  `grid_xy` is irrelevant to the GPU-ray backend; job `31186` used the fixed
+  oversampling control at 1.6 and solved numerically, but was correctly rejected
+  because volume decreased to `0.0531968 m^3` and fitted mean `s` collapsed to
+  0.383, proving an inner-branch jump. CPU-DESC job `31188` completed `0:0` in
+  5:30, remained nested, and reduced normalized force mean/P95/max from
+  `1.6651/2.7813/5.3482` to `0.0039577/0.0086370/0.024939`; optimizer
+  `success=false` means only the 50-iteration cap. Selected-surface SHA-256 is
+  `8b1f4b3e43918f7a6d6f0c187a23ac669fcd4fbdf79be7696c5f0cf246854eed`;
+  DESC-equilibrium SHA-256 is
+  `3b89c6b3056966128ecaff4684a53af41431c8b2bef1810b547af9d0665655e0`.
+  Relative to the prior three-base-coil score-93.166 solution, coil score
+  improves by 7.48 and accepted volume by 4.92%, while native/face QH errors
+  are about 5.95x/7.14x worse. Thus two coils give a validated, more
+  engineering-friendly QH solution but not a higher total score in this run.
+  Full evidence is in `reports/qh_small_condition_adam_report.md` and
+  `reports/assets/qh_small_condition_adam_nfp4_nc2_20260803/`. Delivery
+  validation references all eight successful DESC PNGs; all 201 trajectory
+  schemas pass explicit coefficient/noise/score checks; local suite is
+  `132 passed`.
 - On 2026-08-03, commit `07deab9` added the corrected-score Adam
   `score-QH` landscape and fixed an overly strict complete-evaluation sampling
   gate without changing production native-score defaults. The final plot

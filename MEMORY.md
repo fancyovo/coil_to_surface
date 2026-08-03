@@ -78,8 +78,9 @@ once the task is accepted.
   validation references all eight successful DESC PNGs. Remote outputs remain
   at
   `~/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/`.
-  Feature-branch delivery commit is `ad38905` (`Add nfp6 complete physical
-  evaluation`).
+  Feature-branch delivery commits are `ad38905` (`Add nfp6 complete physical
+  evaluation`) and `176c023` (`Record nfp6 evaluation delivery`). The same
+  content is integrated on local `main` by commits `848fb5e` and `31497e0`.
 - On 2026-08-03, local `main` contains non-fast-forward merge commit
   `2e83d21` (`Merge native QH scoring and latent optimization`). The merge
   preserves the original Simsopt LS/Newton and DESC route while adding the

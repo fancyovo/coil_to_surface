@@ -38,6 +38,46 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, complete physical evaluation of the corrected ABI-9
+  `nfp=6`, two-base-coil Adam best case is active on branch
+  `qh-small-condition-adam`. The immutable input is
+  `runs/qh_nfp6_nc2_screen128_adam200_20260803/seed_2026080360/adam/best.json`
+  with SHA-256
+  `59c1efd068ecdf0e339f882b1a055c55c86e35ea75ba5aa26cbe1d321ddc4f0`.
+  Source-psi jobs `31262/31264/31266/31268` for sample-specific
+  `a=0.04/0.05/0.06/0.08` all completed `0:0`; `a=0.08` was selected because
+  it provides the largest tested physical coverage while retaining FP32-GPU-QR
+  validation RMS/angle-P95 `1.1602e-3/1.9009e-4` over 389,440 training points.
+  Standard alpha+nu plus LS/Newton candidates at
+  `s=0.12/0.16/0.20/0.24/0.30/0.36` all passed on a continuous,
+  volume-increasing branch. Initial outer `s=0.49/0.64` jobs
+  `31294/31296` stopped at the fixed 180,000-point budget with only
+  160,480/126,576 valid GPU-ray points; their failed outputs were preserved
+  under explicit `*_os1p25_failed` names. GPU-ray-only oversampling 2.0 jobs
+  `31298/31300` then established the physical boundary without changing the
+  LS budget: `s=0.49` produced a standard rejected summary and collapsed to
+  mean fitted `s=0.0408`, while `s=0.64` failed the toroidal-coordinate
+  invertibility check with minimum Jacobian `-0.08353`. The largest accepted
+  surface is therefore sample-specific `s=0.36`, with
+  `|V|=0.0625544 m^3`, `iota=2.3003895`, dense relative residual
+  `4.0804e-5`, normal-field P95 `5.3022e-5`, and face QA/QH/QP errors
+  `6.1462e-3/2.3357e-4/6.5015e-3`. Its alpha+nu initial relative residual was
+  still `8.36e-2`; standard Simsopt LS, not alpha+nu alone, supplied the final
+  high accuracy. Fixed CPU-P107 downstream job `31302` completed `0:0` in
+  `00:05:26`; Poincare has 29 hits for each of eight lines at all four plotted
+  sections, and DESC stayed nested while reducing normalized force
+  mean/P95/max from `1.02814/2.24897/157.661` to
+  `1.09736e-3/2.61703e-3/1.04420e-2`. DESC converged by `xtol` with
+  `success=true`, cost `1.86165e-4`, and optimality `1.0690e-8`. Selected
+  surface SHA-256 is
+  `b0239e29c3b8cd73d89b8e355811a7878dce6b908a74f3c0f4c93cb1e50e9886`;
+  equilibrium SHA-256 is
+  `557168e9c14dcdc204599146389cd52edec203928fccfc07dfcaa0b97091d957`.
+  Evidence is in `reports/qh_small_condition_adam_report.md` section 11 and
+  `reports/assets/qh_small_condition_adam_nfp6_nc2_20260803/`; delivery
+  validation references all eight successful DESC PNGs. Remote outputs remain
+  at
+  `~/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/`.
 - On 2026-08-03, local `main` contains non-fast-forward merge commit
   `2e83d21` (`Merge native QH scoring and latent optimization`). The merge
   preserves the original Simsopt LS/Newton and DESC route while adding the

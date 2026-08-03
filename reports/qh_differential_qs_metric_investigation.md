@@ -127,7 +127,7 @@ $\sqrt{M^2+N^2}$ 是当前评分选择的一种可声明的标度，不是唯一
 $$
 \epsilon_{\mathrm{raw}}=\operatorname{RMS}(f_C/B^3),
 \qquad
-\epsilon_{\mathrm{hel}}=rac{\epsilon_{\mathrm{raw}}}{\sqrt{M^2+N^2}},
+\epsilon_{\mathrm{hel}}=\frac{\epsilon_{\mathrm{raw}}}{\sqrt{M^2+N^2}},
 $$
 
 并且所有 QA/QH/QP 都遵循同一规则。精确 QS 时的零值不受归一化影响；有限误差的跨模式数值比较则必须使用统一口径。

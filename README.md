@@ -8,7 +8,7 @@
 - **连续品质分数**：ABI-9 score 把 axis、$s/\psi$、surface、coordinate、volume-QS、$\iota$ 和 coil 七个分量压缩为 0--100 分，并对 QH 的低 $\iota$、小磁面和错误 helicity 退化解施加显式防作弊约束。
 - **可逆潜空间优化**：训练后的 flow matching 不作为高质量样本保证，而作为 Fourier 参数空间的可逆预条件器；标准入口使用 FP32 RK4-256 和鲁棒低动量 Adam 搜索高分 QH 线圈。
 - **Boozer 初值自动估计**：如果没有提供推荐 `initial_iota`，程序会从 $\psi_0$ 筛选阶段已有的一周期磁力线端点中便宜估计 $\iota$，避免默认 `-2` 把 Boozer LS 带入慢分支。
-- **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；单个常规样本在 RTX 5090 级别 GPU 上约 3 秒量级完成评估。
+- **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；当前 RTX 5090 代表样本的 ABI-9 原生评分约 7.2 秒，满足单样本 10 秒内目标。
 - **快速失败而不是卡住**：对找不到磁轴、局部 $\psi$ 质量差、没有可信候选磁面或 Boozer 阶段失败的样本，返回结构化失败原因、最好残差和细粒度计时。
 - **诊断图可选导出**：显式加参数后，可以额外导出高分辨率磁轴 residual heatmap 和细粒度 $\psi$ 截面图；默认不导图，避免影响批量测速。
 
@@ -20,7 +20,7 @@
 python -m pip install -e .
 ```
 
-完整 Boozer/QS 评估需要 `simsopt`。GPU 后端需要先编译 `gpu_backend` 下的 CUDA/C++ 库；没有 GPU 后端时，可以使用 CPU 路径或只运行不依赖 GPU 的后处理工具。
+完整 Boozer/QS 评估需要 `simsopt`。ABI-9 原生 score 必须先编译 `gpu_backend` 下的 CUDA/C++ 库；正式评分和完整评估中的可批量并行前端禁止静默回退到慢速 CPU 实现。CPU 路径只保留给显式选择的历史对照、后处理和允许使用 CPU 的 DESC。
 
 ## 最小运行示例
 
@@ -51,7 +51,7 @@ print("timing =", s["timing"])
 PY
 ```
 
-在 RTX 5090 级别 GPU 上，当前默认主链路通常是 3 秒量级；具体数值会随 GPU、CUDA、Simsopt 版本和候选面数量变化。
+在 RTX 5090 上，当前 ABI-9 代表样本总墙钟为 7.236 秒；主要时间在磁轴和定长磁面追踪，具体数值会随线圈条件、CUDA 版本和候选面状态变化。
 
 ## 导出诊断图
 

@@ -52,6 +52,15 @@ once the task is accepted.
   170 as a marginal gradient-scale outlier. The correct anomalous antithetic
   pair at step 185 is `85.3298124/72.1562425`; the previously recorded pairing
   with `85.7874` was wrong. Full local validation is `134 passed`.
+- On 2026-08-03, four-GPU smoke job `31223` completed `0:0` in `00:06:53`
+  and verified the new temporal-guard artifact schema and cleanup on the remote
+  branch tip `fcc5297`. Its deliberately small eight-case screen found no
+  `status=ok` start, so all 22 Adam rounds were safely skipped; this is control-
+  flow evidence only, not optimization evidence. Formal P107 job `31227` is
+  running on `anode01` from the same commit. It uses `nfp=6`, two base coils,
+  128 IID FP32 RK4-256 flow candidates, corrected ABI-9 score, and 200 steps of
+  eta-0.01 low-momentum Adam with the new temporal guard. Output root is
+  `~/local_surface_evaluator/runs/qh_nfp6_nc2_screen128_adam200_20260803`.
 - On 2026-08-03, branch `qh-small-condition-adam` completed the requested single
   smaller-condition experiment at `nfp=4`, two base coils. Implementation
   commits `dd62ab9`, `988d115`, and `eb6901e` respectively preserve every Adam

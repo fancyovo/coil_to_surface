@@ -114,6 +114,35 @@ def make_best_case(
     return case
 
 
+def write_trajectory_case(
+    directory: Path,
+    tokens: np.ndarray,
+    noise: np.ndarray,
+    result: dict[str, Any],
+    *,
+    nfp: int,
+    target: str,
+    iteration: int,
+    optimizer_state: dict[str, Any],
+) -> Path:
+    case = token_case(tokens, nfp=nfp, target=target)
+    case["flow_prior_standard_adam_trajectory"] = {
+        "format": "qh_standard_adam_trajectory_v1",
+        "iteration": int(iteration),
+        "noise": np.asarray(noise, dtype=np.float32).tolist(),
+        "native_score": result,
+        "optimizer_state": optimizer_state,
+    }
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"step_{iteration:04d}.json"
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(
+        json.dumps(case, indent=2, allow_nan=True) + "\n", encoding="utf-8"
+    )
+    temporary.replace(path)
+    return path
+
+
 def save_state(
     path: Path,
     *,
@@ -259,6 +288,7 @@ def main() -> None:
         raise ValueError("at least one score GPU is required")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    trajectory_dir = args.out_dir / "trajectory"
     run_paths = {
         name: args.out_dir / name
         for name in (
@@ -277,6 +307,10 @@ def main() -> None:
             raise FileNotFoundError(f"resume artifacts are missing: {missing}")
         if run_paths["summary.json"].exists():
             raise FileExistsError("refusing to resume a run that already has summary.json")
+        if not trajectory_dir.is_dir():
+            raise FileNotFoundError(
+                f"resume trajectory directory is missing: {trajectory_dir}"
+            )
         saved_state = np.load(run_paths["state_latest.npz"], allow_pickle=False)
         current_noise = np.asarray(saved_state["current_noise"], dtype=np.float32)
         best_noise = np.asarray(saved_state["best_noise"], dtype=np.float32)
@@ -293,7 +327,7 @@ def main() -> None:
         initialization = "resumed_saved_standard_adam_state"
         initial_case_metadata = None
     else:
-        if any(path.exists() for path in run_paths.values()):
+        if any(path.exists() for path in run_paths.values()) or trajectory_dir.exists():
             raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
         rng = np.random.default_rng(args.seed)
         if args.initial_case is None:
@@ -386,6 +420,11 @@ def main() -> None:
         "native_lib_sha256": file_sha256(args.lib),
         "gpu_ids": list(gpu_ids),
         "max_wall_s": args.max_wall_s,
+        "trajectory_artifact": (
+            "one atomic JSON case for step 0 and every completed iteration; "
+            "each case stores latent noise, decoded coil coefficients/current, "
+            "the complete native score, and compact optimizer state"
+        ),
     }
     if args.resume:
         manifest = json.loads(run_paths["manifest.json"].read_text(encoding="utf-8"))
@@ -495,6 +534,11 @@ def main() -> None:
                 device=device,
             )
             best_tokens = best_batch[0]
+            saved_trajectory = trajectory_dir / f"step_{start_iteration:04d}.json"
+            if not saved_trajectory.is_file():
+                raise FileNotFoundError(
+                    f"resume trajectory tail is missing: {saved_trajectory}"
+                )
         else:
             initial_score = resumed_center_score
             best_score = initial_score
@@ -514,6 +558,23 @@ def main() -> None:
                     seed=args.seed,
                     manifest=manifest,
                 ),
+            )
+            write_trajectory_case(
+                trajectory_dir,
+                current_tokens,
+                current_noise,
+                current_result,
+                nfp=args.nfp,
+                target=args.target,
+                iteration=0,
+                optimizer_state={
+                    "adam_step": 0,
+                    "current_score": initial_score,
+                    "best_score": best_score,
+                    "best_iteration": best_iteration,
+                    "gradient_step_applied": False,
+                    "center_update_accepted": True,
+                },
             )
 
         recent_walls: list[float] = []
@@ -807,6 +868,27 @@ def main() -> None:
                 "iteration_wall_s": iteration_wall_s,
                 "total_wall_s": prior_wall_s + time.perf_counter() - started,
             }
+            trajectory_path = write_trajectory_case(
+                trajectory_dir,
+                current_tokens,
+                current_noise,
+                current_result,
+                nfp=args.nfp,
+                target=args.target,
+                iteration=iteration,
+                optimizer_state={
+                    "adam_step": adam_step,
+                    "current_score": current_score,
+                    "best_score": best_score,
+                    "best_iteration": best_iteration,
+                    "gradient_step_applied": gradient_step_applied,
+                    "center_update_accepted": center_update_accepted,
+                    "center_acceptance_fraction": center_acceptance_fraction,
+                },
+            )
+            row["trajectory_case"] = str(
+                trajectory_path.relative_to(args.out_dir)
+            )
             history.append(row)
             append_jsonl(history_path, row)
             write_json(

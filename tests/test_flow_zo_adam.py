@@ -13,6 +13,7 @@ from scripts.optimize_flow_prior_zo_adam import (
 from scripts.optimize_flow_prior_standard_adam import (
     parse_backtracking_fractions,
     robust_direction_deltas,
+    write_trajectory_case,
 )
 
 
@@ -136,6 +137,38 @@ def test_parse_backtracking_fractions_requires_decreasing_unit_interval():
             assert "backtracking fractions" in str(exc)
         else:
             raise AssertionError(f"expected invalid backtracking schedule: {invalid}")
+
+
+def test_write_trajectory_case_preserves_latent_coils_and_score(tmp_path):
+    tokens = np.arange(200, dtype=np.float64).reshape(2, 100)
+    noise = np.arange(200, dtype=np.float32).reshape(2, 100) / 10.0
+    result = {
+        "score": 81.25,
+        "status": "ok",
+        "components": {"coil": 72.5, "volume_qs": 91.0},
+        "diagnostics": {"qs_target_global_error_per_helicity": 0.003},
+    }
+
+    path = write_trajectory_case(
+        tmp_path,
+        tokens,
+        noise,
+        result,
+        nfp=4,
+        target="QH",
+        iteration=7,
+        optimizer_state={"adam_step": 6, "current_score": 81.25},
+    )
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert path.name == "step_0007.json"
+    assert payload["nfp"] == 4
+    assert payload["raw"]["current"] == tokens[:, -1].tolist()
+    metadata = payload["flow_prior_standard_adam_trajectory"]
+    assert metadata["iteration"] == 7
+    assert metadata["noise"] == noise.tolist()
+    assert metadata["native_score"] == result
+    assert metadata["optimizer_state"]["adam_step"] == 6
 
 
 def test_prior_penalty_is_inactive_inside_soft_region():

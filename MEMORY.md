@@ -38,6 +38,21 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, the active experiment moved to branch
+  `qh-small-condition-adam` from corrected-score commit `1a3a1f6`. It will run
+  exactly one smaller-condition case: `nfp=4`, two base coils, with 128 IID
+  flow-prior starts followed by the validated 200-step robust low-momentum
+  Adam (`eta=0.01`, `beta1/beta2=0.5/0.999`, perturbation `0.005`, four
+  antithetic directions, FP32 RK4-256). This condition was selected from the
+  fixed corrected 1024-QUASR calibration: 102 cases, 74.5% `status=ok`, with
+  status-ok native-score median/max `84.943/94.464` and coil-score median/max
+  `70.145/77.712`. Standard Adam now atomically writes step 0 and every
+  completed iteration under `adam/trajectory/step_NNNN.json`; each file
+  preserves latent noise, all decoded coil Fourier coefficients and currents,
+  the complete ABI-9 native score/components/diagnostics, and compact optimizer
+  state. This is required so the delivered score-QH and coil-score-QH plots use
+  the real full trajectory. Local validation is `130 passed`; no remote job has
+  yet been submitted at this recorded point.
 - On 2026-08-03, commit `07deab9` added the corrected-score Adam
   `score-QH` landscape and fixed an overly strict complete-evaluation sampling
   gate without changing production native-score defaults. The final plot

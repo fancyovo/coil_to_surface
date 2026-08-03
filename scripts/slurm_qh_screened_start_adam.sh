@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:4
 #SBATCH --mem=128G
-#SBATCH --time=01:00:00
+#SBATCH --time=04:00:00
 #SBATCH --array=0-7%1
 #SBATCH --output=logs/%x-%A_%a.out
 #SBATCH --error=logs/%x-%A_%a.err
@@ -20,7 +20,7 @@ asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
 expected_flow_sha="${EXPECTED_FLOW_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}"
-expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-4bf7a12ea3dbdef9faf6de3ce4dc1840ecf48847ba795267500dd4179f730708}"
+expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5}"
 task_id="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required}"
 candidate_seed="$(( ${SEED_BASE:-2026080200} + task_id ))"
 optimizer_seed="$(( ${OPTIMIZER_SEED_BASE:-2026180200} + task_id ))"
@@ -28,6 +28,7 @@ candidate_count="${CANDIDATE_COUNT:-128}"
 nfp="${NFP:-4}"
 n_base_coils="${N_BASE_COILS:-3}"
 iterations="${ITERATIONS:-50}"
+max_wall_s="${MAX_WALL_S:-13500}"
 run_root_base="${RUN_ROOT_BASE:-$asset_root/runs/qh_screened_start_adam_${SLURM_ARRAY_JOB_ID}}"
 run_root="$run_root_base/seed_${candidate_seed}"
 pool_root="$run_root/candidate_pool"
@@ -72,13 +73,33 @@ cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-mapfile -t compute_processes < <(
-  nvidia-smi --id="$gpu_selector" \
-    --query-compute-apps=pid --format=csv,noheader,nounits |
-    sed '/^[[:space:]]*$/d'
-)
-if (( ${#compute_processes[@]} != 0 )); then
-  printf 'allocated GPUs are not idle; compute PIDs: %s\n' "${compute_processes[*]}" >&2
+idle_streak=0
+for _ in {1..60}; do
+  mapfile -t compute_processes < <(
+    nvidia-smi --id="$gpu_selector" \
+      --query-compute-apps=pid --format=csv,noheader,nounits |
+      sed '/^[[:space:]]*$/d'
+  )
+  mapfile -t memory_values < <(
+    nvidia-smi --id="$gpu_selector" \
+      --query-gpu=memory.used --format=csv,noheader,nounits |
+      tr -d ' '
+  )
+  idle=1
+  if (( ${#compute_processes[@]} != 0 )); then idle=0; fi
+  for memory_used in "${memory_values[@]}"; do
+    if (( memory_used > 16 )); then idle=0; fi
+  done
+  if (( idle )); then
+    ((idle_streak += 1))
+    if (( idle_streak >= 3 )); then break; fi
+  else
+    idle_streak=0
+  fi
+  sleep 2
+done
+if (( idle_streak < 3 )); then
+  printf 'allocated GPUs did not remain idle for three probes\n' >&2
   exit 42
 fi
 nvidia-smi --id="$gpu_selector" \
@@ -138,7 +159,7 @@ python scripts/optimize_flow_prior_standard_adam.py \
   --iterations "$iterations" \
   --directions 4 \
   --flow-steps 256 \
-  --max-wall-s 2700 \
+  --max-wall-s "$max_wall_s" \
   --learning-rate 0.01 \
   --perturbation 0.005 \
   --beta1 0.5 \
@@ -151,6 +172,8 @@ python scripts/optimize_flow_prior_standard_adam.py \
 children+=("$!")
 wait "${children[0]}"
 children=()
+trajectory_count="$(find "$adam_root/trajectory" -maxdepth 1 -type f -name 'step_*.json' | wc -l)"
+test "$trajectory_count" -eq "$((iterations + 1))"
 run_finished_ns="$(date +%s%N)"
 printf '%s\n' "$run_finished_ns" > "$run_root/run_finished_ns.txt"
 

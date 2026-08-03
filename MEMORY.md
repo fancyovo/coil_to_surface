@@ -73,7 +73,8 @@ once the task is accepted.
   Detailed evidence and all eight DESC figures are in
   `reports/qh_differential_qs_metric_investigation.md` section 13 and
   `reports/assets/qh_corrected_adam_93p166_full_eval_20260803/`. Local
-  validation is `129 passed`.
+  validation is `129 passed`; final report/artifact delivery commit is
+  `7ea28d6`.
 - On 2026-08-02 the user permanently stopped routine latent-score collection
   because the shared $G$ convention bug invalidates the old score calibration
   and prior proxy experiments did not justify further accumulation. Known

@@ -1,17 +1,18 @@
 # Local Surface Evaluator
 
-从线圈到局部磁面的一站式快速评估器。输入线圈 Fourier 系数、电流和 `nfp`，程序会自动搜索磁轴、拟合局部 $\psi$、筛选候选等 $\psi$ 面，并把最大可信候选面接入 Simsopt 的 Boozer surface / QS error 评估。
+从线圈到局部磁面和体 QS 的一站式评估器。输入线圈 Fourier 系数、电流和 `nfp`，程序可以走两条互不覆盖的路径：ABI-9 C++/CUDA 原生主线用固定成本计算 0--100 score；完整评估支线通过 $\alpha+\nu$ 构造近 Boozer 初值，再接入原有 Simsopt LS/Newton 与 DESC。
 
 重点特性：
 
-- **从线圈到磁面**：输出磁轴、$\psi$ 模型、候选磁面、$\iota$、volume、$G$ 和 QA/QH/QP QS error。
-- **连续品质分数**：默认输出 `quality_score`，把磁轴、$\psi$、磁面筛选、Boozer/QS 和线圈工程项压缩为 0-100 的可解释分数。
+- **从线圈到体 QS**：原生链路依次完成批量磁轴追踪、局部不变量 $s$ 拟合、物理磁通 $\psi(s)$ 标定、$\alpha$ 与 $\iota$ 联合线性拟合和体 QA/QH/QP 微分 QS 统计。
+- **连续品质分数**：ABI-9 score 把 axis、$s/\psi$、surface、coordinate、volume-QS、$\iota$ 和 coil 七个分量压缩为 0--100 分，并对 QH 的低 $\iota$、小磁面和错误 helicity 退化解施加显式防作弊约束。
+- **可逆潜空间优化**：训练后的 flow matching 不作为高质量样本保证，而作为 Fourier 参数空间的可逆预条件器；标准入口使用 FP32 RK4-256 和鲁棒低动量 Adam 搜索高分 QH 线圈。
 - **Boozer 初值自动估计**：如果没有提供推荐 `initial_iota`，程序会从 $\psi_0$ 筛选阶段已有的一周期磁力线端点中便宜估计 $\iota$，避免默认 `-2` 把 Boozer LS 带入慢分支。
 - **GPU 加速主链路**：磁力线追踪、$\psi$ 拟合、$\psi_0$ 筛选和等值面提取已接入 CUDA 后端；单个常规样本在 RTX 5090 级别 GPU 上约 3 秒量级完成评估。
 - **快速失败而不是卡住**：对找不到磁轴、局部 $\psi$ 质量差、没有可信候选磁面或 Boozer 阶段失败的样本，返回结构化失败原因、最好残差和细粒度计时。
 - **诊断图可选导出**：显式加参数后，可以额外导出高分辨率磁轴 residual heatmap 和细粒度 $\psi$ 截面图；默认不导图，避免影响批量测速。
 
-当前实现用于快速筛选和诊断，不替代高精度平衡求解或长时间磁面验证。
+快速 score 用于筛选和优化，不替代逐样本较大磁面搜索与平衡求解。正式验收统一使用 `evaluation/full_physical/`，原有 CLI、Simsopt LS/Newton 和 DESC 路径继续保留。
 
 ## 安装
 
@@ -204,7 +205,7 @@ components = out["quality_score"]["components"]
 | `25-45` | 较差，常见于弱闭合、差磁面或扰动后退化样本。 |
 | `0-25` | 基本不可用，通常找不到可靠磁轴。 |
  
-该分数不是黑盒拟合模型，而是多个软阈值分量的加权平均。六个主分量为 `axis`、`psi`、`surface`、`boozer`、`physics`、`coil`，其中 `coil` 包含长度、曲率、线圈间距、线圈到轴距离、高阶模能量和电流尺度等工程项。
+该分数不是学习型黑盒代理，而是多个软阈值分量的加权组合。当前七个分量为 `axis`、`psi`、`surface`、`coordinate`、`volume_qs`、`iota`、`coil`，其中 `coil` 包含长度、曲率、线圈间距、线圈到轴距离、高阶模能量和电流尺度等工程项。准确公式、默认参数和 ABI-9 约定见下方方法文档。
 
 ## QUASR 批量评估
 
@@ -234,5 +235,8 @@ python scripts/eval_quasr.py \
 
 ## 文档
 
+- [QH 原生评分与潜空间优化：方法与实验](docs/QH原生评分与潜空间优化方法.md)
+- [完整评估固定流程](docs/精简线圈评估流程.md)
+- [后续研究方向可行性分析](reports/qh_future_directions_feasibility.md)
 - [计算流程](docs/计算流程.md)
 - [性能报告](docs/性能报告.md)

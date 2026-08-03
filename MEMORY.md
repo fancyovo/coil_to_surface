@@ -38,6 +38,20 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, active branch `qh-small-condition-adam` commit `b3b5223`
+  fixes the all-`ok` cross-step dirty-gradient failure in standard latent Adam.
+  The optimizer now defaults to a rolling, scale-invariant median/MAD guard
+  over the latest 20 accepted gradient and actual-update RMS values after a
+  20-step warmup. A candidate exceeding either adaptive limit is rejected
+  before center decoding/scoring; parameters, Adam step, first moment, and
+  second moment are all left unchanged. The guard never uses a fixed absolute
+  cap and can be explicitly disabled only with `--no-temporal-scale-guard`.
+  Causal replay of the saved two-coil history preserves the beneficial step
+  184 and rejects step 185 (`gradient RMS 337.109 > 39.320`, proposed update
+  RMS `0.042175 > 0.017850`). It also identifies the small score-losing step
+  170 as a marginal gradient-scale outlier. The correct anomalous antithetic
+  pair at step 185 is `85.3298124/72.1562425`; the previously recorded pairing
+  with `85.7874` was wrong. Full local validation is `134 passed`.
 - On 2026-08-03, branch `qh-small-condition-adam` completed the requested single
   smaller-condition experiment at `nfp=4`, two base coils. Implementation
   commits `dd62ab9`, `988d115`, and `eb6901e` respectively preserve every Adam
@@ -55,7 +69,7 @@ once the task is accepted.
   `0.0136752/0.131211/0.0297222`. All four GPUs were idle before formal timing
   and returned to 0%, 2 MiB with no compute process after it.
   A post-delivery audit confirms a dirty-gradient event when producing step
-  185 from the step-184 optimum. One antithetic pair scored `85.7874/72.1562`
+  185 from the step-184 optimum. One antithetic pair scored `85.3298/72.1562`
   and produced directional delta `13.1736`, accounting for 95.5% of the four
   deltas' squared energy. Gradient RMS jumped to `337.109` (67.1x the preceding
   20-step median), update RMS to `0.042175` (18.3x local median), and score fell
@@ -138,7 +152,7 @@ once the task is accepted.
   `04:00:33`. Do not launch or report corpus collectors again unless the user
   explicitly reverses this instruction. Ignore unrelated future Student jobs;
   project GPU work should use the four P107 RTX 5090 GPUs only.
-- Active local branch: `qh-volume-qs-g-fix`, created from
+- Historical completed branch: `qh-volume-qs-g-fix`, created from
   `qh-flow-screened-adam` at `d5e5689` on 2026-08-02. It owns the versioned
   correction of the differential volume-QS convention, fixed 1024+1024 score
   calibration, same-start 200-step Adam comparison, and complete physical

@@ -38,25 +38,59 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-03, P107 four-GPU job `31330` is actively extending the corrected
-  ABI-9 `nfp=6`, two-base-coil Adam trajectory from iteration 200 to 400. It
-  uses an immutable clone of
-  `~/local_surface_evaluator/runs/qh_nfp6_nc2_screen128_adam200_20260803/seed_2026080360/adam/`
-  at
-  `~/local_surface_evaluator/runs/qh_nfp6_nc2_adam_continue400_20260803/`;
-  the original completed run is unchanged. Resume state includes current and
-  best latents, FP64 first/second moments, Adam bias-correction step 199, RNG
-  state, all 200 history rows, and the temporal-guard history. The resume event
-  confirms `saved_iteration=200` and `requested_iterations=400`; iteration 201
-  completed normally with score `83.4791708` versus `83.4688737` at iteration
-  200. All four allocated RTX 5090 GPUs were idle at `0%`, 2 MiB before timing.
-  The exact score library remains SHA-256 `40dca742...` from the
-  `qh-volume-qs-g-fix` worktree; the base repository's later `build_mixed`
-  binary has a different SHA and must not be substituted. Local continuation
-  launcher commits are `5ee403a` and `f92dcff`; corresponding remote commits
-  are `d33f57d` and `502b226`. Monitor with
-  `squeue -j 31330 -o '%.18i %.16P %.24j %.12q %.10T %.10M %.4D %R'`.
-- The apparent mismatch between the `nfp=6` direct Boozer contour plot and its
+- On 2026-08-03, P107 four-GPU continuation job `31330` completed `0:0` in
+  `01:08:54`. It exactly resumed the corrected ABI-9 `nfp=6`, two-base-coil
+  Adam state at iteration 200 and reached its best/final score `86.1233491` at
+  iteration 400, versus `83.4688735` at resume and `74.4358335` before Adam.
+  The final native components axis/psi/surface/coordinate/volume-QS/iota/coil
+  are `92.170/98.394/88.371/80.471/83.685/100/62.937`; per-helicity QH fell
+  from `0.01028325` at step 200 to `0.00657843` at step 400. The last 50-step
+  running-best gain is still `0.7803`, so the trajectory improved but did not
+  demonstrate saturation. All 400 history rows and 401 complete trajectory
+  cases are preserved at
+  `~/local_surface_evaluator/runs/qh_nfp6_nc2_adam_continue400_20260803/` and
+  locally under
+  `reports/assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/`.
+  The rolling temporal guard rejected the step-390 RMS-`176.743` gradient
+  without changing parameters or moments. Two large current-score drawdowns
+  near steps 297 and 310 were instead discrete scorer branch switches from
+  selected `surface_level=0.16` to `0.08`; the running best remained intact.
+  The immutable score library SHA remains
+  `40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5`.
+  Complete physical evaluation of the step-400 best is finished under
+  `~/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam400_full_eval_20260803/`.
+  Source-psi jobs `31354--31357` all completed `0:0`; sample-specific `a=0.08`
+  was selected for maximal tested coverage with 389,440-point FP32 GPU-QR
+  validation RMS/angle-P95 `6.8323e-4/1.2609e-4`. P107 candidate jobs
+  `31362--31365` completed `0:0`: standard alpha+nu plus LS/Newton accepted
+  the continuous, volume-increasing `s=0.12/0.20/0.30/0.36` branch, reaching
+  `|V|=0.0588090 m^3`, `iota=2.11238`, dense relative residual `1.4419e-5`,
+  and face QH error `1.3137e-4` at `s=0.36`. Outer jobs `31371/31372`
+  completed `0:0` and retained the branch at `s=0.42/0.49`; selected `s=0.49`
+  has `|V|=0.0723990 m^3`, `iota=2.11837`, dense relative residual
+  `1.9568e-5`, normal-field P95 `2.6870e-5`, and face QA/QH/QP errors
+  `8.3676e-3/1.7702e-4/8.6257e-3`. Outer jobs `31373/31374` failed
+  explicitly at `s=0.56/0.64` because the alpha-derived toroidal correction
+  became non-invertible (minimum Jacobian `-0.07924/-0.14037`), establishing
+  the nearest tested outer boundary. Fixed-surface full-evaluation job `31382`
+  completed `0:0` in `00:05:51` on selected `s=0.49`. All eight Poincare
+  lines produced 29 hits at all four sections. DESC used the allowed CPU
+  backend, remained nested, converged successfully by `xtol` in 27 iterations,
+  and reduced normalized force mean/P95/max from
+  `1.03490/2.33249/272.860` to
+  `6.8506e-4/1.5589e-3/8.3121e-3`. The direct surface QH squared error is
+  `1.7702e-4`, or `1.33%` RMS amplitude; visible contour curvature therefore
+  remains real and is not contradicted by its approximately sevenfold RMS
+  advantage over QA/QP. Selected-surface and DESC-equilibrium SHA-256 values
+  are `3d9b9de26cab4f01e8bd0c3d550b87b72c59fa6a778893947c3af6515e0f451a`
+  and `859a2a308c516c7a30b69eab602a4405770572ffbb31610ed8918250f25ffe3b`.
+  Output is under
+  `.../qh_nfp6_nc2_adam400_full_eval_20260803/selected_s0p49_full/`; evidence
+  and all eight DESC figures are in `reports/qh_small_condition_adam_report.md`
+  section 12 and the local continuation asset directory. Local launcher commits are
+  `5ee403a` and `f92dcff`; corresponding remote commits are `d33f57d` and
+  `502b226`.
+- The apparent mismatch between the step-200 `nfp=6` direct Boozer contour plot and its
   surface QH metric is mostly a scale-reading issue, not evidence that the plot
   is already high-quality QH. `helical_qs_metric` reports an area-weighted
   relative *squared* error. Thus QH `2.3357e-4` corresponds to `1.53%` RMS
@@ -65,8 +99,10 @@ once the task is accepted.
   dominant contour slope follows the expected
   $\theta-N_{\rm FP}\phi=\mathrm{const}$ direction, but visible curvature and
   closed islands remain physically meaningful non-QH content. This agrees
-  with the native volume-QS component being only `78.777/100` and motivates
-  the active continuation job.
+  with the native volume-QS component being only `78.777/100`. Step 400
+  improves the corresponding face QH squared error to `1.7702e-4` (`1.33%`
+  RMS) and native volume-QS to `83.685/100`, but the improvement remains
+  finite and does not make the contours ideally straight.
 - On 2026-08-03, complete physical evaluation of the corrected ABI-9
   `nfp=6`, two-base-coil Adam best case was completed on branch
   `qh-small-condition-adam`. The immutable input is

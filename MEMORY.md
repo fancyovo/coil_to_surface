@@ -38,6 +38,17 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, local `main` now contains non-fast-forward merge commit
+  `2e83d21` (`Merge native QH scoring and latent optimization`). The merge
+  preserves the original Simsopt LS/Newton and DESC route while adding the
+  ABI-9 native QH score, flow-matching tooling, robust latent Adam, complete-
+  evaluation entrypoints, and the methodology/future-direction documents.
+  Post-merge interface inspection confirms score ABI 9, corrected
+  $G=\mu_0I_{\rm link}/(2\pi)$, explicit per-helicity diagnostics, physical
+  volume weights $Rr_b^2$, and the fixed 100000-point volume budget. The full
+  merged test suite passes with `134 passed`. Final nfp6/nc2 and corrected
+  landscape result commits still need to be applied to `main` after their
+  active jobs complete.
 - On 2026-08-03, commits `701b6e7`, `7fb5214`, and `96453fb` prepared
   the current paradigm for mainline delivery. The landscape launcher now pins
   the validated 30k physical-loss flow checkpoint and corrected ABI-9 score

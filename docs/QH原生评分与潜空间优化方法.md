@@ -319,7 +319,7 @@ $$
 构造
 
 $$
-\widehat g=rac{1}{K}\sum_{j=1}^K
+\widehat g=\frac{1}{K}\sum_{j=1}^K
 \frac{\Delta_j}{2c}u_j.
 $$
 

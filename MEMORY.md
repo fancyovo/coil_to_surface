@@ -54,6 +54,19 @@ once the task is accepted.
   `iota=1.47284`, and QH/QA/QP per-helicity errors are
   `0.0136752/0.131211/0.0297222`. All four GPUs were idle before formal timing
   and returned to 0%, 2 MiB with no compute process after it.
+  A post-delivery audit confirms a dirty-gradient event when producing step
+  185 from the step-184 optimum. One antithetic pair scored `85.7874/72.1562`
+  and produced directional delta `13.1736`, accounting for 95.5% of the four
+  deltas' squared energy. Gradient RMS jumped to `337.109` (67.1x the preceding
+  20-step median), update RMS to `0.042175` (18.3x local median), and score fell
+  by `1.06890`. The within-step median/MAD limit rose to `15.666`, so it did not
+  flag the direction; all points remained status-ok, so invalid-center
+  backtracking also did not apply. Momentum carried the damage into steps
+  186--187, and step 200 remained `0.66643` below the best. Saved data cannot
+  distinguish a score evaluation burr from a true local cliff, but either is
+  an unreliable finite-difference gradient. Future robust Adam should use a
+  rolling cross-step median/MAD guard on gradient/update scale and roll back
+  both moments when rejecting such a step; never use a fixed gradient cap.
   Complete evaluation independently selected sample-specific source `a=0.08`
   (389,440-point FP32 GPU QR, validation RMS/angle-P95
   `6.828e-4/1.166e-4`). Standard alpha+nu plus LS/Newton accepted the continuous

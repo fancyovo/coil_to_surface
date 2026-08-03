@@ -83,6 +83,7 @@ once the task is accepted.
   evidence and all eight DESC figures are in
   `reports/qh_small_condition_adam_report.md` section 13 and
   `reports/assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/`.
+  Feature-branch delivery commit is `dd6e3af`.
 - On 2026-08-03, P107 four-GPU continuation job `31330` completed `0:0` in
   `01:08:54`. It exactly resumed the corrected ABI-9 `nfp=6`, two-base-coil
   Adam state at iteration 200 and reached its best/final score `86.1233491` at

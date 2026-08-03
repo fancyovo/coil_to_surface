@@ -52,6 +52,15 @@ once the task is accepted.
   gradient/VJP feasibility. README links these documents while preserving the
   original LS/Newton/DESC route. The corrected landscape and nfp6/nc2 result
   sections remain explicitly pending until their formal jobs finish.
+- On 2026-08-03, P107 job `31233` was submitted with dependency
+  `afterok:31227_0`, so it cannot overlap the active four-GPU nfp6/nc2 Adam
+  job. It reruns the three-reference/four-direction landscape with FP32
+  RK4-256, the validated checkpoint SHA
+  `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`,
+  and corrected ABI-9 library SHA
+  `40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5`.
+  Its output root is
+  `~/local_surface_evaluator/runs/qh_flow_landscape_abi9_20260803`.
 - On 2026-08-03, active branch `qh-small-condition-adam` commit `b3b5223`
   fixes the all-`ok` cross-step dirty-gradient failure in standard latent Adam.
   The optimizer now defaults to a rolling, scale-invariant median/MAD guard

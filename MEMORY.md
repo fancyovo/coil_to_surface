@@ -87,7 +87,8 @@ once the task is accepted.
   Output is under
   `.../qh_nfp6_nc2_adam400_full_eval_20260803/selected_s0p49_full/`; evidence
   and all eight DESC figures are in `reports/qh_small_condition_adam_report.md`
-  section 12 and the local continuation asset directory. Local launcher commits are
+  section 12 and the local continuation asset directory. Feature-branch
+  delivery commit is `414f59e`. Local launcher commits are
   `5ee403a` and `f92dcff`; corresponding remote commits are `d33f57d` and
   `502b226`.
 - The apparent mismatch between the step-200 `nfp=6` direct Boozer contour plot and its

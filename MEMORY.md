@@ -46,9 +46,9 @@ once the task is accepted.
   Post-merge interface inspection confirms score ABI 9, corrected
   $G=\mu_0I_{\rm link}/(2\pi)$, explicit per-helicity diagnostics, physical
   volume weights $Rr_b^2$, and the fixed 100000-point volume budget. The full
-  merged test suite passes with `134 passed`. Final nfp6/nc2 and corrected
-  landscape result commits still need to be applied to `main` after their
-  active jobs complete.
+  merged test suite passes with `134 passed`. The nfp6/nc2 result is complete
+  on the feature branch and still needs its final report/artifact commit
+  applied to `main`; corrected landscape job `31233` remains active.
 - On 2026-08-03, commits `701b6e7`, `7fb5214`, and `96453fb` prepared
   the current paradigm for mainline delivery. The landscape launcher now pins
   the validated 30k physical-loss flow checkpoint and corrected ABI-9 score
@@ -61,11 +61,11 @@ once the task is accepted.
   `reports/qh_future_directions_feasibility.md` separately analyzes the
   validated proxy results, conditional Reflow, and component-wise approximate
   gradient/VJP feasibility. README links these documents while preserving the
-  original LS/Newton/DESC route. The corrected landscape and nfp6/nc2 result
-  sections remain explicitly pending until their formal jobs finish.
-- On 2026-08-03, P107 job `31233` was submitted with dependency
-  `afterok:31227_0`, so it cannot overlap the active four-GPU nfp6/nc2 Adam
-  job. It reruns the three-reference/four-direction landscape with FP32
+  original LS/Newton/DESC route. The nfp6/nc2 section is now filled from the
+  formal run; only the corrected landscape section remains pending.
+- On 2026-08-03, P107 job `31233` started after completed dependency
+  `31227_0`, so the two formal four-GPU jobs did not overlap. It reruns the
+  three-reference/four-direction landscape with FP32
   RK4-256, the validated checkpoint SHA
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`,
   and corrected ABI-9 library SHA
@@ -86,15 +86,27 @@ once the task is accepted.
   170 as a marginal gradient-scale outlier. The correct anomalous antithetic
   pair at step 185 is `85.3298124/72.1562425`; the previously recorded pairing
   with `85.7874` was wrong. Full local validation is `134 passed`.
+- On 2026-08-03, formal P107 job `31227_0` completed `0:0` in `01:10:42`.
+  With `nfp=6`, two base coils, 128 IID starts and the corrected ABI-9 score,
+  the selected start rescored at `74.43583` and 200 low-momentum Adam rounds
+  reached their best/final `83.46887` at step 200. QH per-helicity error fell
+  from `0.0381162` to `0.0102832`, iota remained `2.08426`, volume-QS rose
+  `55.8315 -> 78.7771`, and coil rose `58.5193 -> 60.0925`; the gain is not a
+  low-iota or size cheat. The new temporal guard rejected exactly one
+  multi-direction contaminated step 167 before center decoding
+  (`gradient RMS 182.669 > 18.464`, proposed update RMS
+  `0.05473 > 0.03326`) while 199 normal updates applied. All 200 history rows
+  and 201 trajectory cases are complete; four GPUs were 0%, 2 MiB with no
+  compute process both before and after. End-to-end time was `4232.75 s`.
+  No full alpha+nu/Simsopt/DESC evaluation was run for this case. Evidence is
+  in `reports/qh_small_condition_adam_report.md` section 10 and
+  `reports/assets/qh_small_condition_adam_nfp6_nc2_20260803/`.
 - On 2026-08-03, four-GPU smoke job `31223` completed `0:0` in `00:06:53`
   and verified the new temporal-guard artifact schema and cleanup on the remote
   branch tip `fcc5297`. Its deliberately small eight-case screen found no
   `status=ok` start, so all 22 Adam rounds were safely skipped; this is control-
-  flow evidence only, not optimization evidence. Formal P107 job `31227` is
-  running on `anode01` from the same commit. It uses `nfp=6`, two base coils,
-  128 IID FP32 RK4-256 flow candidates, corrected ABI-9 score, and 200 steps of
-  eta-0.01 low-momentum Adam with the new temporal guard. Output root is
-  `~/local_surface_evaluator/runs/qh_nfp6_nc2_screen128_adam200_20260803`.
+  flow evidence only, not optimization evidence; the formal evidence is job
+  `31227_0` summarized immediately above.
 - On 2026-08-03, branch `qh-small-condition-adam` completed the requested single
   smaller-condition experiment at `nfp=4`, two base coils. Implementation
   commits `dd62ab9`, `988d115`, and `eb6901e` respectively preserve every Adam

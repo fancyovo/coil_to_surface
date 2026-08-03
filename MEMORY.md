@@ -46,10 +46,10 @@ once the task is accepted.
   Post-merge interface inspection confirms score ABI 9, corrected
   $G=\mu_0I_{\rm link}/(2\pi)$, explicit per-helicity diagnostics, physical
   volume weights $Rr_b^2$, and the fixed 100000-point volume budget. The nfp6/
-  nc2 result and its report are applied to `main` at `9910ec9`. The full merged
-  test suite passes with `134 passed`. Corrected landscape job `31233` has now
-  completed and its report/assets are being finalized for the last mainline
-  integration commit.
+  nc2 result and its report are applied to `main` at `9910ec9`; the corrected
+  ABI-9 landscape report/assets are applied at `4dd2db2`. Feature branch
+  `qh-small-condition-adam` records the same landscape delivery at `4cbe76c`.
+  The full merged test suite passes with `134 passed`.
 - On 2026-08-03, commits `701b6e7`, `7fb5214`, and `96453fb` prepared
   the current paradigm for mainline delivery. The landscape launcher now pins
   the validated 30k physical-loss flow checkpoint and corrected ABI-9 score
@@ -86,7 +86,7 @@ once the task is accepted.
   `1e-8`. Four GPUs were 0%, 2 MiB with no compute process before and after.
   Evidence is in `reports/qh_flow_landscape_report.md` section 10 and
   `reports/assets/qh_flow_landscape_abi9_31233/`.
-- On 2026-08-03, active branch `qh-small-condition-adam` commit `b3b5223`
+- On 2026-08-03, commit `b3b5223` on branch `qh-small-condition-adam`
   fixes the all-`ok` cross-step dirty-gradient failure in standard latent Adam.
   The optimizer now defaults to a rolling, scale-invariant median/MAD guard
   over the latest 20 accepted gradient and actual-update RMS values after a

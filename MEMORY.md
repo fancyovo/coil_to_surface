@@ -38,6 +38,20 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-03, P107 four-GPU job `31401` is actively extending the same
+  corrected ABI-9 `nfp=6`, two-base-coil trajectory from iteration 400 to 700
+  under
+  `~/local_surface_evaluator/runs/qh_nfp6_nc2_adam_continue700_20260803/`.
+  It uses an immutable copy of the completed step-400 Adam directory, with
+  source state/best SHA-256
+  `d490cf388b6d93266d756b306cb40edbe0db3fbad53fbf7f81f63460ea0dc40d` /
+  `34156733d0c5a3bbd87caa4f51e62f9298b67b38842953dd6d55eca2fe0038e8`,
+  the same flow checkpoint SHA `39a3293a...`, and pinned score-library SHA
+  `40dca742...`. The resume event confirms `saved_iteration=400` and
+  `requested_iterations=700`, so current/best latents, FP64 Adam moments,
+  bias correction, RNG, and temporal-guard history are all inherited rather
+  than restarted. Monitor with
+  `squeue -j 31401 -o '%.18i %.16P %.24j %.10T %.10M %.4D %R'`.
 - On 2026-08-03, P107 four-GPU continuation job `31330` completed `0:0` in
   `01:08:54`. It exactly resumed the corrected ABI-9 `nfp=6`, two-base-coil
   Adam state at iteration 200 and reached its best/final score `86.1233491` at

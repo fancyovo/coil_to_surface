@@ -1,0 +1,564 @@
+{
+  "selected": {
+    "target_s": 0.49,
+    "solver_accepted": true,
+    "accepted": true,
+    "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p49/standard_rho_1/summary.json",
+    "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+    "final_abs_volume_m3": 0.06714125115157488,
+    "acceptance_checks": {
+      "newton_converged": true,
+      "dense_relative_l2": true,
+      "dense_normal_field_p95": true,
+      "toroidal_winding": true,
+      "normal_nonzero": true
+    },
+    "branch_diagnostics": {
+      "distance_from_initial": {
+        "candidate_to_reference_m": {
+          "min": 6.124241540562101e-05,
+          "mean": 0.0020189093763761886,
+          "rms": 0.0031278858516098035,
+          "p95": 0.007849024977834525,
+          "max": 0.015097396643399857
+        },
+        "reference_to_candidate_m": {
+          "min": 6.124241540562101e-05,
+          "mean": 0.0015290368186653533,
+          "rms": 0.0019558968257161963,
+          "p95": 0.0030973230475268274,
+          "max": 0.012993574693068062
+        }
+      },
+      "psi_identity": {
+        "target_s": 0.49,
+        "s": {
+          "min": 0.47270464975137944,
+          "mean": 0.4746835163916565,
+          "rms": 0.47468400839182767,
+          "p95": 0.4755260711123851,
+          "max": 0.4777930842235843
+        },
+        "absolute_s_error": {
+          "min": 0.012206915776415694,
+          "mean": 0.015316483608343444,
+          "rms": 0.015331723944465452,
+          "p95": 0.016590554856798202,
+          "max": 0.017295350248620556
+        },
+        "linearized_normal_distance_m": {
+          "min": 0.0004414838842780656,
+          "mean": 0.0008231699921713032,
+          "rms": 0.0008659419475786465,
+          "p95": 0.0013557376257538403,
+          "max": 0.0015600332257408342
+        }
+      },
+      "distance_p95_over_radius": 0.13956412341091667
+    },
+    "branch_consistency": {
+      "nested_volume_increasing": true,
+      "previous_largest_abs_volume_m3": 0.04953301214148748
+    }
+  },
+  "nearest_outer_failure": {
+    "target_s": 0.64,
+    "solver_accepted": true,
+    "accepted": false,
+    "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p64_over1p6/standard_rho_1/summary.json",
+    "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p64_over1p6/standard_rho_1/boozer_standard.npz",
+    "final_abs_volume_m3": 0.05319682780474482,
+    "acceptance_checks": {
+      "newton_converged": true,
+      "dense_relative_l2": true,
+      "dense_normal_field_p95": true,
+      "toroidal_winding": true,
+      "normal_nonzero": true
+    },
+    "branch_diagnostics": {
+      "distance_from_initial": {
+        "candidate_to_reference_m": {
+          "min": 0.00024841394408211674,
+          "mean": 0.00936712340477294,
+          "rms": 0.011232295438513026,
+          "p95": 0.02377964958574719,
+          "max": 0.034341029176235355
+        },
+        "reference_to_candidate_m": {
+          "min": 0.00024841394408211674,
+          "mean": 0.009550295644420555,
+          "rms": 0.010548432378804394,
+          "p95": 0.017604418382264165,
+          "max": 0.024899583177719113
+        }
+      },
+      "psi_identity": {
+        "target_s": 0.64,
+        "s": {
+          "min": 0.38256360265804923,
+          "mean": 0.38292496741306375,
+          "rms": 0.38292502651664423,
+          "p95": 0.3833237119343752,
+          "max": 0.38356993474474926
+        },
+        "absolute_s_error": {
+          "min": 0.25643006525525075,
+          "mean": 0.25707503258693626,
+          "rms": 0.2570751206244024,
+          "p95": 0.25736070060723365,
+          "max": 0.2574363973419508
+        },
+        "linearized_normal_distance_m": {
+          "min": 0.007997460061816845,
+          "mean": 0.014922661572798661,
+          "rms": 0.01567149767471261,
+          "p95": 0.0246800215579748,
+          "max": 0.030799423230484856
+        }
+      },
+      "distance_p95_over_radius": 0.3777673043386986
+    },
+    "branch_consistency": {
+      "nested_volume_increasing": false,
+      "rejection_reason": "non_increasing_enclosed_volume",
+      "previous_largest_abs_volume_m3": 0.06714125115157488
+    }
+  },
+  "candidates": [
+    {
+      "target_s": 0.12,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p12/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p12/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.015751175380692546,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 7.339499541580801e-06,
+            "mean": 0.0005080391168649711,
+            "rms": 0.000592083451879782,
+            "p95": 0.001062562400294721,
+            "max": 0.0014429138833432413
+          },
+          "reference_to_candidate_m": {
+            "min": 7.339499541580801e-06,
+            "mean": 0.0005077231049437017,
+            "rms": 0.0005914040406695871,
+            "p95": 0.0010660059081158337,
+            "max": 0.0014260903550369112
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.12,
+          "s": {
+            "min": 0.11842051198649155,
+            "mean": 0.1193644990634698,
+            "rms": 0.1193652668193817,
+            "p95": 0.11982262994330431,
+            "max": 0.11986504948799206
+          },
+          "absolute_s_error": {
+            "min": 0.00013495051200793085,
+            "mean": 0.0006355009365302135,
+            "rms": 0.0007662555901523596,
+            "p95": 0.0014391678411444678,
+            "max": 0.0015794880135084483
+          },
+          "linearized_normal_distance_m": {
+            "min": 1.4490878684194135e-05,
+            "mean": 5.413533619698366e-05,
+            "rms": 6.133346486627918e-05,
+            "p95": 0.00010411978474738716,
+            "max": 0.00011906044892631237
+          }
+        },
+        "distance_p95_over_radius": 0.039231055697016
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": null
+      }
+    },
+    {
+      "target_s": 0.2,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p2/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p2/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.026698929616776373,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 6.0848678989899505e-06,
+            "mean": 0.0006558855933782008,
+            "rms": 0.0007739138940281351,
+            "p95": 0.0014056783897409882,
+            "max": 0.0018884318435564242
+          },
+          "reference_to_candidate_m": {
+            "min": 6.0848678989899505e-06,
+            "mean": 0.0006550728973644691,
+            "rms": 0.0007723139219884111,
+            "p95": 0.0014112973366219549,
+            "max": 0.001876890719711653
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.2,
+          "s": {
+            "min": 0.19822737627995962,
+            "mean": 0.19895997749147926,
+            "rms": 0.19896020072230308,
+            "p95": 0.1993656343651576,
+            "max": 0.1994394735638565
+          },
+          "absolute_s_error": {
+            "min": 0.0005605264361435158,
+            "mean": 0.0010400225085207908,
+            "rms": 0.0010818848679218448,
+            "p95": 0.0016520871856373577,
+            "max": 0.0017726237200403894
+          },
+          "linearized_normal_distance_m": {
+            "min": 2.826620213908076e-05,
+            "mean": 7.761969939981349e-05,
+            "rms": 8.137264539442872e-05,
+            "p95": 0.00011851865440671712,
+            "max": 0.0001579782964992136
+          }
+        },
+        "distance_p95_over_radius": 0.03991538899006854
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.015751175380692546
+      }
+    },
+    {
+      "target_s": 0.24,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p24/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p24/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.032290054706857335,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 1.3765509949554148e-05,
+            "mean": 0.0007312330206317598,
+            "rms": 0.0008602776967020285,
+            "p95": 0.0015434672627930518,
+            "max": 0.002068700870676493
+          },
+          "reference_to_candidate_m": {
+            "min": 1.3765509949554148e-05,
+            "mean": 0.0007301536055718049,
+            "rms": 0.0008582299771402927,
+            "p95": 0.001543951798522053,
+            "max": 0.002065913388218794
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.24,
+          "s": {
+            "min": 0.2381147641101419,
+            "mean": 0.2387641904302189,
+            "rms": 0.23876432434249276,
+            "p95": 0.23913096362627353,
+            "max": 0.2392210497339346
+          },
+          "absolute_s_error": {
+            "min": 0.0007789502660653924,
+            "mean": 0.0012358095697810902,
+            "rms": 0.001261416751912216,
+            "p95": 0.0017421152695285603,
+            "max": 0.001885235889858089
+          },
+          "linearized_normal_distance_m": {
+            "min": 3.4228545688520275e-05,
+            "mean": 8.641830119888633e-05,
+            "rms": 9.076192433285428e-05,
+            "p95": 0.00013556927440774687,
+            "max": 0.00018335487058927444
+          }
+        },
+        "distance_p95_over_radius": 0.03971519904454596
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.026698929616776373
+      }
+    },
+    {
+      "target_s": 0.3,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p3/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p3/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.04082056595498081,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 1.501359129819542e-05,
+            "mean": 0.0008393283392411282,
+            "rms": 0.0009809064891721582,
+            "p95": 0.0017386926379508838,
+            "max": 0.0023047138249992854
+          },
+          "reference_to_candidate_m": {
+            "min": 1.501359129819542e-05,
+            "mean": 0.0008383631571487891,
+            "rms": 0.000979140033344318,
+            "p95": 0.0017386926379508838,
+            "max": 0.002319405772196625
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.3,
+          "s": {
+            "min": 0.29796137836255704,
+            "mean": 0.29847934252520514,
+            "rms": 0.29847941681369894,
+            "p95": 0.2988034411669948,
+            "max": 0.29894284798253734
+          },
+          "absolute_s_error": {
+            "min": 0.001057152017462648,
+            "mean": 0.0015206574747948537,
+            "rms": 0.0015351698025756525,
+            "p95": 0.001917780064234065,
+            "max": 0.00203862163744295
+          },
+          "linearized_normal_distance_m": {
+            "min": 4.064250567046895e-05,
+            "mean": 9.682720240240507e-05,
+            "rms": 0.00010121174496977965,
+            "p95": 0.00015542702097432016,
+            "max": 0.00017618065226067414
+          }
+        },
+        "distance_p95_over_radius": 0.03978752982218087
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.032290054706857335
+      }
+    },
+    {
+      "target_s": 0.36,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p36/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p36/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.04953301214148748,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 2.376177976406156e-05,
+            "mean": 0.0009314256527930885,
+            "rms": 0.001086506993717911,
+            "p95": 0.001924561358187763,
+            "max": 0.002569219147993077
+          },
+          "reference_to_candidate_m": {
+            "min": 2.376177976406156e-05,
+            "mean": 0.0009304589341984722,
+            "rms": 0.001084727163754208,
+            "p95": 0.0019223550087976507,
+            "max": 0.0025546394064855454
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.36,
+          "s": {
+            "min": 0.3578018916646057,
+            "mean": 0.3582050194326859,
+            "rms": 0.35820507563620907,
+            "p95": 0.3585400400286233,
+            "max": 0.3587545790886045
+          },
+          "absolute_s_error": {
+            "min": 0.0012454209113955117,
+            "mean": 0.0017949805673140658,
+            "rms": 0.0018061616783567958,
+            "p95": 0.002111809483227434,
+            "max": 0.0021981083353943
+          },
+          "linearized_normal_distance_m": {
+            "min": 4.9716019097642274e-05,
+            "mean": 0.00010553681711783943,
+            "rms": 0.00010997375945514298,
+            "p95": 0.00017008298662516362,
+            "max": 0.00020160651198418016
+          }
+        },
+        "distance_p95_over_radius": 0.03998874027796219
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.04082056595498081
+      }
+    },
+    {
+      "target_s": 0.49,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p49/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.06714125115157488,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 6.124241540562101e-05,
+            "mean": 0.0020189093763761886,
+            "rms": 0.0031278858516098035,
+            "p95": 0.007849024977834525,
+            "max": 0.015097396643399857
+          },
+          "reference_to_candidate_m": {
+            "min": 6.124241540562101e-05,
+            "mean": 0.0015290368186653533,
+            "rms": 0.0019558968257161963,
+            "p95": 0.0030973230475268274,
+            "max": 0.012993574693068062
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.49,
+          "s": {
+            "min": 0.47270464975137944,
+            "mean": 0.4746835163916565,
+            "rms": 0.47468400839182767,
+            "p95": 0.4755260711123851,
+            "max": 0.4777930842235843
+          },
+          "absolute_s_error": {
+            "min": 0.012206915776415694,
+            "mean": 0.015316483608343444,
+            "rms": 0.015331723944465452,
+            "p95": 0.016590554856798202,
+            "max": 0.017295350248620556
+          },
+          "linearized_normal_distance_m": {
+            "min": 0.0004414838842780656,
+            "mean": 0.0008231699921713032,
+            "rms": 0.0008659419475786465,
+            "p95": 0.0013557376257538403,
+            "max": 0.0015600332257408342
+          }
+        },
+        "distance_p95_over_radius": 0.13956412341091667
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.04953301214148748
+      }
+    },
+    {
+      "target_s": 0.64,
+      "solver_accepted": true,
+      "accepted": false,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p64_over1p6/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p64_over1p6/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.05319682780474482,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 0.00024841394408211674,
+            "mean": 0.00936712340477294,
+            "rms": 0.011232295438513026,
+            "p95": 0.02377964958574719,
+            "max": 0.034341029176235355
+          },
+          "reference_to_candidate_m": {
+            "min": 0.00024841394408211674,
+            "mean": 0.009550295644420555,
+            "rms": 0.010548432378804394,
+            "p95": 0.017604418382264165,
+            "max": 0.024899583177719113
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.64,
+          "s": {
+            "min": 0.38256360265804923,
+            "mean": 0.38292496741306375,
+            "rms": 0.38292502651664423,
+            "p95": 0.3833237119343752,
+            "max": 0.38356993474474926
+          },
+          "absolute_s_error": {
+            "min": 0.25643006525525075,
+            "mean": 0.25707503258693626,
+            "rms": 0.2570751206244024,
+            "p95": 0.25736070060723365,
+            "max": 0.2574363973419508
+          },
+          "linearized_normal_distance_m": {
+            "min": 0.007997460061816845,
+            "mean": 0.014922661572798661,
+            "rms": 0.01567149767471261,
+            "p95": 0.0246800215579748,
+            "max": 0.030799423230484856
+          }
+        },
+        "distance_p95_over_radius": 0.3777673043386986
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": false,
+        "rejection_reason": "non_increasing_enclosed_volume",
+        "previous_largest_abs_volume_m3": 0.06714125115157488
+      }
+    }
+  ]
+}

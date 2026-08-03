@@ -1,0 +1,62 @@
+{
+  "algorithm": "standard_adam_with_orthogonal_antithetic_zo_gradient",
+  "objective": "maximize_native_qh_score",
+  "initialization": "provided_flow_prior_noise_with_zero_adam_moments",
+  "initial_case": {
+    "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_small_condition_adam_nfp4_nc2_200_20260803/seed_2026080320/selected_start.json",
+    "source": "best_of_iid_random_candidate_pool",
+    "source_case_id": 43,
+    "recorded_input_score": 78.83856712366205,
+    "recorded_input_status": "ok",
+    "recorded_cem_score": null,
+    "recorded_standard_adam_score": null
+  },
+  "target": "QH",
+  "nfp": 4,
+  "n_base_coils": 2,
+  "noise_shape": [
+    2,
+    100
+  ],
+  "seed": 2026180320,
+  "iterations": 200,
+  "directions": 4,
+  "perturbation": 0.005,
+  "learning_rate": 0.01,
+  "betas": [
+    0.5,
+    0.999
+  ],
+  "adam_epsilon": 1e-08,
+  "learning_rate_schedule": "constant",
+  "weight_decay": 0.0,
+  "robust_direction_filter": true,
+  "invalid_direction_policy": "skip_entire_step",
+  "reject_invalid_center": true,
+  "invalid_center_backtracking": [
+    0.5,
+    0.25,
+    0.125
+  ],
+  "direction_outlier_ratio": 8.0,
+  "direction_outlier_mad_factor": 8.0,
+  "update_clip": null,
+  "parameter_clip": null,
+  "proposal_search": "validity_backtracking",
+  "accept_reject": null,
+  "flow_dtype": "torch.float32",
+  "flow_method": "rk4",
+  "flow_steps": 256,
+  "flow_autocast": false,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "native_lib_sha256": "40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5",
+  "gpu_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "max_wall_s": 13500.0,
+  "trajectory_artifact": "one atomic JSON case for step 0 and every completed iteration; each case stores latent noise, decoded coil coefficients/current, the complete native score, and compact optimizer state"
+}

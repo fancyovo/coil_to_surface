@@ -18,6 +18,8 @@ project="${PROJECT:-$HOME/local_surface_evaluator}"
 data="${QH_DATA:-$HOME/local_surface_evaluator_data/quasr_qh_flow_v1}"
 checkpoint="${FLOW_CHECKPOINT:-$project/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
+expected_checkpoint_sha="${EXPECTED_CHECKPOINT_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}"
+expected_score_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5}"
 output="${OUTPUT_DIR:-$project/runs/qh_flow_landscape_${SLURM_JOB_ID}}"
 source_ids="${SOURCE_IDS:-1446077,1826200,2419096}"
 directions="${DIRECTIONS:-4}"
@@ -44,6 +46,18 @@ cd "$project"
 test -f "$data/manifest.json"
 test -f "$checkpoint"
 test -f "$lib"
+actual_checkpoint_sha="$(sha256sum "$checkpoint" | awk '{print $1}')"
+actual_score_lib_sha="$(sha256sum "$lib" | awk '{print $1}')"
+if [[ "$actual_checkpoint_sha" != "$expected_checkpoint_sha" ]]; then
+  echo "checkpoint SHA-256 mismatch: $actual_checkpoint_sha" >&2
+  exit 43
+fi
+if [[ "$actual_score_lib_sha" != "$expected_score_lib_sha" ]]; then
+  echo "score library SHA-256 mismatch: $actual_score_lib_sha" >&2
+  exit 44
+fi
+printf '%s\n' "$actual_checkpoint_sha" > "$output/checkpoint_sha256.txt"
+printf '%s\n' "$actual_score_lib_sha" > "$output/score_library_sha256.txt"
 source "$HOME/coil/.venv/bin/activate"
 export PYTHONPATH="$project${PYTHONPATH:+:$PYTHONPATH}"
 export OMP_NUM_THREADS=1

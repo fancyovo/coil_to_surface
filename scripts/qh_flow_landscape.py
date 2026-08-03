@@ -22,6 +22,8 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 DEFAULT_IDS = (1446077, 1826200, 2419096)
+SCORE_DEFINITION = "corrected_abi9_g_over_2pi_per_helicity"
+SCORE_LABEL = "corrected ABI-9 score"
 _POSITIVE_ALPHAS = (
     0.001,
     0.002,
@@ -591,6 +593,8 @@ def prepare_cases(args: argparse.Namespace) -> None:
             "selected_steps": closure_steps[-1],
             "checkpoint_step": int(checkpoint["step"]),
             "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
+            "score_definition": SCORE_DEFINITION,
+            "score_library_sha256": hashlib.sha256(args.lib.read_bytes()).hexdigest(),
             "model_parameter_dtype": str(next(model.parameters()).dtype),
             "autocast": False,
             "sources": source_rows,
@@ -738,7 +742,11 @@ def plot_results(rows: list[dict[str, Any]], manifest: dict, output_dir: Path) -
                     label=f"d{direction} {path}" if source_id == source_ids[0] else None,
                 )
         axis.axvline(0.0, color="#444444", linewidth=0.8)
-        axis.set(title=f"QUASR {source_id}", xlabel="paired direction coordinate alpha", ylabel="score v3")
+        axis.set(
+            title=f"QUASR {source_id}",
+            xlabel="paired direction coordinate alpha",
+            ylabel=SCORE_LABEL,
+        )
         axis.grid(alpha=0.2)
     axes[0, 0].legend(ncol=2, fontsize=7)
     figure.suptitle(
@@ -783,7 +791,7 @@ def plot_results(rows: list[dict[str, Any]], manifest: dict, output_dir: Path) -
         axis.set(
             title=f"QUASR {source_id}",
             xlabel="coil position RMS displacement [m]",
-            ylabel="score v3",
+            ylabel=SCORE_LABEL,
         )
         axis.set_xscale("symlog", linthresh=5.0e-4)
         axis.grid(alpha=0.2)

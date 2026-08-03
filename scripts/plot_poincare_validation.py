@@ -28,6 +28,21 @@ os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 def _load_case(path: Path):
     data = json.loads(path.read_text(encoding="utf-8"))
+    if "raw" in data:
+        inp = data["raw"]
+        x = np.atleast_2d(np.asarray(inp["x"], dtype=float))
+        y = np.atleast_2d(np.asarray(inp["y"], dtype=float))
+        z = np.atleast_2d(np.asarray(inp["z"], dtype=float))
+        if not (x.shape == y.shape == z.shape):
+            raise ValueError(f"raw x/y/z coefficient shapes differ: {x.shape}, {y.shape}, {z.shape}")
+        coeff_count = int(x.shape[1])
+        currents = np.asarray(inp["current"], dtype=float).ravel()
+        if currents.size != x.shape[0]:
+            raise ValueError(f"raw case has {x.shape[0]} coils but {currents.size} currents")
+        nfp = int(data.get("nfp", inp.get("nfp")))
+        coil_dofs = np.concatenate([x, y, z], axis=1)
+        return coil_dofs, currents, nfp, coeff_count
+
     inp = data["input"]
     coeff_count = int(inp.get("coeff_count", 33))
     packed = np.asarray(inp["packed_values"], dtype=float).ravel()
@@ -61,15 +76,17 @@ def plot_poincare_from_dofs(
     coil_quadpoints=300,
     nfieldlines=20,
     radial_width=None,
-    edge_fraction=1.1,
+    edge_fraction=0.95,
     stop_fraction=1.5,
     tmax_fl=2.0e8,
     phis=None,
     save_path=None,
-    tol=1e-5,
+    tol=1e-11,
     plot_surface=True,
     marker_size=10,
     dpi=150,
+    psi_model=None,
+    psi_target=None,
 ):
     import matplotlib
 
@@ -181,9 +198,60 @@ def plot_poincare_from_dofs(
     ]
     print("Poincare hits per line =", hit_counts)
 
+    psi_drift = None
+    if psi_model is not None:
+        from stellarator_eval.volume_qs import evaluate_psi_tensor_numpy
+
+        line_rows = []
+        all_errors = []
+        for line_index, (r_start, z_start, hits) in enumerate(
+            zip(R0, Z0, fieldlines_phi_hits)
+        ):
+            start_s = float(
+                evaluate_psi_tensor_numpy(psi_model, r_start, z_start, 0.0)[0]
+            )
+            hits = np.asarray(hits)
+            if hits.ndim != 2 or hits.shape[0] == 0:
+                continue
+            valid = hits[hits[:, 1] >= 0]
+            if valid.size == 0:
+                continue
+            hit_r = np.hypot(valid[:, 2], valid[:, 3])
+            hit_phi = np.mod(np.arctan2(valid[:, 3], valid[:, 2]), 2.0 * np.pi)
+            hit_s = evaluate_psi_tensor_numpy(
+                psi_model, hit_r, valid[:, 4], hit_phi
+            )[0]
+            error = np.abs(hit_s - start_s)
+            all_errors.append(error)
+            scale = max(abs(start_s), 1e-12)
+            line_rows.append(
+                {
+                    "line": int(line_index),
+                    "start_s": start_s,
+                    "hit_count": int(error.size),
+                    "absolute_drift_p95": float(np.percentile(error, 95.0)),
+                    "absolute_drift_max": float(np.max(error)),
+                    "relative_drift_p95": float(np.percentile(error, 95.0) / scale),
+                    "relative_drift_max": float(np.max(error) / scale),
+                }
+            )
+        concatenated = np.concatenate(all_errors) if all_errors else np.empty(0)
+        psi_drift = {
+            "target_s": None if psi_target is None else float(psi_target),
+            "lines": line_rows,
+            "all_absolute_drift_p95": (
+                None if concatenated.size == 0 else float(np.percentile(concatenated, 95.0))
+            ),
+            "all_absolute_drift_max": (
+                None if concatenated.size == 0 else float(np.max(concatenated))
+            ),
+        }
+        print("Psi drift =", json.dumps(psi_drift, ensure_ascii=True))
+
     nrowcol = int(np.ceil(np.sqrt(len(phis))))
     fig, axs = plt.subplots(nrowcol, nrowcol, figsize=(8, 5))
     axs = np.asarray(axs).reshape((nrowcol, nrowcol))
+    line_colors = plt.get_cmap("viridis")(np.linspace(0.0, 1.0, len(fieldlines_phi_hits)))
     for i, phi in enumerate(phis):
         ax = axs[i // nrowcol, i % nrowcol]
         ax.set_aspect("equal")
@@ -193,7 +261,7 @@ def plot_poincare_from_dofs(
         if i % nrowcol == 0:
             ax.set_ylabel("$Z$")
         ax.grid(True, linewidth=0.5)
-        for hits in fieldlines_phi_hits:
+        for line_index, hits in enumerate(fieldlines_phi_hits):
             hits = np.asarray(hits)
             if hits.ndim != 2 or hits.shape[0] == 0:
                 continue
@@ -201,14 +269,19 @@ def plot_poincare_from_dofs(
             if data.size == 0:
                 continue
             r = np.sqrt(data[:, 2] ** 2 + data[:, 3] ** 2)
-            ax.scatter(r, data[:, 4], s=marker_size, linewidths=0)
+            ax.scatter(r, data[:, 4], s=marker_size, linewidths=0, color=line_colors[line_index])
         if plot_surface:
             # `compute_fieldlines` uses physical toroidal angle in radians,
             # while `Surface.cross_section` expects the angle normalized by 2*pi.
             cross_section = surface.cross_section(phi=phi / (2 * np.pi))
             r_interp = np.sqrt(cross_section[:, 0] ** 2 + cross_section[:, 1] ** 2)
             z_interp = cross_section[:, 2]
-            ax.plot(r_interp, z_interp, linewidth=1, c="k")
+            ax.plot(
+                np.r_[r_interp, r_interp[0]],
+                np.r_[z_interp, z_interp[0]],
+                linewidth=1,
+                c="k",
+            )
     for i in range(len(phis), nrowcol * nrowcol):
         axs[i // nrowcol, i % nrowcol].axis("off")
     plt.tight_layout()
@@ -218,13 +291,24 @@ def plot_poincare_from_dofs(
         fig.savefig(save_path, dpi=int(dpi))
         print(f"Saved Poincare plot to {save_path}")
     plt.close(fig)
-    return {"hit_counts": hit_counts, "save_path": None if save_path is None else str(save_path)}
+    return {
+        "hit_counts": hit_counts,
+        "seed_r_min": float(R0[0]),
+        "seed_r_max": float(R0[-1]),
+        "surface_r_outer_phi0": r_outer_phi0,
+        "edge_fraction": float(edge_fraction),
+        "tmax_fl": float(tmax_fl),
+        "tol": float(tol),
+        "psi_drift": psi_drift,
+        "save_path": None if save_path is None else str(save_path),
+    }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Plot Poincare validation from a saved Boozer surface and packed coil JSON.")
     parser.add_argument("--case-file", type=Path, required=True)
     parser.add_argument("--surface-npz", type=Path, required=True)
+    parser.add_argument("--psi-model", type=Path, default=None)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--mpol", type=int, default=6)
     parser.add_argument("--ntor", type=int, default=6)
@@ -232,16 +316,21 @@ def main() -> None:
     parser.add_argument("--coil-quadpoints", type=int, default=300)
     parser.add_argument("--nfieldlines", type=int, default=20)
     parser.add_argument("--radial-width", type=float, default=None)
-    parser.add_argument("--edge-fraction", type=float, default=1.1)
+    parser.add_argument("--edge-fraction", type=float, default=0.95)
     parser.add_argument("--stop-fraction", type=float, default=1.5)
     parser.add_argument("--tmax-fl", type=float, default=2.0e8)
-    parser.add_argument("--tol", type=float, default=1e-5)
+    parser.add_argument("--tol", type=float, default=1e-11)
     parser.add_argument("--marker-size", type=float, default=10.0)
     parser.add_argument("--dpi", type=int, default=150)
     args = parser.parse_args()
 
     coil_dofs, currents, nfp, _ = _load_case(args.case_file)
     surf = np.load(args.surface_npz)
+    psi_model = None
+    if args.psi_model is not None:
+        from stellarator_eval.volume_qs import load_psi_model
+
+        psi_model = load_psi_model(args.psi_model)
     result = plot_poincare_from_dofs(
         surf["dofs"],
         coil_dofs,
@@ -260,6 +349,8 @@ def main() -> None:
         tol=args.tol,
         marker_size=args.marker_size,
         dpi=args.dpi,
+        psi_model=psi_model,
+        psi_target=float(surf["s_level"]) if "s_level" in surf.files else None,
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

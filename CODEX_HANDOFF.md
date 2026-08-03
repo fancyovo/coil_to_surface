@@ -1,4 +1,8 @@
-# Codex Handoff: cem_qh03 DESC Initial Guess
+# Archived Codex Handoff: cem_qh03 DESC Initial Guess
+
+> **Archived 2026-07-31.** This file describes the project state on 2026-07-10
+> and is retained only as historical context. Read `MEMORY.md` for the current
+> branch, active jobs, validated score/model hashes, workflows, and next steps.
 
 Last reconciled: 2026-07-10 (Asia/Shanghai)
 

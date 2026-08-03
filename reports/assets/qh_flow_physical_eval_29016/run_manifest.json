@@ -1,0 +1,25 @@
+{
+  "args": {
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "data_dir": "/home/scc/pb24511935/local_surface_evaluator_data/quasr_qh_flow_v1",
+    "output_dir": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_eval_20260729_v2",
+    "lib": "/home/scc/pb24511935/local_surface_evaluator/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "count": 2048,
+    "sample_steps": 32,
+    "sample_batch": 512,
+    "seed": 20260729,
+    "good_score": 66.8,
+    "good_iota": 1.0,
+    "good_size": 0.02
+  },
+  "world_size": 4,
+  "checkpoint_step": 30000,
+  "model_config": {
+    "token_dim": 100,
+    "width": 512,
+    "layers": 8,
+    "heads": 8,
+    "hidden": 1408,
+    "max_nfp": 16
+  }
+}

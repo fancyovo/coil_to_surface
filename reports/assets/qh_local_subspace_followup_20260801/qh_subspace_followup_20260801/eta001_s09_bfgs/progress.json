@@ -1,0 +1,532 @@
+{
+  "manifest": {
+    "algorithm": "fixed_subspace_bfgs_with_trust_cap",
+    "objective": "maximize_native_qh_score",
+    "initial_case": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_09/best.json",
+      "sha256": "c61d3be8d343c5b8f51d343e4c6a9f2cf45fb7abcae2c188f5ff2352e969b923",
+      "recorded_score": 43.08922098582828
+    },
+    "adam_state": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_09/state_latest.npz",
+      "sha256": "5bebedd12c926c95acbbf02a4939a6f21ad7c5f8f467b8c4572236bcc07451aa",
+      "iteration": 40
+    },
+    "target": "QH",
+    "nfp": 4,
+    "n_base_coils": 3,
+    "noise_shape": [
+      3,
+      100
+    ],
+    "seed": 2026080101,
+    "iterations": 12,
+    "rank": 4,
+    "method": "bfgs",
+    "perturbation": 0.00125,
+    "min_perturbation": 0.000625,
+    "min_gradient_cosine": 0.5,
+    "initial_trust_radius": 0.00125,
+    "min_trust_radius": 0.0002,
+    "max_trust_radius": 0.003,
+    "line_alphas": [
+      1.0,
+      0.5,
+      0.25,
+      0.125
+    ],
+    "min_improvement": 1e-05,
+    "max_rejections": 3,
+    "flow_dtype": "torch.float32",
+    "flow_method": "rk4",
+    "flow_steps": 256,
+    "checkpoint_step": 30000,
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib_sha256": "0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427",
+    "gpu_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "max_wall_s": 1200.0
+  },
+  "smoothness": {
+    "coarse_h": 0.00125,
+    "fine_h": 0.000625,
+    "gradient_cosine": 0.9435467339648341,
+    "gradient_norm_ratio_fine_over_coarse": 0.9263782017168877,
+    "coarse": {
+      "scores": [
+        43.10733062067389,
+        43.05729297229125,
+        43.038897696876376,
+        43.08112026386211,
+        43.070643088468934,
+        43.10280019299919,
+        43.139931389778326,
+        43.10371647334914
+      ],
+      "statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_fraction": 1.0,
+      "decode_wall_s": 2.5172285300213844,
+      "score_wall_s": 11.121034882962704,
+      "score_elapsed_s": [
+        5.906061957997736,
+        5.88002784299897,
+        5.858538849977776,
+        5.098846881010104,
+        5.093326896021608,
+        5.166849202010781,
+        5.196643678005785,
+        5.213315967004746
+      ]
+    },
+    "fine": {
+      "scores": [
+        43.091115694629565,
+        43.07995072114246,
+        43.06859900128158,
+        43.09292366761399,
+        43.09169363292077,
+        43.09843490300781,
+        43.119874022039966,
+        43.10076677594567
+      ],
+      "statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_fraction": 1.0,
+      "decode_wall_s": 2.5033426920417696,
+      "score_wall_s": 10.44664505700348,
+      "score_elapsed_s": [
+        5.09238229697803,
+        5.166949786012992,
+        5.216189161990769,
+        5.233107029052917,
+        5.099521551979706,
+        5.164168620016426,
+        5.202962431998458,
+        5.212252511992119
+      ]
+    }
+  },
+  "initial_score": 43.089220985828256,
+  "best_score": 43.249539183879044,
+  "best_iteration": 7,
+  "iterations": [
+    {
+      "iteration": 1,
+      "current_score": 43.15043218300995,
+      "best_score": 43.15043218300995,
+      "best_iteration": 1,
+      "score_improvement": 0.061211197181691546,
+      "current_status": "ok",
+      "current_qh_error": 0.3024785348078541,
+      "current_iota": 1.0547055006027222,
+      "gradient_norm": 52.48214658129584,
+      "perturbation": 0.000625,
+      "trust_radius": 0.0015625,
+      "accepted": true,
+      "accepted_alpha": 1.0,
+      "accepted_step_norm": 0.0012499999999999998,
+      "line_scores": [
+        43.15043218300995,
+        43.109145082371846,
+        43.11279571137704,
+        43.1069235505864
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": false,
+        "step_gradient_delta": 0.003267396555483771,
+        "condition_number": 338629.15099127527
+      },
+      "line_decode_wall_s": 2.2820227119955234,
+      "line_score_wall_s": 5.212746454984881,
+      "gradient_decode_wall_s": 2.460266017995309,
+      "gradient_score_wall_s": 10.439886206004303,
+      "iteration_wall_s": 20.401375338959042,
+      "total_wall_s": 55.385631532990374
+    },
+    {
+      "iteration": 2,
+      "current_score": 43.19203650686239,
+      "best_score": 43.19203650686239,
+      "best_iteration": 2,
+      "score_improvement": 0.041604323852439506,
+      "current_status": "ok",
+      "current_qh_error": 0.3023488385036274,
+      "current_iota": 1.0565273761749268,
+      "gradient_norm": 21.079428196710207,
+      "perturbation": 0.000625,
+      "trust_radius": 0.001953125,
+      "accepted": true,
+      "accepted_alpha": 1.0,
+      "accepted_step_norm": 0.0015625000000000003,
+      "line_scores": [
+        43.19203650686239,
+        43.16601926551114,
+        43.16279288254621,
+        43.158804753264505
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": false,
+        "step_gradient_delta": 0.04293286483938209,
+        "condition_number": 2913.5148766559473
+      },
+      "line_decode_wall_s": 2.2968118810094893,
+      "line_score_wall_s": 5.219130253011826,
+      "gradient_decode_wall_s": 2.453192107961513,
+      "gradient_score_wall_s": 10.444148933980614,
+      "iteration_wall_s": 20.419809806975536,
+      "total_wall_s": 76.82866098999511
+    },
+    {
+      "iteration": 3,
+      "current_score": 43.1965867362364,
+      "best_score": 43.1965867362364,
+      "best_iteration": 3,
+      "score_improvement": 0.004550229374011394,
+      "current_status": "ok",
+      "current_qh_error": 0.30228645958236483,
+      "current_iota": 1.0565522909164429,
+      "gradient_norm": 45.062605368473236,
+      "perturbation": 0.000625,
+      "trust_radius": 0.001953125,
+      "accepted": true,
+      "accepted_alpha": 0.5,
+      "accepted_step_norm": 0.0009765625,
+      "line_scores": [
+        43.186459254088454,
+        43.1965867362364,
+        43.18635008228633,
+        43.17660526235233
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": false,
+        "step_gradient_delta": 0.03427862687267269,
+        "condition_number": 3590.4810608028815
+      },
+      "line_decode_wall_s": 2.285059618006926,
+      "line_score_wall_s": 5.209680674015544,
+      "gradient_decode_wall_s": 2.4765068449778482,
+      "gradient_score_wall_s": 10.42024650395615,
+      "iteration_wall_s": 20.396514090010896,
+      "total_wall_s": 97.85412757098675
+    },
+    {
+      "iteration": 4,
+      "current_score": 43.226638665486995,
+      "best_score": 43.226638665486995,
+      "best_iteration": 4,
+      "score_improvement": 0.030051929250596743,
+      "current_status": "ok",
+      "current_qh_error": 0.3021381296656092,
+      "current_iota": 1.0577682256698608,
+      "gradient_norm": 1481.6966982113815,
+      "perturbation": 0.000625,
+      "trust_radius": 0.00244140625,
+      "accepted": true,
+      "accepted_alpha": 1.0,
+      "accepted_step_norm": 0.0019531249999999998,
+      "line_scores": [
+        43.226638665486995,
+        43.211415445444985,
+        43.19252693216087,
+        43.15566193250056
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": false,
+        "step_gradient_delta": 0.5441781838454037,
+        "condition_number": 4872.63584899373
+      },
+      "line_decode_wall_s": 2.298954138008412,
+      "line_score_wall_s": 5.207417080004234,
+      "gradient_decode_wall_s": 2.461035432002973,
+      "gradient_score_wall_s": 10.437394626962487,
+      "iteration_wall_s": 20.410120650019962,
+      "total_wall_s": 118.82900686201174
+    },
+    {
+      "iteration": 5,
+      "current_score": 43.23941642010404,
+      "best_score": 43.23941642010404,
+      "best_iteration": 5,
+      "score_improvement": 0.012777754617047776,
+      "current_status": "ok",
+      "current_qh_error": 0.3021245379271384,
+      "current_iota": 1.0578665733337402,
+      "gradient_norm": 1493.9409094545852,
+      "perturbation": 0.000625,
+      "trust_radius": 0.001220703125,
+      "accepted": true,
+      "accepted_alpha": 0.125,
+      "accepted_step_norm": 0.00030517578125,
+      "line_scores": [
+        42.150627133545854,
+        42.15836929154452,
+        43.23456208193369,
+        43.23941642010404
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": true,
+        "step_gradient_delta": 0.00028899362928550216,
+        "condition_number": 20972.976564828896
+      },
+      "line_decode_wall_s": 2.2856389849912375,
+      "line_score_wall_s": 5.230106815986801,
+      "gradient_decode_wall_s": 2.466641347971745,
+      "gradient_score_wall_s": 10.441565004002769,
+      "iteration_wall_s": 20.429351651051547,
+      "total_wall_s": 139.83133066701703
+    },
+    {
+      "iteration": 6,
+      "current_score": 43.24759206049949,
+      "best_score": 43.24759206049949,
+      "best_iteration": 6,
+      "score_improvement": 0.008175640395450046,
+      "current_status": "ok",
+      "current_qh_error": 0.30211166874516543,
+      "current_iota": 1.0579637289047241,
+      "gradient_norm": 1763.1522378710283,
+      "perturbation": 0.000625,
+      "trust_radius": 0.0006103515625,
+      "accepted": true,
+      "accepted_alpha": 0.25,
+      "accepted_step_norm": 0.00030517578125000005,
+      "line_scores": [
+        42.1678141384808,
+        42.156816723627266,
+        43.24759206049949,
+        43.23755984761153
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": true,
+        "step_gradient_delta": 1.218206126900415e-06,
+        "condition_number": 127831.63244706555
+      },
+      "line_decode_wall_s": 2.296988843008876,
+      "line_score_wall_s": 5.223498880979605,
+      "gradient_decode_wall_s": 2.469071283005178,
+      "gradient_score_wall_s": 10.44572276697727,
+      "iteration_wall_s": 20.440471850975882,
+      "total_wall_s": 160.87736822199076
+    },
+    {
+      "iteration": 7,
+      "current_score": 43.249539183879044,
+      "best_score": 43.249539183879044,
+      "best_iteration": 7,
+      "score_improvement": 0.0019471233795513854,
+      "current_status": "ok",
+      "current_qh_error": 0.3021061793819841,
+      "current_iota": 1.0580143928527832,
+      "gradient_norm": 1729.9863546091333,
+      "perturbation": 0.000625,
+      "trust_radius": 0.00030517578125,
+      "accepted": true,
+      "accepted_alpha": 0.25,
+      "accepted_step_norm": 0.000152587890625,
+      "line_scores": [
+        42.164699843631226,
+        42.148908062934225,
+        43.249539183879044,
+        43.238587939084894
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "optimizer": {
+        "updated": true,
+        "damped": true,
+        "step_gradient_delta": 4.802211005729327e-08,
+        "condition_number": 650838.0489788827
+      },
+      "line_decode_wall_s": 2.3025554710184224,
+      "line_score_wall_s": 5.211476513009984,
+      "gradient_decode_wall_s": 2.472927604976576,
+      "gradient_score_wall_s": 10.441637746000197,
+      "iteration_wall_s": 20.43369634001283,
+      "total_wall_s": 181.8700394970365
+    },
+    {
+      "iteration": 8,
+      "current_score": 43.249539183879044,
+      "best_score": 43.249539183879044,
+      "best_iteration": 7,
+      "score_improvement": 0.0,
+      "current_status": "ok",
+      "current_qh_error": 0.3021061793819841,
+      "current_iota": 1.0580143928527832,
+      "gradient_norm": 1729.9863546091333,
+      "perturbation": 0.000625,
+      "trust_radius": 0.0002,
+      "accepted": false,
+      "accepted_alpha": null,
+      "accepted_step_norm": 0.0,
+      "line_scores": [
+        42.1428859151502,
+        42.15701644509234,
+        42.0968271374112,
+        42.15211649746227
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [],
+      "optimizer": {
+        "updated": false,
+        "reason": "no_step"
+      },
+      "line_decode_wall_s": 2.3027606940013357,
+      "line_score_wall_s": 5.211255605972838,
+      "gradient_decode_wall_s": 0.0,
+      "gradient_score_wall_s": 0.0,
+      "iteration_wall_s": 7.514432434050832,
+      "total_wall_s": 190.0903808969888
+    }
+  ]
+}

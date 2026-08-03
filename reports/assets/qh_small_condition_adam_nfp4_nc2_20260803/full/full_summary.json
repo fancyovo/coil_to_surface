@@ -1,0 +1,136 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_small_condition_adam_nfp4_nc2_200_20260803/seed_2026080320/adam/best.json",
+  "surface_npz": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+  "surface": {
+    "nfp": 4,
+    "order": 12,
+    "iota": 1.5270221081328395,
+    "G": -6.867763759420713,
+    "rho": 1.0,
+    "s_edge": 0.49,
+    "s_level": 0.49
+  },
+  "desc_preflight": {
+    "jax_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "gpu_available": false
+  },
+  "visualization": {
+    "surface_meta": {
+      "iota": 1.5270221081328395,
+      "G": -6.867763759420713,
+      "psi_level": null
+    },
+    "b_abs_min": 0.6678254713050826,
+    "b_abs_mean": 0.7619079762378287,
+    "b_abs_max": 0.8543620811819418,
+    "poincare": {
+      "hit_counts": [
+        21,
+        21,
+        21,
+        20,
+        20,
+        20,
+        19,
+        19
+      ],
+      "seed_r_min": 0.8050854001913461,
+      "seed_r_max": 0.8924145516572658,
+      "surface_r_outer_phi0": 0.897010822787051,
+      "edge_fraction": 0.95,
+      "tmax_fl": 20000000.0,
+      "tol": 1e-11,
+      "psi_drift": null,
+      "save_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/assets/poincare.png"
+    },
+    "boozer_b_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/assets/boozer_b.png",
+    "boozer_b_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/assets/boozer_b.html",
+    "coils_surface_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/assets/coils_surface.html",
+    "coils_surface_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/assets/coils_surface.png"
+  },
+  "visualization_time_s": 22.270279927994125,
+  "desc": {
+    "toroidal_flux": -0.0056601866764386015,
+    "input": {
+      "mpol": 12,
+      "ntor": 12,
+      "stellsym": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/input.check"
+    },
+    "nested_initial": true,
+    "initial_force_compute_success": true,
+    "initial_force_compute_time_s": 6.091960469959304,
+    "initial_force_mean_abs_normalized": 1.665130272286407,
+    "initial_force_max_abs_normalized": 5.348225612068838,
+    "initial_force_p95_abs_normalized": 2.7812975036147405,
+    "initial_force_vol_average_raw": 1294498.6518095415,
+    "plots_initial": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/boundary_initial.png",
+        "time_s": 2.3533115960890427
+      }
+    },
+    "solve_call_success": true,
+    "solve_return": "(Equilibrium at 0xe4e6a7300e0 (L=8, M=8, N=8, NFP=4, sym=True, spectral_indexing=ansi),           message: Maximum number of iterations has been exceeded.\n          success: False\n              fun: [ 1.060e-04 -2.658e-03 ... -1.696e-03 -6.738e-04]\n                x: [ 5.796e-04  7.826e-05 ... -3.082e-02  2.444e-01]\n              nit: 50\n             cost: 0.00484440964723521\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 0.0005635028605329627\n             nfev: 61\n             njev: 51\n             allx: [Array([-6.355e-05, -1.046e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.146e-04,  4.289e-07, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.025e-04,  1.174e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.682e-05,  9.811e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.985e-05,  9.128e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.993e-05,  1.055e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.003e-04,  1.076e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.967e-05,  1.116e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.975e-05,  1.109e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.961e-05,  1.109e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.967e-05,  1.103e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.961e-05,  1.092e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.966e-05,  1.073e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.978e-05,  1.060e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.984e-05,  1.037e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-9.997e-05,  1.012e-05, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.001e-04,  9.971e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.002e-04,  9.721e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.004e-04,  9.466e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.006e-04,  9.324e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.007e-04,  9.079e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.008e-04,  8.843e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.010e-04,  8.717e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.010e-04,  8.501e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.011e-04,  8.308e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.012e-04,  8.134e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.012e-04,  7.986e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.012e-04,  7.853e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.012e-04,  7.749e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.012e-04,  7.655e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.011e-04,  7.590e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.011e-04,  7.531e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.010e-04,  7.498e-06, ...,  6.066e-06,\n                          -8.648e-05], dtype=float64), Array([-1.009e-04,  7.469e-06, ...,  6.066e-06,\n",
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_cost": 0.00484440964723521,
+    "optimizer_nit": 50.0,
+    "optimizer_nfev": 61.0,
+    "optimizer_njev": 51.0,
+    "optimizer_optimality": 0.0005635028605329627,
+    "solve_time_s": 171.4204819899751,
+    "nested_final": true,
+    "final_force_compute_success": true,
+    "final_force_compute_time_s": 0.9754834169289097,
+    "final_force_mean_abs_normalized": 0.00395768050493136,
+    "final_force_max_abs_normalized": 0.024939025124207412,
+    "final_force_p95_abs_normalized": 0.008637008213374918,
+    "final_force_vol_average_raw": 3048.697561741677,
+    "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/equilibrium.h5",
+    "plots_final": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/boundary.png",
+        "time_s": 0.8884839490056038
+      },
+      "boozer_modes": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/boozer_modes.png",
+        "time_s": 10.779098713072017
+      },
+      "boozer_B": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/boozer_B.png",
+        "time_s": 11.908401647931896
+      },
+      "qs_QA": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/qs_QA.png",
+        "time_s": 7.497799035976641
+      },
+      "qs_QH": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/qs_QH.png",
+        "time_s": 2.586834925110452
+      },
+      "qs_QP": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/qs_QP.png",
+        "time_s": 2.2284237779676914
+      },
+      "iota": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_small_condition_adam_85p773_full_eval_20260803/full/desc/iota.png",
+        "time_s": 4.16803186701145
+      }
+    }
+  },
+  "desc_time_s": 255.1872295270441,
+  "status": "completed",
+  "total_time_s": 315.6807851330377
+}

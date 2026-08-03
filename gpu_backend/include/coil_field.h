@@ -3,9 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 3u
+#define SGPU_SCORE_ABI_VERSION 9u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
-#define SGPU_SCORE_COMPONENT_COUNT 6
+#define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
 
 enum SgpuScoreStatus {
@@ -24,7 +24,8 @@ enum SgpuScoreComponent {
     SGPU_SCORE_COMPONENT_SURFACE = 2,
     SGPU_SCORE_COMPONENT_COORDINATE = 3,
     SGPU_SCORE_COMPONENT_VOLUME_QS = 4,
-    SGPU_SCORE_COMPONENT_COIL = 5,
+    SGPU_SCORE_COMPONENT_IOTA = 5,
+    SGPU_SCORE_COMPONENT_COIL = 6,
 };
 
 enum SgpuScoreTiming {
@@ -118,7 +119,7 @@ struct SgpuScoreConfig {
     double score_axis_residual_scale;
     double score_psi_angle_p95_scale;
     double score_psi_angle_l2_scale;
-    double score_surface_inverse_aspect_scale;
+    double score_surface_inverse_aspect_saturation;
     double score_surface_drift_scale;
     double score_flux_section_std_scale;
     double score_flux_boundary_residual_scale;
@@ -126,6 +127,17 @@ struct SgpuScoreConfig {
     double score_alpha_relative_l2_scale;
     double score_qs_global_scale;
     double score_qs_edge_scale;
+    double score_qh_iota_threshold;
+    double score_qh_iota_power;
+    double score_volume_qs_size_floor;
+    double score_volume_qs_iota_floor;
+    double score_qh_total_iota_floor;
+    std::int32_t surface_long_trace_periods;
+    double surface_long_trace_relative_tolerance;
+    double score_qh_total_helicity_floor;
+    double score_qh_helicity_bad;
+    double score_qh_helicity_good;
+    double score_qh_helicity_exploration_fraction;
 };
 
 struct SgpuScoreResult {
@@ -154,6 +166,7 @@ struct SgpuScoreResult {
 
     double surface_level;
     double surface_drift_relative_p95;
+    double surface_one_period_drift_relative_p95;
     double surface_effective_minor_radius;
     double surface_inverse_aspect_ratio;
     double surface_volume;
@@ -169,10 +182,29 @@ struct SgpuScoreResult {
     double alpha_normal_B_relative_l2;
     double iota_min;
     double iota_max;
+    double score_surface_size;
+    double score_iota;
+    double score_qs_residual;
+    double score_volume_qs_size_factor;
+    double score_volume_qs_iota_factor;
+    double score_before_qh_iota_gate;
+    double score_qh_total_iota_factor;
+    double score_qh_helicity_advantage;
+    double score_qh_helicity_quality;
+    double score_qh_total_helicity_factor;
 
     double qs_global_error;
     double qs_edge_error;
+    double qs_qa_global_error;
+    double qs_qp_global_error;
+    double qs_vacuum_G;
+    double qs_target_global_error_per_helicity;
+    double qs_target_edge_error_per_helicity;
+    double qs_qa_global_error_per_helicity;
+    double qs_qp_global_error_raw;
+    double qs_qp_global_error_per_helicity;
     double qs_abs_p95;
+    double qs_abs_p95_per_helicity;
     double volume_valid_fraction;
     double volume_weight_effective_fraction;
     double edge_weight_effective_fraction;
@@ -191,6 +223,8 @@ struct SgpuScoreResult {
     std::int32_t volume_available_count;
     std::int32_t volume_point_count;
     std::int32_t alpha_column_count;
+    std::int32_t surface_long_trace_periods_completed;
+    std::int32_t surface_long_trace_rejected_count;
     char error_message[256];
 };
 

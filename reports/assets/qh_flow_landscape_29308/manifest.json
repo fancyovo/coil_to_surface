@@ -1,0 +1,214 @@
+{
+  "source_ids": [
+    1446077,
+    1826200,
+    2419096
+  ],
+  "alphas": [
+    -0.23999999463558197,
+    -0.18000000715255737,
+    -0.11999999731779099,
+    -0.09000000357627869,
+    -0.05999999865889549,
+    -0.04500000178813934,
+    -0.029999999329447746,
+    -0.024000000208616257,
+    -0.017999999225139618,
+    -0.012000000104308128,
+    -0.008999999612569809,
+    -0.006000000052154064,
+    -0.004000000189989805,
+    -0.0020000000949949026,
+    -0.0010000000474974513,
+    0.0,
+    0.0010000000474974513,
+    0.0020000000949949026,
+    0.004000000189989805,
+    0.006000000052154064,
+    0.008999999612569809,
+    0.012000000104308128,
+    0.017999999225139618,
+    0.024000000208616257,
+    0.029999999329447746,
+    0.04500000178813934,
+    0.05999999865889549,
+    0.09000000357627869,
+    0.11999999731779099,
+    0.18000000715255737,
+    0.23999999463558197
+  ],
+  "directions": 4,
+  "seed": 20260730,
+  "derivative_step": 0.01,
+  "closure_steps": [
+    256
+  ],
+  "selected_steps": 256,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "model_parameter_dtype": "torch.float32",
+  "autocast": false,
+  "sources": [
+    {
+      "source_id": 1446077,
+      "split": "train",
+      "nfp": 3,
+      "n_coils": 4,
+      "normalizer_clipped_fraction": 0.0,
+      "source_to_canonical": {
+        "position_delta_rms_m": 1.1933414035634514e-08,
+        "position_delta_p95_m": 2.040590498790072e-08,
+        "position_delta_max_m": 2.1681190345793278e-08,
+        "coefficient_relative_l2": 9.713944206822183e-09,
+        "current_relative_l2": 1.901564175880438
+      }
+    },
+    {
+      "source_id": 1826200,
+      "split": "validation",
+      "nfp": 2,
+      "n_coils": 5,
+      "normalizer_clipped_fraction": 0.0,
+      "source_to_canonical": {
+        "position_delta_rms_m": 2.5225901481310625e-08,
+        "position_delta_p95_m": 4.636806264885959e-08,
+        "position_delta_max_m": 5.999451074988443e-08,
+        "coefficient_relative_l2": 1.9893690439855474e-08,
+        "current_relative_l2": 2.014205152764282
+      }
+    },
+    {
+      "source_id": 2419096,
+      "split": "train",
+      "nfp": 4,
+      "n_coils": 3,
+      "normalizer_clipped_fraction": 0.0,
+      "source_to_canonical": {
+        "position_delta_rms_m": 7.590083618435888e-09,
+        "position_delta_p95_m": 1.4323579418829974e-08,
+        "position_delta_max_m": 1.63653216923915e-08,
+        "coefficient_relative_l2": 8.188396750149445e-09,
+        "current_relative_l2": 1.8918011378426514
+      }
+    }
+  ],
+  "closure": [
+    {
+      "source_id": 1446077,
+      "steps": 256,
+      "batch_wall_s": 7.856565129011869,
+      "normalized_rms": 1.1487925082251763e-07,
+      "normalized_max": 4.76837158203125e-07,
+      "normalized_relative_l2": 9.880512790076693e-08,
+      "raw_position_delta_rms_m": 4.31007106790893e-08,
+      "raw_position_delta_p95_m": 6.441302096934796e-08,
+      "raw_position_delta_max_m": 7.163573170522507e-08,
+      "raw_coefficient_relative_l2": 3.910132740260421e-08,
+      "raw_current_relative_l2": 0.0
+    },
+    {
+      "source_id": 1826200,
+      "steps": 256,
+      "batch_wall_s": 7.856565129011869,
+      "normalized_rms": 9.108284547222734e-08,
+      "normalized_max": 4.76837158203125e-07,
+      "normalized_relative_l2": 1.0367601051791516e-07,
+      "raw_position_delta_rms_m": 4.573024804328432e-08,
+      "raw_position_delta_p95_m": 8.01306715616063e-08,
+      "raw_position_delta_max_m": 9.095977577561259e-08,
+      "raw_coefficient_relative_l2": 3.309748510892392e-08,
+      "raw_current_relative_l2": 5.027631864728548e-08
+    },
+    {
+      "source_id": 2419096,
+      "steps": 256,
+      "batch_wall_s": 7.856565129011869,
+      "normalized_rms": 1.1055367782501816e-07,
+      "normalized_max": 5.960464477539062e-07,
+      "normalized_relative_l2": 1.243546750009864e-07,
+      "raw_position_delta_rms_m": 2.2633104884166635e-08,
+      "raw_position_delta_p95_m": 3.865696376569585e-08,
+      "raw_position_delta_max_m": 4.0706728247102455e-08,
+      "raw_coefficient_relative_l2": 2.6650848750397724e-08,
+      "raw_current_relative_l2": 0.0
+    }
+  ],
+  "direction_metrics": [
+    {
+      "source_id": 1446077,
+      "direction": 0,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.992117702960968
+    },
+    {
+      "source_id": 1446077,
+      "direction": 1,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.9505316615104675
+    },
+    {
+      "source_id": 1446077,
+      "direction": 2,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.8424674868583679
+    },
+    {
+      "source_id": 1446077,
+      "direction": 3,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.9232711791992188
+    },
+    {
+      "source_id": 1826200,
+      "direction": 0,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 1.0589005947113037
+    },
+    {
+      "source_id": 1826200,
+      "direction": 1,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.8458694815635681
+    },
+    {
+      "source_id": 1826200,
+      "direction": 2,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.9900776743888855
+    },
+    {
+      "source_id": 1826200,
+      "direction": 3,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 1.0375703573226929
+    },
+    {
+      "source_id": 2419096,
+      "direction": 0,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.8698630332946777
+    },
+    {
+      "source_id": 2419096,
+      "direction": 1,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 0.8676607608795166
+    },
+    {
+      "source_id": 2419096,
+      "direction": 2,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 1.0836970806121826
+    },
+    {
+      "source_id": 2419096,
+      "direction": 3,
+      "latent_direction_rms": 1.0,
+      "transported_tangent_rms": 1.01554536819458
+    }
+  ],
+  "point_count": 1125,
+  "unique_case_count": 1092,
+  "deduplicated_count": 33,
+  "flow_preparation_wall_s": 25.703233021311462
+}

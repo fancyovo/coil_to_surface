@@ -32,6 +32,14 @@ def _q_up(value: Any, scale: float, power: float = 1.0, *, default: float = 0.0)
     return float(1.0 / (1.0 + (scale / x) ** power))
 
 
+def _q_saturating_up(value: Any, saturation: float, *, default: float = 0.0) -> float:
+    x = _finite(value, np.nan)
+    if not np.isfinite(x) or x <= 0.0 or saturation <= 0.0:
+        return float(default)
+    x = float(np.clip(x / saturation, 0.0, 1.0))
+    return x * x * (3.0 - 2.0 * x)
+
+
 def _clip01(value: Any) -> float:
     return float(np.clip(_finite(value, 0.0), 0.0, 1.0))
 
@@ -47,6 +55,7 @@ def _blend(items: list[tuple[float, float]]) -> float:
 class ScoreConfig:
     axis_residual_scale: float = 1e-5
     axis_residual_power: float = 0.8
+    axis_topology_margin: float = 2e-2
     psi_angle_p95_scale: float = 3e-3
     psi_angle_l2_scale: float = 1e-3
     max_psi_level_reference: float = 0.16
@@ -196,7 +205,18 @@ def _axis_score(result: dict, cfg: ScoreConfig) -> tuple[float, dict[str, float]
     residual_score = _q_down(residual, cfg.axis_residual_scale, cfg.axis_residual_power)
     topology = str(axis.get("topology_class") or "")
     if topology == "elliptic":
-        topology_score = 1.0
+        stability_margin = _finite(axis.get("topology_stability_margin"), np.nan)
+        if not np.isfinite(stability_margin):
+            trace = _finite(axis.get("topology_trace"), np.nan)
+            det = _finite(axis.get("topology_det"), np.nan)
+            stability_margin = (
+                2.0 - abs(trace) / np.sqrt(det)
+                if np.isfinite(trace) and np.isfinite(det) and det > 0.0
+                else np.nan
+            )
+        topology_score = _q_saturating_up(
+            stability_margin, cfg.axis_topology_margin, default=1.0
+        )
     elif topology in {"parabolic", "degenerate"}:
         topology_score = 0.45
     elif topology == "hyperbolic":

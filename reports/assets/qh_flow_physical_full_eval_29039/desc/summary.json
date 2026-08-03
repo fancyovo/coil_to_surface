@@ -1,0 +1,78 @@
+{
+  "toroidal_flux": 0.0010440326933880777,
+  "input": {
+    "mpol": 6,
+    "ntor": 6,
+    "stellsym": true,
+    "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/input.check"
+  },
+  "nested_initial": false,
+  "initial_force_compute_success": true,
+  "initial_force_compute_time_s": 6.3598397839814425,
+  "initial_force_mean_abs_normalized": 1.2148027820647491,
+  "initial_force_max_abs_normalized": 3603.9016223606322,
+  "initial_force_p95_abs_normalized": 0.0005529253134294789,
+  "initial_force_vol_average_raw": -503668623573074.06,
+  "plots_initial": {
+    "boundary": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/boundary_initial.png",
+      "time_s": 2.5048917196691036
+    }
+  },
+  "solve_call_success": true,
+  "solve_return": "(Equilibrium at 0x73ff8974080 (L=8, M=8, N=8, NFP=4, sym=True, spectral_indexing=ansi),           message: Optimization terminated successfully.\n                   `xtol` condition satisfied. (xtol=1.00e-06)\n          success: True\n              fun: [ 5.313e+01  9.841e+01 ...  6.230e+01  2.849e+02]\n                x: [ 2.872e-03 -4.738e-03 ... -2.794e-02 -2.589e-01]\n              nit: 9\n             cost: 9.616103931978887e+18\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 1533777137.7221441\n             nfev: 17\n             njev: 10\n             allx: [Array([ 2.696e-05, -5.287e-05, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-8.774e-05, -1.554e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.134e-04, -1.314e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.160e-04, -1.463e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.420e-04, -1.465e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.406e-04, -1.466e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.390e-04, -1.457e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.398e-04, -1.448e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.395e-04, -1.447e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), Array([-1.395e-04, -1.446e-04, ...,  0.000e+00,\n                           0.000e+00], dtype=float64)]\n            alltr: [Array( 7.625e+16, dtype=float64), np.float64(3557514977492695.5), np.float64(889378744373174.1), np.float64(1778757488746348.2), np.float64(444689372186587.06), np.float64(111172343046646.78), np.float64(222344686093293.53), np.float64(222344686093293.53), np.float64(55586171523323.37), np.float64(13896542880830.844), np.float64(27793085761661.688), np.float64(6948271440415.422), np.float64(13896542880830.842), np.float64(3474135720207.7104), np.float64(868533930051.9275), np.float64(217133482512.9819), np.float64(434266965025.9638)]\n          history: [[{'R_lmn': Array([ 2.696e-05, -5.287e-05, ..., -6.920e-06,\n                           0.000e+00], dtype=float64), 'Z_lmn': Array([-1.448e-06,  1.378e-05, ...,  2.668e-05,\n                           2.742e-05], dtype=float64), 'L_lmn': Array([ 0.000e+00,  0.000e+00, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), 'p_l': Array([ 0.000e+00,  0.000e+00,  0.000e+00,  0.000e+00,\n                           0.000e+00], dtype=float64), 'i_l': Array([], shape=(0,), dtype=float64), 'c_l': Array([ 0.000e+00,  0.000e+00,  0.000e+00,  0.000e+00,\n                           0.000e+00], dtype=float64), 'Psi': Array([ 1.044e-03], dtype=float64), 'Te_l': Array([], shape=(0,), dtype=float64), 'ne_l': Array([], shape=(0,), dtype=float64), 'Ti_l': Array([], shape=(0,), dtype=float64), 'Zeff_l': Array([], shape=(0,), dtype=float64), 'a_lmn': Array([], shape=(0,), dtype=float64), 'Ra_n': Array([ 9.923e-01,  2.726e-01,  2.497e-02,  1.426e-03,\n                          -1.441e-03,  1.359e-03,  1.362e-04,  2.033e-05,\n                          -5.149e-06], dtype=float64), 'Za_n': Array([ 4.859e-05,  1.212e-04,  6.976e-04,  1.227e-03,\n                           1.047e-03, -3.746e-04, -2.785e-02, -2.669e-01],      dtype=float64), 'Rb_lmn': Array([ 0.000e+00,  0.000e+00, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), 'Zb_lmn': Array([ 0.000e+00,  0.000e+00, ...,  0.000e+00,\n                           0.000e+00], dtype=float64), 'I': Array([], shape=(0,), dtype=float64), 'G': Array([], shape=(0,), dtype=float64), 'Phi_mn': Array([], shape=(0,), dtype=float64)}], [{'R_lmn': Array([-8.774e-05, -1.554e-04, ..., -7.563e-06,\n                           0.000e+00], dtype=float64), 'Z_lmn': Array([-9.064e-05,  1.106e-05, ..., -3.537e-04,\n          ",
+  "optimizer_success": true,
+  "optimizer_message": "Optimization terminated successfully.\n`xtol` condition satisfied. (xtol=1.00e-06)",
+  "optimizer_cost": 9.616103931978887e+18,
+  "optimizer_nit": 9.0,
+  "optimizer_nfev": 17.0,
+  "optimizer_njev": 10.0,
+  "optimizer_optimality": 1533777137.7221441,
+  "solve_time_s": 67.54188306070864,
+  "nested_final": false,
+  "final_force_compute_success": true,
+  "final_force_compute_time_s": 1.0405470933765173,
+  "final_force_mean_abs_normalized": 776658.2544585755,
+  "final_force_max_abs_normalized": 7368045242.177704,
+  "final_force_p95_abs_normalized": 0.2147358354291716,
+  "final_force_vol_average_raw": 1756974899228.5159,
+  "equilibrium": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/equilibrium.h5",
+  "plots_final": {
+    "boundary": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/boundary.png",
+      "time_s": 0.6363898385316133
+    },
+    "boozer_modes": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/boozer_modes.png",
+      "time_s": 12.240449100732803
+    },
+    "boozer_B": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/boozer_B.png",
+      "time_s": 10.322413871064782
+    },
+    "qs_QA": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/qs_QA.png",
+      "time_s": 9.347522161900997
+    },
+    "qs_QH": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/qs_QH.png",
+      "time_s": 3.060281954705715
+    },
+    "qs_QP": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/qs_QP.png",
+      "time_s": 2.5504639465361834
+    },
+    "iota": {
+      "success": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_full_eval_20260729_rtx5090/desc/iota.png",
+      "time_s": 5.080622805282474
+    }
+  }
+}

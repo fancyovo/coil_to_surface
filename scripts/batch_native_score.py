@@ -117,6 +117,9 @@ def main() -> None:
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--psi-solver-mode", type=int, choices=(1, 2), default=2)
     parser.add_argument("--alpha-solver-mode", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--volume-point-count", type=int)
+    parser.add_argument("--alpha-fit-point-count", type=int)
+    parser.add_argument("--volume-phi-count", type=int)
     parser.add_argument("--axis-fallback-grid", type=int)
     parser.add_argument("--axis-fallback-max-candidates", type=int)
     parser.add_argument("--axis-fallback-newton-iters", type=int)
@@ -153,6 +156,9 @@ def main() -> None:
         "axis_fallback_max_candidates",
         "axis_fallback_newton_iters",
         "axis_fallback_max_nfp",
+        "volume_point_count",
+        "alpha_fit_point_count",
+        "volume_phi_count",
     ):
         value = getattr(args, name)
         if value is not None:

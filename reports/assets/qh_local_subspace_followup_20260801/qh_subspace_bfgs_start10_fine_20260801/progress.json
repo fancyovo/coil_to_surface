@@ -1,0 +1,356 @@
+{
+  "manifest": {
+    "algorithm": "fixed_subspace_damped_bfgs_with_trust_cap",
+    "objective": "maximize_native_qh_score",
+    "initial_case": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_10/best.json",
+      "sha256": "7ad5236c7009564e0875676eb53df2cc9026ae503929852e16a97d9c4dc0551a",
+      "recorded_score": 59.97997631540441
+    },
+    "adam_state": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_score_adam_eta001_start_sweep_20260731/start_10/state_latest.npz",
+      "sha256": "3a2f317aafb576a2d3c673246f995c7ede6664575e0b8f34cb5f2b59cc7d3a30",
+      "iteration": 200
+    },
+    "target": "QH",
+    "nfp": 4,
+    "n_base_coils": 3,
+    "noise_shape": [
+      3,
+      100
+    ],
+    "seed": 2026080101,
+    "iterations": 12,
+    "rank": 4,
+    "perturbation": 0.00125,
+    "min_perturbation": 0.00015625,
+    "min_gradient_cosine": 0.5,
+    "initial_trust_radius": 0.0005,
+    "min_trust_radius": 2e-05,
+    "max_trust_radius": 0.01,
+    "line_alphas": [
+      1.0,
+      0.5,
+      0.25,
+      0.125
+    ],
+    "min_improvement": 1e-05,
+    "max_rejections": 3,
+    "flow_dtype": "torch.float32",
+    "flow_method": "rk4",
+    "flow_steps": 256,
+    "checkpoint_step": 30000,
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib_sha256": "0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427",
+    "gpu_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "max_wall_s": 900.0
+  },
+  "smoothness": {
+    "coarse_h": 0.00125,
+    "fine_h": 0.000625,
+    "gradient_cosine": 0.8443039617031599,
+    "gradient_norm_ratio_fine_over_coarse": 1.9390784159433874,
+    "coarse": {
+      "scores": [
+        60.13922835378275,
+        60.095146427560216,
+        59.8808994209704,
+        60.02381630668401,
+        59.888311914553476,
+        59.93723909863202,
+        59.629657403751736,
+        59.95166907816186
+      ],
+      "statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_fraction": 1.0,
+      "decode_wall_s": 2.4893207480199635,
+      "score_wall_s": 13.709574968961533,
+      "score_elapsed_s": [
+        6.739775950030889,
+        6.922798262967262,
+        5.877664436004125,
+        6.153289861045778,
+        6.103432697011158,
+        6.1464866629685275,
+        6.967889189021662,
+        6.166915645007975
+      ]
+    },
+    "fine": {
+      "scores": [
+        60.05602943461407,
+        60.01324632427225,
+        59.93607504979847,
+        60.03259073333488,
+        59.94435901564027,
+        59.97681799105587,
+        59.57385958489016,
+        59.989557074451
+      ],
+      "statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_fraction": 1.0,
+      "decode_wall_s": 2.4037766119581647,
+      "score_wall_s": 13.184428824984934,
+      "score_elapsed_s": [
+        6.105686059978325,
+        6.150069007999264,
+        5.217829393979628,
+        6.050842302036472,
+        6.1643233870272525,
+        6.027601723035332,
+        7.077911939006299,
+        6.146799141017254
+      ]
+    }
+  },
+  "initial_score": 59.97997631540452,
+  "best_score": 59.99709281015963,
+  "best_iteration": 2,
+  "iterations": [
+    {
+      "iteration": 1,
+      "current_score": 59.990728403400205,
+      "best_score": 59.990728403400205,
+      "best_iteration": 1,
+      "score_improvement": 0.010752087995683723,
+      "current_status": "ok",
+      "current_qh_error": 0.4182676225130427,
+      "current_iota": 1.8796755075454712,
+      "gradient_norm": 308.850986062378,
+      "perturbation": 0.000625,
+      "trust_radius": 0.00025,
+      "accepted": true,
+      "accepted_alpha": 0.125,
+      "accepted_step_norm": 6.25e-05,
+      "line_scores": [
+        59.96974946871929,
+        59.97573733214427,
+        59.98892425280659,
+        59.990728403400205
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "bfgs": {
+        "updated": true,
+        "damped": true,
+        "step_gradient_delta": 7.812500000000005e-06,
+        "condition_number": 281872.4971470591
+      },
+      "line_decode_wall_s": 2.2654005580116063,
+      "line_score_wall_s": 6.148207663034555,
+      "gradient_decode_wall_s": 2.422514770005364,
+      "gradient_score_wall_s": 13.26720150996698,
+      "iteration_wall_s": 24.10898104205262,
+      "total_wall_s": 65.22550348902587
+    },
+    {
+      "iteration": 2,
+      "current_score": 59.99709281015963,
+      "best_score": 59.99709281015963,
+      "best_iteration": 2,
+      "score_improvement": 0.006364406759423957,
+      "current_status": "ok",
+      "current_qh_error": 0.4183764200421145,
+      "current_iota": 1.879839539527893,
+      "gradient_norm": 291.73587985777795,
+      "perturbation": 0.000625,
+      "trust_radius": 0.000125,
+      "accepted": true,
+      "accepted_alpha": 0.125,
+      "accepted_step_norm": 3.125e-05,
+      "line_scores": [
+        59.96592875650874,
+        59.988355794167305,
+        59.97722841410774,
+        59.99709281015963
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "bfgs": {
+        "updated": true,
+        "damped": false,
+        "step_gradient_delta": 0.0005804916338600166,
+        "condition_number": 882.2611955243234
+      },
+      "line_decode_wall_s": 2.280339004995767,
+      "line_score_wall_s": 6.175418356026057,
+      "gradient_decode_wall_s": 2.4296956610050984,
+      "gradient_score_wall_s": 13.201312920020428,
+      "iteration_wall_s": 24.092346724995878,
+      "total_wall_s": 90.33975048502907
+    },
+    {
+      "iteration": 3,
+      "current_score": 59.99709281015963,
+      "best_score": 59.99709281015963,
+      "best_iteration": 2,
+      "score_improvement": 0.0,
+      "current_status": "ok",
+      "current_qh_error": 0.4183764200421145,
+      "current_iota": 1.879839539527893,
+      "gradient_norm": 291.73587985777795,
+      "perturbation": 0.000625,
+      "trust_radius": 6.25e-05,
+      "accepted": false,
+      "accepted_alpha": null,
+      "accepted_step_norm": 0.0,
+      "line_scores": [
+        59.98925313684441,
+        59.987491067869215,
+        59.98581934157763,
+        59.97874340120506
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [],
+      "bfgs": {
+        "updated": false,
+        "reason": "no_step"
+      },
+      "line_decode_wall_s": 2.2890239019761793,
+      "line_score_wall_s": 6.176344186998904,
+      "gradient_decode_wall_s": 0.0,
+      "gradient_score_wall_s": 0.0,
+      "iteration_wall_s": 8.465766520006582,
+      "total_wall_s": 99.47397386998637
+    },
+    {
+      "iteration": 4,
+      "current_score": 59.99709281015963,
+      "best_score": 59.99709281015963,
+      "best_iteration": 2,
+      "score_improvement": 0.0,
+      "current_status": "ok",
+      "current_qh_error": 0.4183764200421145,
+      "current_iota": 1.879839539527893,
+      "gradient_norm": 291.73587985777795,
+      "perturbation": 0.000625,
+      "trust_radius": 3.125e-05,
+      "accepted": false,
+      "accepted_alpha": null,
+      "accepted_step_norm": 0.0,
+      "line_scores": [
+        59.987491067869364,
+        59.985819341577304,
+        59.978743401204504,
+        59.99528258378001
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [],
+      "bfgs": {
+        "updated": false,
+        "reason": "no_step"
+      },
+      "line_decode_wall_s": 2.2832453359733336,
+      "line_score_wall_s": 6.178974843991455,
+      "gradient_decode_wall_s": 0.0,
+      "gradient_score_wall_s": 0.0,
+      "iteration_wall_s": 8.46260564995464,
+      "total_wall_s": 108.5733634250355
+    },
+    {
+      "iteration": 5,
+      "current_score": 59.99709281015963,
+      "best_score": 59.99709281015963,
+      "best_iteration": 2,
+      "score_improvement": 0.0,
+      "current_status": "ok",
+      "current_qh_error": 0.4183764200421145,
+      "current_iota": 1.879839539527893,
+      "gradient_norm": 291.73587985777795,
+      "perturbation": 0.000625,
+      "trust_radius": 2e-05,
+      "accepted": false,
+      "accepted_alpha": null,
+      "accepted_step_norm": 0.0,
+      "line_scores": [
+        59.98581934157726,
+        59.97874340120507,
+        59.995282583780046,
+        59.99375544293951
+      ],
+      "line_statuses": [
+        "ok",
+        "ok",
+        "ok",
+        "ok"
+      ],
+      "valid_gradient_fraction": 1.0,
+      "gradient_statuses": [],
+      "bfgs": {
+        "updated": false,
+        "reason": "no_step"
+      },
+      "line_decode_wall_s": 2.2749788590008393,
+      "line_score_wall_s": 6.181897871021647,
+      "gradient_decode_wall_s": 0.0,
+      "gradient_score_wall_s": 0.0,
+      "iteration_wall_s": 8.457247251993977,
+      "total_wall_s": 117.63847348699346
+    }
+  ]
+}

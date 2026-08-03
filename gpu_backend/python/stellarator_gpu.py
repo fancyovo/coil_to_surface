@@ -27,13 +27,14 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 3
+SGPU_SCORE_ABI_VERSION = 9
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",
     "surface",
     "coordinate",
     "volume_qs",
+    "iota",
     "coil",
 )
 SGPU_SCORE_TIMING_NAMES = (
@@ -127,11 +128,11 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("alpha_solver_mode", ctypes.c_int32),
         ("volume_rho_min", ctypes.c_double),
         ("alpha_ridge", ctypes.c_double),
-        ("score_weights", ctypes.c_double * 6),
+        ("score_weights", ctypes.c_double * 7),
         ("score_axis_residual_scale", ctypes.c_double),
         ("score_psi_angle_p95_scale", ctypes.c_double),
         ("score_psi_angle_l2_scale", ctypes.c_double),
-        ("score_surface_inverse_aspect_scale", ctypes.c_double),
+        ("score_surface_inverse_aspect_saturation", ctypes.c_double),
         ("score_surface_drift_scale", ctypes.c_double),
         ("score_flux_section_std_scale", ctypes.c_double),
         ("score_flux_boundary_residual_scale", ctypes.c_double),
@@ -139,6 +140,17 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("score_alpha_relative_l2_scale", ctypes.c_double),
         ("score_qs_global_scale", ctypes.c_double),
         ("score_qs_edge_scale", ctypes.c_double),
+        ("score_qh_iota_threshold", ctypes.c_double),
+        ("score_qh_iota_power", ctypes.c_double),
+        ("score_volume_qs_size_floor", ctypes.c_double),
+        ("score_volume_qs_iota_floor", ctypes.c_double),
+        ("score_qh_total_iota_floor", ctypes.c_double),
+        ("surface_long_trace_periods", ctypes.c_int32),
+        ("surface_long_trace_relative_tolerance", ctypes.c_double),
+        ("score_qh_total_helicity_floor", ctypes.c_double),
+        ("score_qh_helicity_bad", ctypes.c_double),
+        ("score_qh_helicity_good", ctypes.c_double),
+        ("score_qh_helicity_exploration_fraction", ctypes.c_double),
     ]
 
 
@@ -151,7 +163,7 @@ class _SgpuScoreResult(ctypes.Structure):
         ("device_id", ctypes.c_int32),
         ("flux_attempt_count", ctypes.c_int32),
         ("score", ctypes.c_double),
-        ("components", ctypes.c_double * 6),
+        ("components", ctypes.c_double * 7),
         ("timings", ctypes.c_double * 16),
         ("axis_R", ctypes.c_double),
         ("axis_Z", ctypes.c_double),
@@ -165,6 +177,7 @@ class _SgpuScoreResult(ctypes.Structure):
         ("psi_angle_l2", ctypes.c_double),
         ("surface_level", ctypes.c_double),
         ("surface_drift_relative_p95", ctypes.c_double),
+        ("surface_one_period_drift_relative_p95", ctypes.c_double),
         ("surface_effective_minor_radius", ctypes.c_double),
         ("surface_inverse_aspect_ratio", ctypes.c_double),
         ("surface_volume", ctypes.c_double),
@@ -178,9 +191,28 @@ class _SgpuScoreResult(ctypes.Structure):
         ("alpha_normal_B_relative_l2", ctypes.c_double),
         ("iota_min", ctypes.c_double),
         ("iota_max", ctypes.c_double),
+        ("score_surface_size", ctypes.c_double),
+        ("score_iota", ctypes.c_double),
+        ("score_qs_residual", ctypes.c_double),
+        ("score_volume_qs_size_factor", ctypes.c_double),
+        ("score_volume_qs_iota_factor", ctypes.c_double),
+        ("score_before_qh_iota_gate", ctypes.c_double),
+        ("score_qh_total_iota_factor", ctypes.c_double),
+        ("score_qh_helicity_advantage", ctypes.c_double),
+        ("score_qh_helicity_quality", ctypes.c_double),
+        ("score_qh_total_helicity_factor", ctypes.c_double),
         ("qs_global_error", ctypes.c_double),
         ("qs_edge_error", ctypes.c_double),
+        ("qs_qa_global_error", ctypes.c_double),
+        ("qs_qp_global_error", ctypes.c_double),
+        ("qs_vacuum_G", ctypes.c_double),
+        ("qs_target_global_error_per_helicity", ctypes.c_double),
+        ("qs_target_edge_error_per_helicity", ctypes.c_double),
+        ("qs_qa_global_error_per_helicity", ctypes.c_double),
+        ("qs_qp_global_error_raw", ctypes.c_double),
+        ("qs_qp_global_error_per_helicity", ctypes.c_double),
         ("qs_abs_p95", ctypes.c_double),
+        ("qs_abs_p95_per_helicity", ctypes.c_double),
         ("volume_valid_fraction", ctypes.c_double),
         ("volume_weight_effective_fraction", ctypes.c_double),
         ("edge_weight_effective_fraction", ctypes.c_double),
@@ -197,6 +229,8 @@ class _SgpuScoreResult(ctypes.Structure):
         ("volume_available_count", ctypes.c_int32),
         ("volume_point_count", ctypes.c_int32),
         ("alpha_column_count", ctypes.c_int32),
+        ("surface_long_trace_periods_completed", ctypes.c_int32),
+        ("surface_long_trace_rejected_count", ctypes.c_int32),
         ("error_message", ctypes.c_char * 256),
     ]
 
@@ -296,6 +330,39 @@ def score_coils_native(
         },
         "diagnostics": diagnostics,
     }
+
+
+def native_score_config_snapshot(
+    lib_path: str | Path,
+    *,
+    device_id: int = 0,
+    target_helicity: tuple[int, int] = (1, 0),
+    config_overrides: dict | None = None,
+) -> dict:
+    """Return the exact native score configuration used by score_coils_native."""
+    path = str(Path(lib_path).resolve())
+    lib = _NATIVE_SCORE_LIB_CACHE.get(path)
+    if lib is None:
+        lib = ctypes.CDLL(path)
+        _bind_native_score(lib)
+        _NATIVE_SCORE_LIB_CACHE[path] = lib
+    config = _SgpuScoreConfig()
+    _check_lib_code(lib, lib.sgpu_default_score_config(ctypes.byref(config)))
+    config.device_id = int(device_id)
+    config.target_M = int(target_helicity[0])
+    config.target_N = int(target_helicity[1])
+    for name, value in (config_overrides or {}).items():
+        if not hasattr(config, name):
+            raise ValueError(f"unknown native score config field {name!r}")
+        setattr(config, name, value)
+    snapshot = {}
+    for name, _ in _SgpuScoreConfig._fields_:
+        value = getattr(config, name)
+        if isinstance(value, ctypes.Array):
+            snapshot[name] = [item for item in value]
+        else:
+            snapshot[name] = value
+    return snapshot
 
 
 def _check_lib_code(lib: ctypes.CDLL, code: int):

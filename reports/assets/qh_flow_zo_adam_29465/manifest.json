@@ -1,0 +1,49 @@
+{
+  "algorithm": "orthogonal_antithetic_zo_adam_over_flow_prior_noise",
+  "target": "QH",
+  "nfp": 4,
+  "n_base_coils": 3,
+  "noise_shape": [
+    3,
+    100
+  ],
+  "seed": 2026073003,
+  "iterations": 80,
+  "directions": 4,
+  "calibration_steps": [
+    64,
+    128,
+    256
+  ],
+  "perturbation": 0.01,
+  "learning_rate": 0.003,
+  "betas": [
+    0.9,
+    0.99
+  ],
+  "max_update_rms": 0.0075,
+  "backtrack_scales": [
+    1.0,
+    0.5,
+    0.25
+  ],
+  "accept_drop": 0.1,
+  "delta_clip": 15.0,
+  "noise_limit": 6.0,
+  "flow_dtype": "torch.float32",
+  "flow_method": "rk4",
+  "flow_autocast": false,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "native_lib_sha256": "0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427",
+  "initial_case": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/reports/assets/qh_flow_prior_cem_29129/best.json",
+  "initial_recorded_score": 50.58624792965539,
+  "gpu_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "max_wall_s": 7200.0,
+  "selected_flow_steps": 256
+}

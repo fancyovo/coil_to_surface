@@ -222,16 +222,12 @@ def _surface_radius_on_rays(
     residual = np.full_like(radius, np.inf)
     for _ in range(30):
         normalized = radius / model.a
-        value = np.zeros_like(radius)
+        value = coefficients[-1].copy()
         derivative = np.zeros_like(radius)
-        for power in range(2, degree + 1):
-            value += coefficients[power] * normalized**power
-            derivative += (
-                power
-                * coefficients[power]
-                * normalized ** (power - 1)
-                / model.a
-            )
+        for power in range(degree - 1, -1, -1):
+            derivative = derivative * normalized + value
+            value = value * normalized + coefficients[power]
+        derivative /= model.a
         residual = value - level
         if float(np.max(np.abs(residual))) <= 1e-12:
             break
@@ -258,11 +254,11 @@ def sample_volume_points(
 ) -> dict[str, np.ndarray]:
     extent = model.a if extent is None else min(float(extent), model.a)
     lower = config.s_edge * config.rho_min**2
-    candidate_target = int(np.ceil(config.point_count * 1.25))
-    n_phi = max(8, int(config.grid_phi))
-    per_phi = int(np.ceil(candidate_target / n_phi))
-    n_theta = max(16, int(np.ceil(np.sqrt(per_phi))))
-    n_radial = int(np.ceil(per_phi / n_theta))
+    n_phi, n_theta, n_radial = _volume_candidate_lattice_shape(
+        config.point_count,
+        config.grid_phi,
+        config.ray_candidate_oversampling,
+    )
     p_index, t_index, r_index = np.meshgrid(
         np.arange(n_phi),
         np.arange(n_theta),
@@ -315,6 +311,7 @@ def sample_volume_points(
         point_count=config.point_count,
         alpha_fit_point_count=config.alpha_fit_point_count,
         candidate_count=len(phi_flat),
+        minimum_candidate_valid_fraction=config.minimum_candidate_valid_fraction,
     )
     if available < minimum_count:
         raise RuntimeError(
@@ -360,18 +357,45 @@ def sample_volume_points(
         "nfp": np.asarray(model.nfp),
         "candidate_count": np.asarray([len(phi_flat)]),
         "available_count": np.asarray([available]),
+        "minimum_count": np.asarray([minimum_count]),
+        "candidate_valid_fraction": np.asarray([available / len(phi_flat)]),
     }
+
+
+def _volume_candidate_lattice_shape(
+    point_count: int,
+    grid_phi: int,
+    oversampling: float,
+) -> tuple[int, int, int]:
+    if point_count < 1:
+        raise ValueError("point_count must be positive")
+    if not np.isfinite(oversampling) or oversampling < 1.0:
+        raise ValueError("ray candidate oversampling must be at least 1")
+    candidate_target = int(np.ceil(point_count * oversampling))
+    n_phi = max(8, int(grid_phi))
+    per_phi = int(np.ceil(candidate_target / n_phi))
+    n_theta = max(16, int(np.ceil(np.sqrt(per_phi))))
+    n_radial = int(np.ceil(per_phi / n_theta))
+    return n_phi, n_theta, n_radial
 
 
 def _physical_volume_weights(R, boundary_radius):
     return np.asarray(R) * np.asarray(boundary_radius) ** 2
 
 
-def _minimum_volume_sample_count(point_count, alpha_fit_point_count, candidate_count):
+def _minimum_volume_sample_count(
+    point_count,
+    alpha_fit_point_count,
+    candidate_count,
+    minimum_candidate_valid_fraction=0.95,
+):
+    fraction = float(minimum_candidate_valid_fraction)
+    if not np.isfinite(fraction) or not 0.0 <= fraction <= 1.0:
+        raise ValueError("minimum_candidate_valid_fraction must be between 0 and 1")
     return max(
         int(alpha_fit_point_count),
         int(point_count),
-        int(np.ceil(0.95 * candidate_count)),
+        int(np.ceil(fraction * candidate_count)),
     )
 
 
@@ -516,11 +540,22 @@ def calibrate_toroidal_flux_gpu(
     model: PsiModel,
     gpu_field,
     config: VolumeQSConfig,
+    *,
+    levels=None,
 ) -> FluxCalibration:
     """Calibrate fitted s to signed toroidal flux in two vectorized batches."""
     start = time.perf_counter()
-    level_fraction = (np.arange(1, config.flux_level_count + 1) / config.flux_level_count) ** 2
-    levels = config.s_edge * level_fraction
+    if levels is None:
+        level_fraction = (
+            np.arange(1, config.flux_level_count + 1) / config.flux_level_count
+        ) ** 2
+        levels = config.s_edge * level_fraction
+    else:
+        levels = np.asarray(levels, dtype=float)
+        if np.any(levels <= 0.0) or np.any(np.diff(levels) <= 0.0):
+            raise ValueError("flux calibration levels must be positive and increasing")
+        if levels[-1] > config.s_edge * (1.0 + 1e-12):
+            raise ValueError("flux calibration levels must not exceed config.s_edge")
     phis = np.linspace(0.0, TWOPI / model.nfp, config.flux_phi_count, endpoint=False)
     theta = (np.arange(config.flux_theta_count) + 0.5) * TWOPI / config.flux_theta_count
     phi_grid, theta_grid = np.meshgrid(phis, theta, indexing="ij")
@@ -873,8 +908,14 @@ def fit_flux_scale(points: dict, B, alpha_fit: StraightFieldFit, config: VolumeQ
     return fit
 
 
-def vacuum_G(currents_a, nfp: int) -> float:
-    return float(MU0 * 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float))))
+def vacuum_G(currents_a, nfp: int, toroidal_flux: float) -> float:
+    """Return the vacuum Boozer G for radian angular coordinates."""
+    toroidal_flux = float(toroidal_flux)
+    if not np.isfinite(toroidal_flux) or toroidal_flux == 0.0:
+        raise ValueError("vacuum G requires nonzero signed toroidal flux")
+    linked_current = 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float)))
+    magnitude = MU0 * linked_current / TWOPI
+    return float(np.copysign(magnitude, toroidal_flux))
 
 
 def compute_f_c(points: dict, B, grad_B, alpha_fit: StraightFieldFit, flux_fit: FluxScaleFit, *, M: int, N: int, G: float, I: float = 0.0):
@@ -1072,7 +1113,7 @@ def evaluate_volume_qs_model(
         "QH_minus": (1, -int(field_input.nfp)),
         "QP": (0, int(field_input.nfp)),
     }
-    G = vacuum_G(currents_a, field_input.nfp)
+    G = vacuum_G(currents_a, field_input.nfp, calibration.psi_edge)
     metric_start = time.perf_counter()
     metrics = {}
     for name, (M, N) in specs.items():

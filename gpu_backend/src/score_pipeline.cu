@@ -60,6 +60,18 @@ double q_up(double value, double scale, double power, double fallback = 0.0) {
     return 1.0 / (1.0 + std::pow(scale / value, power));
 }
 
+double q_saturating_up(double value, double saturation, double fallback = 0.0) {
+    if (!std::isfinite(value) || value <= 0.0 || !(saturation > 0.0)) return fallback;
+    const double x = clip01(value / saturation);
+    return x * x * (3.0 - 2.0 * x);
+}
+
+double minimum_absolute_iota(double iota_min, double iota_max) {
+    if (!std::isfinite(iota_min) || !std::isfinite(iota_max)) return 0.0;
+    if (iota_min <= 0.0 && iota_max >= 0.0) return 0.0;
+    return std::min(std::abs(iota_min), std::abs(iota_max));
+}
+
 double blend(std::initializer_list<std::pair<double, double>> values) {
     double total = 0.0;
     double weighted = 0.0;
@@ -93,6 +105,7 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->psi_angle_l2 = nan;
     result->surface_level = nan;
     result->surface_drift_relative_p95 = nan;
+    result->surface_one_period_drift_relative_p95 = nan;
     result->surface_effective_minor_radius = nan;
     result->surface_inverse_aspect_ratio = nan;
     result->surface_volume = nan;
@@ -106,9 +119,28 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->alpha_normal_B_relative_l2 = nan;
     result->iota_min = nan;
     result->iota_max = nan;
+    result->score_surface_size = nan;
+    result->score_iota = nan;
+    result->score_qs_residual = nan;
+    result->score_volume_qs_size_factor = nan;
+    result->score_volume_qs_iota_factor = nan;
+    result->score_before_qh_iota_gate = nan;
+    result->score_qh_total_iota_factor = nan;
+    result->score_qh_helicity_advantage = 0.0;
+    result->score_qh_helicity_quality = 0.0;
+    result->score_qh_total_helicity_factor = nan;
     result->qs_global_error = nan;
     result->qs_edge_error = nan;
+    result->qs_qa_global_error = nan;
+    result->qs_qp_global_error = nan;
+    result->qs_vacuum_G = nan;
+    result->qs_target_global_error_per_helicity = nan;
+    result->qs_target_edge_error_per_helicity = nan;
+    result->qs_qa_global_error_per_helicity = nan;
+    result->qs_qp_global_error_raw = nan;
+    result->qs_qp_global_error_per_helicity = nan;
     result->qs_abs_p95 = nan;
+    result->qs_abs_p95_per_helicity = nan;
     result->volume_valid_fraction = nan;
     result->volume_weight_effective_fraction = nan;
     result->edge_weight_effective_fraction = nan;
@@ -399,6 +431,15 @@ struct AxisCandidate {
     bool elliptic = false;
 };
 
+double axis_topology_stability_margin(const AxisCandidate& candidate) {
+    if (!(candidate.topology_det > 0.0) ||
+        !std::isfinite(candidate.topology_trace) ||
+        !std::isfinite(candidate.topology_det)) {
+        return -std::numeric_limits<double>::infinity();
+    }
+    return 2.0 - std::abs(candidate.topology_trace) / std::sqrt(candidate.topology_det);
+}
+
 double wrapped_angle_delta(double from, double to) {
     double delta = to - from;
     while (delta <= -PI) delta += TWOPI;
@@ -618,7 +659,7 @@ void classify_axis_topology(
         candidates[j].topology_trace = trace;
         candidates[j].topology_det = determinant;
         candidates[j].elliptic = determinant > 0.0 &&
-            std::abs(trace / std::sqrt(determinant)) < 2.0 - config.axis_topology_margin;
+            std::abs(trace / std::sqrt(determinant)) < 2.0;
         if (determinant > 0.0) {
             const double scale = std::sqrt(determinant);
             const double q00 = c / scale;
@@ -727,14 +768,14 @@ bool find_axis_native(
     auto eligible = [](const AxisCandidate& candidate, double tolerance) {
         return candidate.residual <= tolerance && candidate.elliptic;
     };
-    bool has_eligible = std::any_of(candidates.begin(), candidates.end(), [&](const auto& candidate) {
-        return eligible(candidate, config.axis_tolerance);
+    auto robust = [&](const AxisCandidate& candidate) {
+        return eligible(candidate, config.axis_tolerance) &&
+            axis_topology_stability_margin(candidate) >= config.axis_topology_margin;
+    };
+    bool has_robust = std::any_of(candidates.begin(), candidates.end(), [&](const auto& candidate) {
+        return robust(candidate);
     });
-    if (!has_eligible) {
-        if (nfp > config.axis_fallback_max_nfp) {
-            axis.candidate_count = static_cast<int>(candidates.size());
-            return true;
-        }
+    if (!has_robust && nfp <= config.axis_fallback_max_nfp) {
         std::vector<AxisCandidate> fallback;
         if (!search_axis_grid(
                 field, domain, nfp, config, config.axis_fallback_grid,
@@ -752,7 +793,10 @@ bool find_axis_native(
         if (eligible(candidate, config.axis_tolerance)) elliptic.push_back(candidate);
     }
     if (elliptic.empty()) return true;
-    axis.selected = *std::min_element(elliptic.begin(), elliptic.end(), [](const auto& lhs, const auto& rhs) {
+    axis.selected = *std::min_element(elliptic.begin(), elliptic.end(), [&](const auto& lhs, const auto& rhs) {
+        const bool lhs_robust = robust(lhs);
+        const bool rhs_robust = robust(rhs);
+        if (lhs_robust != rhs_robust) return lhs_robust > rhs_robust;
         if (lhs.ellipse_aspect != rhs.ellipse_aspect) return lhs.ellipse_aspect < rhs.ellipse_aspect;
         return lhs.residual < rhs.residual;
     });
@@ -1006,9 +1050,12 @@ struct SurfaceScreen {
     double relative_drift_p95 = std::numeric_limits<double>::infinity();
     double radius_mean = std::numeric_limits<double>::quiet_NaN();
     double radius_max = std::numeric_limits<double>::quiet_NaN();
+    double one_period_relative_drift_p95 = std::numeric_limits<double>::infinity();
+    int long_trace_periods_completed = 0;
     bool stable = false;
     bool strict = false;
     bool verified = false;
+    bool long_verified = false;
 };
 
 void ray_polynomial_phi0(
@@ -1120,6 +1167,7 @@ bool screen_surfaces_native(
         screen.radius_mean = radius_sum / theta_count;
         screen.radius_max = radius_max;
         screen.relative_drift_p95 = screen.drift_p95 / std::max(screen.radius_mean, 1.0e-14);
+        screen.one_period_relative_drift_p95 = screen.relative_drift_p95;
         screen.stable = screen.drift_p95 <= config.surface_drift_absolute_tolerance &&
                         screen.relative_drift_p95 <= 0.30 &&
                         screen.radius_max < config.surface_max_radius_scale * config.psi_a * 0.999;
@@ -1128,6 +1176,8 @@ bool screen_surfaces_native(
     }
 
     std::vector<int> verify_indices;
+    // Keep the expensive long-horizon path bounded: only the six largest
+    // one-period candidates participate in high-precision verification.
     for (int index = levels - 1; index >= 0 && verify_indices.size() < 6; --index) {
         if (screens[index].strict) verify_indices.push_back(index);
     }
@@ -1159,6 +1209,8 @@ bool screen_surfaces_native(
             screens[level_index].drift_p95 = percentile(distances, 0.95);
             screens[level_index].relative_drift_p95 = screens[level_index].drift_p95 /
                 std::max(screens[level_index].radius_mean, 1.0e-14);
+            screens[level_index].one_period_relative_drift_p95 =
+                screens[level_index].relative_drift_p95;
             screens[level_index].stable =
                 screens[level_index].drift_p95 <= config.surface_drift_absolute_tolerance &&
                 screens[level_index].relative_drift_p95 <= 0.30 &&
@@ -1168,6 +1220,66 @@ bool screen_surfaces_native(
             screens[level_index].verified = true;
         }
     }
+    return true;
+}
+
+bool verify_surface_long_horizon(
+    void* field,
+    const AxisData& axis,
+    const PsiData& psi,
+    int nfp,
+    const SgpuScoreConfig& config,
+    SurfaceScreen& screen
+) {
+    screen.long_verified = true;
+    screen.long_trace_periods_completed = 1;
+    if (!screen.strict || config.surface_long_trace_periods <= 1) return true;
+
+    const int theta_count = config.surface_theta_count;
+    std::vector<double> R(theta_count), Z(theta_count), R_end, Z_end;
+    for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+        const double theta = TWOPI * theta_index / theta_count;
+        std::array<double, 25> polynomial;
+        ray_polynomial_phi0(psi, config, theta, polynomial);
+        const double radius = solve_ray_radius(polynomial, screen.level, config);
+        R[theta_index] = axis.R[0] + radius * std::cos(theta);
+        Z[theta_index] = axis.Z[0] + radius * std::sin(theta);
+    }
+
+    double maximum_relative_drift = screen.relative_drift_p95;
+    for (int period = 1; period <= config.surface_long_trace_periods; ++period) {
+        if (!trace_map(field, R, Z, nfp, config.surface_trace_steps, false, R_end, Z_end)) {
+            return false;
+        }
+        std::vector<double> distances;
+        distances.reserve(theta_count);
+        for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+            double value, gR, gZ, gPhi;
+            evaluate_psi_host(
+                psi, axis, config, nfp, R_end[theta_index], Z_end[theta_index], TWOPI / nfp,
+                value, gR, gZ, gPhi
+            );
+            const double gradient_norm = std::sqrt(
+                gR * gR + gZ * gZ + std::pow(gPhi / R_end[theta_index], 2.0)
+            );
+            const double distance = std::abs(value - screen.level) /
+                std::max(gradient_norm, 1.0e-14);
+            distances.push_back(std::isfinite(distance)
+                ? distance : std::numeric_limits<double>::infinity());
+        }
+        const double relative_drift = percentile(distances, 0.95) /
+            std::max(screen.radius_mean, 1.0e-14);
+        maximum_relative_drift = std::max(maximum_relative_drift, relative_drift);
+        screen.long_trace_periods_completed = period;
+        R.swap(R_end);
+        Z.swap(Z_end);
+        if (maximum_relative_drift > config.surface_long_trace_relative_tolerance) break;
+    }
+    screen.relative_drift_p95 = maximum_relative_drift;
+    screen.drift_p95 = maximum_relative_drift * screen.radius_mean;
+    screen.strict = screen.strict &&
+        maximum_relative_drift <= config.surface_long_trace_relative_tolerance &&
+        screen.long_trace_periods_completed == config.surface_long_trace_periods;
     return true;
 }
 
@@ -1185,10 +1297,28 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         (config.psi_precision_mode != 1 && config.psi_precision_mode != 2) ||
         config.surface_level_count <= 0 ||
         config.surface_level_count > SGPU_SCORE_MAX_SURFACE_LEVELS ||
-        config.surface_theta_count < 16 || config.volume_point_count <= 0 ||
+        config.surface_theta_count < 16 || config.surface_long_trace_periods < 1 ||
+        config.surface_long_trace_periods > 64 ||
+        !(config.surface_long_trace_relative_tolerance > 0.0) ||
+        config.volume_point_count <= 0 ||
         config.alpha_fit_point_count <= 0 ||
         config.alpha_fit_point_count > config.volume_point_count ||
-        (config.alpha_solver_mode != 1 && config.alpha_solver_mode != 2)) {
+        (config.alpha_solver_mode != 1 && config.alpha_solver_mode != 2) ||
+        !(config.score_surface_inverse_aspect_saturation > 0.0) ||
+        !(config.score_qh_iota_threshold > 0.0) ||
+        !(config.score_qh_iota_power > 0.0) ||
+        config.score_volume_qs_size_floor < 0.0 ||
+        config.score_volume_qs_size_floor > 1.0 ||
+        config.score_volume_qs_iota_floor < 0.0 ||
+        config.score_volume_qs_iota_floor > 1.0 ||
+        config.score_qh_total_iota_floor < 0.0 ||
+        config.score_qh_total_iota_floor > 1.0 ||
+        config.score_qh_total_helicity_floor < 0.0 ||
+        config.score_qh_total_helicity_floor > 1.0 ||
+        !(config.score_qh_helicity_good > config.score_qh_helicity_bad) ||
+        config.axis_topology_margin < 0.0 || config.axis_topology_margin >= 2.0 ||
+        config.score_qh_helicity_exploration_fraction < 0.0 ||
+        config.score_qh_helicity_exploration_fraction > 1.0) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -1204,7 +1334,12 @@ void fill_early_components(
     SgpuScoreResult& result
 ) {
     const double axis_residual = q_down(axis.selected.residual, config.score_axis_residual_scale, 0.8);
-    const double topology = axis.selected.elliptic ? 1.0 : 0.1;
+    const double stability_margin = axis_topology_stability_margin(axis.selected);
+    const double topology = !axis.selected.elliptic
+        ? 0.1
+        : config.axis_topology_margin > 0.0
+            ? q_saturating_up(stability_margin, config.axis_topology_margin)
+            : 1.0;
     const double aspect = q_down(std::max(axis.selected.ellipse_aspect - 1.0, 0.0), 1.0, 1.2, 0.8);
     result.components[SGPU_SCORE_COMPONENT_AXIS] = blend({{0.70, axis_residual}, {0.20, topology}, {0.10, aspect}});
     result.components[SGPU_SCORE_COMPONENT_PSI] = blend({
@@ -1218,7 +1353,13 @@ void fill_early_components(
         if (std::isfinite(screen.relative_drift_p95)) minimum_drift = std::min(minimum_drift, screen.relative_drift_p95);
         if (screen.strict) ++strict_count;
     }
-    const double size = q_up(result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_scale, 2.0);
+    if (std::isfinite(result.surface_drift_relative_p95)) {
+        minimum_drift = result.surface_drift_relative_p95;
+    }
+    const double size = q_saturating_up(
+        result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_saturation
+    );
+    result.score_surface_size = size;
     const double drift = q_down(minimum_drift, config.score_surface_drift_scale, 1.0, 0.15);
     const double count = q_up(strict_count, 2.0, 1.0);
     result.components[SGPU_SCORE_COMPONENT_SURFACE] = blend({{0.65, size}, {0.25, drift}, {0.10, count}});
@@ -1233,15 +1374,45 @@ void finalize_score(const SgpuScoreConfig& config, SgpuScoreResult& result) {
     if (result.stage_completed < SCORE_STAGE_QS) {
         result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] = 0.04;
     }
+    if (result.stage_completed < SCORE_STAGE_ALPHA) {
+        result.components[SGPU_SCORE_COMPONENT_IOTA] = 0.04;
+    }
     double total_weight = 0.0;
     double weighted_score = 0.0;
+    const double iota_score = clip01(result.components[SGPU_SCORE_COMPONENT_IOTA]);
     for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
         const double value = clip01(result.components[component]);
         total_weight += std::max(config.score_weights[component], 0.0);
         weighted_score += std::max(config.score_weights[component], 0.0) * value;
         result.components[component] = 100.0 * value;
     }
-    result.score = total_weight > 0.0 ? 100.0 * clip01(weighted_score / total_weight) : 0.0;
+    result.score_before_qh_iota_gate =
+        total_weight > 0.0 ? 100.0 * clip01(weighted_score / total_weight) : 0.0;
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    result.score_qh_total_iota_factor = qh_target
+        ? config.score_qh_total_iota_floor +
+            (1.0 - config.score_qh_total_iota_floor) * iota_score
+        : 1.0;
+    const double helicity_position = clip01(
+        (result.score_qh_helicity_advantage - config.score_qh_helicity_bad) /
+        (config.score_qh_helicity_good - config.score_qh_helicity_bad)
+    );
+    const double helicity_linear = clip01(
+        result.score_qh_helicity_advantage / config.score_qh_helicity_good
+    );
+    const double helicity_window =
+        helicity_position * helicity_position * (3.0 - 2.0 * helicity_position);
+    result.score_qh_helicity_quality = qh_target
+        ? config.score_qh_helicity_exploration_fraction * helicity_linear +
+            (1.0 - config.score_qh_helicity_exploration_fraction) * helicity_window
+        : 1.0;
+    result.score_qh_total_helicity_factor = qh_target
+        ? config.score_qh_total_helicity_floor +
+            (1.0 - config.score_qh_total_helicity_floor) *
+                result.score_qh_helicity_quality
+        : 1.0;
+    result.score = result.score_before_qh_iota_gate *
+        result.score_qh_total_iota_factor * result.score_qh_total_helicity_factor;
     if (result.status == SGPU_SCORE_OK) result.stage_completed = SCORE_STAGE_COMPLETE;
 }
 
@@ -2775,6 +2946,7 @@ __global__ void compute_qs_metric_kernel(
     int iota_degree,
     int helicity_M,
     int helicity_N,
+    int nfp,
     double G,
     float edge_rho_threshold,
     float* __restrict__ absolute_normalized,
@@ -2816,13 +2988,21 @@ __global__ void compute_qs_metric_kernel(
     }
     const double f_c = (helicity_M * static_cast<double>(iota) - helicity_N) * A -
                        helicity_M * G * C;
+    const double f_c_qa = static_cast<double>(iota) * A - G * C;
+    const double f_c_qp = -static_cast<double>(nfp) * A;
     const double normalized = f_c /
+        fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
+    const double normalized_qa = f_c_qa /
+        fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
+    const double normalized_qp = f_c_qp /
         fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
     const double weight = volume_weight[point];
     absolute_normalized[point] = static_cast<float>(fabs(normalized));
     atomic_add_double(sums, weight);
     atomic_add_double(sums + 1, weight * normalized * normalized);
     atomic_add_double(sums + 4, weight * weight);
+    atomic_add_double(sums + 7, weight * normalized_qa * normalized_qa);
+    atomic_add_double(sums + 8, weight * normalized_qp * normalized_qp);
     if (rho[point] >= edge_rho_threshold) {
         atomic_add_double(sums + 2, weight);
         atomic_add_double(sums + 3, weight * normalized * normalized);
@@ -2839,12 +3019,13 @@ bool compute_qs_metric_native(
     const double* currents_a,
     int n_base_coils,
     int nfp,
+    double edge_toroidal_flux,
     const SgpuScoreConfig& config,
     SgpuScoreResult& result
 ) {
     DeviceBuffer<float> d_iota;
     DeviceBuffer<float> d_absolute(points.count);
-    DeviceBuffer<double> d_sums(7);
+    DeviceBuffer<double> d_sums(9);
     if (!copy_to_device(d_iota, alpha.iota_coefficients) || !d_absolute.data() || !d_sums.data() ||
         !cuda_stage_ok(cudaMemset(d_sums.data(), 0, d_sums.size() * sizeof(double)), result, "QS reduction clear")) {
         if (result.status != SGPU_SCORE_INTERNAL_ERROR) fail_result(&result, "QS allocation failed");
@@ -2852,7 +3033,13 @@ bool compute_qs_metric_native(
     }
     double current_sum = 0.0;
     for (int index = 0; index < n_base_coils; ++index) current_sum += std::abs(currents_a[index]);
-    const double G = 4.0e-7 * PI * 2.0 * nfp * current_sum;
+    if (!std::isfinite(edge_toroidal_flux) || edge_toroidal_flux == 0.0) {
+        fail_result(&result, "QS metric requires nonzero signed toroidal flux");
+        return false;
+    }
+    // The volume coordinates use radian angles, so G = mu0 I_link / (2 pi).
+    const double G_magnitude = 2.0e-7 * 2.0 * nfp * current_sum;
+    const double G = std::copysign(G_magnitude, edge_toroidal_flux);
     const float edge_threshold = static_cast<float>(
         config.volume_rho_min + (1.0 - config.volume_rho_min) *
         (config.radial_bin_count - 1.0) / config.radial_bin_count
@@ -2862,25 +3049,40 @@ bool compute_qs_metric_native(
         d_B, d_grad_B, points.grad_s.data(), points.flux_derivative.data(),
         points.rho.data(), points.volume_weight.data(), points.count,
         d_iota.data(), config.iota_degree, config.target_M, config.target_N,
-        G, edge_threshold, d_absolute.data(), d_sums.data()
+        nfp, G, edge_threshold, d_absolute.data(), d_sums.data()
     );
     if (!cuda_stage_ok(cudaDeviceSynchronize(), result, "QS metric kernel")) return false;
     thrust::device_ptr<float> begin(d_absolute.data());
     thrust::sort(begin, begin + points.count);
     const int percentile_index = std::min(points.count - 1, static_cast<int>(std::floor(0.95 * (points.count - 1))));
     float p95 = 0.0f;
-    std::array<double, 7> sums{};
+    std::array<double, 9> sums{};
     if (!cuda_stage_ok(cudaMemcpy(&p95, d_absolute.data() + percentile_index, sizeof(float), cudaMemcpyDeviceToHost), result, "QS p95 copy") ||
         !cuda_stage_ok(cudaMemcpy(sums.data(), d_sums.data(), sizeof(sums), cudaMemcpyDeviceToHost), result, "QS sums copy")) {
         return false;
     }
     result.qs_global_error = std::sqrt(sums[1] / std::max(sums[0], 1.0e-300));
     result.qs_edge_error = std::sqrt(sums[3] / std::max(sums[2], 1.0e-300));
+    result.qs_qa_global_error = std::sqrt(sums[7] / std::max(sums[0], 1.0e-300));
+    result.qs_qp_global_error_raw = std::sqrt(sums[8] / std::max(sums[0], 1.0e-300));
+    const double target_helicity_norm = std::max(
+        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
+        1.0
+    );
+    const double qp_helicity_norm = std::max(std::abs(nfp), 1);
+    result.qs_vacuum_G = G;
+    result.qs_target_global_error_per_helicity = result.qs_global_error / target_helicity_norm;
+    result.qs_target_edge_error_per_helicity = result.qs_edge_error / target_helicity_norm;
+    result.qs_qa_global_error_per_helicity = result.qs_qa_global_error;
+    result.qs_qp_global_error_per_helicity = result.qs_qp_global_error_raw / qp_helicity_norm;
+    // Preserve the ABI-8 field semantics while exposing both explicit forms above.
+    result.qs_qp_global_error = result.qs_qp_global_error_per_helicity;
     result.volume_weight_effective_fraction =
         sums[0] * sums[0] / std::max(points.count * sums[4], 1.0e-300);
     result.edge_weight_effective_fraction =
         sums[2] * sums[2] / std::max(sums[6] * sums[5], 1.0e-300);
     result.qs_abs_p95 = p95;
+    result.qs_abs_p95_per_helicity = p95 / target_helicity_norm;
     return true;
 }
 
@@ -2891,7 +3093,7 @@ bool run_downstream_gpu(
     int nfp,
     const AxisData& axis,
     const PsiData& psi,
-    const std::vector<SurfaceScreen>& screens,
+    std::vector<SurfaceScreen>& screens,
     const SgpuScoreConfig& config,
     SgpuScoreResult& result
 ) {
@@ -2900,8 +3102,8 @@ bool run_downstream_gpu(
         fail_result(&result, "psi/axis upload for downstream pipeline failed");
         return false;
     }
-    std::vector<const SurfaceScreen*> candidates;
-    for (const auto& screen : screens) {
+    std::vector<SurfaceScreen*> candidates;
+    for (auto& screen : screens) {
         if (screen.strict && screen.verified) candidates.push_back(&screen);
     }
     std::sort(candidates.begin(), candidates.end(), [](const auto* lhs, const auto* rhs) {
@@ -2909,9 +3111,24 @@ bool run_downstream_gpu(
     });
     auto started = Clock::now();
     FluxCalibrationNative flux;
-    const SurfaceScreen* selected_surface = nullptr;
+    SurfaceScreen* selected_surface = nullptr;
+    SurfaceScreen* closest_rejected_surface = nullptr;
     bool flux_ok = false;
-    for (const SurfaceScreen* candidate : candidates) {
+    for (SurfaceScreen* candidate : candidates) {
+        const auto trace_started = Clock::now();
+        if (!verify_surface_long_horizon(field, axis, psi, nfp, config, *candidate)) {
+            fail_from_backend(&result, "long-horizon surface trace");
+            return false;
+        }
+        result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] += seconds_since(trace_started);
+        if (!candidate->strict) {
+            ++result.surface_long_trace_rejected_count;
+            if (!closest_rejected_surface ||
+                candidate->relative_drift_p95 < closest_rejected_surface->relative_drift_p95) {
+                closest_rejected_surface = candidate;
+            }
+            continue;
+        }
         ++result.flux_attempt_count;
         FluxCalibrationNative trial;
         const bool trial_ok = calibrate_flux_native(
@@ -2929,11 +3146,23 @@ bool run_downstream_gpu(
     }
     result.timings[SGPU_SCORE_TIME_FLUX] = seconds_since(started);
     if (!selected_surface) {
+        if (closest_rejected_surface) {
+            result.surface_level = closest_rejected_surface->level;
+            result.surface_drift_relative_p95 = closest_rejected_surface->relative_drift_p95;
+            result.surface_one_period_drift_relative_p95 =
+                closest_rejected_surface->one_period_relative_drift_p95;
+            result.surface_long_trace_periods_completed =
+                closest_rejected_surface->long_trace_periods_completed;
+        }
         result.status = SGPU_SCORE_DRIFT_REJECTED;
         return false;
     }
     result.surface_level = selected_surface->level;
     result.surface_drift_relative_p95 = selected_surface->relative_drift_p95;
+    result.surface_one_period_drift_relative_p95 =
+        selected_surface->one_period_relative_drift_p95;
+    result.surface_long_trace_periods_completed =
+        selected_surface->long_trace_periods_completed;
     result.flux_edge = flux.edge_flux;
     result.flux_fit_relative_rms = flux.fit_relative_rms;
     result.flux_section_relative_std_edge = flux.section_relative_std_edge;
@@ -2997,7 +3226,7 @@ bool run_downstream_gpu(
     started = Clock::now();
     if (!compute_qs_metric_native(
             points, d_B.data(), d_grad_B.data(), alpha, currents_a,
-            n_base_coils, nfp, config, result)) {
+            n_base_coils, nfp, flux.edge_flux, config, result)) {
         return false;
     }
     result.timings[SGPU_SCORE_TIME_QS_METRICS] = seconds_since(started);
@@ -3017,22 +3246,44 @@ bool run_downstream_gpu(
     result.components[SGPU_SCORE_COMPONENT_COORDINATE] = blend({
         {0.35, flux_score}, {0.35, normal_score}, {0.20, alpha_score}, {0.10, 1.0},
     });
-    // f_C is linear in the helicity pair, so score its magnitude per unit (M, N).
-    const double helicity_norm = std::max(
-        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
-        1.0
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    const double iota_score = !qh_target ? 1.0 : std::pow(
+        clip01(minimum_absolute_iota(result.iota_min, result.iota_max) /
+               config.score_qh_iota_threshold),
+        config.score_qh_iota_power
     );
+    result.score_iota = iota_score;
+    result.components[SGPU_SCORE_COMPONENT_IOTA] = iota_score;
+    // f_C is linear in the helicity pair, so score its magnitude per unit (M, N).
     const double global_score = q_down(
-        result.qs_global_error, config.score_qs_global_scale * helicity_norm, 0.9
+        result.qs_target_global_error_per_helicity, config.score_qs_global_scale, 0.9
     );
     const double edge_score = q_down(
-        result.qs_edge_error, config.score_qs_edge_scale * helicity_norm, 0.9, global_score
+        result.qs_target_edge_error_per_helicity, config.score_qs_edge_scale, 0.9, global_score
     );
     const double residual_score = blend({{0.80, global_score}, {0.20, edge_score}});
-    const double size_score = q_up(
-        result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_scale, 2.0
+    const double competitor_error = std::min(
+        result.qs_qa_global_error_per_helicity, result.qs_qp_global_error_per_helicity
     );
-    result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] = residual_score * (0.35 + 0.65 * size_score);
+    const double helicity_advantage = !qh_target ? 1.0 :
+        competitor_error / std::max(
+            result.qs_target_global_error_per_helicity + competitor_error, 1.0e-300
+        );
+    const double size_score = q_saturating_up(
+        result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_saturation
+    );
+    const double size_factor = config.score_volume_qs_size_floor +
+        (1.0 - config.score_volume_qs_size_floor) * size_score;
+    const double iota_factor = !qh_target ? 1.0 :
+        config.score_volume_qs_iota_floor +
+        (1.0 - config.score_volume_qs_iota_floor) * iota_score;
+    result.score_surface_size = size_score;
+    result.score_qs_residual = residual_score;
+    result.score_qh_helicity_advantage = clip01(helicity_advantage);
+    result.score_volume_qs_size_factor = size_factor;
+    result.score_volume_qs_iota_factor = iota_factor;
+    result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] =
+        residual_score * size_factor * iota_factor;
     result.status = SGPU_SCORE_OK;
     result.stage_completed = SCORE_STAGE_QS;
     return true;
@@ -3101,6 +3352,8 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->surface_max_radius_scale = 1.0;
     config->surface_drift_relative_tolerance = 0.05;
     config->surface_drift_absolute_tolerance = 5.0e-4;
+    config->surface_long_trace_periods = 16;
+    config->surface_long_trace_relative_tolerance = 0.05;
     config->flux_level_count = 11;
     config->flux_phi_count = 8;
     config->flux_theta_count = 256;
@@ -3120,12 +3373,12 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->alpha_solver_mode = 2;
     config->volume_rho_min = 0.08;
     config->alpha_ridge = 1.0e-7;
-    const double weights[] = {18.0, 18.0, 18.0, 14.0, 20.0, 12.0};
+    const double weights[] = {10.0, 10.0, 10.0, 10.0, 42.0, 10.0, 8.0};
     std::copy(weights, weights + SGPU_SCORE_COMPONENT_COUNT, config->score_weights);
     config->score_axis_residual_scale = 1.0e-5;
     config->score_psi_angle_p95_scale = 3.0e-3;
     config->score_psi_angle_l2_scale = 1.0e-3;
-    config->score_surface_inverse_aspect_scale = 0.04;
+    config->score_surface_inverse_aspect_saturation = 0.03;
     config->score_surface_drift_scale = 0.02;
     config->score_flux_section_std_scale = 0.01;
     config->score_flux_boundary_residual_scale = 2.0e-6;
@@ -3133,6 +3386,15 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_alpha_relative_l2_scale = 0.25;
     config->score_qs_global_scale = 0.05;
     config->score_qs_edge_scale = 0.07;
+    config->score_qh_iota_threshold = 1.0;
+    config->score_qh_iota_power = 2.0;
+    config->score_volume_qs_size_floor = 0.65;
+    config->score_volume_qs_iota_floor = 0.50;
+    config->score_qh_total_iota_floor = 0.10;
+    config->score_qh_total_helicity_floor = 0.10;
+    config->score_qh_helicity_bad = 0.10;
+    config->score_qh_helicity_good = 0.30;
+    config->score_qh_helicity_exploration_fraction = 0.20;
     sgpu_internal_set_error("");
     return 0;
 }

@@ -1,0 +1,362 @@
+{
+  "case": "best.json",
+  "s_edge": 0.49,
+  "alpha_dir": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha",
+  "alpha_fit": "alpha_fit_L12_M12_N16.npz",
+  "alpha_iota_coeffs": [
+    1.6759302616119385
+  ],
+  "surface_optimization_performed": false,
+  "coordinate_correction_only": true,
+  "surface_order": 12,
+  "nu_orders": [
+    12
+  ],
+  "regularization": 0.0,
+  "selected_nu_order": 12,
+  "backends": {
+    "surface_extraction": "C++/CUDA",
+    "field_evaluation": "C++/CUDA eval_B fp32",
+    "nu_fourier_projection": "NumPy CPU direct orthogonal projection",
+    "surface_reparameterization": "NumPy/SciPy CPU",
+    "surface_spectral_fit": "Simsopt CPU"
+  },
+  "saved_surfaces": [
+    {
+      "rho": 0.5,
+      "alpha": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha_nu/surfaces/rho_0p5_alpha.npz",
+      "alpha_nu": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha_nu/surfaces/rho_0p5_alpha_nu.npz"
+    },
+    {
+      "rho": 0.8,
+      "alpha": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha_nu/surfaces/rho_0p8_alpha.npz",
+      "alpha_nu": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha_nu/surfaces/rho_0p8_alpha_nu.npz"
+    },
+    {
+      "rho": 1.0,
+      "alpha": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha_nu/surfaces/rho_1_alpha.npz",
+      "alpha_nu": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/runs/qh_score_adam_start10_47p200_full_eval_20260731/candidates/s_0p49/alpha_nu/surfaces/rho_1_alpha_nu.npz"
+    }
+  ],
+  "rows": [
+    {
+      "rho": 0.5,
+      "s_level": 0.1225,
+      "nu_order": 12,
+      "surface_order": 12,
+      "iota": 1.6759302616119385,
+      "G": -6.943556778582066,
+      "radius_mean_m": 0.026801577618402187,
+      "extraction": {
+        "copy_in_s": 9.4503e-05,
+        "coeff_build_s": 0.051542963,
+        "newton_s": 0.000153069,
+        "copy_out_s": 3.0054e-05,
+        "total_s": 0.051820869
+      },
+      "alpha_transform": {
+        "one_plus_lambda_theta_min": 0.4158587352113571,
+        "noninvertible_fraction": 0.0
+      },
+      "alpha_projection": {
+        "spectral_fit_rms_m": 9.774679166883816e-05,
+        "spectral_fit_max_m": 0.00039021810855044306
+      },
+      "before": {
+        "iota": 1.6759302616119385,
+        "G": -6.943556778582066,
+        "simsopt_residual_norm": 57.858068309829825,
+        "relative_l2": 0.19580597700145402,
+        "point_relative_mean": 0.17330505672029708,
+        "point_relative_p95": 0.303370747712667,
+        "point_relative_max": 0.3225693929513984,
+        "direction_sine_l2": 0.0015881381406153785,
+        "direction_angle_p95_deg": 0.19358937664532508,
+        "local_G_mean": -6.943556799649305,
+        "local_G_relative_std": 0.1957992502524316,
+        "local_G_relative_deviation_p95": 0.303369753233948,
+        "normal_B_sine_mean": 0.00021095908737018006,
+        "normal_B_sine_p95": 0.0005651581032321636
+      },
+      "nu_fit": {
+        "sample_count": 4355,
+        "mode_count": 312,
+        "target_mean": 6.526224897911368e-17,
+        "target_rms": 0.19579925111376278,
+        "centered_target_rms": 0.19579925111376276,
+        "residual_rms": 0.0002074712640761022,
+        "relative_l2": 0.001059612143028871,
+        "nu_rms_turns": 0.007879749397369082,
+        "nu_max_abs_turns": 0.013500081190781651,
+        "min_mode_divisor": 0.698458603821539,
+        "skipped_resonance_count": 0
+      },
+      "nu_validation": {
+        "nu_rms_turns": 0.007879749397369084,
+        "nu_max_abs_turns": 0.013498487644325222,
+        "mapping_jacobian_min": 0.6886503585354907,
+        "mapping_jacobian_max": 1.322252823627777
+      },
+      "analytic_corrected": {
+        "relative_l2": 0.0016652435124481463,
+        "direction_angle_p95_deg": 0.193589376645325,
+        "local_G_mean": -6.943556826459973,
+        "local_G_relative_std": 0.0002085975816015283,
+        "point_relative_p95": 0.00338500220871209
+      },
+      "mapping_and_projection": {
+        "newton_iterations": 5,
+        "inversion_residual_max_turns": 2.7755575615628914e-17,
+        "mapping_jacobian_min": 0.6894584384003747,
+        "mapping_jacobian_max": 1.322493945668565,
+        "spectral_fit_rms_m": 1.221549173852021e-05,
+        "spectral_fit_max_m": 5.545463470775769e-05
+      },
+      "simsopt_corrected": {
+        "iota": 1.6759302616119385,
+        "G": -6.943556778582066,
+        "simsopt_residual_norm": 0.4677478182195332,
+        "relative_l2": 0.0015689251069621773,
+        "point_relative_mean": 0.0012793681705146442,
+        "point_relative_p95": 0.0031952981104524927,
+        "point_relative_max": 0.00675163417043228,
+        "direction_sine_l2": 0.0015467041133917605,
+        "direction_angle_p95_deg": 0.18237688596973234,
+        "local_G_mean": -6.943556806155355,
+        "local_G_relative_std": 0.00021974324687403743,
+        "local_G_relative_deviation_p95": 0.000408094765845353,
+        "normal_B_sine_mean": 0.0001857919377265511,
+        "normal_B_sine_p95": 0.0005008766568433786
+      },
+      "rho_shared_timings": {
+        "surface_extraction_s": 0.052877401933074,
+        "alpha_reparameterization_s": 3.8707293085753918,
+        "alpha_surface_fit_s": 7.526870630681515,
+        "training_field_s": 0.15174558945000172,
+        "validation_field_s": 0.11417405121028423,
+        "before_residual_s": 0.0079936683177948
+      },
+      "order_timings": {
+        "nu_fit_s": 0.11127368174493313,
+        "analytic_validation_s": 0.04906963370740414,
+        "corrected_surface_s": 15.042483616620302,
+        "corrected_residual_s": 0.0914699137210846,
+        "total_s": 15.300803018733859
+      },
+      "rho_elapsed_s": 27.053347129374743
+    },
+    {
+      "rho": 0.8,
+      "s_level": 0.31360000000000005,
+      "nu_order": 12,
+      "surface_order": 12,
+      "iota": 1.6759302616119385,
+      "G": -6.943556805037643,
+      "radius_mean_m": 0.04373068177493893,
+      "extraction": {
+        "copy_in_s": 0.000192892,
+        "coeff_build_s": 0.000337157,
+        "newton_s": 6.0519e-05,
+        "copy_out_s": 3.4776e-05,
+        "total_s": 0.000630613
+      },
+      "alpha_transform": {
+        "one_plus_lambda_theta_min": 0.35559162758187624,
+        "noninvertible_fraction": 0.0
+      },
+      "alpha_projection": {
+        "spectral_fit_rms_m": 0.00014325602893701644,
+        "spectral_fit_max_m": 0.0005746268388647436
+      },
+      "before": {
+        "iota": 1.6759302616119385,
+        "G": -6.943556805037643,
+        "simsopt_residual_norm": 58.7958735330642,
+        "relative_l2": 0.20034119096477493,
+        "point_relative_mean": 0.17604425459966827,
+        "point_relative_p95": 0.3209689125448904,
+        "point_relative_max": 0.34245363425804526,
+        "direction_sine_l2": 0.001313253307925868,
+        "direction_angle_p95_deg": 0.15953839521880503,
+        "local_G_mean": -6.943556782741249,
+        "local_G_relative_std": 0.20033666775453485,
+        "local_G_relative_deviation_p95": 0.32096686875473857,
+        "normal_B_sine_mean": 0.0003092336424782876,
+        "normal_B_sine_p95": 0.0009616994812464541
+      },
+      "nu_fit": {
+        "sample_count": 4355,
+        "mode_count": 312,
+        "target_mean": -6.526224897911368e-17,
+        "target_rms": 0.20033667020820878,
+        "centered_target_rms": 0.20033667020820878,
+        "residual_rms": 0.00015630905538614,
+        "relative_l2": 0.0007802318727953741,
+        "nu_rms_turns": 0.008236247610506186,
+        "nu_max_abs_turns": 0.01537322551075582,
+        "min_mode_divisor": 0.698458603821539,
+        "skipped_resonance_count": 0
+      },
+      "nu_validation": {
+        "nu_rms_turns": 0.008236247610506186,
+        "nu_max_abs_turns": 0.015361022379591993,
+        "mapping_jacobian_min": 0.6580247045517725,
+        "mapping_jacobian_max": 1.3420364391126016
+      },
+      "analytic_corrected": {
+        "relative_l2": 0.0014027440344217806,
+        "direction_angle_p95_deg": 0.15953839521880533,
+        "local_G_mean": -6.943556812027179,
+        "local_G_relative_std": 0.0001579436564999375,
+        "point_relative_p95": 0.0027878540475340437
+      },
+      "mapping_and_projection": {
+        "newton_iterations": 5,
+        "inversion_residual_max_turns": 2.7755575615628914e-17,
+        "mapping_jacobian_min": 0.6588319927516753,
+        "mapping_jacobian_max": 1.3423901835381487,
+        "spectral_fit_rms_m": 1.4815389589612562e-05,
+        "spectral_fit_max_m": 6.147801770157173e-05
+      },
+      "simsopt_corrected": {
+        "iota": 1.6759302616119385,
+        "G": -6.943556805037643,
+        "simsopt_residual_norm": 0.37097446370891995,
+        "relative_l2": 0.0012414420224907095,
+        "point_relative_mean": 0.0010328119827360328,
+        "point_relative_p95": 0.0023377793097804876,
+        "point_relative_max": 0.004647835514366599,
+        "direction_sine_l2": 0.001221130668103215,
+        "direction_angle_p95_deg": 0.13393357927289629,
+        "local_G_mean": -6.943556791351633,
+        "local_G_relative_std": 0.00016602240928929496,
+        "local_G_relative_deviation_p95": 0.0003117940475215022,
+        "normal_B_sine_mean": 0.00026422318780376934,
+        "normal_B_sine_p95": 0.0007887148542881695
+      },
+      "rho_shared_timings": {
+        "surface_extraction_s": 0.002679891884326935,
+        "alpha_reparameterization_s": 3.9054807778447866,
+        "alpha_surface_fit_s": 7.644458428025246,
+        "training_field_s": 0.06758919171988964,
+        "validation_field_s": 0.05234615504741669,
+        "before_residual_s": 0.0038487017154693604
+      },
+      "order_timings": {
+        "nu_fit_s": 0.11283775791525841,
+        "analytic_validation_s": 0.050907351076602936,
+        "corrected_surface_s": 14.979127079248428,
+        "corrected_residual_s": 0.05617850087583065,
+        "total_s": 15.208148812875152
+      },
+      "rho_elapsed_s": 26.90296572819352
+    },
+    {
+      "rho": 1.0,
+      "s_level": 0.49,
+      "nu_order": 12,
+      "surface_order": 12,
+      "iota": 1.6759302616119385,
+      "G": -6.943556796175034,
+      "radius_mean_m": 0.05490903308164684,
+      "extraction": {
+        "copy_in_s": 0.000169842,
+        "coeff_build_s": 0.000323462,
+        "newton_s": 0.000122041,
+        "copy_out_s": 2.8778e-05,
+        "total_s": 0.0006494
+      },
+      "alpha_transform": {
+        "one_plus_lambda_theta_min": -1.3107440330796951,
+        "noninvertible_fraction": 0.022490628904623073
+      },
+      "alpha_projection": {
+        "spectral_fit_rms_m": 0.002539077979410659,
+        "spectral_fit_max_m": 0.02480559110148649
+      },
+      "before": {
+        "iota": 1.6759302616119385,
+        "G": -6.943556796175034,
+        "simsopt_residual_norm": 59.667663072559364,
+        "relative_l2": 0.20231674937025074,
+        "point_relative_mean": 0.18084323586214177,
+        "point_relative_p95": 0.31923339916364013,
+        "point_relative_max": 0.544905432142928,
+        "direction_sine_l2": 0.03672546613751416,
+        "direction_angle_p95_deg": 5.250799640091907,
+        "local_G_mean": -6.943556797566774,
+        "local_G_relative_std": 0.1990565874224912,
+        "local_G_relative_deviation_p95": 0.3175030399666573,
+        "normal_B_sine_mean": 0.00808660125939533,
+        "normal_B_sine_p95": 0.029166429372986916
+      },
+      "nu_fit": {
+        "sample_count": 4355,
+        "mode_count": 312,
+        "target_mean": 0.0,
+        "target_rms": 0.1990565858799929,
+        "centered_target_rms": 0.1990565858799929,
+        "residual_rms": 0.002298726746033817,
+        "relative_l2": 0.011548106966024584,
+        "nu_rms_turns": 0.008237594253833235,
+        "nu_max_abs_turns": 0.016453819041594223,
+        "min_mode_divisor": 0.698458603821539,
+        "skipped_resonance_count": 0
+      },
+      "nu_validation": {
+        "nu_rms_turns": 0.008237594253833237,
+        "nu_max_abs_turns": 0.016472373770996137,
+        "mapping_jacobian_min": 0.4822884572309609,
+        "mapping_jacobian_max": 1.4055839358649982
+      },
+      "analytic_corrected": {
+        "relative_l2": 0.04151685626074331,
+        "direction_angle_p95_deg": 5.250799640091906,
+        "local_G_mean": -6.943560319227492,
+        "local_G_relative_std": 0.002362529862049711,
+        "point_relative_p95": 0.09202280138964587
+      },
+      "mapping_and_projection": {
+        "newton_iterations": 5,
+        "inversion_residual_max_turns": 2.7755575615628914e-17,
+        "mapping_jacobian_min": 0.49421576189834815,
+        "mapping_jacobian_max": 1.4097275988710272,
+        "spectral_fit_rms_m": 0.00040489762488283795,
+        "spectral_fit_max_m": 0.00454140003977889
+      },
+      "simsopt_corrected": {
+        "iota": 1.6759302616119385,
+        "G": -6.943556796175034,
+        "simsopt_residual_norm": 10.230285497552746,
+        "relative_l2": 0.035400986197958555,
+        "point_relative_mean": 0.024001695334827277,
+        "point_relative_p95": 0.07952042089054213,
+        "point_relative_max": 0.17375603641762855,
+        "direction_sine_l2": 0.03630589723608481,
+        "direction_angle_p95_deg": 4.543612798558073,
+        "local_G_mean": -6.943556794302649,
+        "local_G_relative_std": 0.004034772439965211,
+        "local_G_relative_deviation_p95": 0.008310460624283525,
+        "normal_B_sine_mean": 0.005791212614119736,
+        "normal_B_sine_p95": 0.02332074318843737
+      },
+      "rho_shared_timings": {
+        "surface_extraction_s": 0.002223016694188118,
+        "alpha_reparameterization_s": 3.8748237788677216,
+        "alpha_surface_fit_s": 7.585712851956487,
+        "training_field_s": 0.08566577360033989,
+        "validation_field_s": 0.052048368379473686,
+        "before_residual_s": 0.003307908773422241
+      },
+      "order_timings": {
+        "nu_fit_s": 0.10877568647265434,
+        "analytic_validation_s": 0.049250757321715355,
+        "corrected_surface_s": 14.899408902972937,
+        "corrected_residual_s": 0.0545337051153183,
+        "total_s": 15.117388976737857
+      },
+      "rho_elapsed_s": 26.73767746426165
+    }
+  ],
+  "total_time_s": 83.61519972793758
+}

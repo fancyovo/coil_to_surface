@@ -133,6 +133,38 @@ def validation_surface(surface, *, nphi: int, ntheta: int):
     return evaluated
 
 
+class GpuBOnlyFieldAdapter:
+    """Expose the subset of the Simsopt field API needed by residual checks."""
+
+    def __init__(self, gpu_field, *, precision: str = "fp64"):
+        self.gpu_field = gpu_field
+        self.precision = precision
+        self._points = None
+        self._field = None
+
+    def set_points(self, points) -> None:
+        self._points = np.ascontiguousarray(points, dtype=float).reshape((-1, 3))
+        self._field = None
+
+    def compute(self, derivatives: int = 0) -> None:
+        if derivatives != 0:
+            raise ValueError("GpuBOnlyFieldAdapter supports B evaluation only")
+        self._evaluate()
+
+    def B(self):
+        return self._evaluate()
+
+    def _evaluate(self):
+        if self._points is None:
+            raise RuntimeError("set_points must be called before B")
+        if self._field is None:
+            self._field = np.asarray(
+                self.gpu_field.eval_B(self._points, precision=self.precision),
+                dtype=float,
+            )
+        return self._field
+
+
 def residual_for_iota_G(surface, field, iota: float, G: float):
     xyz = surface.gamma()
     xphi = surface.gammadash1()

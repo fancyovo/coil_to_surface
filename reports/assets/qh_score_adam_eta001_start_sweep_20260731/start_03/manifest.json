@@ -1,0 +1,52 @@
+{
+  "algorithm": "standard_adam_with_orthogonal_antithetic_zo_gradient",
+  "objective": "maximize_native_qh_score",
+  "initialization": "provided_flow_prior_noise_with_zero_adam_moments",
+  "initial_case": {
+    "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-flow-zo-adam/reports/assets/qh_score_adam_start_panel_29960/start_03.json",
+    "source": "pure_iid_random_score_pool",
+    "source_case_id": 2414,
+    "recorded_input_score": 7.999593353560957,
+    "recorded_input_status": "ok",
+    "recorded_cem_score": null,
+    "recorded_standard_adam_score": null
+  },
+  "target": "QH",
+  "nfp": 4,
+  "n_base_coils": 3,
+  "noise_shape": [
+    3,
+    100
+  ],
+  "seed": 20260804,
+  "iterations": 40,
+  "directions": 4,
+  "perturbation": 0.01,
+  "learning_rate": 0.01,
+  "betas": [
+    0.9,
+    0.999
+  ],
+  "adam_epsilon": 1e-08,
+  "learning_rate_schedule": "constant",
+  "weight_decay": 0.0,
+  "gradient_delta_clip": null,
+  "update_clip": null,
+  "parameter_clip": null,
+  "proposal_search": null,
+  "accept_reject": null,
+  "flow_dtype": "torch.float32",
+  "flow_method": "rk4",
+  "flow_steps": 256,
+  "flow_autocast": false,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "native_lib_sha256": "0b7342db471788385931385c25ded8095c72cfb7fcea1e21376a0475dafaa427",
+  "gpu_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "max_wall_s": 1950.0
+}

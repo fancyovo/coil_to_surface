@@ -2,8 +2,24 @@ from __future__ import annotations
 
 import numpy as np
 
-from stellarator_eval.axis import interp_periodic_hermite, rk4_period_samples
+from stellarator_eval.axis import (
+    _classify_map_topology,
+    _topology_stability_margin,
+    interp_periodic_hermite,
+    rk4_period_samples,
+)
 from stellarator_eval.psi import PolyMode, PsiModel, psi_and_gradient
+
+
+def test_axis_topology_margin_is_quality_not_existence_gate():
+    normalized_trace = 1.9808281169448664
+    assert _classify_map_topology(-normalized_trace, 1.0) == "elliptic"
+    assert np.isclose(
+        _topology_stability_margin(-normalized_trace, 1.0),
+        2.0 - normalized_trace,
+    )
+    assert _classify_map_topology(-2.0001, 1.0) == "hyperbolic"
+    assert _classify_map_topology(-2.0, 1.0) == "parabolic"
 
 
 def test_periodic_hermite_value_derivative_are_consistent():

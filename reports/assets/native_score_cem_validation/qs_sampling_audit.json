@@ -1,0 +1,533 @@
+{
+  "count": 1000,
+  "status_counts": {
+    "ok": 798,
+    "no_surface": 74,
+    "flux_rejected": 11,
+    "no_axis": 56,
+    "drift_rejected": 61
+  },
+  "successful": {
+    "count": 798,
+    "raw_qs_global_error": {
+      "count": 798,
+      "min": 0.0032794024057634626,
+      "p10": 0.018345194214310148,
+      "median": 0.13688182020301143,
+      "p90": 0.6242745460888296,
+      "max": 28.201289184628873
+    },
+    "metadata_qs_error": {
+      "count": 798,
+      "min": 1.2264215480390966e-10,
+      "p10": 6.69607846931748e-09,
+      "median": 2.169817662679211e-06,
+      "p90": 0.0003796148315724313,
+      "max": 0.01651186898267862
+    },
+    "volume_qs_component": {
+      "count": 798,
+      "min": 0.13801266013564695,
+      "p10": 10.571741709227247,
+      "median": 23.212023511236897,
+      "p90": 36.48938405456627,
+      "max": 51.91026817202621
+    },
+    "surface_inverse_aspect_ratio": {
+      "count": 798,
+      "min": 0.0035154178565698193,
+      "p10": 0.014231251950060773,
+      "median": 0.02151344502675686,
+      "p90": 0.031051868076204497,
+      "max": 0.043355631077247866
+    },
+    "volume_valid_fraction": {
+      "count": 798,
+      "min": 0.9986979166666666,
+      "p10": 1.0,
+      "median": 1.0,
+      "p90": 1.0,
+      "max": 1.0
+    },
+    "volume_weight_effective_fraction": {
+      "count": 798,
+      "min": 0.10847339249831661,
+      "p10": 0.3578333873044054,
+      "median": 0.6113957303903984,
+      "p90": 0.8036302395107382,
+      "max": 0.9422983905448571
+    },
+    "volume_weight_effective_point_count": {
+      "count": 798,
+      "min": 10847.33924983166,
+      "p10": 35783.33873044054,
+      "median": 61139.57303903984,
+      "p90": 80363.02395107382,
+      "max": 94229.83905448571
+    },
+    "volume_point_count": {
+      "count": 798,
+      "min": 100000.0,
+      "p10": 100000.0,
+      "median": 100000.0,
+      "p90": 100000.0,
+      "max": 100000.0
+    },
+    "residual_soft_score": {
+      "count": 798,
+      "min": 0.0035638504488697976,
+      "p10": 0.19975680271476298,
+      "median": 0.46781134134602,
+      "p90": 0.7264971727215636,
+      "max": 0.921676672511097
+    },
+    "surface_size_factor": {
+      "count": 798,
+      "min": 0.35498202319117833,
+      "p10": 0.42303293206616194,
+      "median": 0.4958378379166694,
+      "p90": 0.5944183392981508,
+      "max": 0.7011245830810233
+    },
+    "spearman": {
+      "component_vs_minus_log10_raw_qs": 0.8404953532034477,
+      "raw_qs_vs_metadata_qs": 0.5051651046482796,
+      "component_vs_minus_log10_metadata_qs": 0.7327021462085294,
+      "component_vs_residual_soft_score": 0.9592874174009198,
+      "component_vs_surface_size_factor": -0.030540777362255744,
+      "component_vs_surface_size": -0.030540777362255744,
+      "component_vs_weight_ess": -0.09954782465449857,
+      "raw_qs_vs_weight_ess": 0.2051370946638648,
+      "residual_soft_score_vs_weight_ess": -0.303449648661425,
+      "component_vs_valid_fraction": 0.014506089691702367,
+      "component_vs_point_count": NaN
+    }
+  },
+  "by_helicity": {
+    "0": {
+      "count": 441,
+      "raw_qs_global_error": {
+        "count": 441,
+        "min": 0.0032794024057634626,
+        "p10": 0.014119329035154365,
+        "median": 0.04861371166398669,
+        "p90": 0.3683911178416841,
+        "max": 28.201289184628873
+      },
+      "metadata_qs_error": {
+        "count": 441,
+        "min": 1.2264215480390966e-10,
+        "p10": 7.276871051818996e-09,
+        "median": 4.243663749548103e-06,
+        "p90": 0.0009719015014618643,
+        "max": 0.010210966237527845
+      },
+      "volume_qs_component": {
+        "count": 441,
+        "min": 0.13801266013564695,
+        "p10": 7.783368298153293,
+        "median": 25.84396916114504,
+        "p90": 39.08027793213214,
+        "max": 51.91026817202621
+      },
+      "surface_inverse_aspect_ratio": {
+        "count": 441,
+        "min": 0.007157116888668694,
+        "p10": 0.014741958149966436,
+        "median": 0.02116289254421261,
+        "p90": 0.03177230571092082,
+        "max": 0.043355631077247866
+      },
+      "volume_valid_fraction": {
+        "count": 441,
+        "min": 0.9993489583333334,
+        "p10": 1.0,
+        "median": 1.0,
+        "p90": 1.0,
+        "max": 1.0
+      },
+      "volume_weight_effective_fraction": {
+        "count": 441,
+        "min": 0.12103652285080739,
+        "p10": 0.3976261386020512,
+        "median": 0.6239297687599045,
+        "p90": 0.8242183569008247,
+        "max": 0.9235419808492178
+      },
+      "volume_weight_effective_point_count": {
+        "count": 441,
+        "min": 12103.65228508074,
+        "p10": 39762.61386020512,
+        "median": 62392.97687599045,
+        "p90": 82421.83569008247,
+        "max": 92354.19808492178
+      },
+      "volume_point_count": {
+        "count": 441,
+        "min": 100000.0,
+        "p10": 100000.0,
+        "median": 100000.0,
+        "p90": 100000.0,
+        "max": 100000.0
+      },
+      "residual_soft_score": {
+        "count": 441,
+        "min": 0.0035638504488697976,
+        "p10": 0.15040552378399802,
+        "median": 0.5158510144839606,
+        "p90": 0.7589084881908534,
+        "max": 0.921676672511097
+      },
+      "surface_size_factor": {
+        "count": 441,
+        "min": 0.37016431623247126,
+        "p10": 0.42773042185824406,
+        "median": 0.4921547729552993,
+        "p90": 0.601453073000109,
+        "max": 0.7011245830810233
+      },
+      "spearman": {
+        "component_vs_minus_log10_raw_qs": 0.956170160371841,
+        "raw_qs_vs_metadata_qs": 0.8737788821822435,
+        "component_vs_minus_log10_metadata_qs": 0.8243634516743761,
+        "component_vs_residual_soft_score": 0.9556433762316117,
+        "component_vs_surface_size_factor": 0.2234654701041256,
+        "component_vs_surface_size": 0.2234654701041256,
+        "component_vs_weight_ess": 0.15335574789356304,
+        "raw_qs_vs_weight_ess": 0.06382035331615164,
+        "residual_soft_score_vs_weight_ess": -0.06388527438947607,
+        "component_vs_valid_fraction": 0.08201077702326727,
+        "component_vs_point_count": NaN
+      }
+    },
+    "1": {
+      "count": 357,
+      "raw_qs_global_error": {
+        "count": 357,
+        "min": 0.03144229324731808,
+        "p10": 0.08156479438899869,
+        "median": 0.27827007581245566,
+        "p90": 0.6855660355228654,
+        "max": 5.645908508859038
+      },
+      "metadata_qs_error": {
+        "count": 357,
+        "min": 1.2389477645043628e-10,
+        "p10": 6.5368758294256146e-09,
+        "median": 7.914958695144879e-07,
+        "p90": 0.00010724834501234218,
+        "max": 0.01651186898267862
+      },
+      "volume_qs_component": {
+        "count": 357,
+        "min": 3.6224256327284663,
+        "p10": 15.529224471717413,
+        "median": 22.365162820152896,
+        "p90": 29.24812183391301,
+        "max": 32.30695241216743
+      },
+      "surface_inverse_aspect_ratio": {
+        "count": 357,
+        "min": 0.0035154178565698193,
+        "p10": 0.013929748690109161,
+        "median": 0.02203381056884797,
+        "p90": 0.030883802435037504,
+        "max": 0.037790502588279436
+      },
+      "volume_valid_fraction": {
+        "count": 357,
+        "min": 0.9986979166666666,
+        "p10": 1.0,
+        "median": 1.0,
+        "p90": 1.0,
+        "max": 1.0
+      },
+      "volume_weight_effective_fraction": {
+        "count": 357,
+        "min": 0.10847339249831661,
+        "p10": 0.3066609275094365,
+        "median": 0.595700898171016,
+        "p90": 0.7877667257249842,
+        "max": 0.9422983905448571
+      },
+      "volume_weight_effective_point_count": {
+        "count": 357,
+        "min": 10847.33924983166,
+        "p10": 30666.092750943655,
+        "median": 59570.0898171016,
+        "p90": 78776.67257249841,
+        "max": 94229.83905448571
+      },
+      "volume_point_count": {
+        "count": 357,
+        "min": 100000.0,
+        "p10": 100000.0,
+        "median": 100000.0,
+        "p90": 100000.0,
+        "max": 100000.0
+      },
+      "residual_soft_score": {
+        "count": 357,
+        "min": 0.07909833385242585,
+        "p10": 0.29091905613483826,
+        "median": 0.44318185002204524,
+        "p90": 0.6583251500687294,
+        "max": 0.8155745493359159
+      },
+      "surface_size_factor": {
+        "count": 357,
+        "min": 0.35498202319117833,
+        "p10": 0.4203021021630337,
+        "median": 0.5013159524429806,
+        "p90": 0.5927651930777947,
+        "max": 0.6565528170573849
+      },
+      "spearman": {
+        "component_vs_minus_log10_raw_qs": 0.9371079798437486,
+        "raw_qs_vs_metadata_qs": 0.5313386669086065,
+        "component_vs_minus_log10_metadata_qs": 0.6569694728685525,
+        "component_vs_residual_soft_score": 0.9393273724027305,
+        "component_vs_surface_size_factor": -0.49031221301526706,
+        "component_vs_surface_size": -0.49031221301526706,
+        "component_vs_weight_ess": -0.5571722380496986,
+        "raw_qs_vs_weight_ess": 0.6896508524946606,
+        "residual_soft_score_vs_weight_ess": -0.7427327091780785,
+        "component_vs_valid_fraction": -0.06215964438028018,
+        "component_vs_point_count": NaN
+      }
+    }
+  },
+  "top20_by_total_score": {
+    "case_ids": [
+      178061,
+      923678,
+      772492,
+      644953,
+      772193,
+      178255,
+      1095263,
+      1050556,
+      923692,
+      644889,
+      1091051,
+      834289,
+      914256,
+      197340,
+      782070,
+      912080,
+      883413,
+      177833,
+      812728,
+      11222
+    ],
+    "minimum_valid_fraction": 1.0,
+    "minimum_weight_effective_fraction": 0.7291518098447827,
+    "maximum_raw_qs_global_error": 0.05379320903550922
+  },
+  "top20_by_volume_qs_component": {
+    "case_ids": [
+      923678,
+      772492,
+      178255,
+      178061,
+      772193,
+      912080,
+      644953,
+      923692,
+      1091051,
+      1095263,
+      644889,
+      782070,
+      605236,
+      914256,
+      1050556,
+      155901,
+      1060964,
+      660877,
+      51996,
+      179249
+    ],
+    "minimum_valid_fraction": 1.0,
+    "minimum_weight_effective_fraction": 0.5960471696787166,
+    "maximum_raw_qs_global_error": 0.019152272415310666
+  },
+  "previous_comparison": {
+    "common_ok_count": 798,
+    "raw_qs_old_vs_corrected_spearman": 0.9991491803410504,
+    "raw_qs_relative_change": {
+      "count": 798,
+      "min": -0.18363959421145026,
+      "p10": -0.07115782120213422,
+      "median": 0.0027470865092785735,
+      "p90": 0.058022618913264414,
+      "max": 0.3054210210342425
+    }
+  },
+  "point_count_convergence": {
+    "case_count": 4,
+    "evaluation_count": 12,
+    "all_status_ok": true,
+    "maximum_absolute_qs_relative_change": 0.017867066802366716,
+    "maximum_absolute_component_change": 0.14853406640107636,
+    "by_point_count": {
+      "50000": {
+        "maximum_absolute_qs_relative_change": 0.017867066802366716,
+        "maximum_absolute_component_change": 0.14853406640107636
+      },
+      "100000": {
+        "maximum_absolute_qs_relative_change": 0.013789749315274213,
+        "maximum_absolute_component_change": 0.11364217905185114
+      },
+      "200000": {
+        "maximum_absolute_qs_relative_change": 0.0,
+        "maximum_absolute_component_change": 0.0
+      }
+    },
+    "cases": [
+      {
+        "case_id": 923678,
+        "helicity": 0,
+        "point_count": 50000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.009572910376581027,
+        "qs_relative_to_reference": -0.017867066802366716,
+        "volume_qs_component": 51.945160059375475,
+        "component_delta_to_reference": 0.14853406640107636,
+        "weight_effective_fraction": 0.8984767070863031
+      },
+      {
+        "case_id": 923678,
+        "helicity": 0,
+        "point_count": 100000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.009612652242026598,
+        "qs_relative_to_reference": -0.013789749315274213,
+        "volume_qs_component": 51.91026817202625,
+        "component_delta_to_reference": 0.11364217905185114,
+        "weight_effective_fraction": 0.8984630513065439
+      },
+      {
+        "case_id": 923678,
+        "helicity": 0,
+        "point_count": 200000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.009747061780540744,
+        "qs_relative_to_reference": 0.0,
+        "volume_qs_component": 51.7966259929744,
+        "component_delta_to_reference": 0.0,
+        "weight_effective_fraction": 0.8984565882319321
+      },
+      {
+        "case_id": 1001028,
+        "helicity": 0,
+        "point_count": 50000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.08867257235026095,
+        "qs_relative_to_reference": 6.0736851656972846e-06,
+        "volume_qs_component": 15.209400683352367,
+        "component_delta_to_reference": 0.018722371414991557,
+        "weight_effective_fraction": 0.12100669775940853
+      },
+      {
+        "case_id": 1001028,
+        "helicity": 0,
+        "point_count": 100000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.08865464341652018,
+        "qs_relative_to_reference": -0.0001961200953942699,
+        "volume_qs_component": 15.20532937415716,
+        "component_delta_to_reference": 0.01465106221978374,
+        "weight_effective_fraction": 0.1210365228508088
+      },
+      {
+        "case_id": 1001028,
+        "helicity": 0,
+        "point_count": 200000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.08867203378424475,
+        "qs_relative_to_reference": 0.0,
+        "volume_qs_component": 15.190678311937376,
+        "component_delta_to_reference": 0.0,
+        "weight_effective_fraction": 0.12101484018538203
+      },
+      {
+        "case_id": 2405307,
+        "helicity": 1,
+        "point_count": 50000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.04380277160409728,
+        "qs_relative_to_reference": -0.0035989130807267955,
+        "volume_qs_component": 32.32176058272937,
+        "component_delta_to_reference": 0.029272213693779747,
+        "weight_effective_fraction": 0.2069814016319555
+      },
+      {
+        "case_id": 2405307,
+        "helicity": 1,
+        "point_count": 100000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.04386487225837081,
+        "qs_relative_to_reference": -0.0021862819354694363,
+        "volume_qs_component": 32.306952412167455,
+        "component_delta_to_reference": 0.014464043131866333,
+        "weight_effective_fraction": 0.20714802839290575
+      },
+      {
+        "case_id": 2405307,
+        "helicity": 1,
+        "point_count": 200000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.04396098336216098,
+        "qs_relative_to_reference": 0.0,
+        "volume_qs_component": 32.29248836903559,
+        "component_delta_to_reference": 0.0,
+        "weight_effective_fraction": 0.20709662168744147
+      },
+      {
+        "case_id": 2461973,
+        "helicity": 1,
+        "point_count": 50000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.21699738869767063,
+        "qs_relative_to_reference": -0.0014228570579619682,
+        "volume_qs_component": 20.964684392288156,
+        "component_delta_to_reference": 0.005417501374932243,
+        "weight_effective_fraction": 0.10849730383826986
+      },
+      {
+        "case_id": 2461973,
+        "helicity": 1,
+        "point_count": 100000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.2173507615545585,
+        "qs_relative_to_reference": 0.00020329180927625146,
+        "volume_qs_component": 20.95106258547263,
+        "component_delta_to_reference": -0.008204305440592918,
+        "weight_effective_fraction": 0.10847339249831689
+      },
+      {
+        "case_id": 2461973,
+        "helicity": 1,
+        "point_count": 200000,
+        "reference_point_count": 200000,
+        "status": "ok",
+        "qs_global_error": 0.2173065849057454,
+        "qs_relative_to_reference": 0.0,
+        "volume_qs_component": 20.959266890913224,
+        "component_delta_to_reference": 0.0,
+        "weight_effective_fraction": 0.10845153040794141
+      }
+    ]
+  }
+}

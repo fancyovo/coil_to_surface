@@ -1,0 +1,136 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_nfp6_nc2_screen128_adam200_20260803/seed_2026080360/adam/best.json",
+  "surface_npz": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/candidates/s_0p36/standard_rho_1/boozer_standard.npz",
+  "surface": {
+    "nfp": 6,
+    "order": 12,
+    "iota": 2.300389490541507,
+    "G": -8.274332785350452,
+    "rho": 1.0,
+    "s_edge": 0.36,
+    "s_level": 0.36
+  },
+  "desc_preflight": {
+    "jax_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "gpu_available": false
+  },
+  "visualization": {
+    "surface_meta": {
+      "iota": 2.300389490541507,
+      "G": -8.274332785350452,
+      "psi_level": null
+    },
+    "b_abs_min": 0.8009513599065926,
+    "b_abs_mean": 0.9072016090928599,
+    "b_abs_max": 1.0315894339729728,
+    "poincare": {
+      "hit_counts": [
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "seed_r_min": 1.1836961133181876,
+      "seed_r_max": 1.2107414127294533,
+      "surface_r_outer_phi0": 1.2121648495405726,
+      "edge_fraction": 0.95,
+      "tmax_fl": 20000000.0,
+      "tol": 1e-11,
+      "psi_drift": null,
+      "save_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/assets/poincare.png"
+    },
+    "boozer_b_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/assets/boozer_b.png",
+    "boozer_b_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/assets/boozer_b.html",
+    "coils_surface_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/assets/coils_surface.html",
+    "coils_surface_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/assets/coils_surface.png"
+  },
+  "visualization_time_s": 57.6795867709443,
+  "desc": {
+    "toroidal_flux": -0.006161789586891374,
+    "input": {
+      "mpol": 12,
+      "ntor": 12,
+      "stellsym": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/input.check"
+    },
+    "nested_initial": true,
+    "initial_force_compute_success": true,
+    "initial_force_compute_time_s": 6.245381467975676,
+    "initial_force_mean_abs_normalized": 1.0281420984311218,
+    "initial_force_max_abs_normalized": 157.66131481808245,
+    "initial_force_p95_abs_normalized": 2.248973563396163,
+    "initial_force_vol_average_raw": 6901820.6095851725,
+    "plots_initial": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/boundary_initial.png",
+        "time_s": 2.375678793992847
+      }
+    },
+    "solve_call_success": true,
+    "solve_return": "(Equilibrium at 0x9a91ff86a50 (L=8, M=8, N=8, NFP=6, sym=True, spectral_indexing=ansi),           message: Optimization terminated successfully.\n                   `xtol` condition satisfied. (xtol=1.00e-06)\n          success: True\n              fun: [-1.853e-06  8.145e-05 ... -6.840e-04 -8.479e-04]\n                x: [-7.528e-05  6.908e-04 ... -2.019e-02 -1.654e-01]\n              nit: 50\n             cost: 0.0001861645342905554\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 1.069023800542129e-08\n             nfev: 56\n             njev: 51\n             allx: [Array([-9.970e-06, -3.931e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.094e-04, -1.832e-04, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-5.122e-05, -8.489e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-2.914e-05, -6.466e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-2.377e-05, -3.649e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.653e-05, -2.940e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.371e-05, -2.792e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.335e-05, -2.769e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.207e-05, -2.739e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.147e-05, -2.705e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.116e-05, -2.713e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.097e-05, -2.708e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.093e-05, -2.709e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.088e-05, -2.708e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.091e-05, -2.707e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.092e-05, -2.704e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.092e-05, -2.701e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.091e-05, -2.696e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.089e-05, -2.691e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.086e-05, -2.685e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.082e-05, -2.679e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.079e-05, -2.674e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.075e-05, -2.668e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.072e-05, -2.663e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.070e-05, -2.658e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.068e-05, -2.653e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.066e-05, -2.649e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.064e-05, -2.645e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.063e-05, -2.642e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.062e-05, -2.638e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.062e-05, -2.635e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.061e-05, -2.632e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=float64), Array([-1.061e-05, -2.630e-05, ..., -4.959e-05,\n                          -3.391e-06], dtype=floa",
+    "optimizer_success": true,
+    "optimizer_message": "Optimization terminated successfully.\n`xtol` condition satisfied. (xtol=1.00e-06)",
+    "optimizer_cost": 0.0001861645342905554,
+    "optimizer_nit": 50.0,
+    "optimizer_nfev": 56.0,
+    "optimizer_njev": 51.0,
+    "optimizer_optimality": 1.069023800542129e-08,
+    "solve_time_s": 128.50040928600356,
+    "nested_final": true,
+    "final_force_compute_success": true,
+    "final_force_compute_time_s": 0.98769097100012,
+    "final_force_mean_abs_normalized": 0.0010973601978408925,
+    "final_force_max_abs_normalized": 0.010441998220215253,
+    "final_force_p95_abs_normalized": 0.002617027810605978,
+    "final_force_vol_average_raw": 2120.875512922327,
+    "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/equilibrium.h5",
+    "plots_final": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/boundary.png",
+        "time_s": 0.6314838330727071
+      },
+      "boozer_modes": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/boozer_modes.png",
+        "time_s": 10.492130759055726
+      },
+      "boozer_B": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/boozer_B.png",
+        "time_s": 9.609740967978723
+      },
+      "qs_QA": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/qs_QA.png",
+        "time_s": 7.7487248739926144
+      },
+      "qs_QH": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/qs_QH.png",
+        "time_s": 2.6591761910822242
+      },
+      "qs_QP": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/qs_QP.png",
+        "time_s": 2.1596757809165865
+      },
+      "iota": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_full_eval_20260803/full/desc/iota.png",
+        "time_s": 4.095015670987777
+      }
+    }
+  },
+  "desc_time_s": 209.4947994700633,
+  "status": "completed",
+  "total_time_s": 315.9616564649623
+}

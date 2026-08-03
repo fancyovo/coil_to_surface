@@ -237,7 +237,7 @@ def main() -> None:
                 edgecolor="#252525",
                 linewidth=1.2,
                 zorder=6,
-                label="Adam step 1" if metric == "score" else None,
+                label="Adam start (step 0)" if metric == "score" else None,
             )
         axis.scatter(
             best_point["qh"],
@@ -353,7 +353,13 @@ def main() -> None:
             - len(background["random_flow"]["qh"]),
         },
         "adam_points_plotted": len(trajectory["iteration"]),
-        "adam_step1": {key: float(value[0]) for key, value in trajectory.items() if key != "iteration"},
+        "adam_start": {
+            key: float(value[0]) for key, value in trajectory.items() if key != "iteration"
+        },
+        # Retain the historical key so existing artifact readers do not break.
+        "adam_step1": {
+            key: float(value[0]) for key, value in trajectory.items() if key != "iteration"
+        },
         "adam_best": best_point,
         "adam_best_quasr_percentiles": {
             "score_lower_or_equal_percent": percentile(quasr["score"], best_point["score"]),

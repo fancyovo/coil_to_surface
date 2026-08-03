@@ -43,6 +43,15 @@ def test_volume_sampler_requires_fixed_budget_and_95_percent_validity():
     assert _minimum_volume_sample_count(200_000, 30_000, 201_000) == 200_000
 
 
+def test_volume_sampler_can_use_only_the_fixed_budget_for_full_evaluation():
+    assert _minimum_volume_sample_count(
+        180_000, 180_000, 225_792, minimum_candidate_valid_fraction=0.0
+    ) == 180_000
+    assert _minimum_volume_sample_count(
+        180_000, 180_000, 225_792, minimum_candidate_valid_fraction=0.8
+    ) == 180_634
+
+
 def make_model():
     modes = build_modes(3, 1)
     phi_axis = np.linspace(0.0, 2.0 * np.pi / 3.0, 64, endpoint=False)

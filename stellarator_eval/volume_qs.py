@@ -311,6 +311,7 @@ def sample_volume_points(
         point_count=config.point_count,
         alpha_fit_point_count=config.alpha_fit_point_count,
         candidate_count=len(phi_flat),
+        minimum_candidate_valid_fraction=config.minimum_candidate_valid_fraction,
     )
     if available < minimum_count:
         raise RuntimeError(
@@ -356,6 +357,8 @@ def sample_volume_points(
         "nfp": np.asarray(model.nfp),
         "candidate_count": np.asarray([len(phi_flat)]),
         "available_count": np.asarray([available]),
+        "minimum_count": np.asarray([minimum_count]),
+        "candidate_valid_fraction": np.asarray([available / len(phi_flat)]),
     }
 
 
@@ -363,11 +366,19 @@ def _physical_volume_weights(R, boundary_radius):
     return np.asarray(R) * np.asarray(boundary_radius) ** 2
 
 
-def _minimum_volume_sample_count(point_count, alpha_fit_point_count, candidate_count):
+def _minimum_volume_sample_count(
+    point_count,
+    alpha_fit_point_count,
+    candidate_count,
+    minimum_candidate_valid_fraction=0.95,
+):
+    fraction = float(minimum_candidate_valid_fraction)
+    if not np.isfinite(fraction) or not 0.0 <= fraction <= 1.0:
+        raise ValueError("minimum_candidate_valid_fraction must be between 0 and 1")
     return max(
         int(alpha_fit_point_count),
         int(point_count),
-        int(np.ceil(0.95 * candidate_count)),
+        int(np.ceil(fraction * candidate_count)),
     )
 
 

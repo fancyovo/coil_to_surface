@@ -293,6 +293,15 @@ def main() -> None:
     parser.add_argument("--grid-phi", type=int, default=96)
     parser.add_argument("--rho-min", type=float, default=0.06)
     parser.add_argument(
+        "--minimum-candidate-valid-fraction",
+        type=float,
+        default=0.95,
+        help=(
+            "Minimum valid fraction of the generated ray candidates. The fixed "
+            "train+validation point budget is always required independently."
+        ),
+    )
+    parser.add_argument(
         "--sampling-backend",
         choices=("gpu-ray", "legacy-cartesian"),
         default="gpu-ray",
@@ -336,6 +345,9 @@ def main() -> None:
                 rho_min=args.rho_min,
                 point_count=args.train_points + args.validation_points,
                 alpha_fit_point_count=args.train_points + args.validation_points,
+                minimum_candidate_valid_fraction=(
+                    args.minimum_candidate_valid_fraction
+                ),
                 grid_xy=args.grid_xy,
                 grid_phi=args.grid_phi,
                 precision=args.precision,
@@ -397,6 +409,10 @@ def main() -> None:
             sampling_diagnostics = {
                 "candidate_points": int(points["candidate_count"][0]),
                 "available_points": int(points["available_count"][0]),
+                "minimum_required_points": int(points["minimum_count"][0]),
+                "candidate_valid_fraction": float(
+                    points["candidate_valid_fraction"][0]
+                ),
                 "sampled_points": int(len(sampled_B)),
             }
         else:

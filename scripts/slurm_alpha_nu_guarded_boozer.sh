@@ -23,6 +23,7 @@ s_edge=${S_EDGE:-0.25}
 alpha_train_points=${ALPHA_TRAIN_POINTS:-120000}
 alpha_validation_points=${ALPHA_VALIDATION_POINTS:-60000}
 alpha_sampling_backend=${ALPHA_SAMPLING_BACKEND:-gpu-ray}
+alpha_min_candidate_valid_fraction=${ALPHA_MIN_CANDIDATE_VALID_FRACTION:-0.0}
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 gpu_selector=${CUDA_VISIBLE_DEVICES:-}
@@ -90,6 +91,7 @@ python3 "$project/scripts/alpha_clebsch_ls_experiment.py" \
     --iota-degree 0 \
     --train-points "$alpha_train_points" \
     --validation-points "$alpha_validation_points" \
+    --minimum-candidate-valid-fraction "$alpha_min_candidate_valid_fraction" \
     --sampling-backend "$alpha_sampling_backend" \
     --precision fp32 \
     --gpu-lib "$gpu_lib" \

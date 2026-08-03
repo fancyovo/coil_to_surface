@@ -12,6 +12,7 @@ gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 eval_env=${EVAL_ENV:-$HOME/local_surface_evaluator/.venv-desc016-py312}
 serial_candidates=${SERIAL_CANDIDATES:-0}
 candidate_cpus_per_task=${CANDIDATE_CPUS_PER_TASK:-4}
+alpha_min_candidate_valid_fraction=${ALPHA_MIN_CANDIDATE_VALID_FRACTION:-0.0}
 candidate_root=$OUTPUT_ROOT/candidates
 
 [[ $serial_candidates == 0 || $serial_candidates == 1 ]] || {
@@ -20,6 +21,10 @@ candidate_root=$OUTPUT_ROOT/candidates
 }
 [[ $candidate_cpus_per_task =~ ^[1-9][0-9]*$ ]] || {
     printf 'CANDIDATE_CPUS_PER_TASK must be a positive integer\n' >&2
+    exit 2
+}
+[[ $alpha_min_candidate_valid_fraction =~ ^(0([.][0-9]+)?|1([.]0+)?)$ ]] || {
+    printf 'ALPHA_MIN_CANDIDATE_VALID_FRACTION must be between 0 and 1\n' >&2
     exit 2
 }
 
@@ -58,7 +63,7 @@ for edge in "${edges[@]}"; do
     submit_args=(
         --parsable
         --cpus-per-task="$candidate_cpus_per_task"
-        --export="ALL,PROJECT=$project,GPU_LIB=$gpu_lib,EVAL_ENV=$eval_env,CASE_FILE=$CASE_FILE,RUN_DIR=$RUN_DIR,S_EDGE=$edge,OUTPUT_DIR=$output_dir"
+        --export="ALL,PROJECT=$project,GPU_LIB=$gpu_lib,EVAL_ENV=$eval_env,CASE_FILE=$CASE_FILE,RUN_DIR=$RUN_DIR,S_EDGE=$edge,OUTPUT_DIR=$output_dir,ALPHA_MIN_CANDIDATE_VALID_FRACTION=$alpha_min_candidate_valid_fraction"
     )
     if [[ $serial_candidates == 1 && -n $previous_job ]]; then
         submit_args+=(--dependency="afterany:$previous_job")

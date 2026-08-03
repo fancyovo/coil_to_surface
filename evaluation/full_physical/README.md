@@ -9,9 +9,9 @@
 2. `submit_surface_candidates.sh`：对给定的 `S_EDGES` 运行 psi -> alpha -> nu、保守 guard 诊断、标准 LS/Newton 和独立密网格验收。
    默认每个候选申请 4 CPU 和 1 GPU 并行运行；在四卡 P107 上同时评估四个候选。只有资源受限时才显式设置
    `SERIAL_CANDIDATES=1`。可用 `CANDIDATE_CPUS_PER_TASK` 调整单候选 CPU 数，默认值为 4。
-   alpha 默认使用 `gpu-ray`。若某个外层候选仅因固定点数采样器的 95% 有效射线预算而在 alpha 前失败，
-   可对该候选显式设置 `ALPHA_SAMPLING_BACKEND=legacy-cartesian` 后写入新的重跑目录；不得降低有效射线门槛，
-   也不得覆盖原失败目录。该回退只改变 alpha 取点实现，后续标准 LS/Newton 和独立验收不变。
+   alpha 默认使用 `gpu-ray`，完整评估只要求有效候选足以填满固定的训练点和验证点预算；候选有效比例会作为诊断记录，
+   但不能在标准 LS/Newton 之前替代最终磁面判定。生产原生 score 的体采样仍保留 95% 默认门槛。
+   禁止因为外层候选的有效比例下降而自行回退到慢一至两个数量级的 `legacy-cartesian` CPU 路径。
 3. `select_largest_standard_surface.py`：按标准 LS/Newton 的最终验证结果和嵌套分支连续性选择最大已测通过面；形式上收敛但封闭体积随 `s` 外扩反而减小的结果会被判为内支跳转。默认要求至少有一个更外侧失败点，否则要求继续外扩。
 4. `submit_downstream.sh`：对选中的唯一 `boozer_standard.npz` 运行庞加莱、Boozer 场图、三维 HTML 和 DESC。直接 Boozer 与 DESC 的 $|B|$ 图均固定为白底彩色等高线，颜色表示 $|B|$ 大小，不使用热力图或填色等高线。
 5. `validate_delivery.sh`：检查固定原始产物，并确认全部 DESC PNG 已在报告中逐张引用。

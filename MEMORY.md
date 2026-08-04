@@ -52,6 +52,10 @@ once the task is accepted.
   optimizer bug accepts the first `status=ok` candidate without requiring an
   exact-score improvement, so the biased direction accumulates for dozens of
   steps. Detailed evidence and countermeasures are in report section 14.
+  Validated report, analysis code, and curated assets are archived in commit
+  `f409daa`, synchronized to the remote `qh-blackbox-gradient` worktree. At
+  finalization `squeue` contained no project job, no score/reference worker
+  process remained, and all four GPU postflight rows were idle at 2 MiB/0%.
   Commit `25d0bc3` implements the opt-in frozen-front closure oracle, current
   physical-gradient trajectory loading, component-gradient reference output,
   and Slurm launchers; local Python/reference tests pass `10/10`. P107 smoke

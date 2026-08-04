@@ -303,3 +303,117 @@ step-400 的上升被完整恢复，最佳观测增益约为 $+0.096$；第一�
 - 当前纯 VJP 没有稳定的墙钟优势，主要因为 flow backward，而不是原生 score reverse。因此不提交纯 VJP 长跑，也不把实验梯度合并到生产 score 主线。
 - 两轮提案已确认 G2/G3b 正方向在 48/48 个 antithetic 对中排序正确，并可通过回溯在 47/48 个测试步上超过中心。下一步可做“G2 作为方向先验、ABI-9 负责接受与二分回溯”的混合短跑；G3b 暂不作为默认，因为其边际方向收益不稳定。
 - 若目标是相对四方向 Adam 获得明确墙钟加速，优先优化 flow VJP 的重算成本；若目标是继续提高方向余弦，则优先补齐 G4 的 $s/\psi$/磁面移动整体依赖。两者是不同瓶颈，不应混为一项优化。
+
+## 9. 潜空间 VJP 的含义与性能解释
+
+### 9.1 它具体计算什么
+
+flow 将潜变量 $z$ 解码成物理线圈参数 $x$：
+
+$$
+x=F_\theta(z;N_{\mathrm{FP}}).
+$$
+
+原生 CUDA score 的 G2/G3b 先在物理参数空间给出一个 cotangent：
+
+$$
+g_x=\frac{\partial \widetilde S}{\partial x}.
+$$
+
+优化实际需要的是潜空间方向
+
+$$
+g_z
+=J_F(z)^T g_x
+=\frac{\partial}{\partial z}
+\left\langle g_x,F_\theta(z)\right\rangle.
+$$
+
+这就是 vector--Jacobian product，简称 VJP。实现没有形成 $J_F$ 这个完整 Jacobian，而是把标量
+
+$$
+L(z)=\left\langle g_x,F_\theta(z)\right\rangle
+$$
+
+交给 PyTorch，从物理输出反传到 $z$。反传还包含训练集标准化的逆变换、总绝对电流归一化和主导电流取正的 gauge 变换，因此得到的确实是当前优化变量约定下的潜空间梯度。模型参数全部设置为 `requires_grad=False`，不会计算或保存 3033 万参数的权重梯度；只计算输入 $z$ 的梯度。
+
+这里的 $g_x$ 是 G2/G3b 定义的连续物理代理梯度，不是穿透磁轴搜索、$s/\psi$ 重拟合和所有离散分支的“完整 score 精确梯度”。完整 ABI-9 score 仍负责接受、拒绝和回溯。
+
+### 9.2 当前实现到底执行了多少网络调用
+
+当前 checkpoint 是 8 层、宽度 512、8 头、SwiGLU hidden 1408 的非因果 Transformer，共 30,333,540 个参数。nfp6/nc2 实验一次只输入一个样本和两个 coil token，即张量的有效 batch-token 乘积只有 2。
+
+解码求解 flow ODE：
+
+$$
+\frac{dx}{dt}=v_\theta(x,t,N_{\mathrm{FP}}),
+\qquad t:0\to1.
+$$
+
+当前使用 256 个 RK4 步。每个 RK4 步顺序计算 $k_1,k_2,k_3,k_4$，因此一次单样本解码调用速度场网络
+
+$$
+256\times4=1024
+$$
+
+次。ODE 步之间有状态依赖，同一步的四个 stage 也彼此依赖，不能沿时间维并行。
+
+可微实现把每 8 个 ODE 步包成一个 activation-checkpoint chunk，共
+
+$$
+256/8=32
+$$
+
+个 chunk。前向时只保存 chunk 边界而不保存全部 Transformer 激活。反向遍历每个 chunk 时，PyTorch 先重算该 chunk 的前向，再对重算图做 VJP。因此反向阶段包含：
+
+1. 再执行一遍全部 1024 次速度场前向；
+2. 对这 1024 次调用逐次传播激活梯度；
+3. 不计算模型权重梯度，只计算状态和最终潜变量梯度。
+
+`checkpoint_steps=8` 主要控制激活显存和 checkpoint 调度粒度，并不会减少总 ODE 网络调用。现有实现还会在每次速度场调用中创建很小的时间张量。所有计时前后都执行了 `torch.cuda.synchronize()`，所以不是异步 CUDA 导致的虚高。
+
+### 9.3 为什么单样本这么慢，但以前批量正向很快
+
+你的判断是对的：这条路径主要受串行调用和 GPU 吃不满限制，不是 5090 算力不足。
+
+每次网络调用只有 1 个样本、2 个 token。线性层虽然有 $512\times1536$、$512\times2816$ 等权重，但 GEMM 的 $M$ 维只有 2；attention 的序列长度也只有 2。这类运算远小于 5090 擅长的大矩阵，主要成本变成：
+
+- 数以万计的小 kernel launch；
+- 1024 次严格串行的模型调用；
+- 反向 checkpoint 导致的完整前向重算；
+- 每次小 GEMM 读取权重但只有两个 token 复用，算术强度很低。
+
+因此必须区分“批量吞吐”和“单样本延迟”：
+
+| 场景 | batch 形态 | 观测时间 | 含义 |
+|---|---:|---:|---|
+| 正式 latent VJP 的 flow 前向 | 1 个样本、2 个 token | 4.53--5.12 s | 1024 次极小且串行的模型调用 |
+| 正式 latent VJP 的 flow backward | 同一个样本 | 8.52--9.47 s | checkpoint 重算加输入 VJP |
+| 提案作业批量解码 | 每组 12 个样本 | 48 个候选共 11.70 s | 平均约 0.244 s/样本，GPU 利用明显改善 |
+| 旧随机池批量解码 | 4096 个潜变量 | 共 38.34 s | 平均约 9.36 ms/样本，体现的是吞吐而非单例延迟 |
+
+所以“正向明显比 score 快”对应的是批量解码经验；本报告 VJP 表中的 4.5--5.1 s 是 batch=1 的延迟。二者并不矛盾。当前 backward/forward 比约为 $1.7$--$1.9$，考虑 backward 中先重算一次完整前向，这个比例并不异常。异常之处是整个前向本身以 batch=1 串行执行 1024 次小模型，GPU 利用率很低。
+
+报告第 7.4 节的 $17.4$--$19.8\ \mathrm{s}$ 还不是“flow backward 单项耗时”，而是
+
+$$
+t_{\mathrm{step}}
+=t_{\mathrm{native\ forward}}
++t_{\mathrm{native\ reverse}}
++t_{\mathrm{flow\ forward}}
++t_{\mathrm{flow\ backward}}.
+$$
+
+其中原生 reverse 只有 $0.12$--$0.16\ \mathrm{s}$；flow backward 是 $8.5$--$9.5\ \mathrm{s}$。在真正集成的优化器中，可微 flow 前向可以同时提供交给 native score 的物理线圈，不需要额外再做一次 no-grad flow 解码，但仍必须按上述顺序等待 native 返回 $g_x$ 后才能启动 flow backward。
+
+### 9.4 优化优先级
+
+当前最合理的优化顺序如下。
+
+1. **先验证更少的 ODE 网络调用。** 分别比较 RK4-64、RK4-128 与 RK4-256 的物理输出、潜空间 VJP 余弦和真实提案增益。若 RK4-128 可接受，flow 前向和反向主体理论上都近似减半。这是最直接的乘法级改进，不能只按 token 重建误差判断，必须验证梯度方向和 score 接受率。
+2. **为单样本增加无 checkpoint 模式。** 当前无论 chunk 取 8、16 还是 32，反向都会重算整条 ODE。单样本、两个 token 可能有足够显存保留全部激活；若实测显存允许，去掉 checkpoint 可省掉反向中的一次完整前向，预期是数秒级而不是百分之几的收益。这个结论需要显存和墙钟 benchmark，尚未实测。
+3. **把 VJP 扩展成同条件批处理。** 当前代码显式拒绝 batch 大于 1。对多个随机起点或多个并行优化轨迹，可以按相同 $(N_{\mathrm{FP}},n_c)$ 分组后一次做 batched VJP，显著提高总吞吐。它不能降低单条轨迹的 ODE 串行深度，但适合本项目本来就需要的多起点搜索。
+4. **减少 launch 开销。** 在数值步数确定后，再评估 CUDA Graph、`torch.compile` 和把 RK4/time tensor 构造编译进静态图。这里的收益来自减少大量小 kernel 的 Python/launch 开销，而不是 attention 算法本身。
+5. **最后才考虑新积分/新模型。** Heun、离散 adjoint、连续 adjoint或 reflow/distillation 都可能减少网络函数评估，但会改变精度或训练对象，必须重新做 RK4-256 同级的正反追踪、VJP 余弦和真实 score 提案验证，不能只看速度。
+
+因此当前的准确判断不是“反传天然很慢”，而是“现有高精度单样本实现用了 1024 次串行小 Transformer 调用，并为省显存在 backward 中重算这 1024 次前向”。这条路径有明确优化空间，尤其是减少 RK4 网络调用、取消单样本 checkpoint 和批量多起点 VJP。

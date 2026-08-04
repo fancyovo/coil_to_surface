@@ -75,6 +75,20 @@ once the task is accepted.
   advantage over four-direction Adam. Full evidence and plots are in
   `reports/qh_blackbox_gradient_exploration_report.md`. Experimental APIs
   remain opt-in; production `sgpu_score_coils` and ABI-9 are unchanged.
+- On 2026-08-04, a source audit clarified the apparent flow-VJP bottleneck.
+  The validated path is batch 1 with two coil tokens through a 30.33M-parameter
+  Transformer and RK4-256, hence 1024 strictly sequential velocity-model calls.
+  It checkpoints every 8 ODE steps (32 chunks), so backward recomputes all
+  1024 forwards and then propagates their activation VJPs. Parameters are
+  frozen; no weight gradients are computed. The observed `8.5--9.5 s`
+  backward versus `4.5--5.1 s` single-sample forward is therefore expected;
+  the poor latency comes from tiny GEMMs/kernel launches and checkpoint
+  recomputation, not saturated RTX 5090 arithmetic. Earlier fast decode numbers
+  were batched throughput: 48 candidates decoded in `11.70 s`, while the old
+  4096-latent pool took `38.34 s` total. Optimization priority is gradient-
+  validated RK4-64/128, a no-checkpoint batch-1 benchmark if memory permits,
+  then same-condition batched multi-start VJP and CUDA-graph/compile launch
+  reduction. Detailed explanation is report section 9.
 - On 2026-08-04, commit `ac99266` adds the opt-in cumulative G3 gradient path.
   G3 keeps the production `sgpu_score_coils` ABI/path unchanged and, only for
   `sgpu_score_coils_g3_gradient`, caches the existing FP32 augmented-QR factors

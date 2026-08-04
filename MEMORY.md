@@ -106,6 +106,19 @@ once the task is accepted.
   toolkit, runtime, and architecture, and uses a fresh
   `gpu_backend/build_gradient_sm120/` directory so the old `sm_52` CMake cache
   cannot leak into the rerun.
+  Corrected Students job `31672` completed `0:0` in `00:03:05` on an idle RTX
+  5090. The experimental `sm_120` library SHA-256 is `d5a41836...`. Against
+  the pinned baseline, the same input's score differed by only `1.42e-14` and
+  all seven components agreed at floating-point roundoff. Median pure-forward
+  times were `5.15026/5.15044 s` (baseline/experimental), so the measured
+  normal-path overhead is `0.0036%`; G1 and cumulative G2 calls cost only
+  `0.8%/2.44%` above the experimental forward. G2's explicit reverse phase was
+  `0.1273 s`, including point/field/parameter-map phases of
+  `0.00018/0.03039/0.05237 s`. The four-direction full-score smoke gave cosine
+  `0.568` but only 50% sign agreement, which is too small a sample for a
+  conclusion; formal 200-direction job `31640` remains authoritative. Future
+  validation now hard-fails if status differs or score/component drift exceeds
+  `1e-10`. Artifacts are under `runs/qh_native_g1_validation_31672/`.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

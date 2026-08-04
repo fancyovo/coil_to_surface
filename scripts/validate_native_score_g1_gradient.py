@@ -216,6 +216,22 @@ def main() -> None:
     forward_wall = np.asarray([row["wall_s"] for row in forward_rows])
     gradient_wall = np.asarray([row["wall_s"] for row in gradient_rows])
     g2_wall = np.asarray([row["wall_s"] for row in g2_rows])
+    forward_status_match = all(
+        baseline["result"]["status"] == forward["result"]["status"]
+        for baseline, forward in zip(baseline_rows, forward_rows, strict=True)
+    )
+    forward_score_max_abs_diff = max(
+        abs(baseline["result"]["score"] - forward["result"]["score"])
+        for baseline, forward in zip(baseline_rows, forward_rows, strict=True)
+    )
+    forward_component_max_abs_diff = max(
+        abs(
+            baseline["result"]["components"][component]
+            - forward["result"]["components"][component]
+        )
+        for baseline, forward in zip(baseline_rows, forward_rows, strict=True)
+        for component in baseline["result"]["components"]
+    )
     output = {
         "format": "native_score_g1_validation_v1",
         "case": str(args.case),
@@ -236,12 +252,25 @@ def main() -> None:
         "experimental_forward_wall_median_s": float(np.median(forward_wall)),
         "g1_wall_median_s": float(np.median(gradient_wall)),
         "g2_wall_median_s": float(np.median(g2_wall)),
+        "forward_status_match": forward_status_match,
+        "forward_score_max_abs_diff": float(forward_score_max_abs_diff),
+        "forward_component_max_abs_diff": float(forward_component_max_abs_diff),
         "forward_only_overhead_fraction": float(np.median(forward_wall) / np.median(baseline_wall) - 1.0),
         "g1_overhead_fraction": float(np.median(gradient_wall) / np.median(forward_wall) - 1.0),
         "g2_overhead_fraction": float(np.median(g2_wall) / np.median(forward_wall) - 1.0),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2, allow_nan=True) + "\n", encoding="utf-8")
+    if (
+        not forward_status_match
+        or forward_score_max_abs_diff > 1.0e-10
+        or forward_component_max_abs_diff > 1.0e-10
+    ):
+        raise RuntimeError(
+            "experimental gradient library changed the production forward result: "
+            f"status_match={forward_status_match}, score_diff={forward_score_max_abs_diff:.3e}, "
+            f"component_diff={forward_component_max_abs_diff:.3e}"
+        )
 
 
 if __name__ == "__main__":

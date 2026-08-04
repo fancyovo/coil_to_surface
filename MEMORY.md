@@ -44,8 +44,10 @@ once the task is accepted.
   objectives `S(F_N(z))`; cross-step distance to RK4-256 tests interchangeability,
   not whether the VJP of `F_N` is attached to the wrong point. The VJP directly
   differentiates the actual discrete `F_N` graph and does not reverse-integrate
-  before taking the gradient. Commit `932cc91` added the same-step closure
-  benchmark. Preliminary P107 job `31847` reused RK4-256 probe displacements
+  before taking the gradient. Branch `qh-blackbox-gradient` commits
+  `932cc91/cc57773` added the same-step closure benchmark and made every probe
+  denominator use its own discrete map; commit `7bf84eb` added the validated
+  assets and report section. Preliminary P107 job `31847` reused RK4-256 probe displacements
   only as the physical ratio denominator; its absolute closures remain valid,
   but its ratios are superseded and must not be reported. Replacement job
   `31850` recomputed all 200 antithetic probes separately under each candidate

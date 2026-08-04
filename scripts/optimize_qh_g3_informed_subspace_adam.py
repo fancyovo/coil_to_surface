@@ -89,15 +89,21 @@ def exact_subspace_gradient(
     ):
         plus_branch = branch_fingerprint(plus)
         minus_branch = branch_fingerprint(minus)
-        valid = bool(
-            result_valid(plus)
-            and result_valid(minus)
-            and plus_branch == center_branch
-            and minus_branch == center_branch
-        )
+        plus_same_branch = bool(result_valid(plus) and plus_branch == center_branch)
+        minus_same_branch = bool(result_valid(minus) and minus_branch == center_branch)
+        valid = plus_same_branch or minus_same_branch
         slope = float("nan")
-        if valid:
+        difference_scheme = "invalid"
+        if plus_same_branch and minus_same_branch:
             slope = (result_score(plus) - result_score(minus)) / (2.0 * perturbation)
+            difference_scheme = "centered"
+        elif plus_same_branch:
+            slope = (result_score(plus) - result_score(center_result)) / perturbation
+            difference_scheme = "forward"
+        elif minus_same_branch:
+            slope = (result_score(center_result) - result_score(minus)) / perturbation
+            difference_scheme = "backward"
+        if valid:
             if math.isfinite(slope):
                 gradient += slope * np.asarray(direction, dtype=np.float64) / dimension
                 accepted_slopes.append(slope)
@@ -109,6 +115,7 @@ def exact_subspace_gradient(
                 "kind": "g3" if index == 0 else "random",
                 "valid": valid,
                 "slope": slope,
+                "difference_scheme": difference_scheme,
                 "plus_status": None if plus is None else str(plus.get("status")),
                 "minus_status": None if minus is None else str(minus.get("status")),
                 "plus_score": result_score(plus),
@@ -140,6 +147,21 @@ def best_improving_branch_endpoint(
         if result_valid(result)
         and branch_fingerprint(result) != center_branch
         and result_score(result) > threshold
+    ]
+    return max(candidates, key=lambda index: result_score(endpoint_results[index])) if candidates else None
+
+
+def best_improving_endpoint(
+    center_result: dict[str, Any],
+    endpoint_results: list[dict[str, Any] | None],
+    *,
+    minimum_gain: float,
+) -> int | None:
+    threshold = result_score(center_result) + minimum_gain
+    candidates = [
+        index
+        for index, result in enumerate(endpoint_results)
+        if result_valid(result) and result_score(result) > threshold
     ]
     return max(candidates, key=lambda index: result_score(endpoint_results[index])) if candidates else None
 
@@ -258,7 +280,13 @@ def main() -> None:
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument("--backtrack-fractions", type=parse_floats, default=(0.5, 0.25, 0.125))
     parser.add_argument("--accept-drop", type=float, default=0.0)
-    parser.add_argument("--branch-accept-minimum-gain", type=float, default=0.01)
+    parser.add_argument(
+        "--probe-accept-minimum-gain",
+        "--branch-accept-minimum-gain",
+        dest="probe_accept_minimum_gain",
+        type=float,
+        default=0.01,
+    )
     parser.add_argument("--noise-limit", type=float, default=6.0)
     parser.add_argument("--gpus", default="0,1,2,3")
     parser.add_argument("--batch-timeout-s", type=float, default=180.0)
@@ -272,7 +300,7 @@ def main() -> None:
         raise ValueError("iterations, perturbation, and learning rate must be positive")
     if not 0.0 <= args.beta1 < 1.0 or not 0.0 <= args.beta2 < 1.0:
         raise ValueError("Adam betas must be in [0, 1)")
-    if args.accept_drop < 0.0 or args.branch_accept_minimum_gain < 0.0 or args.noise_limit <= 0.0:
+    if args.accept_drop < 0.0 or args.probe_accept_minimum_gain < 0.0 or args.noise_limit <= 0.0:
         raise ValueError("accept-drop and noise-limit are invalid")
     if not gpu_ids:
         raise ValueError("at least one score GPU is required")
@@ -310,10 +338,10 @@ def main() -> None:
         "adam_epsilon": float(args.adam_epsilon),
         "backtrack_fractions": list(args.backtrack_fractions),
         "accept_drop": float(args.accept_drop),
-        "branch_accept_minimum_gain": float(args.branch_accept_minimum_gain),
+        "probe_accept_minimum_gain": float(args.probe_accept_minimum_gain),
         "acceptance": (
-            "same-branch secants plus monotone exact ABI-9 gate; improving discrete "
-            "endpoints compete with the smooth Adam candidate"
+            "centered or feasible one-sided same-branch secants plus monotone exact ABI-9 "
+            "gate; improving probe endpoints compete with the smooth Adam candidate"
         ),
         "noise_limit": float(args.noise_limit),
         "seed": int(args.seed),
@@ -415,10 +443,15 @@ def main() -> None:
             tentative_first: np.ndarray | None = None
             tentative_second: np.ndarray | None = None
             next_adam_step = adam_step
-            branch_endpoint_index = best_improving_branch_endpoint(
+            probe_endpoint_index = best_improving_endpoint(
                 current.score_result,
                 pair_results,
-                minimum_gain=args.branch_accept_minimum_gain,
+                minimum_gain=args.probe_accept_minimum_gain,
+            )
+            probe_endpoint_same_branch = bool(
+                probe_endpoint_index is not None
+                and branch_fingerprint(pair_results[probe_endpoint_index])
+                == branch_fingerprint(current.score_result)
             )
             if (
                 projected is not None
@@ -476,19 +509,19 @@ def main() -> None:
                         break
 
             incumbent = current if accepted is None else accepted
-            branch_pair_competitive = bool(
-                branch_endpoint_index is not None
+            probe_pair_competitive = bool(
+                probe_endpoint_index is not None
                 and score_improves_by(
-                    pair_results[branch_endpoint_index],
+                    pair_results[probe_endpoint_index],
                     incumbent.score_result,
-                    minimum_gain=args.branch_accept_minimum_gain,
+                    minimum_gain=args.probe_accept_minimum_gain,
                 )
             )
-            if branch_pair_competitive:
-                branch_candidate = evaluate(
+            if probe_pair_competitive:
+                probe_candidate = evaluate(
                     model,
                     normalizer,
-                    pair_states[branch_endpoint_index],
+                    pair_states[probe_endpoint_index],
                     nfp=args.nfp,
                     rk4_steps=args.rk4_steps,
                     gradient_lib=args.gradient_lib,
@@ -496,35 +529,40 @@ def main() -> None:
                     gradient_group=3,
                 )
                 wins_competition = bool(
-                    branch_candidate.valid
+                    probe_candidate.valid
                     and score_improves_by(
-                        branch_candidate.score_result,
+                        probe_candidate.score_result,
                         incumbent.score_result,
-                        minimum_gain=args.branch_accept_minimum_gain,
+                        minimum_gain=args.probe_accept_minimum_gain,
                     )
                 )
-                direction_index = branch_endpoint_index % count
-                sign = 1 if branch_endpoint_index < count else -1
+                same_branch = branch_fingerprint(probe_candidate.score_result) == branch_fingerprint(
+                    current.score_result
+                )
+                endpoint_mode = "probe_endpoint" if same_branch else "branch_endpoint"
+                direction_index = probe_endpoint_index % count
+                sign = 1 if probe_endpoint_index < count else -1
                 candidate_rows.append(
                     {
-                        "mode": "branch_endpoint",
-                        "endpoint_index": int(branch_endpoint_index),
+                        "mode": endpoint_mode,
+                        "endpoint_index": int(probe_endpoint_index),
                         "direction_index": int(direction_index),
                         "direction_kind": "g3" if direction_index == 0 else "random",
                         "sign": sign,
-                        "pair_score": result_score(pair_results[branch_endpoint_index]),
-                        "status": str(branch_candidate.score_result.get("status")),
-                        "score": result_score(branch_candidate.score_result),
-                        "valid_g3": bool(branch_candidate.valid),
+                        "pair_score": result_score(pair_results[probe_endpoint_index]),
+                        "same_branch": same_branch,
+                        "status": str(probe_candidate.score_result.get("status")),
+                        "score": result_score(probe_candidate.score_result),
+                        "valid_g3": bool(probe_candidate.valid),
                         "exact_score_accepted": wins_competition,
                         "wins_competition": wins_competition,
-                        "wall_s": float(branch_candidate.wall_s),
+                        "wall_s": float(probe_candidate.wall_s),
                     }
                 )
                 if wins_competition:
-                    accepted = branch_candidate
+                    accepted = probe_candidate
                     accepted_fraction = 0.0
-                    accepted_mode = "branch_endpoint"
+                    accepted_mode = endpoint_mode
 
             if accepted is not None:
                 current = accepted
@@ -557,7 +595,12 @@ def main() -> None:
                 "applied_update_rms": applied_update_rms,
                 "accepted_fraction": accepted_fraction,
                 "accepted_mode": accepted_mode,
-                "branch_endpoint_index": branch_endpoint_index,
+                "probe_endpoint_index": probe_endpoint_index,
+                "branch_endpoint_index": (
+                    probe_endpoint_index
+                    if probe_endpoint_index is not None and not probe_endpoint_same_branch
+                    else None
+                ),
                 "pair_decode_wall_s": pair_decode_wall_s,
                 "pair_score_wall_s": pair_score_wall_s,
                 "pair_score_elapsed_s": pair_elapsed_s,
@@ -652,6 +695,9 @@ def main() -> None:
         "adam_accepted_steps": int(sum(row["accepted_mode"] == "adam" for row in history)),
         "branch_accepted_steps": int(
             sum(row["accepted_mode"] == "branch_endpoint" for row in history)
+        ),
+        "probe_accepted_steps": int(
+            sum(row["accepted_mode"] == "probe_endpoint" for row in history)
         ),
         "rejected_steps": int(sum(row["accepted_mode"] == "rejected" for row in history)),
         "best_components": best.score_result["components"],

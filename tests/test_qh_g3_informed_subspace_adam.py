@@ -2,6 +2,7 @@ import numpy as np
 
 from scripts.optimize_qh_g3_informed_subspace_adam import (
     best_improving_branch_endpoint,
+    best_improving_endpoint,
     exact_subspace_gradient,
     informed_orthogonal_directions,
     score_improves_by,
@@ -57,7 +58,7 @@ def test_full_informed_basis_recovers_linear_gradient() -> None:
     assert np.allclose(recovered, gradient, rtol=2.0e-6, atol=2.0e-6)
 
 
-def test_branch_change_is_not_used_as_a_derivative() -> None:
+def test_one_sided_same_branch_endpoint_is_used_as_a_derivative() -> None:
     rng = np.random.default_rng(13)
     gradient = np.ones((2, 3))
     directions = informed_orthogonal_directions(rng, gradient, random_count=1)
@@ -70,7 +71,25 @@ def test_branch_change_is_not_used_as_a_derivative() -> None:
 
     assert recovered is not None
     assert rows[0]["valid"]
-    assert not rows[1]["valid"]
+    assert rows[0]["difference_scheme"] == "centered"
+    assert rows[1]["valid"]
+    assert rows[1]["difference_scheme"] == "backward"
+
+
+def test_direction_without_a_center_branch_endpoint_is_rejected() -> None:
+    direction = np.ones((1, 2, 3))
+    recovered, rows, predicted_gain = exact_subspace_gradient(
+        score_result(50.0),
+        [score_result(51.0, surface_level=0.2)],
+        [score_result(49.0, surface_level=0.36)],
+        direction,
+        0.005,
+    )
+
+    assert recovered is None
+    assert not rows[0]["valid"]
+    assert rows[0]["difference_scheme"] == "invalid"
+    assert predicted_gain == 0.0
 
 
 def test_improving_branch_endpoint_is_selected_separately() -> None:
@@ -85,6 +104,18 @@ def test_improving_branch_endpoint_is_selected_separately() -> None:
     selected = best_improving_branch_endpoint(center, endpoints, minimum_gain=0.1)
 
     assert selected == 2
+
+
+def test_best_probe_endpoint_can_stay_on_the_center_branch() -> None:
+    center = score_result(50.0)
+    endpoints = [
+        score_result(50.5),
+        score_result(52.0, surface_level=0.36),
+        score_result(51.0),
+    ]
+
+    assert best_improving_endpoint(center, endpoints, minimum_gain=0.1) == 1
+    assert best_improving_endpoint(center, endpoints[:1], minimum_gain=0.1) == 0
 
 
 def test_branch_endpoint_must_beat_smooth_candidate() -> None:

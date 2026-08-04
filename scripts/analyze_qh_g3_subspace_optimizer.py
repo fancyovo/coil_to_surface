@@ -21,7 +21,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def parse_run(value: str) -> tuple[str, Path]:
-    label, separator, path = value.partition("=")
+    label, separator, path = value.rpartition("=")
     if not separator or not label or not path:
         raise argparse.ArgumentTypeError("runs must use LABEL=PATH")
     return label, Path(path)
@@ -41,6 +41,33 @@ def finite_percentile(values: list[float], percentile: float) -> float:
     return float(np.percentile(finite, percentile)) if finite.size else float("nan")
 
 
+def normalize_history_row(row: dict[str, Any], *, direction_count: int) -> dict[str, Any]:
+    accepted_mode = row.get("accepted_mode")
+    if accepted_mode is None:
+        accepted_mode = "adam" if row.get("center_update_accepted", False) else "rejected"
+    valid_directions = row.get("valid_directions")
+    if valid_directions is None:
+        rejected = sum(bool(value) for value in row.get("filtered_invalid_directions", [])) + sum(
+            bool(value) for value in row.get("filtered_outlier_directions", [])
+        )
+        valid_directions = max(direction_count - rejected, 0)
+    return {
+        "iteration": int(row["iteration"]),
+        "current_score": float(row["current_score"]),
+        "best_score": float(row["best_score"]),
+        "qh_error": float(row.get("qh_error", row.get("current_qh_error", float("nan")))),
+        "qa_error": float(row.get("qa_error", row.get("current_qa_error", float("nan")))),
+        "qp_error": float(row.get("qp_error", row.get("current_qp_error", float("nan")))),
+        "iota": float(row.get("iota", row.get("current_iota", float("nan")))),
+        "surface_level": float(row.get("surface_level", float("nan"))),
+        "valid_directions": int(valid_directions),
+        "accepted_mode": str(accepted_mode),
+        "iteration_wall_s": float(row["iteration_wall_s"]),
+        "pair_score_wall_s": float(row["pair_score_wall_s"]),
+        "components": row.get("components"),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze G3-informed subspace optimizer runs.")
     parser.add_argument("--run", action="append", type=parse_run, required=True)
@@ -54,9 +81,28 @@ def main() -> None:
     history_rows: list[dict[str, Any]] = []
     for label, directory in args.run:
         summary = read_json(directory / "summary.json")
-        history = read_jsonl(directory / "history.jsonl")
-        runs.append({"label": label, "directory": directory, "summary": summary, "history": history})
+        manifest = summary.get("manifest")
+        if manifest is None:
+            manifest = read_json(directory / "manifest.json")
+        direction_count = int(manifest.get("random_directions", manifest.get("directions", 0)))
+        history = [
+            normalize_history_row(row, direction_count=direction_count)
+            for row in read_jsonl(directory / "history.jsonl")
+        ]
+        runs.append(
+            {
+                "label": label,
+                "directory": directory,
+                "summary": summary,
+                "manifest": manifest,
+                "history": history,
+            }
+        )
         walls = [float(row["iteration_wall_s"]) for row in history]
+        accepted_steps = sum(row["accepted_mode"] != "rejected" for row in history)
+        adam_steps = sum(row["accepted_mode"] == "adam" for row in history)
+        branch_steps = sum(row["accepted_mode"] == "branch_endpoint" for row in history)
+        probe_steps = sum(row["accepted_mode"] == "probe_endpoint" for row in history)
         summary_rows.append(
             {
                 "label": label,
@@ -66,17 +112,18 @@ def main() -> None:
                 "final_score": float(summary["final_score"]),
                 "best_score": float(summary["best_score"]),
                 "best_iteration": int(summary["best_iteration"]),
-                "accepted_steps": int(summary.get("accepted_steps", 0)),
-                "adam_accepted_steps": int(summary.get("adam_accepted_steps", 0)),
-                "branch_accepted_steps": int(summary.get("branch_accepted_steps", 0)),
-                "rejected_steps": int(summary.get("rejected_steps", 0)),
+                "accepted_steps": int(summary.get("accepted_steps", accepted_steps)),
+                "adam_accepted_steps": int(summary.get("adam_accepted_steps", adam_steps)),
+                "branch_accepted_steps": int(summary.get("branch_accepted_steps", branch_steps)),
+                "probe_accepted_steps": int(summary.get("probe_accepted_steps", probe_steps)),
+                "rejected_steps": int(summary.get("rejected_steps", len(history) - accepted_steps)),
                 "mean_iteration_wall_s": float(np.mean(walls)),
                 "p95_iteration_wall_s": finite_percentile(walls, 95.0),
                 "max_iteration_wall_s": float(np.max(walls)),
                 "total_wall_s": float(summary["total_wall_s"]),
-                "random_directions": int(summary["manifest"]["random_directions"]),
-                "perturbation": float(summary["manifest"]["perturbation"]),
-                "seed": int(summary["manifest"]["seed"]),
+                "random_directions": direction_count,
+                "perturbation": float(manifest["perturbation"]),
+                "seed": int(manifest["seed"]),
             }
         )
         for row in history:
@@ -135,7 +182,10 @@ def main() -> None:
     figure.savefig(args.output_dir / "optimizer_comparison.png", dpi=180)
     plt.close(figure)
 
-    selected = max(runs, key=lambda run: float(run["summary"]["best_score"]))
+    detailed_runs = [run for run in runs if run["history"] and run["history"][0]["components"]]
+    if not detailed_runs:
+        raise ValueError("at least one run must provide score components")
+    selected = max(detailed_runs, key=lambda run: float(run["summary"]["best_score"]))
     history = selected["history"]
     steps = [int(row["iteration"]) for row in history]
     figure, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)

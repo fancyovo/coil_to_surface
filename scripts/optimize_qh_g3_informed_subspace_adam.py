@@ -126,6 +126,24 @@ def exact_subspace_gradient(
     return gradient, rows, predicted_gain
 
 
+def best_improving_branch_endpoint(
+    center_result: dict[str, Any],
+    endpoint_results: list[dict[str, Any] | None],
+    *,
+    minimum_gain: float,
+) -> int | None:
+    center_branch = branch_fingerprint(center_result)
+    threshold = result_score(center_result) + minimum_gain
+    candidates = [
+        index
+        for index, result in enumerate(endpoint_results)
+        if result_valid(result)
+        and branch_fingerprint(result) != center_branch
+        and result_score(result) > threshold
+    ]
+    return max(candidates, key=lambda index: result_score(endpoint_results[index])) if candidates else None
+
+
 def make_best_case(
     evaluation: Evaluation,
     *,
@@ -227,6 +245,7 @@ def main() -> None:
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument("--backtrack-fractions", type=parse_floats, default=(0.5, 0.25, 0.125))
     parser.add_argument("--accept-drop", type=float, default=0.0)
+    parser.add_argument("--branch-accept-minimum-gain", type=float, default=0.01)
     parser.add_argument("--noise-limit", type=float, default=6.0)
     parser.add_argument("--gpus", default="0,1,2,3")
     parser.add_argument("--batch-timeout-s", type=float, default=180.0)
@@ -240,7 +259,7 @@ def main() -> None:
         raise ValueError("iterations, perturbation, and learning rate must be positive")
     if not 0.0 <= args.beta1 < 1.0 or not 0.0 <= args.beta2 < 1.0:
         raise ValueError("Adam betas must be in [0, 1)")
-    if args.accept_drop < 0.0 or args.noise_limit <= 0.0:
+    if args.accept_drop < 0.0 or args.branch_accept_minimum_gain < 0.0 or args.noise_limit <= 0.0:
         raise ValueError("accept-drop and noise-limit are invalid")
     if not gpu_ids:
         raise ValueError("at least one score GPU is required")
@@ -278,6 +297,7 @@ def main() -> None:
         "adam_epsilon": float(args.adam_epsilon),
         "backtrack_fractions": list(args.backtrack_fractions),
         "accept_drop": float(args.accept_drop),
+        "branch_accept_minimum_gain": float(args.branch_accept_minimum_gain),
         "acceptance": "same-branch secants plus monotone exact ABI-9 candidate gate",
         "noise_limit": float(args.noise_limit),
         "seed": int(args.seed),
@@ -370,11 +390,66 @@ def main() -> None:
             )
             accepted: Evaluation | None = None
             accepted_fraction = 0.0
+            accepted_mode = "rejected"
             candidate_rows: list[dict[str, Any]] = []
             full_update = np.zeros_like(current.noise, dtype=np.float64)
             gradient = np.zeros_like(current.noise, dtype=np.float64)
             projected_rms = 0.0 if projected is None else rms(projected)
-            if projected is not None and projected_rms > 0.0 and math.isfinite(projected_rms):
+            previous_noise = current.noise.copy()
+            branch_endpoint_index = best_improving_branch_endpoint(
+                current.score_result,
+                pair_results,
+                minimum_gain=args.branch_accept_minimum_gain,
+            )
+            if branch_endpoint_index is not None:
+                branch_candidate = evaluate(
+                    model,
+                    normalizer,
+                    pair_states[branch_endpoint_index],
+                    nfp=args.nfp,
+                    rk4_steps=args.rk4_steps,
+                    gradient_lib=args.gradient_lib,
+                    device=device,
+                    gradient_group=3,
+                )
+                exact_accepted = bool(
+                    branch_candidate.valid
+                    and accept_exact_score_candidate(
+                        current.score_result,
+                        branch_candidate.score_result,
+                        accept_drop=args.accept_drop,
+                    )
+                )
+                direction_index = branch_endpoint_index % count
+                sign = 1 if branch_endpoint_index < count else -1
+                candidate_rows.append(
+                    {
+                        "mode": "branch_endpoint",
+                        "endpoint_index": int(branch_endpoint_index),
+                        "direction_index": int(direction_index),
+                        "direction_kind": "g3" if direction_index == 0 else "random",
+                        "sign": sign,
+                        "status": str(branch_candidate.score_result.get("status")),
+                        "score": result_score(branch_candidate.score_result),
+                        "valid_g3": bool(branch_candidate.valid),
+                        "exact_score_accepted": exact_accepted,
+                        "wall_s": float(branch_candidate.wall_s),
+                    }
+                )
+                if exact_accepted:
+                    accepted = branch_candidate
+                    accepted_mode = "branch_endpoint"
+                    current = accepted
+                    first_moment = np.zeros_like(first_moment)
+                    second_moment = np.zeros_like(second_moment)
+                    adam_step = 0
+
+            if (
+                accepted is None
+                and projected is not None
+                and projected_rms > 0.0
+                and math.isfinite(projected_rms)
+            ):
                 gradient = projected * (rms(g3_gradient) / projected_rms)
                 next_adam_step = adam_step + 1
                 tentative_first = args.beta1 * first_moment + (1.0 - args.beta1) * gradient
@@ -410,6 +485,7 @@ def main() -> None:
                     )
                     candidate_rows.append(
                         {
+                            "mode": "adam",
                             "fraction": float(fraction),
                             "status": str(candidate.score_result.get("status")),
                             "score": result_score(candidate.score_result),
@@ -421,6 +497,7 @@ def main() -> None:
                     if exact_accepted:
                         accepted = candidate
                         accepted_fraction = float(fraction)
+                        accepted_mode = "adam"
                         break
                 if accepted is not None:
                     current = accepted
@@ -435,6 +512,7 @@ def main() -> None:
                     args.out_dir / "best.json",
                     make_best_case(best, nfp=args.nfp, iteration=best_iteration, manifest=manifest),
                 )
+            applied_update_rms = rms(current.noise.astype(np.float64) - previous_noise)
             transition = {
                 "directions": directions.tolist(),
                 "direction_rows": direction_rows,
@@ -443,8 +521,10 @@ def main() -> None:
                 "projected_gradient_rms": projected_rms,
                 "used_gradient_rms": rms(gradient),
                 "full_update_rms": rms(full_update),
-                "applied_update_rms": rms(accepted_fraction * full_update),
+                "applied_update_rms": applied_update_rms,
                 "accepted_fraction": accepted_fraction,
+                "accepted_mode": accepted_mode,
+                "branch_endpoint_index": branch_endpoint_index,
                 "pair_decode_wall_s": pair_decode_wall_s,
                 "pair_score_wall_s": pair_score_wall_s,
                 "pair_score_elapsed_s": pair_elapsed_s,
@@ -470,7 +550,8 @@ def main() -> None:
                 "g3_slope": g3_slope,
                 "valid_directions": int(sum(item["valid"] for item in direction_rows)),
                 "accepted_fraction": accepted_fraction,
-                "update_rms": rms(accepted_fraction * full_update),
+                "accepted_mode": accepted_mode,
+                "update_rms": applied_update_rms,
                 "pair_decode_wall_s": pair_decode_wall_s,
                 "pair_score_wall_s": pair_score_wall_s,
                 "iteration_wall_s": iteration_wall_s,
@@ -518,6 +599,7 @@ def main() -> None:
                         "g3_slope": g3_slope,
                         "valid_directions": row["valid_directions"],
                         "accepted_fraction": accepted_fraction,
+                        "accepted_mode": accepted_mode,
                         "wall_s": iteration_wall_s,
                     },
                     separators=(",", ":"),
@@ -533,8 +615,12 @@ def main() -> None:
         "final_score": result_score(current.score_result),
         "best_score": result_score(best.score_result),
         "best_iteration": int(best_iteration),
-        "accepted_steps": int(adam_step),
-        "rejected_steps": int(sum(row["accepted_fraction"] == 0.0 for row in history)),
+        "accepted_steps": int(sum(row["accepted_mode"] != "rejected" for row in history)),
+        "adam_accepted_steps": int(sum(row["accepted_mode"] == "adam" for row in history)),
+        "branch_accepted_steps": int(
+            sum(row["accepted_mode"] == "branch_endpoint" for row in history)
+        ),
+        "rejected_steps": int(sum(row["accepted_mode"] == "rejected" for row in history)),
         "best_components": best.score_result["components"],
         "best_diagnostics": compact_result(best.score_result)["diagnostics"],
         "mean_iteration_wall_s": float(np.mean([row["iteration_wall_s"] for row in history])),

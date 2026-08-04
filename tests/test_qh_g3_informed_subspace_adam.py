@@ -1,6 +1,7 @@
 import numpy as np
 
 from scripts.optimize_qh_g3_informed_subspace_adam import (
+    best_improving_branch_endpoint,
     exact_subspace_gradient,
     informed_orthogonal_directions,
 )
@@ -69,3 +70,17 @@ def test_branch_change_is_not_used_as_a_derivative() -> None:
     assert recovered is not None
     assert rows[0]["valid"]
     assert not rows[1]["valid"]
+
+
+def test_improving_branch_endpoint_is_selected_separately() -> None:
+    center = score_result(50.0)
+    endpoints = [
+        score_result(60.0),
+        score_result(51.0, surface_level=0.36),
+        score_result(52.0, surface_level=0.36),
+        score_result(49.0, surface_level=0.49),
+    ]
+
+    selected = best_improving_branch_endpoint(center, endpoints, minimum_gain=0.1)
+
+    assert selected == 2

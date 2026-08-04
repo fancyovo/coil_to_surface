@@ -39,8 +39,9 @@ once the task is accepted.
 ## 2. Current Snapshot
 
 - On 2026-08-04, deterministic-bias investigation completed after the accepted
-  G2-Adam sweep. Local/remote branch commit `8d43791` adds saved-trajectory bias
-  analysis and a short exact-score G2/G3 probe. Existing trajectory evidence
+  G2-Adam sweep. Commit `8d43791` adds the diagnostic code and commit `61b5cd6`
+  archives the final report, saved-trajectory analysis, figures, and short
+  exact-score G2/G3 probe results. Existing trajectory evidence
   already proves this is not a dirty-gradient event: for the three complete
   lr=0.003 runs, from the score peak to the first surface-level change, every
   saved G2 dot actual-Adam-update is positive, while exact score decreases on

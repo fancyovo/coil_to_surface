@@ -38,6 +38,36 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, the user's correction about RK4 step selection superseded the
+  earlier blanket conclusion "keep RK4-256". Different step counts define
+  different discrete maps `F_N` and therefore different self-consistent
+  objectives `S(F_N(z))`; cross-step distance to RK4-256 tests interchangeability,
+  not whether the VJP of `F_N` is attached to the wrong point. The VJP directly
+  differentiates the actual discrete `F_N` graph and does not reverse-integrate
+  before taking the gradient. Commit `932cc91` added the same-step closure
+  benchmark. Preliminary P107 job `31847` reused RK4-256 probe displacements
+  only as the physical ratio denominator; its absolute closures remain valid,
+  but its ratios are superseded and must not be reported. Replacement job
+  `31850` recomputed all 200 antithetic probes separately under each candidate
+  `F_N` and completed `0:0` in `00:01:07` on one idle RTX 5090, with 2 MiB/0%
+  pre/postflight. Across the four saved optimization
+  centers, worst `z -> F_N(z) -> B_N(F_N(z))` RMS relative to the formal
+  `h=0.00125` probe was `1091/92.5/1.51/0.327/0.110%` for RK4
+  `16/32/64/128/256`; worst physical `x -> B_N(x) -> F_N(B_N(x))` curve RMS
+  was `903.8/74.64/1.137/0.301/0.0514 um`, or
+  `169.8/14.0/0.2140/0.0566/0.0182%` of each center's same-step probe displacement.
+  Historical three-QUASR closure results independently show the same sharp
+  improvement from 32 to 64 steps. Operational conclusion: reject RK4-16/32;
+  use FP32 RK4-64 for a self-consistent latent optimization, RK4-128 for more
+  conservative physical-data inversion/round trips, and RK4-256 only for old
+  artifact interchangeability or continuous-ODE reference comparisons. A
+  trajectory must record and retain one `rk4_steps` value for inversion,
+  optimization, persistence, and final decoding; mixing step counts really
+  does switch objectives. The old strict cross-step measurements remain valid
+  evidence only for interchangeability. Detailed evidence and plot are in
+  report section 11 and `reports/assets/qh_flow_reconstruction_31850/`.
+  Validated SHA-256 values are `419885d3...ad2d488` for `summary.json` and
+  `2a89b6d9...f157a3b` for `same_step_reconstruction.png`.
 - On 2026-08-04, branch `qh-blackbox-gradient` commits
   `90c789e/a595d80/700a4b3/9d1219e/2656285/0390ae5`
   added an opt-in flow-VJP performance experiment without changing the existing

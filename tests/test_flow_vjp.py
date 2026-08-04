@@ -33,6 +33,29 @@ def test_differentiable_rk4_has_correct_vjp() -> None:
     )
 
 
+def test_checkpoint_and_retained_activation_vjps_match() -> None:
+    initial = torch.randn(1, 2, 100, dtype=torch.float64)
+    cotangent = torch.randn_like(initial)
+    nfp = torch.tensor([4])
+    outputs = []
+    gradients = []
+    for use_checkpoint in (True, False):
+        state = initial.clone().requires_grad_(True)
+        output = integrate_flow_differentiable(
+            LinearVelocity(),
+            state,
+            nfp,
+            steps=16,
+            checkpoint_steps=4,
+            use_checkpoint=use_checkpoint,
+        )
+        (gradient,) = torch.autograd.grad(torch.sum(output * cotangent), state)
+        outputs.append(output.detach().numpy())
+        gradients.append(gradient.detach().numpy())
+    np.testing.assert_allclose(outputs[0], outputs[1], rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(gradients[0], gradients[1], rtol=0.0, atol=0.0)
+
+
 def test_torch_current_gauge_matches_numpy_normalizer() -> None:
     normalizer = CoilNormalizer(
         mean=np.zeros(100, dtype=np.float32),

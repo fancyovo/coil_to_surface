@@ -15,8 +15,12 @@ from flow_matching.data import CoilNormalizer
 class FlowVjpDiagnostics:
     decode_wall_s: float
     backward_wall_s: float
+    use_checkpoint: bool
     checkpoint_steps: int
     rk4_steps: int
+    baseline_memory_allocated_bytes: int
+    forward_peak_memory_allocated_bytes: int
+    total_peak_memory_allocated_bytes: int
     dominant_current_index: tuple[int, ...]
     dominant_current_sign: tuple[int, ...]
 
@@ -78,17 +82,28 @@ def integrate_flow_differentiable(
     method: Literal["rk4"] = "rk4",
     mask: torch.Tensor | None = None,
     checkpoint_steps: int = 8,
+    use_checkpoint: bool = True,
 ) -> torch.Tensor:
     if method != "rk4":
         raise ValueError("the validated differentiable path currently requires RK4")
-    if steps < 1 or checkpoint_steps < 1 or steps % checkpoint_steps != 0:
-        raise ValueError("steps must be positive and divisible by checkpoint_steps")
+    if (
+        steps < 1
+        or checkpoint_steps < 1
+        or (use_checkpoint and steps % checkpoint_steps != 0)
+    ):
+        raise ValueError(
+            "steps must be positive; checkpointed steps must be divisible by checkpoint_steps"
+        )
     if state.ndim != 3 or nfp.shape != (state.shape[0],):
         raise ValueError("state and nfp batch dimensions must match")
     dt = (float(end_time) - float(start_time)) / steps
 
-    def integrate_chunk(value: torch.Tensor, first_step: int) -> torch.Tensor:
-        for local_step in range(checkpoint_steps):
+    def integrate_chunk(
+        value: torch.Tensor,
+        first_step: int,
+        chunk_steps: int,
+    ) -> torch.Tensor:
+        for local_step in range(chunk_steps):
             index = first_step + local_step
             time_value = float(start_time) + index * dt
 
@@ -111,12 +126,17 @@ def integrate_flow_differentiable(
         return value
 
     value = state
-    for first_step in range(0, steps, checkpoint_steps):
-        value = checkpoint(
-            lambda current, offset=first_step: integrate_chunk(current, offset),
-            value,
-            use_reentrant=False,
-        )
+    if use_checkpoint:
+        for first_step in range(0, steps, checkpoint_steps):
+            value = checkpoint(
+                lambda current, offset=first_step: integrate_chunk(
+                    current, offset, checkpoint_steps
+                ),
+                value,
+                use_reentrant=False,
+            )
+    else:
+        value = integrate_chunk(value, 0, steps)
     return value
 
 
@@ -130,6 +150,7 @@ def decode_physical_vjp(
     device: torch.device,
     rk4_steps: int = 256,
     checkpoint_steps: int = 8,
+    use_checkpoint: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, FlowVjpDiagnostics]:
     values = np.asarray(noise, dtype=np.float32)
     cotangent = np.asarray(physical_cotangent, dtype=np.float32)
@@ -147,6 +168,12 @@ def decode_physical_vjp(
         parameter.requires_grad_(False)
     latent = torch.from_numpy(values).to(device=device, dtype=torch.float32).requires_grad_(True)
     nfp_tensor = torch.full((1,), int(nfp), dtype=torch.long, device=device)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+        torch.cuda.reset_peak_memory_stats(device)
+        baseline_memory_allocated_bytes = int(torch.cuda.memory_allocated(device))
+    else:
+        baseline_memory_allocated_bytes = 0
     started = time.perf_counter()
     normalized = integrate_flow_differentiable(
         model,
@@ -154,10 +181,14 @@ def decode_physical_vjp(
         nfp_tensor,
         steps=rk4_steps,
         checkpoint_steps=checkpoint_steps,
+        use_checkpoint=use_checkpoint,
     )
     physical, dominant, dominant_sign = inverse_normalizer_torch(normalized, normalizer, key)
     torch.cuda.synchronize(device)
     decode_wall_s = time.perf_counter() - started
+    forward_peak_memory_allocated_bytes = (
+        int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
+    )
     objective = torch.sum(
         physical * torch.from_numpy(cotangent).to(device=device, dtype=torch.float32)
     )
@@ -165,11 +196,18 @@ def decode_physical_vjp(
     (latent_gradient,) = torch.autograd.grad(objective, latent)
     torch.cuda.synchronize(device)
     backward_wall_s = time.perf_counter() - started
+    total_peak_memory_allocated_bytes = (
+        int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
+    )
     diagnostics = FlowVjpDiagnostics(
         decode_wall_s=float(decode_wall_s),
         backward_wall_s=float(backward_wall_s),
+        use_checkpoint=bool(use_checkpoint),
         checkpoint_steps=int(checkpoint_steps),
         rk4_steps=int(rk4_steps),
+        baseline_memory_allocated_bytes=baseline_memory_allocated_bytes,
+        forward_peak_memory_allocated_bytes=forward_peak_memory_allocated_bytes,
+        total_peak_memory_allocated_bytes=total_peak_memory_allocated_bytes,
         dominant_current_index=tuple(int(value) for value in dominant.detach().cpu().tolist()),
         dominant_current_sign=tuple(int(value) for value in dominant_sign.detach().cpu().tolist()),
     )

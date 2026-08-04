@@ -80,7 +80,8 @@ def main() -> None:
     summary_rows: list[dict[str, Any]] = []
     history_rows: list[dict[str, Any]] = []
     for label, directory in args.run:
-        summary = read_json(directory / "summary.json")
+        summary_path = directory / "summary.json"
+        summary = read_json(summary_path) if summary_path.is_file() else {}
         manifest = summary.get("manifest")
         if manifest is None:
             manifest = read_json(directory / "manifest.json")
@@ -89,6 +90,20 @@ def main() -> None:
             normalize_history_row(row, direction_count=direction_count)
             for row in read_jsonl(directory / "history.jsonl")
         ]
+        if not history:
+            raise ValueError(f"run has no history rows: {directory}")
+        if not summary:
+            initial = read_json(directory / "trajectory" / "step_0000.json")
+            best_row = max(history, key=lambda row: row["best_score"])
+            summary = {
+                "initial_score": float(initial["score"]["score"]),
+                "final_score": float(history[-1]["current_score"]),
+                "best_score": float(best_row["best_score"]),
+                "best_iteration": int(best_row["iteration"]),
+            }
+            # total_wall_s is recorded cumulatively in the raw history.
+            raw_last = read_jsonl(directory / "history.jsonl")[-1]
+            summary["total_wall_s"] = float(raw_last["total_wall_s"])
         runs.append(
             {
                 "label": label,
@@ -107,6 +122,7 @@ def main() -> None:
             {
                 "label": label,
                 "directory": str(directory.resolve()),
+                "completed": summary_path.is_file(),
                 "iterations": len(history),
                 "initial_score": float(summary["initial_score"]),
                 "final_score": float(summary["final_score"]),

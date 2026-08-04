@@ -114,8 +114,33 @@ def test_best_probe_endpoint_can_stay_on_the_center_branch() -> None:
         score_result(51.0),
     ]
 
-    assert best_improving_endpoint(center, endpoints, minimum_gain=0.1) == 1
-    assert best_improving_endpoint(center, endpoints[:1], minimum_gain=0.1) == 0
+    assert best_improving_endpoint(
+        center,
+        endpoints,
+        same_branch_minimum_gain=0.1,
+        branch_minimum_gain=0.1,
+    ) == 1
+    assert best_improving_endpoint(
+        center,
+        endpoints[:1],
+        same_branch_minimum_gain=0.1,
+        branch_minimum_gain=0.1,
+    ) == 0
+
+
+def test_probe_and_branch_endpoint_thresholds_are_independent() -> None:
+    center = score_result(50.0)
+    endpoints = [
+        score_result(50.005),
+        score_result(50.009, surface_level=0.36),
+    ]
+
+    assert best_improving_endpoint(
+        center,
+        endpoints,
+        same_branch_minimum_gain=0.001,
+        branch_minimum_gain=0.01,
+    ) == 0
 
 
 def test_branch_endpoint_must_beat_smooth_candidate() -> None:

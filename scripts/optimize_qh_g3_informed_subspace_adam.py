@@ -155,13 +155,22 @@ def best_improving_endpoint(
     center_result: dict[str, Any],
     endpoint_results: list[dict[str, Any] | None],
     *,
-    minimum_gain: float,
+    same_branch_minimum_gain: float,
+    branch_minimum_gain: float,
 ) -> int | None:
-    threshold = result_score(center_result) + minimum_gain
+    center_branch = branch_fingerprint(center_result)
+    center_score = result_score(center_result)
     candidates = [
         index
         for index, result in enumerate(endpoint_results)
-        if result_valid(result) and result_score(result) > threshold
+        if result_valid(result)
+        and result_score(result)
+        > center_score
+        + (
+            same_branch_minimum_gain
+            if branch_fingerprint(result) == center_branch
+            else branch_minimum_gain
+        )
     ]
     return max(candidates, key=lambda index: result_score(endpoint_results[index])) if candidates else None
 
@@ -282,11 +291,10 @@ def main() -> None:
     parser.add_argument("--accept-drop", type=float, default=0.0)
     parser.add_argument(
         "--probe-accept-minimum-gain",
-        "--branch-accept-minimum-gain",
-        dest="probe_accept_minimum_gain",
         type=float,
-        default=0.01,
+        default=0.001,
     )
+    parser.add_argument("--branch-accept-minimum-gain", type=float, default=0.01)
     parser.add_argument("--noise-limit", type=float, default=6.0)
     parser.add_argument("--gpus", default="0,1,2,3")
     parser.add_argument("--batch-timeout-s", type=float, default=180.0)
@@ -300,7 +308,12 @@ def main() -> None:
         raise ValueError("iterations, perturbation, and learning rate must be positive")
     if not 0.0 <= args.beta1 < 1.0 or not 0.0 <= args.beta2 < 1.0:
         raise ValueError("Adam betas must be in [0, 1)")
-    if args.accept_drop < 0.0 or args.probe_accept_minimum_gain < 0.0 or args.noise_limit <= 0.0:
+    if (
+        args.accept_drop < 0.0
+        or args.probe_accept_minimum_gain < 0.0
+        or args.branch_accept_minimum_gain < 0.0
+        or args.noise_limit <= 0.0
+    ):
         raise ValueError("accept-drop and noise-limit are invalid")
     if not gpu_ids:
         raise ValueError("at least one score GPU is required")
@@ -339,6 +352,7 @@ def main() -> None:
         "backtrack_fractions": list(args.backtrack_fractions),
         "accept_drop": float(args.accept_drop),
         "probe_accept_minimum_gain": float(args.probe_accept_minimum_gain),
+        "branch_accept_minimum_gain": float(args.branch_accept_minimum_gain),
         "acceptance": (
             "centered or feasible one-sided same-branch secants plus monotone exact ABI-9 "
             "gate; improving probe endpoints compete with the smooth Adam candidate"
@@ -446,12 +460,18 @@ def main() -> None:
             probe_endpoint_index = best_improving_endpoint(
                 current.score_result,
                 pair_results,
-                minimum_gain=args.probe_accept_minimum_gain,
+                same_branch_minimum_gain=args.probe_accept_minimum_gain,
+                branch_minimum_gain=args.branch_accept_minimum_gain,
             )
             probe_endpoint_same_branch = bool(
                 probe_endpoint_index is not None
                 and branch_fingerprint(pair_results[probe_endpoint_index])
                 == branch_fingerprint(current.score_result)
+            )
+            probe_endpoint_minimum_gain = (
+                args.probe_accept_minimum_gain
+                if probe_endpoint_same_branch
+                else args.branch_accept_minimum_gain
             )
             if (
                 projected is not None
@@ -514,7 +534,7 @@ def main() -> None:
                 and score_improves_by(
                     pair_results[probe_endpoint_index],
                     incumbent.score_result,
-                    minimum_gain=args.probe_accept_minimum_gain,
+                    minimum_gain=probe_endpoint_minimum_gain,
                 )
             )
             if probe_pair_competitive:
@@ -533,7 +553,7 @@ def main() -> None:
                     and score_improves_by(
                         probe_candidate.score_result,
                         incumbent.score_result,
-                        minimum_gain=args.probe_accept_minimum_gain,
+                        minimum_gain=probe_endpoint_minimum_gain,
                     )
                 )
                 same_branch = branch_fingerprint(probe_candidate.score_result) == branch_fingerprint(

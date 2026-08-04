@@ -24,6 +24,9 @@ run_native="${RUN_NATIVE_VALIDATION:-1}"
 run_latent="${RUN_LATENT_VALIDATION:-1}"
 build_gradient_library="${BUILD_GRADIENT_LIBRARY:-1}"
 build_jobs="${SLURM_CPUS_PER_TASK:-8}"
+latent_center_id="${LATENT_CENTER_ID:-main_nfp6_step200}"
+latent_scale="${LATENT_SCALE:-0.005}"
+latent_directions="${LATENT_DIRECTIONS:-8}"
 
 mkdir -p "$project/logs" "$output"
 cd "$project"
@@ -92,7 +95,7 @@ if (( run_latent )); then
     --reference-dir "$project/runs/qh_blackbox_gradient_reference_31640" \
     --checkpoint "$HOME/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt" \
     --gradient-lib "$gradient_lib" --output-dir "$output/latent" \
-    --center-id main_nfp6_step200 --scale 0.005 --directions 8 \
+    --center-id "$latent_center_id" --scale "$latent_scale" --directions "$latent_directions" \
     --rk4-steps 256 --checkpoint-steps 8
 fi
 sha256sum "$gradient_lib" > "$output/gradient_library_sha256.txt"

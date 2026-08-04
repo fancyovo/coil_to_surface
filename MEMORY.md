@@ -59,7 +59,23 @@ once the task is accepted.
   and formal 200-direction checks determine whether the cause is a VJP bug or
   cancellation by frozen flux/psi/point-motion dependencies. Postflight had
   2 MiB allocated and no compute process; artifacts are under
-  `runs/qh_native_g1_validation_31720/`. Remote worktree HEAD is `ac99266`.
+  `runs/qh_native_g1_validation_31720/`.
+  Component-isolated Students jobs `31722/31724/31726/31728` then located the
+  explosion: coordinate-only G3 RMS was `3893.87`, almost entirely the
+  normal-field term (`3882.84`), whereas alpha-residual-only was `11.94` and
+  the iota-to-volume-QS increment only `0.0732`. The normal-field formula
+  itself passes the independent autograd VJP; the bad proxy arises because its
+  frozen-psi partial is amplified near zero normal field while the omitted
+  psi/surface motion supplies the physical cancellation. Commit `2f446f7`
+  therefore defers this geometry-covariant term as an inseparable G4 bundle.
+  Replacement job `31731` completed `0:0` in `00:03:59`; build SHA is
+  `fdf142aa...`, all forward values remain within `2.85e-14`, G3 RMS is now
+  `23.11` versus G2 `22.75`, and four-direction G2/G3 cosines are
+  `0.568/0.558`. This removes the numerical pathology but shows no preliminary
+  G3 benefit; the formal 200-direction result is still required. G3b median
+  wall/reverse times are `5.2165/0.1685 s`, and postflight was 2 MiB at 0%.
+  The remote worktree currently has code HEAD `2f446f7`; the next metadata and
+  parameterized latent-launcher commit remains local until synchronized.
 - On 2026-08-04, the user granted the active black-box-gradient exploration
   continuing access to the `Students` partition's additional 2 RTX 5090 GPUs
   and 24 CPUs until the user explicitly revokes that permission. This is in

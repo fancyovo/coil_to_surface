@@ -579,7 +579,11 @@ def score_coils_g2_gradient_native(
     target_helicity: tuple[int, int] = (1, 0),
     config_overrides: dict | None = None,
 ) -> dict:
-    """Run the exact score and opt-in cumulative fixed-front G1+G2 gradient."""
+    """Run the exact score and opt-in cumulative fixed-front G1+G2 gradient.
+
+    Valid non-OK scores are returned with zero gradients and a nonzero gradient
+    diagnostic status, allowing callers to reject or backtrack the candidate.
+    """
     path = str(Path(lib_path).resolve())
     lib = _NATIVE_SCORE_LIB_CACHE.get(path)
     if lib is None:

@@ -5217,16 +5217,39 @@ int sgpu_score_coils_g2_gradient(
     g_active_g2_cache = nullptr;
     g_active_gradient_group = 0;
     gradient_result->forward_wall_s = seconds_since(forward_started);
-    if (score_code != 0 || score_result->status != SGPU_SCORE_OK || !cache.ready || !cache.field) {
+    if (score_code != 0) {
         if (cache.field) sgpu_destroy_field(cache.field);
         std::snprintf(
             gradient_result->error_message,
             sizeof(gradient_result->error_message),
-            "G2 requires an ok complete score: %.190s",
+            "G2 score forward failed: %.210s",
             score_result->error_message
         );
         sgpu_internal_set_error(gradient_result->error_message);
-        return score_code != 0 ? score_code : 1;
+        return score_code;
+    }
+    if (score_result->status != SGPU_SCORE_OK) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        const size_t parameter_count =
+            static_cast<size_t>(n_base_coils) * static_cast<size_t>(n_coeff);
+        std::fill_n(gradient_x, parameter_count, 0.0);
+        std::fill_n(gradient_y, parameter_count, 0.0);
+        std::fill_n(gradient_z, parameter_count, 0.0);
+        std::fill_n(gradient_current, static_cast<size_t>(n_base_coils), 0.0);
+        gradient_result->status = 1;
+        sgpu_internal_set_error("");
+        return 0;
+    }
+    if (!cache.ready || !cache.field) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        std::snprintf(
+            gradient_result->error_message,
+            sizeof(gradient_result->error_message),
+            "%s",
+            "G2 cache is incomplete after an ok score"
+        );
+        sgpu_internal_set_error(gradient_result->error_message);
+        return 1;
     }
     const auto gradient_started = Clock::now();
     CoilComponentGradient g1;

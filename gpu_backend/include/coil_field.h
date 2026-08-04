@@ -286,6 +286,8 @@ int sgpu_score_coils_g1_gradient(
 
 // Experimental cumulative G1+G2 path. G2 freezes the selected axis, psi,
 // volume points, weights, fitted iota, and all discrete branch choices.
+// A valid non-OK score returns code 0 with the score preserved, zero gradient
+// arrays, and a nonzero gradient_result status so callers can backtrack.
 int sgpu_score_coils_g2_gradient(
     const double* coeffs_x,
     const double* coeffs_y,

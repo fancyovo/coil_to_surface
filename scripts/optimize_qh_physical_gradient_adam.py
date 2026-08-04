@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict, dataclass
+import hashlib
 import json
 import math
 import os
@@ -46,6 +47,11 @@ def parse_floats(value: str) -> tuple[float, ...]:
 def rms(value: np.ndarray) -> float:
     array = np.asarray(value, dtype=np.float64)
     return float(np.sqrt(np.mean(array * array)))
+
+
+def array_sha256(value: np.ndarray) -> str:
+    array = np.ascontiguousarray(np.asarray(value, dtype=np.float32))
+    return hashlib.sha256(array.tobytes()).hexdigest()
 
 
 def score_arguments(tokens: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -408,6 +414,7 @@ def main() -> None:
         "gradient_lib_sha256": file_sha256(args.gradient_lib),
         "initial_case": str(args.initial_case.resolve()),
         "initial_case_sha256": file_sha256(args.initial_case),
+        "initial_noise_float32_sha256": array_sha256(current_noise),
         "initial_source_case_id": initial_payload.get("flow_prior_start", {}).get("source_case_id"),
         "initial_recorded_score": initial_payload.get("flow_prior_start", {}).get("recorded_score"),
         "historical_baseline": {

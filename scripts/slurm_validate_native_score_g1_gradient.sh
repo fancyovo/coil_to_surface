@@ -44,7 +44,9 @@ for path in ("tests/test_qs_gradient_math.py", "tests/test_flow_vjp.py"):
             count += 1
 print(f"standalone gradient checks passed: {count}")
 PY
-cmake -S gpu_backend -B "$build" -DCMAKE_BUILD_TYPE=Release
+cmake -S gpu_backend -B "$build" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build "$build" --parallel "$build_jobs"
 test -f "$gradient_lib"
 

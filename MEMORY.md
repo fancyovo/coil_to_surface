@@ -86,7 +86,18 @@ once the task is accepted.
   failed in 43 seconds because `fmax(abs(nfp), 1)` selected a host-only integer
   overload inside a device kernel. This is an implementation compile bug, not
   numerical evidence; it is fixed by an explicit device-safe double-valued
-  conditional before resubmission.
+  conditional. Students job `31662` then completed `0:0` in `00:03:51`: all
+  five standalone checks and the Release CUDA build passed, and G1's 24-
+  direction component check achieved median/P95 relative errors
+  `4.36e-9/3.60e-8`. Its timing, forward-regression, and four-direction G2
+  results are invalid for final comparison because the validation launcher
+  accidentally built the experimental library for `sm_52`, while the pinned
+  RTX 5090 baseline was built for `sm_120`. This explains the observed 49%
+  forward slowdown and likely the small `0.00579` score drift. The launcher is
+  corrected to the repository's established `CMAKE_CUDA_ARCHITECTURES=120`
+  setting; only the same-architecture rerun may establish forward overhead or
+  G2 agreement. Artifacts from the invalid-architecture run are retained under
+  `runs/qh_native_g1_validation_31662/` and must remain labeled accordingly.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

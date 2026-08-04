@@ -267,6 +267,22 @@ def evaluate_center(args: argparse.Namespace) -> None:
     )
     device = torch.device(args.device)
     model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
+    if args.compile_model:
+        for parameter in model.parameters():
+            parameter.requires_grad_(False)
+        model = torch.compile(model, mode="reduce-overhead", fullgraph=True)
+        warmup_cotangent = np.ones_like(noise, dtype=np.float32)
+        run_vjp(
+            model,
+            normalizer,
+            noise,
+            warmup_cotangent,
+            nfp=nfp,
+            device=device,
+            steps=8,
+            checkpoint_steps=8,
+            use_checkpoint=False,
+        )
     decoded_by_steps: dict[int, np.ndarray] = {}
     decode_wall_by_steps: dict[int, float] = {}
     native_by_steps: dict[int, dict[str, Any]] = {}
@@ -462,10 +478,14 @@ def evaluate_center(args: argparse.Namespace) -> None:
         "checkpoint_step": int(checkpoint["step"]),
         "checkpoint_sha256": file_sha256(args.checkpoint),
         "gradient_library_sha256": file_sha256(args.gradient_lib),
+        "compile_model": bool(args.compile_model),
         "reference_dir": str(args.reference_dir),
         "reference_steps": reference_steps,
         "perturbation_scale": float(args.perturbation_scale),
         "perturbation_position_rms_m": perturbation_position_rms_m,
+        "rk4_reference_to_formal_center": perturbation_metrics(
+            reference_tokens, formal_center_tokens
+        ),
         "thresholds": thresholds,
         "selected_steps": selected_steps,
         "rows": rows,
@@ -473,6 +493,16 @@ def evaluate_center(args: argparse.Namespace) -> None:
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_json(args.output_dir / f"center_{args.center_id}.json", output)
+    np.savez_compressed(
+        args.output_dir / f"gradients_{args.center_id}.npz",
+        steps=np.asarray(args.steps, dtype=np.int64),
+        **{
+            f"retained_{steps}": np.asarray(
+                vjp_by_steps[steps]["retained"]["gradient"], dtype=np.float32
+            )
+            for steps in args.steps
+        },
+    )
 
 
 def percentile(values: list[float], q: float) -> float:
@@ -689,6 +719,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-fixed-vjp-relative-l2", type=float, default=0.02)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--profile", action="store_true")
+    parser.add_argument("--compile-model", action="store_true")
     parser.add_argument("--analyze-only", action="store_true")
     parser.add_argument("--expected-centers", type=int, default=4)
     args = parser.parse_args()

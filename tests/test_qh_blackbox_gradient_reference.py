@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 
 from scripts.qh_blackbox_gradient_reference import (
     branch_fingerprint,
     case_rows,
+    load_center,
     rms_orthogonal_basis,
 )
 
@@ -50,3 +53,29 @@ def test_branch_fingerprint_tracks_discrete_score_state() -> None:
         100000,
         48,
     )
+
+
+def test_load_center_accepts_physical_gradient_trajectory(tmp_path) -> None:
+    run_dir = tmp_path / "run"
+    trajectory_dir = run_dir / "trajectory"
+    trajectory_dir.mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(json.dumps({"nfp": 4}), encoding="utf-8")
+    state_path = trajectory_dir / "step_0012.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "iteration": 12,
+                "noise": np.zeros((3, 100)).tolist(),
+                "score": {"score": 87.5, "status": "ok"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    noise, nfp, payload = load_center(state_path)
+
+    assert noise.shape == (3, 100)
+    assert nfp == 4
+    trajectory = payload["flow_prior_standard_adam_trajectory"]
+    assert trajectory["iteration"] == 12
+    assert trajectory["native_score"]["score"] == 87.5

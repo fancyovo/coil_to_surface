@@ -21,6 +21,7 @@ for path in (REPO_ROOT, GPU_PYTHON):
 TOKEN_DIM = 100
 SCORE_DEFINITION = "corrected_abi9_g_over_2pi_per_helicity"
 DEFAULT_SCALES = (0.01, 0.005, 0.0025, 0.00125)
+COMPONENT_NAMES = ("axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil")
 
 
 def file_sha256(path: Path) -> str:
@@ -55,7 +56,22 @@ def load_center(path: Path) -> tuple[np.ndarray, int, dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     trajectory = payload.get("flow_prior_standard_adam_trajectory")
     if not isinstance(trajectory, dict) or "noise" not in trajectory:
-        raise ValueError(f"{path} is not a saved standard-Adam trajectory case")
+        if "noise" not in payload or "score" not in payload:
+            raise ValueError(f"{path} is not a supported saved Adam trajectory state")
+        manifest_path = path.parent.parent / "manifest.json"
+        if not manifest_path.is_file():
+            raise ValueError(f"physical-gradient trajectory has no sibling manifest: {manifest_path}")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        trajectory = {
+            "noise": payload["noise"],
+            "iteration": int(payload.get("iteration", path.stem.rsplit("_", 1)[-1])),
+            "native_score": payload["score"],
+        }
+        payload = {
+            **payload,
+            "nfp": int(manifest["nfp"]),
+            "flow_prior_standard_adam_trajectory": trajectory,
+        }
     noise = np.asarray(trajectory["noise"], dtype=np.float32)
     if noise.ndim != 2 or noise.shape[1] != TOKEN_DIM:
         raise ValueError(f"{path} noise must have shape (coils, {TOKEN_DIM})")
@@ -386,6 +402,15 @@ def analyze(args: argparse.Namespace) -> None:
     gradients = np.full(
         (len(manifest["centers"]), len(scales), *centers.shape[1:]), np.nan
     )
+    component_gradients = np.full(
+        (
+            len(manifest["centers"]),
+            len(scales),
+            len(COMPONENT_NAMES),
+            *centers.shape[1:],
+        ),
+        np.nan,
+    )
     summary_centers = []
     for center_index, center in enumerate(manifest["centers"]):
         center_rows = [row for row in cases if int(row["center_index"]) == center_index]
@@ -395,6 +420,7 @@ def analyze(args: argparse.Namespace) -> None:
         scale_rows = []
         for scale_index, scale in enumerate(scales):
             slopes = np.full(directions.shape[1], np.nan)
+            component_slopes = np.full((directions.shape[1], len(COMPONENT_NAMES)), np.nan)
             smooth = np.zeros(directions.shape[1], dtype=bool)
             status_counts: dict[str, int] = {}
             for direction_index in range(directions.shape[1]):
@@ -424,11 +450,20 @@ def analyze(args: argparse.Namespace) -> None:
                 )
                 if same_branch:
                     slopes[direction_index] = (float(plus["score"]) - float(minus["score"])) / (2.0 * float(scale))
+                    for component_index, name in enumerate(COMPONENT_NAMES):
+                        component_slopes[direction_index, component_index] = (
+                            float(plus["components"][name]) - float(minus["components"][name])
+                        ) / (2.0 * float(scale))
                     smooth[direction_index] = True
             if np.all(smooth):
                 gradients[center_index, scale_index] = np.mean(
                     slopes[:, None] * directions[center_index], axis=0
                 ).reshape(center["n_coils"], TOKEN_DIM)
+                for component_index in range(len(COMPONENT_NAMES)):
+                    component_gradients[center_index, scale_index, component_index] = np.mean(
+                        component_slopes[:, component_index, None] * directions[center_index],
+                        axis=0,
+                    ).reshape(center["n_coils"], TOKEN_DIM)
             scale_rows.append(
                 {
                     "scale": float(scale),
@@ -437,6 +472,12 @@ def analyze(args: argparse.Namespace) -> None:
                     "endpoint_status_counts": status_counts,
                     "slope_rms": float(np.sqrt(np.nanmean(slopes * slopes))),
                     "gradient_rms": float(np.sqrt(np.nanmean(gradients[center_index, scale_index] ** 2))),
+                    "component_gradient_rms": {
+                        name: float(np.sqrt(np.nanmean(
+                            component_gradients[center_index, scale_index, component_index] ** 2
+                        )))
+                        for component_index, name in enumerate(COMPONENT_NAMES)
+                    },
                 }
             )
         convergence = []
@@ -461,7 +502,13 @@ def analyze(args: argparse.Namespace) -> None:
                 "scale_convergence": convergence,
             }
         )
-    np.savez_compressed(args.output_dir / "reference_gradients.npz", gradients=gradients, scales=scales)
+    np.savez_compressed(
+        args.output_dir / "reference_gradients.npz",
+        gradients=gradients,
+        component_gradients=component_gradients,
+        component_names=np.asarray(COMPONENT_NAMES),
+        scales=scales,
+    )
     elapsed_values = np.asarray([float(row["elapsed_s"]) for row in scored.values()], dtype=np.float64)
     summary = {
         "format": "qh_blackbox_gradient_reference_summary_v1",

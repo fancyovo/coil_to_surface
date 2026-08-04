@@ -4479,6 +4479,122 @@ bool compute_fixed_front_g2_gradient(
     );
 }
 
+bool evaluate_fixed_front_g2_scalar(
+    const FixedFrontG2Cache& cache,
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig& config,
+    const SgpuScoreResult& center,
+    double& frozen_score,
+    double& volume_component,
+    double& coil_score,
+    double& target_error,
+    double& qa_error,
+    double& qp_error,
+    std::string& error
+) {
+    void* field = nullptr;
+    if (sgpu_create_field(
+            coeffs_x, coeffs_y, coeffs_z, currents_a, n_base_coils, n_coeff,
+            nfp, config.segments_per_coil, config.device_id, &field)) {
+        error = "fixed-front query field creation failed";
+        return false;
+    }
+    DeviceBuffer<float> d_B(static_cast<size_t>(cache.points.count) * 3);
+    DeviceBuffer<float> d_grad_B(static_cast<size_t>(cache.points.count) * 9);
+    SgpuScoreResult query;
+    initialize_result(&query, config.device_id);
+    bool ok = d_B.data() && d_grad_B.data();
+    if (!ok) {
+        error = "fixed-front query field allocation failed";
+    } else if (sgpu_internal_eval_B_grad_f32_device(
+                   field, cache.points.xyz.data(), d_B.data(), d_grad_B.data(),
+                   cache.points.count) ||
+               !cuda_stage_ok(cudaDeviceSynchronize(), query, "fixed-front query B/grad(B)")) {
+        error = query.error_message[0]
+            ? query.error_message : "fixed-front query B/grad(B) failed";
+        ok = false;
+    } else if (!compute_qs_metric_native(
+                   cache.points, d_B.data(), d_grad_B.data(), cache.alpha,
+                   currents_a, n_base_coils, nfp, center.flux_edge, config,
+                   query, nullptr)) {
+        error = query.error_message[0]
+            ? query.error_message : "fixed-front query QS metric failed";
+        ok = false;
+    }
+    sgpu_destroy_field(field);
+    if (!ok) return false;
+
+    const CoilMetrics metrics = compute_coil_metrics(
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp
+    );
+    const double coil_unit = coil_component(metrics);
+    const double global_score = q_down(
+        query.qs_target_global_error_per_helicity,
+        config.score_qs_global_scale,
+        0.9
+    );
+    const double edge_score = q_down(
+        query.qs_target_edge_error_per_helicity,
+        config.score_qs_edge_scale,
+        0.9,
+        global_score
+    );
+    const double residual_score = blend({{0.80, global_score}, {0.20, edge_score}});
+    const double volume_unit = residual_score *
+        center.score_volume_qs_size_factor * center.score_volume_qs_iota_factor;
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    const double competitor_error = std::min(
+        query.qs_qa_global_error_per_helicity,
+        query.qs_qp_global_error_per_helicity
+    );
+    const double advantage = !qh_target ? 1.0 : competitor_error / std::max(
+        query.qs_target_global_error_per_helicity + competitor_error,
+        1.0e-300
+    );
+    const double helicity_position = clip01(
+        (advantage - config.score_qh_helicity_bad) /
+        (config.score_qh_helicity_good - config.score_qh_helicity_bad)
+    );
+    const double helicity_linear = clip01(
+        advantage / config.score_qh_helicity_good
+    );
+    const double helicity_window = helicity_position * helicity_position *
+        (3.0 - 2.0 * helicity_position);
+    const double helicity_quality = !qh_target ? 1.0 :
+        config.score_qh_helicity_exploration_fraction * helicity_linear +
+        (1.0 - config.score_qh_helicity_exploration_fraction) * helicity_window;
+    const double helicity_factor = !qh_target ? 1.0 :
+        config.score_qh_total_helicity_floor +
+        (1.0 - config.score_qh_total_helicity_floor) * helicity_quality;
+
+    double total_weight = 0.0;
+    double weighted_score = 0.0;
+    for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
+        const double weight = std::max(config.score_weights[component], 0.0);
+        double value = center.components[component] / 100.0;
+        if (component == SGPU_SCORE_COMPONENT_VOLUME_QS) value = volume_unit;
+        if (component == SGPU_SCORE_COMPONENT_COIL) value = coil_unit;
+        total_weight += weight;
+        weighted_score += weight * clip01(value);
+    }
+    const double score_before = total_weight > 0.0
+        ? 100.0 * clip01(weighted_score / total_weight) : 0.0;
+    frozen_score = score_before * center.score_qh_total_iota_factor * helicity_factor;
+    volume_component = 100.0 * clip01(volume_unit);
+    coil_score = 100.0 * clip01(coil_unit);
+    target_error = query.qs_target_global_error_per_helicity;
+    qa_error = query.qs_qa_global_error_per_helicity;
+    qp_error = query.qs_qp_global_error_per_helicity;
+    return true;
+}
+
 void add_iota_score_solution_adjoint(
     const AlphaFitNative& alpha,
     const SgpuScoreConfig& config,
@@ -5323,6 +5439,94 @@ int sgpu_score_coils_g2_gradient(
     gradient_result->coil_component_gradient_rms =
         std::sqrt(component_norm2 / std::max<size_t>(gradient_count, 1));
     gradient_result->status = 0;
+    sgpu_internal_set_error("");
+    return 0;
+}
+
+int sgpu_score_coils_g2_frozen_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    double* frozen_scores,
+    double* volume_components,
+    double* coil_components,
+    double* target_errors,
+    double* qa_errors,
+    double* qp_errors
+) {
+    if (!center_coeffs_x || !center_coeffs_y || !center_coeffs_z ||
+        !center_currents_a || !query_coeffs_x || !query_coeffs_y ||
+        !query_coeffs_z || !query_currents_a || query_count <= 0 ||
+        n_base_coils <= 0 || n_coeff <= 0 || nfp <= 0 || !config ||
+        !center_score_result || !frozen_scores || !volume_components ||
+        !coil_components || !target_errors || !qa_errors || !qp_errors) {
+        sgpu_internal_set_error("invalid G2 frozen-batch input");
+        return 1;
+    }
+    FixedFrontG2Cache cache;
+    g_active_gradient_group = 2;
+    g_active_g2_cache = &cache;
+    const int score_code = sgpu_score_coils(
+        center_coeffs_x, center_coeffs_y, center_coeffs_z, center_currents_a,
+        n_base_coils, n_coeff, nfp, config, center_score_result
+    );
+    g_active_g2_cache = nullptr;
+    g_active_gradient_group = 0;
+    if (score_code != 0 || center_score_result->status != SGPU_SCORE_OK ||
+        !cache.ready || !cache.field) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        if (score_code == 0 && center_score_result->status != SGPU_SCORE_OK) {
+            sgpu_internal_set_error("G2 frozen-batch center score is not ok");
+            return 1;
+        }
+        if (score_code == 0) {
+            sgpu_internal_set_error("G2 frozen-batch center cache is incomplete");
+            return 1;
+        }
+        return score_code;
+    }
+
+    const size_t coefficient_stride =
+        static_cast<size_t>(n_base_coils) * static_cast<size_t>(n_coeff);
+    const size_t current_stride = static_cast<size_t>(n_base_coils);
+    std::string error;
+    for (int query = 0; query < query_count; ++query) {
+        if (!evaluate_fixed_front_g2_scalar(
+                cache,
+                query_coeffs_x + query * coefficient_stride,
+                query_coeffs_y + query * coefficient_stride,
+                query_coeffs_z + query * coefficient_stride,
+                query_currents_a + query * current_stride,
+                n_base_coils, n_coeff, nfp, *config, *center_score_result,
+                frozen_scores[query], volume_components[query],
+                coil_components[query], target_errors[query],
+                qa_errors[query], qp_errors[query], error)) {
+            sgpu_destroy_field(cache.field);
+            std::snprintf(
+                center_score_result->error_message,
+                sizeof(center_score_result->error_message),
+                "G2 frozen query %d failed: %.215s",
+                query,
+                error.c_str()
+            );
+            center_score_result->status = SGPU_SCORE_INTERNAL_ERROR;
+            sgpu_internal_set_error(center_score_result->error_message);
+            return 1;
+        }
+    }
+    sgpu_destroy_field(cache.field);
+    cache.field = nullptr;
     sgpu_internal_set_error("");
     return 0;
 }

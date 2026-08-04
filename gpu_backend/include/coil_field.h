@@ -326,6 +326,34 @@ int sgpu_score_coils_g3_gradient(
     SgpuScoreGradientResult* gradient_result
 );
 
+// Diagnostic-only closure oracle for G2. The center forward pass supplies the
+// frozen volume points, flux geometry, weights, and fitted iota. Each query
+// recomputes only the coil component and B/grad(B)/G on that frozen front, then
+// rebuilds the exact scalar whose center derivative is returned by G1+G2.
+// Query coefficient arrays are flattened as [query][coil][coefficient].
+int sgpu_score_coils_g2_frozen_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    double* frozen_scores,
+    double* volume_components,
+    double* coil_components,
+    double* target_errors,
+    double* qa_errors,
+    double* qp_errors
+);
+
 // Internal-oracle entrypoint: returns the reported 0--100 coil component and
 // its piecewise analytical gradient with active percentile/minimum indices
 // frozen at the supplied coil.

@@ -38,6 +38,20 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, the post-peak G2 reversal attribution is reopened and the
+  previous G4 conclusion is provisional. The earlier 200-direction reference
+  did not sample the current `start_10` basin: it covered nfp6/nc2 steps
+  0/200/400 and a separate nfp4/nc2 step 50, whereas the reversing trajectory
+  is nfp4/nc3. Existing component data also make a missing-component-only
+  explanation insufficient: the G2-covered volume-QS component itself falls
+  smoothly after the peak. The required isolation is now three-level:
+  (1) finite-difference the exact frozen-front scalar represented by G1+G2,
+  (2) close its physical cotangent through the actual FP32 RK4-64 flow VJP,
+  and (3) compare both with a same-basin 300-direction full-score reference at
+  pre-peak, peak, and post-peak states. Diagnostic-only source is being added;
+  it must not change the ordinary score ABI/path or break old gradient-library
+  loading. Do not claim G4 is the cause unless the first two closures pass and
+  the same-basin full reference shows the omitted response dominates.
 - On 2026-08-04, deterministic-bias investigation completed after the accepted
   G2-Adam sweep. Commit `8d43791` adds the diagnostic code and commit `61b5cd6`
   archives the final report, saved-trajectory analysis, figures, and short

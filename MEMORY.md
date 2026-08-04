@@ -58,6 +58,18 @@ once the task is accepted.
   `74.42519` versus historical recorded `74.43583`. Formal four-GPU job
   `31640` is now submitted for the 6404-case batch; its output directory is
   `~/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_blackbox_gradient_reference_31640/`.
+  Experimental commits `85c5a43` and `6b7afe7` add separate opt-in G1 and
+  cumulative G1+G2 APIs without changing `sgpu_score_coils` or either ABI-9
+  struct. G1 analytically differentiates the active coil-engineering metrics.
+  G2 freezes axis/psi/selected surface/volume points/weights/fitted iota and
+  discrete branches, then applies a pointwise QH/QA/QP score VJP, a CUDA
+  segment-level Biot-Savart VJP, and an analytical segment-to-Fourier/current
+  map. These implementations are not yet numerically validated. P107 job
+  `31642` is submitted to compile them, test G1 against 24 multi-scale
+  directional differences, compare forward-only old/new binaries, time
+  explicit G1/G2, and run four small true-score direction checks; it is
+  pending behind the four-GPU reference job because of the per-user resource
+  limit.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

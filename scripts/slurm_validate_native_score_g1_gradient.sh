@@ -18,10 +18,11 @@ project="${PROJECT:-$HOME/local_surface_evaluator_worktrees/qh-blackbox-gradient
 baseline_lib="$HOME/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu_backend/build_native_score/libstellarator_gpu.so"
 build="$project/gpu_backend/build_gradient_sm120"
 gradient_lib="$build/libstellarator_gpu.so"
-case_path="$project/reports/assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/trajectory/step_0200.json"
+case_path="${CASE_PATH:-$project/reports/assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/trajectory/step_0200.json}"
 output="${OUTPUT_DIR:-$project/runs/qh_native_g1_validation_${SLURM_JOB_ID}}"
 run_native="${RUN_NATIVE_VALIDATION:-1}"
 run_latent="${RUN_LATENT_VALIDATION:-1}"
+build_gradient_library="${BUILD_GRADIENT_LIBRARY:-1}"
 build_jobs="${SLURM_CPUS_PER_TASK:-8}"
 
 mkdir -p "$project/logs" "$output"
@@ -48,12 +49,14 @@ for path in ("tests/test_qs_gradient_math.py", "tests/test_flow_vjp.py"):
             count += 1
 print(f"standalone gradient checks passed: {count}")
 PY
-cmake -S gpu_backend -B "$build" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CUDA_COMPILER="$CUDACXX" \
-  -DCUDAToolkit_ROOT="$CUDA_HOME" \
-  -DCMAKE_CUDA_ARCHITECTURES=120
-cmake --build "$build" --parallel "$build_jobs"
+if (( build_gradient_library )); then
+  cmake -S gpu_backend -B "$build" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CUDA_COMPILER="$CUDACXX" \
+    -DCUDAToolkit_ROOT="$CUDA_HOME" \
+    -DCMAKE_CUDA_ARCHITECTURES=120
+  cmake --build "$build" --parallel "$build_jobs"
+fi
 test -f "$gradient_lib"
 
 idle_streak=0

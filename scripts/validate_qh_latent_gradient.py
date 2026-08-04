@@ -19,6 +19,7 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 from flow_matching.vjp import decode_physical_vjp
+from flow_matching.model import compile_flow_transformer
 from scripts.optimize_flow_prior_zo_adam import load_flow_checkpoint
 from stellarator_gpu import (
     score_coils_g1_gradient_native,
@@ -65,6 +66,7 @@ def main() -> None:
     parser.add_argument("--rk4-steps", type=int, default=256)
     parser.add_argument("--checkpoint-steps", type=int, default=8)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--compile-flow-model", action="store_true")
     args = parser.parse_args()
 
     manifest = json.loads((args.reference_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -107,6 +109,8 @@ def main() -> None:
     g3_physical = token_cotangent(g3["gradient"])
     device = torch.device(args.device)
     model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
+    if args.compile_flow_model:
+        model = compile_flow_transformer(model)
     decoded_g1, latent_g1, g1_vjp = decode_physical_vjp(
         model,
         normalizer,

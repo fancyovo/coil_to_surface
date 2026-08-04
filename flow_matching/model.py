@@ -150,3 +150,55 @@ class CoilFlowTransformer(nn.Module):
     @property
     def parameter_count(self) -> int:
         return sum(parameter.numel() for parameter in self.parameters())
+
+
+class _UncheckedFlowTransformer(nn.Module):
+    def __init__(self, model: CoilFlowTransformer):
+        super().__init__()
+        self.model = model
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        time: torch.Tensor,
+        nfp: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.model.forward_unchecked(tokens, time, nfp, mask)
+
+
+class CompiledFlowTransformer(nn.Module):
+    def __init__(self, model: CoilFlowTransformer):
+        super().__init__()
+        self.model = model
+        self.compiled_unchecked = torch.compile(
+            _UncheckedFlowTransformer(model), mode="default", fullgraph=True
+        )
+
+    def validate_nfp(self, nfp: torch.Tensor) -> None:
+        self.model.validate_nfp(nfp)
+
+    def forward_unchecked(
+        self,
+        tokens: torch.Tensor,
+        time: torch.Tensor,
+        nfp: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.compiled_unchecked(tokens, time, nfp, mask)
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        time: torch.Tensor,
+        nfp: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        self.validate_nfp(nfp)
+        return self.forward_unchecked(tokens, time, nfp, mask)
+
+
+def compile_flow_transformer(model: CoilFlowTransformer) -> CompiledFlowTransformer:
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    return CompiledFlowTransformer(model)

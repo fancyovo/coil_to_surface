@@ -21,6 +21,7 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 from flow_matching.vjp import decode_physical_vjp
+from flow_matching.model import compile_flow_transformer
 from scripts.optimize_flow_prior_zo_adam import (
     cosine_similarity,
     decode_noise_rk4,
@@ -38,21 +39,6 @@ from stellarator_gpu import score_coils_g2_gradient_native
 
 
 DEFAULT_STEPS = (32, 64, 128, 256)
-
-
-class UncheckedFlowModel(torch.nn.Module):
-    def __init__(self, model: torch.nn.Module):
-        super().__init__()
-        self.model = model
-
-    def forward(
-        self,
-        tokens: torch.Tensor,
-        time_value: torch.Tensor,
-        nfp: torch.Tensor,
-        mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        return self.model.forward_unchecked(tokens, time_value, nfp, mask)
 
 
 def parse_ints(value: str) -> tuple[int, ...]:
@@ -283,11 +269,7 @@ def evaluate_center(args: argparse.Namespace) -> None:
     device = torch.device(args.device)
     model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
     if args.compile_model:
-        for parameter in model.parameters():
-            parameter.requires_grad_(False)
-        model = torch.compile(
-            UncheckedFlowModel(model), mode="default", fullgraph=True
-        )
+        model = compile_flow_transformer(model)
         warmup_cotangent = np.ones_like(noise, dtype=np.float32)
         run_vjp(
             model,

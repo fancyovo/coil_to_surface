@@ -152,7 +152,7 @@ def decode_physical_vjp(
     device: torch.device,
     rk4_steps: int = 256,
     checkpoint_steps: int = 8,
-    use_checkpoint: bool = True,
+    use_checkpoint: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, FlowVjpDiagnostics]:
     values = np.asarray(noise, dtype=np.float32)
     cotangent = np.asarray(physical_cotangent, dtype=np.float32)

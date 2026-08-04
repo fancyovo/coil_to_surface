@@ -38,6 +38,17 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, commit `ac99266` adds the opt-in cumulative G3 gradient path.
+  G3 keeps the production `sgpu_score_coils` ABI/path unchanged and, only for
+  `sgpu_score_coils_g3_gradient`, caches the existing FP32 augmented-QR factors
+  and differentiates the alpha/iota ridge least-squares solution implicitly.
+  It adds the resulting iota/QS, alpha-fit-residual, and normal-field adjoints
+  to G1+G2 before the existing CUDA Biot-Savart and Fourier/current map. Eight
+  local independent math/flow-VJP tests pass, including scaled ridge-LS,
+  normalized alpha-weight, and alpha field-preprocess adjoints. This CUDA path
+  is not yet numerically accepted: Students job `31720` is submitted on one
+  idle-checked RTX 5090 with 12 CPUs to compile CUDA 13/sm120 and run forward,
+  timing, G1, G2, and G3 validation. Remote worktree HEAD is `ac99266`.
 - On 2026-08-04, the user granted the active black-box-gradient exploration
   continuing access to the `Students` partition's additional 2 RTX 5090 GPUs
   and 24 CPUs until the user explicitly revokes that permission. This is in

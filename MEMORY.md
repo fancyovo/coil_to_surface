@@ -38,7 +38,40 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-04, the new physical-gradient Adam sweep is active on branch
+- On 2026-08-04, the physical-gradient Adam sweep was accepted without any
+  rerun or new job. All formal jobs `31855--31869` are terminal: only the three
+  `lr=0.003` jobs completed 200 steps; the other 12 failed after 8--71 recorded
+  steps because the old G2 Python/C ABI treated a valid non-OK complete score
+  (`no_axis`, `no_surface`, and related statuses) as a backend exception before
+  the optimizer could backtrack. Historical scores before each failure remain
+  exact ABI-9 score evaluations, but these runs must not be described as
+  completed 200-step experiments. The highest new historical score was
+  `90.6927323` at step 26 for RK4-256/lr=0.01, still `2.4728275` below the old
+  four-direction baseline `93.1655597`. RK4-64/128/256 with lr=0.003 peaked at
+  `90.6273/90.6453/90.6456` and then all collapsed to about `80.85`; each best
+  used `surface_level=0.25`, while each final state used `0.08`. This validates
+  G2 + flow VJP as a fast short-range direction but also validates the expected
+  fixed-front limitation: it does not differentiate axis/psi/surface branch
+  reselection and is unsafe for long unconstrained Adam trajectories without
+  an exact-score acceptance/trust mechanism. RK4 step count had little effect
+  on peak score; learning rate dominated, with lr=0.01 giving the best short
+  trajectory. Completed per-step means were `7.24/8.09/10.65 s` for
+  RK4-64/128/256, or `3.68x/3.30x/2.50x` faster than the old 26.65 s baseline.
+  All postflight snapshots were clean at 2 MiB and 0--2% GPU utilization; no
+  jobs or zombie processes remain. Full evidence is report section 12 and
+  `reports/assets/qh_physical_gradient_adam_start10_sweep_20260804/`; every raw
+  trajectory is also preserved remotely under the same run name. Local commit
+  `41b0a1d` changes G2 so valid non-OK scores return to the caller with zeroed
+  gradients and passed `11/11` local tests, but it has not been synced, rebuilt,
+  or validated remotely and did not contribute to any accepted number. Do not
+  claim that this interface fix solves the observed post-peak drift. No full
+  physical evaluation was run because the new maximum did not beat the already
+  fully evaluated score-93 baseline and the user explicitly requested no new
+  jobs. Acceptance report, analysis script, aggregate tables, and figures are
+  archived in local commit `e813f01`; the branch has not been synced to the
+  remote after this acceptance.
+- On 2026-08-04 (historical submission record, superseded by the acceptance
+  entry above), the new physical-gradient Adam sweep was active on branch
   `qh-blackbox-gradient` at commit `8aca1dc53`. The fixed comparison object is
   the main-document nfp4/nc3 score-93 case: the original IID `start_10` latent
   in `reports/assets/qh_score_adam_start_panel_29960/start_10.json`, source case

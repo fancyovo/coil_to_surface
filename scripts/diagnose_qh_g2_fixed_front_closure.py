@@ -289,7 +289,7 @@ def main() -> None:
                         "volume_available_count",
                     )
                 },
-                "g4_total_wall_s": float(g4_result["timing"]["total"]),
+                "g4_total_wall_s": float(g4_result["timing"]["total_s"]),
             }
         )
 

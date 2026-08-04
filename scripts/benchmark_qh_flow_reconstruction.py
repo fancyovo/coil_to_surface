@@ -43,34 +43,6 @@ def array_error(reference: np.ndarray, value: np.ndarray) -> dict[str, float]:
     }
 
 
-def reference_probe_position_rms(
-    cases: list[dict[str, Any]],
-    raw: np.ndarray,
-    *,
-    center_index: int,
-    center_tokens: np.ndarray,
-    probe_rms: float,
-) -> float:
-    endpoints = [
-        row
-        for row in cases
-        if row["kind"] == "endpoint"
-        and int(row["center_index"]) == center_index
-        and np.isclose(float(row["scale"]), probe_rms, rtol=0.0, atol=1.0e-12)
-    ]
-    if not endpoints:
-        raise RuntimeError(
-            f"center {center_index} has no reference endpoints at RMS {probe_rms}"
-        )
-    displacements = [
-        perturbation_metrics(
-            np.asarray(raw[int(row["case_id"])]), center_tokens
-        )["position_delta_rms_m"]
-        for row in endpoints
-    ]
-    return float(np.median(displacements))
-
-
 @torch.inference_mode()
 def flow_roundtrips(
     model,
@@ -79,7 +51,7 @@ def flow_roundtrips(
     nfp: torch.Tensor,
     *,
     steps: int,
-) -> tuple[np.ndarray, np.ndarray, float]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     started = time.perf_counter()
     decoded = integrate_flow(
         model, latent, nfp, start_time=0.0, end_time=1.0, steps=steps, method="rk4"
@@ -95,10 +67,68 @@ def flow_roundtrips(
     )
     torch.cuda.synchronize(latent.device)
     return (
+        decoded.cpu().numpy(),
         recovered_latent.cpu().numpy(),
         recovered_data.cpu().numpy(),
         float(time.perf_counter() - started),
     )
+
+
+@torch.inference_mode()
+def decode_probes(
+    model,
+    centers: np.ndarray,
+    directions: np.ndarray,
+    nfp_values: np.ndarray,
+    *,
+    probe_rms: float,
+    steps: int,
+    device: torch.device,
+) -> tuple[np.ndarray, float]:
+    endpoint_parts = []
+    endpoint_nfp = []
+    for center, center_directions, center_nfp in zip(
+        centers, directions, nfp_values
+    ):
+        endpoint_parts.extend(
+            (
+                center[None] + probe_rms * center_directions,
+                center[None] - probe_rms * center_directions,
+            )
+        )
+        endpoint_nfp.extend([int(center_nfp)] * (2 * len(center_directions)))
+    endpoints = torch.from_numpy(np.concatenate(endpoint_parts).astype(np.float32)).to(
+        device=device
+    )
+    nfp = torch.tensor(endpoint_nfp, dtype=torch.long, device=device)
+    started = time.perf_counter()
+    decoded = integrate_flow(
+        model, endpoints, nfp, start_time=0.0, end_time=1.0, steps=steps, method="rk4"
+    )
+    torch.cuda.synchronize(device)
+    return decoded.cpu().numpy(), float(time.perf_counter() - started)
+
+
+def configuration_position_rms(
+    tokens: np.ndarray, reference: np.ndarray, *, samples: int = 128
+) -> np.ndarray:
+    values = np.asarray(tokens, dtype=np.float64)
+    center = np.asarray(reference, dtype=np.float64)
+    coefficients = values[..., :99].reshape(*values.shape[:-1], 3, 33)
+    center_coefficients = center[..., :99].reshape(*center.shape[:-1], 3, 33)
+    delta = coefficients - center_coefficients
+    time_values = np.arange(samples, dtype=np.float64) / samples
+    modes = np.arange(1, 17, dtype=np.float64)
+    angles = 2.0 * np.pi * modes[:, None] * time_values[None]
+    positions = delta[..., 0, None].copy()
+    positions = positions + np.einsum(
+        "...cm,mt->...ct", delta[..., 1::2], np.sin(angles)
+    )
+    positions = positions + np.einsum(
+        "...cm,mt->...ct", delta[..., 2::2], np.cos(angles)
+    )
+    displacement_squared = np.sum(positions * positions, axis=-2)
+    return np.sqrt(np.mean(displacement_squared, axis=(-2, -1)))
 
 
 def plot_summary(summary: dict[str, Any], output: Path) -> None:
@@ -152,18 +182,21 @@ def main() -> None:
     raw = np.load(args.reference_dir / "raw_tokens.npy", mmap_mode="r")
     with np.load(args.reference_dir / "latent_banks.npz") as banks:
         latent_np = np.asarray(banks["centers"], dtype=np.float32)
+        direction_flat = np.asarray(banks["directions"], dtype=np.float32)
     centers = manifest["centers"]
     if len(centers) != len(latent_np):
         raise RuntimeError("center manifest and latent bank disagree")
     coil_counts = {int(center["n_coils"]) for center in centers}
     if len(coil_counts) != 1 or latent_np.shape[1] != next(iter(coil_counts)):
         raise RuntimeError("this benchmark requires equal coil counts across centers")
+    directions_np = direction_flat.reshape(
+        len(centers), direction_flat.shape[1], latent_np.shape[1], latent_np.shape[2]
+    )
 
     device = torch.device(args.device)
     model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
     formal_tokens = []
     normalized_data = []
-    probe_position_rms = []
     for center_index, center in enumerate(centers):
         center_case = next(
             row
@@ -179,15 +212,6 @@ def main() -> None:
             )
         formal_tokens.append(normalizer.inverse(normalized, key)[0])
         normalized_data.append(normalized[0])
-        probe_position_rms.append(
-            reference_probe_position_rms(
-                cases,
-                raw,
-                center_index=center_index,
-                center_tokens=tokens,
-                probe_rms=args.probe_rms,
-            )
-        )
     data_np = np.stack(normalized_data).astype(np.float32)
     latent = torch.from_numpy(latent_np).to(device=device)
     data = torch.from_numpy(data_np).to(device=device)
@@ -199,11 +223,37 @@ def main() -> None:
     flow_roundtrips(model, latent, data, nfp, steps=4)
     rows = []
     for steps in args.steps:
-        recovered_latent, recovered_data, wall_s = flow_roundtrips(
+        decoded_latent, recovered_latent, recovered_data, wall_s = flow_roundtrips(
             model, latent, data, nfp, steps=steps
         )
+        decoded_probes, probe_wall_s = decode_probes(
+            model,
+            latent_np,
+            directions_np,
+            nfp.cpu().numpy(),
+            probe_rms=args.probe_rms,
+            steps=steps,
+            device=device,
+        )
+        probe_offset = 0
         for center_index, center in enumerate(centers):
             key = (int(center["nfp"]), int(center["n_coils"]))
+            probe_count = 2 * directions_np.shape[1]
+            center_probe_normalized = decoded_probes[
+                probe_offset : probe_offset + probe_count
+            ]
+            probe_offset += probe_count
+            center_decoded_tokens = normalizer.inverse(
+                decoded_latent[center_index : center_index + 1], key
+            )[0]
+            probe_tokens = normalizer.inverse(center_probe_normalized, key)
+            probe_position_rms = float(
+                np.median(
+                    configuration_position_rms(
+                        probe_tokens, center_decoded_tokens[None]
+                    )
+                )
+            )
             latent_error = array_error(latent_np[center_index], recovered_latent[center_index])
             data_error = array_error(data_np[center_index], recovered_data[center_index])
             recovered_tokens = normalizer.inverse(recovered_data[center_index : center_index + 1], key)[0]
@@ -217,6 +267,7 @@ def main() -> None:
                     "n_coils": key[1],
                     "steps": int(steps),
                     "batch_four_roundtrips_wall_s": wall_s,
+                    "batch_probe_decode_wall_s": probe_wall_s,
                     "latent_rms": latent_error["rms"],
                     "latent_max_abs": latent_error["max_abs"],
                     "latent_relative_l2": latent_error["relative_l2"],
@@ -230,11 +281,11 @@ def main() -> None:
                         "coefficient_relative_l2"
                     ],
                     "physical_current_relative_l2": physical_error["current_relative_l2"],
-                    "probe_position_rms_m": probe_position_rms[center_index],
+                    "probe_position_rms_m": probe_position_rms,
                     "physical_position_rms_to_probe": physical_error[
                         "position_delta_rms_m"
                     ]
-                    / probe_position_rms[center_index],
+                    / probe_position_rms,
                 }
             )
 
@@ -258,6 +309,7 @@ def main() -> None:
                 "batch_four_roundtrips_wall_s": selected[0][
                     "batch_four_roundtrips_wall_s"
                 ],
+                "batch_probe_decode_wall_s": selected[0]["batch_probe_decode_wall_s"],
             }
         )
     summary = {

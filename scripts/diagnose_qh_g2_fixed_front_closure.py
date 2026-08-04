@@ -28,6 +28,7 @@ from stellarator_gpu import (
     score_coils_g2_gradient_native,
     score_coils_g3_frozen_batch_native,
     score_coils_g3_gradient_native,
+    score_coils_g4_fixed_branch_batch_native,
 )
 
 
@@ -217,9 +218,26 @@ def main() -> None:
         target_helicity=(1, nfp),
     )
     g3_frozen_wall_s = time.perf_counter() - g3_frozen_started
+    g4_branch_started = time.perf_counter()
+    g4_branch = score_coils_g4_fixed_branch_batch_native(
+        args.gradient_lib,
+        x,
+        y,
+        z,
+        current,
+        query_x,
+        query_y,
+        query_z,
+        query_current,
+        nfp,
+        device_id=0,
+        target_helicity=(1, nfp),
+    )
+    g4_branch_wall_s = time.perf_counter() - g4_branch_started
 
     rows: list[dict[str, Any]] = []
     for index, metadata in enumerate(candidate_metadata):
+        g4_result = g4_branch["query_score_results"][index]
         rows.append(
             {
                 **metadata,
@@ -249,6 +267,29 @@ def main() -> None:
                         "iota_max",
                     )
                 },
+                "g4_status": str(g4_result["status"]),
+                "g4_score": float(g4_result["score"]),
+                "g4_components": {
+                    name: float(value)
+                    for name, value in g4_result["components"].items()
+                },
+                "g4_diagnostics": {
+                    name: g4_result["diagnostics"].get(name)
+                    for name in (
+                        "psi_angle_p95",
+                        "surface_level",
+                        "surface_inverse_aspect_ratio",
+                        "flux_edge",
+                        "iota_min",
+                        "iota_max",
+                        "qs_global_error",
+                        "qs_qa_global_error",
+                        "qs_qp_global_error",
+                        "volume_candidate_count",
+                        "volume_available_count",
+                    )
+                },
+                "g4_total_wall_s": float(g4_result["timing"]["total"]),
             }
         )
 
@@ -309,6 +350,26 @@ def main() -> None:
                 "g3_iota_max",
             ):
                 pair[f"{key}_slope"] = (plus[key] - minus[key]) / (2.0 * scale)
+            if minus["g4_status"] == "ok" and plus["g4_status"] == "ok":
+                pair["g4_score_slope"] = (
+                    plus["g4_score"] - minus["g4_score"]
+                ) / (2.0 * scale)
+                for component in (
+                    "psi", "surface", "coordinate", "volume_qs", "iota", "coil"
+                ):
+                    pair[f"g4_{component}_slope"] = (
+                        plus["g4_components"][component]
+                        - minus["g4_components"][component]
+                    ) / (2.0 * scale)
+                for diagnostic_name in (
+                    "iota_min", "qs_global_error", "qs_qa_global_error", "qs_qp_global_error"
+                ):
+                    pair[f"g4_{diagnostic_name}_slope"] = (
+                        float(plus["g4_diagnostics"][diagnostic_name])
+                        - float(minus["g4_diagnostics"][diagnostic_name])
+                    ) / (2.0 * scale)
+            else:
+                pair["g4_score_slope"] = float("nan")
             pairs.append(pair)
 
     scale_summaries = []
@@ -320,6 +381,8 @@ def main() -> None:
         g3_observed = np.asarray([row["g3_frozen_score_slope"] for row in selected])
         g3_physical = np.asarray([row["g3_physical_secant_prediction"] for row in selected])
         g3_latent = np.asarray([row["g3_prediction"] for row in selected])
+        g4_observed = np.asarray([row["g4_score_slope"] for row in selected])
+        g4_finite = np.isfinite(g4_observed)
         scale_summaries.append(
             {
                 "scale": float(scale),
@@ -336,6 +399,10 @@ def main() -> None:
                 "g3_frozen_slope_rms": rms(g3_observed),
                 "g3_physical_prediction_rms": rms(g3_physical),
                 "g3_latent_prediction_rms": rms(g3_latent),
+                "g4_valid_direction_count": int(np.sum(g4_finite)),
+                "g4_vs_g2_latent_cosine": cosine(g4_observed[g4_finite], latent[g4_finite]),
+                "g4_vs_g3_latent_cosine": cosine(g4_observed[g4_finite], g3_latent[g4_finite]),
+                "g4_slope_rms": rms(g4_observed[g4_finite]),
             }
         )
 
@@ -366,6 +433,11 @@ def main() -> None:
         "g3_frozen_center_score_delta": float(
             g3_frozen["frozen_score"][0] - g3_frozen["center_score_result"]["score"]
         ),
+        "g4_branch_center_score": float(g4_branch["query_score_results"][0]["score"]),
+        "g4_branch_center_score_delta": float(
+            g4_branch["query_score_results"][0]["score"]
+            - g4_branch["center_score_result"]["score"]
+        ),
         "native_gradient_diagnostics": {
             name: payload["gradient_diagnostics"] for name, payload in native.items()
         },
@@ -380,6 +452,10 @@ def main() -> None:
         "candidate_decode_wall_s": float(candidate_decode_wall_s),
         "frozen_batch_wall_s": float(frozen_wall_s),
         "g3_frozen_batch_wall_s": float(g3_frozen_wall_s),
+        "g4_branch_batch_wall_s": float(g4_branch_wall_s),
+        "g4_branch_query_mean_wall_s": float(
+            np.mean([row["g4_total_wall_s"] for row in rows])
+        ),
         "scale_summaries": scale_summaries,
         "pairs": pairs,
     }
@@ -387,6 +463,7 @@ def main() -> None:
     write_json(args.output_dir / "summary.json", output)
     print(json.dumps({key: output[key] for key in (
         "iteration", "frozen_center_score_delta", "g3_frozen_center_score_delta",
+        "g4_branch_center_score_delta", "g4_branch_query_mean_wall_s",
         "scale_summaries"
     )}, indent=2))
 

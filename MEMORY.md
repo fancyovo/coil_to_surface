@@ -81,7 +81,12 @@ once the task is accepted.
   the missing optional test runner cannot block the actual Release CUDA build,
   24-direction G1 check, old/new forward benchmark, G2 timing, and four true-
   score direction checks. Latent validation remains disabled until formal
-  reference job `31640` has completed.
+  reference job `31640` has completed. Replacement Students job `31659`
+  passed all five standalone math/VJP checks and reached CUDA compilation, then
+  failed in 43 seconds because `fmax(abs(nfp), 1)` selected a host-only integer
+  overload inside a device kernel. This is an implementation compile bug, not
+  numerical evidence; it is fixed by an explicit device-safe double-valued
+  conditional before resubmission.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

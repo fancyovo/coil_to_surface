@@ -3099,7 +3099,7 @@ __global__ void compute_qs_point_adjoint_kernel(
     const double target_norm = fmax(
         hypot(static_cast<double>(helicity_M), static_cast<double>(helicity_N)), 1.0
     );
-    const double qp_norm = fmax(abs(nfp), 1);
+    const double qp_norm = nfp > 1 ? static_cast<double>(nfp) : 1.0;
     double lambda_target = 0.0;
     if (target_rms > 1.0e-30 && weight_sum > 0.0) {
         lambda_target += d_target_error * weight * r_target /

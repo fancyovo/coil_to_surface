@@ -124,8 +124,20 @@ class CoilFlowTransformer(nn.Module):
         nfp: torch.Tensor,
         mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
+        self.validate_nfp(nfp)
+        return self.forward_unchecked(tokens, time, nfp, mask)
+
+    def validate_nfp(self, nfp: torch.Tensor) -> None:
         if torch.any((nfp < 1) | (nfp > self.config["max_nfp"])):
             raise ValueError("nfp is outside the model embedding range")
+
+    def forward_unchecked(
+        self,
+        tokens: torch.Tensor,
+        time: torch.Tensor,
+        nfp: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         condition = self.time_embedding(time) + self.nfp_embedding(nfp)
         x = self.input(tokens)
         if mask is not None:

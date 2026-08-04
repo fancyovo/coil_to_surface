@@ -9,6 +9,15 @@ GEOMETRY_DIM = 99
 TOKEN_DIM = 100
 
 
+def prepare_velocity_model(model, nfp: torch.Tensor):
+    validate = getattr(model, "validate_nfp", None)
+    unchecked = getattr(model, "forward_unchecked", None)
+    if callable(validate) and callable(unchecked):
+        validate(nfp)
+        return unchecked
+    return model
+
+
 def parseval_geometry_weights(
     standard_deviation: torch.Tensor,
 ) -> torch.Tensor:
@@ -118,19 +127,20 @@ def sample_heun(
 ) -> torch.Tensor:
     if steps < 1:
         raise ValueError("steps must be positive")
+    velocity_model = prepare_velocity_model(model, nfp)
     state = noise
     dt = 1.0 / steps
     for index in range(steps):
         time = torch.full(
             (state.shape[0],), index / steps, device=state.device, dtype=torch.float32
         )
-        velocity = model(state, time, nfp, mask)
+        velocity = velocity_model(state, time, nfp, mask)
         predicted = state + dt * velocity
         if index + 1 == steps:
             state = predicted
         else:
             next_time = torch.full_like(time, (index + 1) / steps)
-            next_velocity = model(predicted, next_time, nfp, mask)
+            next_velocity = velocity_model(predicted, next_time, nfp, mask)
             state = state + 0.5 * dt * (velocity + next_velocity)
     return state
 
@@ -157,6 +167,7 @@ def integrate_flow(
     if state.ndim != 3 or nfp.shape != (state.shape[0],):
         raise ValueError("state and nfp batch dimensions must match")
 
+    velocity_model = prepare_velocity_model(model, nfp)
     value = state
     dt = (float(end_time) - float(start_time)) / steps
 
@@ -167,7 +178,7 @@ def integrate_flow(
             device=at.device,
             dtype=torch.float32,
         )
-        return model(at, time, nfp, mask)
+        return velocity_model(at, time, nfp, mask)
 
     for index in range(steps):
         time_value = float(start_time) + index * dt

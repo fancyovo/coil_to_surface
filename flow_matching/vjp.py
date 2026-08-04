@@ -9,6 +9,7 @@ import torch
 from torch.utils.checkpoint import checkpoint
 
 from flow_matching.data import CoilNormalizer
+from flow_matching.flow import prepare_velocity_model
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ def integrate_flow_differentiable(
         )
     if state.ndim != 3 or nfp.shape != (state.shape[0],):
         raise ValueError("state and nfp batch dimensions must match")
+    velocity_model = prepare_velocity_model(model, nfp)
     dt = (float(end_time) - float(start_time)) / steps
 
     def integrate_chunk(
@@ -114,7 +116,7 @@ def integrate_flow_differentiable(
                     dtype=torch.float32,
                     device=at.device,
                 )
-                return model(at, times, nfp, mask)
+                return velocity_model(at, times, nfp, mask)
 
             k1 = velocity(value, time_value)
             k2 = velocity(value + 0.5 * dt * k1, time_value + 0.5 * dt)

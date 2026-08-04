@@ -40,6 +40,21 @@ from stellarator_gpu import score_coils_g2_gradient_native
 DEFAULT_STEPS = (32, 64, 128, 256)
 
 
+class UncheckedFlowModel(torch.nn.Module):
+    def __init__(self, model: torch.nn.Module):
+        super().__init__()
+        self.model = model
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        time_value: torch.Tensor,
+        nfp: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.model.forward_unchecked(tokens, time_value, nfp, mask)
+
+
 def parse_ints(value: str) -> tuple[int, ...]:
     result = tuple(int(item) for item in value.split(",") if item.strip())
     if not result or any(item < 1 for item in result):
@@ -270,7 +285,9 @@ def evaluate_center(args: argparse.Namespace) -> None:
     if args.compile_model:
         for parameter in model.parameters():
             parameter.requires_grad_(False)
-        model = torch.compile(model, mode="reduce-overhead", fullgraph=True)
+        model = torch.compile(
+            UncheckedFlowModel(model), mode="reduce-overhead", fullgraph=True
+        )
         warmup_cotangent = np.ones_like(noise, dtype=np.float32)
         run_vjp(
             model,

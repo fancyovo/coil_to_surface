@@ -23,6 +23,7 @@ from scripts.optimize_flow_prior_zo_adam import load_flow_checkpoint
 from stellarator_gpu import (
     score_coils_g1_gradient_native,
     score_coils_g2_gradient_native,
+    score_coils_g3_gradient_native,
 )
 
 
@@ -53,7 +54,7 @@ def cosine(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate physical and latent G1/G2 gradients on a frozen reference bank.")
+    parser = argparse.ArgumentParser(description="Validate physical and latent G1/G2/G3 gradients on a frozen reference bank.")
     parser.add_argument("--reference-dir", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--gradient-lib", type=Path, required=True)
@@ -96,8 +97,12 @@ def main() -> None:
     g2 = score_coils_g2_gradient_native(
         args.gradient_lib, x, y, z, current, nfp, target_helicity=(1, nfp)
     )
+    g3 = score_coils_g3_gradient_native(
+        args.gradient_lib, x, y, z, current, nfp, target_helicity=(1, nfp)
+    )
     g1_physical = token_cotangent(g1["gradient"])
     g2_physical = token_cotangent(g2["gradient"])
+    g3_physical = token_cotangent(g3["gradient"])
     device = torch.device(args.device)
     model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
     decoded_g1, latent_g1, g1_vjp = decode_physical_vjp(
@@ -120,8 +125,18 @@ def main() -> None:
         rk4_steps=args.rk4_steps,
         checkpoint_steps=args.checkpoint_steps,
     )
+    decoded_g3, latent_g3, g3_vjp = decode_physical_vjp(
+        model,
+        normalizer,
+        noises[center_index],
+        g3_physical,
+        nfp=nfp,
+        device=device,
+        rk4_steps=args.rk4_steps,
+        checkpoint_steps=args.checkpoint_steps,
+    )
     decode_relative_l2 = float(
-        np.linalg.norm(decoded_g2[0].astype(np.float64) - center_tokens) /
+        np.linalg.norm(decoded_g3[0].astype(np.float64) - center_tokens) /
         max(np.linalg.norm(center_tokens), 1.0e-30)
     )
 
@@ -158,8 +173,10 @@ def main() -> None:
                 "blackbox_slope": blackbox_slope,
                 "g1_latent_prediction": float(np.sum(latent_g1[0] * direction)),
                 "g2_latent_prediction": float(np.sum(latent_g2[0] * direction)),
+                "g3_latent_prediction": float(np.sum(latent_g3[0] * direction)),
                 "g1_flow_objective_slope": float(np.sum(g1_physical * physical_delta)),
                 "g2_flow_objective_slope": float(np.sum(g2_physical * physical_delta)),
+                "g3_flow_objective_slope": float(np.sum(g3_physical * physical_delta)),
             }
         )
 
@@ -179,12 +196,16 @@ def main() -> None:
         "decoded_center_relative_l2": decode_relative_l2,
         "g1_score": g1["score_result"],
         "g2_score": g2["score_result"],
+        "g3_score": g3["score_result"],
         "g1_native_diagnostics": g1["gradient_diagnostics"],
         "g2_native_diagnostics": g2["gradient_diagnostics"],
+        "g3_native_diagnostics": g3["gradient_diagnostics"],
         "g1_flow_vjp": asdict(g1_vjp),
         "g2_flow_vjp": asdict(g2_vjp),
+        "g3_flow_vjp": asdict(g3_vjp),
         "g1_reference_cosine": cosine(latent_g1, reference_gradient),
         "g2_reference_cosine": cosine(latent_g2, reference_gradient),
+        "g3_reference_cosine": cosine(latent_g3, reference_gradient),
         "direction_rows": direction_rows,
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -195,8 +216,10 @@ def main() -> None:
         args.output_dir / "gradients.npz",
         g1_physical=g1_physical,
         g2_physical=g2_physical,
+        g3_physical=g3_physical,
         g1_latent=latent_g1,
         g2_latent=latent_g2,
+        g3_latent=latent_g3,
         reference_latent=reference_gradient,
     )
 

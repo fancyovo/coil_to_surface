@@ -197,3 +197,68 @@ def test_normalized_alpha_weight_vjp_matches_autograd() -> None:
     objective = torch.dot(weight, torch.tensor(adj_weight_np, dtype=torch.float64))
     (torch_adj_base,) = torch.autograd.grad(objective, base)
     np.testing.assert_allclose(adj_base, torch_adj_base.numpy(), rtol=2.0e-13, atol=2.0e-13)
+
+
+def test_alpha_field_preprocess_vjp_matches_autograd() -> None:
+    generator = np.random.default_rng(149)
+    count = 17
+    b_np = generator.normal(size=(count, 3))
+    grad_s_np = generator.normal(size=(count, 3))
+    grad_theta_np = generator.normal(size=(count, 3))
+    grad_phi_np = generator.normal(size=(count, 3))
+    bin_factor_np = np.exp(generator.normal(size=count))
+    adj_weight_np = generator.normal(size=count)
+    adj_b_theta_np = generator.normal(size=count)
+    adj_b_phi_np = generator.normal(size=count)
+    adj_normal = -0.23
+
+    magnitude2 = np.sum(b_np * b_np, axis=1)
+    grad_s2 = np.sum(grad_s_np * grad_s_np, axis=1)
+    coefficient = np.sum(b_np * grad_s_np, axis=1) / grad_s2
+    tangent = b_np - coefficient[:, None] * grad_s_np
+    b_theta = np.sum(tangent * grad_theta_np, axis=1)
+    b_phi = np.sum(tangent * grad_phi_np, axis=1)
+    base_weight = bin_factor_np / np.sqrt(magnitude2)
+    weight_scale = np.sqrt(count / np.dot(base_weight, base_weight))
+    weights = weight_scale * base_weight
+    weight_dot = np.dot(adj_weight_np, weights)
+    adj_base = weight_scale * (adj_weight_np - weights * weight_dot / count)
+    projection = (
+        adj_b_theta_np[:, None] * grad_theta_np
+        + adj_b_phi_np[:, None] * grad_phi_np
+    )
+    projection -= (
+        np.sum(projection * grad_s_np, axis=1) / grad_s2
+    )[:, None] * grad_s_np
+    adj_b = projection - (adj_base * base_weight / magnitude2)[:, None] * b_np
+    normal_numerator = np.sum(coefficient * coefficient * grad_s2)
+    field_denominator = np.sum(magnitude2)
+    normal_relative = np.sqrt(normal_numerator / field_denominator)
+    adj_b += adj_normal * (
+        coefficient[:, None] * grad_s_np / (normal_relative * field_denominator)
+        - normal_relative * b_np / field_denominator
+    )
+
+    b = torch.tensor(b_np, dtype=torch.float64, requires_grad=True)
+    grad_s = torch.tensor(grad_s_np, dtype=torch.float64)
+    grad_theta = torch.tensor(grad_theta_np, dtype=torch.float64)
+    grad_phi = torch.tensor(grad_phi_np, dtype=torch.float64)
+    bin_factor = torch.tensor(bin_factor_np, dtype=torch.float64)
+    coefficient_t = torch.sum(b * grad_s, dim=1) / torch.sum(grad_s * grad_s, dim=1)
+    tangent_t = b - coefficient_t[:, None] * grad_s
+    b_theta_t = torch.sum(tangent_t * grad_theta, dim=1)
+    b_phi_t = torch.sum(tangent_t * grad_phi, dim=1)
+    base_t = bin_factor / torch.linalg.vector_norm(b, dim=1)
+    weight_t = np.sqrt(count) * base_t / torch.linalg.vector_norm(base_t)
+    normal_t = (
+        torch.linalg.vector_norm(coefficient_t[:, None] * grad_s)
+        / torch.linalg.vector_norm(b)
+    )
+    objective = (
+        torch.dot(weight_t, torch.tensor(adj_weight_np, dtype=torch.float64))
+        + torch.dot(b_theta_t, torch.tensor(adj_b_theta_np, dtype=torch.float64))
+        + torch.dot(b_phi_t, torch.tensor(adj_b_phi_np, dtype=torch.float64))
+        + adj_normal * normal_t
+    )
+    (torch_adj_b,) = torch.autograd.grad(objective, b)
+    np.testing.assert_allclose(adj_b, torch_adj_b.numpy(), rtol=5.0e-13, atol=5.0e-13)

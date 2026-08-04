@@ -2675,6 +2675,28 @@ struct AlphaFitNative {
     double relative_l2 = std::numeric_limits<double>::quiet_NaN();
     double normal_B_relative_l2 = std::numeric_limits<double>::quiet_NaN();
     int column_count = 0;
+    int mode_count = 0;
+    int fit_count = 0;
+    int qr_rows = 0;
+    double residual_norm = 0.0;
+    double rhs_norm = 0.0;
+    double weight_norm2 = 0.0;
+    double normal_numerator = 0.0;
+    double field_denominator = 0.0;
+    ClebschModesNative modes;
+    DeviceBuffer<float> qr_matrix;
+    DeviceBuffer<float> matrix_reference;
+    DeviceBuffer<float> rhs_reference;
+    DeviceBuffer<float> scales;
+    DeviceBuffer<float> scaled_solution;
+    DeviceBuffer<float> residual;
+    DeviceBuffer<float> b_theta;
+    DeviceBuffer<float> b_phi;
+    DeviceBuffer<float> weights;
+    DeviceBuffer<float> rho;
+    DeviceBuffer<float> theta;
+    DeviceBuffer<float> phi;
+    bool adjoint_ready = false;
 };
 
 struct FixedFrontG2Cache {
@@ -2689,6 +2711,7 @@ struct FixedFrontG2Cache {
 };
 
 thread_local FixedFrontG2Cache* g_active_g2_cache = nullptr;
+thread_local int g_active_gradient_group = 0;
 
 bool fit_alpha_native(
     const DeviceVolumePoints& points,
@@ -2932,6 +2955,8 @@ bool fit_alpha_native(
         return false;
     }
     fit.relative_l2 = residual_norm / std::max(rhs_norm, 1.0e-20f);
+    fit.residual_norm = residual_norm;
+    fit.rhs_norm = rhs_norm;
     fit.iota_coefficients.resize(config.iota_degree + 1);
     if (!cuda_stage_ok(cudaMemcpy(
             fit.iota_coefficients.data(), d_solution.data() + mode_count,
@@ -2940,6 +2965,38 @@ bool fit_alpha_native(
         cublasDestroy(blas);
         cusolverDnDestroy(solver);
         return false;
+    }
+    if (g_active_gradient_group >= 3) {
+        DeviceBuffer<float> d_saved_scaled_solution(column_count);
+        if (!d_saved_scaled_solution.data() ||
+            !cuda_stage_ok(cudaMemcpy(
+                d_saved_scaled_solution.data(), d_scaled_solution,
+                column_count * sizeof(float), cudaMemcpyDeviceToDevice
+            ), result, "alpha scaled solution cache")) {
+            cublasDestroy(blas);
+            cusolverDnDestroy(solver);
+            return false;
+        }
+        fit.mode_count = mode_count;
+        fit.fit_count = fit_count;
+        fit.qr_rows = qr_rows;
+        fit.weight_norm2 = diagnostics[0];
+        fit.normal_numerator = diagnostics[1];
+        fit.field_denominator = diagnostics[2];
+        fit.modes = modes;
+        fit.qr_matrix = std::move(d_matrix);
+        fit.matrix_reference = std::move(d_matrix_reference);
+        fit.rhs_reference = std::move(d_rhs_reference);
+        fit.scales = std::move(d_scales);
+        fit.scaled_solution = std::move(d_saved_scaled_solution);
+        fit.residual = std::move(d_prediction);
+        fit.b_theta = std::move(d_b_theta);
+        fit.b_phi = std::move(d_b_phi);
+        fit.weights = std::move(d_weights);
+        fit.rho = std::move(d_rho);
+        fit.theta = std::move(d_theta);
+        fit.phi = std::move(d_phi);
+        fit.adjoint_ready = true;
     }
     cublasDestroy(blas);
     cusolverDnDestroy(solver);
@@ -3150,6 +3207,309 @@ __global__ void compute_qs_point_adjoint_kernel(
         adj_B[3 * point + component] = static_cast<float>(adj_b[component]);
     }
     atomic_add_double(adj_G, point_adj_G);
+}
+
+__global__ void compute_qs_iota_adjoint_kernel(
+    const float* __restrict__ B,
+    const float* __restrict__ grad_B,
+    const float* __restrict__ grad_s,
+    const float* __restrict__ flux_derivative,
+    const float* __restrict__ rho,
+    const float* __restrict__ volume_weight,
+    int point_count,
+    const float* __restrict__ iota_coefficients,
+    int iota_degree,
+    int helicity_M,
+    int helicity_N,
+    double G,
+    float edge_rho_threshold,
+    double weight_sum,
+    double edge_weight_sum,
+    double target_rms,
+    double target_edge_rms,
+    double qa_rms,
+    double d_target_error,
+    double d_target_edge_error,
+    double d_qa_error,
+    double* __restrict__ adj_iota
+) {
+    const int point = blockIdx.x * blockDim.x + threadIdx.x;
+    if (point >= point_count) return;
+    float b[3];
+    float magnitude2 = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        b[component] = B[3 * point + component];
+        magnitude2 += b[component] * b[component];
+    }
+    const float magnitude = sqrtf(fmaxf(magnitude2, 1.0e-30f));
+    float q[3] = {};
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+        for (int component = 0; component < 3; ++component) {
+            q[coordinate] += grad_B[9 * point + 3 * component + coordinate] * b[component];
+        }
+        q[coordinate] /= magnitude;
+    }
+    float grad_psi[3];
+    for (int component = 0; component < 3; ++component) {
+        grad_psi[component] = flux_derivative[point] * grad_s[3 * point + component];
+    }
+    const float cross[3] = {
+        b[1] * grad_psi[2] - b[2] * grad_psi[1],
+        b[2] * grad_psi[0] - b[0] * grad_psi[2],
+        b[0] * grad_psi[1] - b[1] * grad_psi[0],
+    };
+    const double A = cross[0] * q[0] + cross[1] * q[1] + cross[2] * q[2];
+    const double C = b[0] * q[0] + b[1] * q[1] + b[2] * q[2];
+    const float u = rho[point] * rho[point];
+    float iota = 0.0f;
+    float power = 1.0f;
+    for (int degree = 0; degree <= iota_degree; ++degree) {
+        iota += iota_coefficients[degree] * power;
+        power *= u;
+    }
+    const double magnitude3 = fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
+    const double target_residual =
+        ((helicity_M * static_cast<double>(iota) - helicity_N) * A - helicity_M * G * C) /
+        magnitude3;
+    const double qa_residual = (static_cast<double>(iota) * A - G * C) / magnitude3;
+    const double weight = volume_weight[point];
+    const double target_norm = fmax(
+        hypot(static_cast<double>(helicity_M), static_cast<double>(helicity_N)), 1.0
+    );
+    double lambda_target = 0.0;
+    if (target_rms > 1.0e-30 && weight_sum > 0.0) {
+        lambda_target += d_target_error * weight * target_residual /
+            (weight_sum * target_rms * target_norm);
+    }
+    if (rho[point] >= edge_rho_threshold && target_edge_rms > 1.0e-30 && edge_weight_sum > 0.0) {
+        lambda_target += d_target_edge_error * weight * target_residual /
+            (edge_weight_sum * target_edge_rms * target_norm);
+    }
+    const double lambda_qa = qa_rms > 1.0e-30 && weight_sum > 0.0
+        ? d_qa_error * weight * qa_residual / (weight_sum * qa_rms)
+        : 0.0;
+    const double adj_iota_value = A / magnitude3 *
+        (helicity_M * lambda_target + lambda_qa);
+    double radial_power = 1.0;
+    for (int degree = 0; degree <= iota_degree; ++degree) {
+        atomic_add_double(adj_iota + degree, adj_iota_value * radial_power);
+        radial_power *= u;
+    }
+}
+
+__global__ void alpha_residual_adjoint_kernel(
+    const float* __restrict__ residual,
+    const float* __restrict__ rhs,
+    int count,
+    float residual_norm,
+    float rhs_norm,
+    float adj_relative,
+    float* __restrict__ adj_residual,
+    float* __restrict__ adj_rhs
+) {
+    const int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= count) return;
+    const float safe_residual = fmaxf(residual_norm, 1.0e-20f);
+    const float safe_rhs = fmaxf(rhs_norm, 1.0e-20f);
+    const float value = adj_relative * residual[row] / (safe_residual * safe_rhs);
+    adj_residual[row] = value;
+    adj_rhs[row] = -value - adj_relative * residual_norm * rhs[row] /
+        (safe_rhs * safe_rhs * safe_rhs);
+}
+
+__global__ void add_alpha_solution_adjoint_kernel(
+    const float* __restrict__ adj_solution,
+    const float* __restrict__ scales,
+    int count,
+    float* __restrict__ adj_scaled_solution
+) {
+    const int column = blockIdx.x * blockDim.x + threadIdx.x;
+    if (column < count) {
+        adj_scaled_solution[column] += adj_solution[column] / scales[column];
+    }
+}
+
+__global__ void alpha_column_dot_kernel(
+    const float* __restrict__ scaled_matrix,
+    int row_count,
+    const float* __restrict__ adj_residual,
+    const float* __restrict__ residual,
+    const float* __restrict__ multiplier,
+    const float* __restrict__ matrix_multiplier,
+    const float* __restrict__ scaled_solution,
+    float* __restrict__ dot_adjoint_matrix
+) {
+    extern __shared__ double shared[];
+    const int column = blockIdx.x;
+    double sum = 0.0;
+    const float lambda = multiplier[column];
+    const float solution = scaled_solution[column];
+    for (int row = threadIdx.x; row < row_count; row += blockDim.x) {
+        const float matrix_value = scaled_matrix[static_cast<size_t>(column) * row_count + row];
+        const float adjoint = adj_residual[row] * solution - residual[row] * lambda -
+            matrix_multiplier[row] * solution;
+        sum += static_cast<double>(adjoint) * matrix_value;
+    }
+    shared[threadIdx.x] = sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) shared[threadIdx.x] += shared[threadIdx.x + stride];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) dot_adjoint_matrix[column] = static_cast<float>(shared[0]);
+}
+
+__global__ void alpha_row_adjoint_kernel(
+    const float* __restrict__ scaled_matrix,
+    int row_count,
+    int column_count,
+    const float* __restrict__ adj_residual,
+    const float* __restrict__ residual,
+    const float* __restrict__ adj_rhs,
+    const float* __restrict__ multiplier,
+    const float* __restrict__ matrix_multiplier,
+    const float* __restrict__ scaled_solution,
+    const float* __restrict__ adj_solution,
+    const float* __restrict__ scales,
+    const float* __restrict__ dot_adjoint_matrix,
+    const int* __restrict__ mode_m,
+    const int* __restrict__ mode_n,
+    const int* __restrict__ mode_kind,
+    const float* __restrict__ radial_coefficients,
+    int mode_count,
+    int radial_order,
+    int iota_degree,
+    int nfp,
+    const float* __restrict__ rho,
+    const float* __restrict__ theta,
+    const float* __restrict__ phi,
+    const float* __restrict__ b_theta,
+    const float* __restrict__ b_phi,
+    const float* __restrict__ weights,
+    float* __restrict__ adj_weight,
+    float* __restrict__ adj_b_theta,
+    float* __restrict__ adj_b_phi
+) {
+    const int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= row_count) return;
+    const float bt = b_theta[row];
+    const float bp = b_phi[row];
+    const float weight = weights[row];
+    float weight_adjoint = -adj_rhs[row] * bt;
+    float theta_adjoint = -adj_rhs[row] * weight;
+    float phi_adjoint = 0.0f;
+    for (int column = 0; column < column_count; ++column) {
+        const float scale = scales[column];
+        const float matrix_value = scaled_matrix[static_cast<size_t>(column) * row_count + row];
+        const float matrix_adjoint =
+            adj_residual[row] * scaled_solution[column] -
+            residual[row] * multiplier[column] -
+            matrix_multiplier[row] * scaled_solution[column];
+        const float scale_adjoint =
+            -adj_solution[column] * scaled_solution[column] / (scale * scale) -
+            dot_adjoint_matrix[column] / scale;
+        const float design_adjoint = matrix_adjoint / scale + matrix_value * scale_adjoint;
+        if (column < mode_count) {
+            const int m = mode_m[column];
+            const int n = mode_n[column];
+            const float radial = evaluate_radial_polynomial(
+                radial_coefficients + static_cast<size_t>(column) * (radial_order + 1),
+                radial_order,
+                rho[row]
+            );
+            float sine, cosine;
+            sincosf(m * theta[row] - n * nfp * phi[row], &sine, &cosine);
+            const float derivative_theta = mode_kind[column] == 0
+                ? -m * radial * sine : m * radial * cosine;
+            const float derivative_phi = mode_kind[column] == 0
+                ? n * nfp * radial * sine : -n * nfp * radial * cosine;
+            weight_adjoint += design_adjoint * (derivative_theta * bt + derivative_phi * bp);
+            theta_adjoint += design_adjoint * weight * derivative_theta;
+            phi_adjoint += design_adjoint * weight * derivative_phi;
+        } else {
+            const int power_index = column - mode_count;
+            if (power_index <= iota_degree) {
+                float radial_power = 1.0f;
+                const float u = rho[row] * rho[row];
+                for (int degree = 0; degree < power_index; ++degree) radial_power *= u;
+                weight_adjoint -= design_adjoint * radial_power * bp;
+                phi_adjoint -= design_adjoint * weight * radial_power;
+            }
+        }
+    }
+    adj_weight[row] = weight_adjoint;
+    adj_b_theta[row] = theta_adjoint;
+    adj_b_phi[row] = phi_adjoint;
+}
+
+__global__ void alpha_B_adjoint_kernel(
+    const float* __restrict__ B,
+    const float* __restrict__ grad_s,
+    const float* __restrict__ grad_theta,
+    const float* __restrict__ grad_phi,
+    int point_count,
+    int fit_count,
+    const float* __restrict__ weights,
+    const float* __restrict__ adj_weight,
+    const float* __restrict__ adj_b_theta,
+    const float* __restrict__ adj_b_phi,
+    float weight_scale,
+    float adj_weight_dot_weight,
+    float adj_normal_relative,
+    float normal_relative,
+    float normal_numerator,
+    float field_denominator,
+    float* __restrict__ adj_B
+) {
+    const int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= fit_count) return;
+    const int point = min(
+        point_count - 1,
+        static_cast<int>((static_cast<long long>(row) * point_count) / fit_count)
+    );
+    float b[3];
+    float gs[3];
+    float gt[3];
+    float gp[3];
+    float magnitude2 = 0.0f;
+    float gs2 = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        b[component] = B[3 * point + component];
+        gs[component] = grad_s[3 * point + component];
+        gt[component] = grad_theta[3 * point + component];
+        gp[component] = grad_phi[3 * point + component];
+        magnitude2 += b[component] * b[component];
+        gs2 += gs[component] * gs[component];
+    }
+    float projection[3];
+    float projection_dot_gs = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        projection[component] =
+            adj_b_theta[row] * gt[component] + adj_b_phi[row] * gp[component];
+        projection_dot_gs += projection[component] * gs[component];
+    }
+    const float inverse_gs2 = 1.0f / fmaxf(gs2, 1.0e-30f);
+    const float normalized_weight = weights[row];
+    const float base_weight = normalized_weight / weight_scale;
+    const float base_weight_adjoint = weight_scale * (
+        adj_weight[row] - normalized_weight * adj_weight_dot_weight / fit_count
+    );
+    const float normal_coefficient =
+        (b[0] * gs[0] + b[1] * gs[1] + b[2] * gs[2]) * inverse_gs2;
+    for (int component = 0; component < 3; ++component) {
+        float value = projection[component] - projection_dot_gs * inverse_gs2 * gs[component];
+        value -= base_weight_adjoint * base_weight * b[component] /
+            fmaxf(magnitude2, 1.0e-30f);
+        if (adj_normal_relative != 0.0f && normal_relative > 1.0e-20f &&
+            field_denominator > 1.0e-20f && normal_numerator >= 0.0f) {
+            value += adj_normal_relative * (
+                normal_coefficient * gs[component] /
+                    (normal_relative * field_denominator) -
+                normal_relative * b[component] / field_denominator
+            );
+        }
+        adj_B[3 * point + component] = value;
+    }
 }
 
 bool compute_qs_metric_native(
@@ -3917,8 +4277,11 @@ QsErrorAdjoints score_qs_error_adjoints(
     return output;
 }
 
-bool compute_fixed_front_g2_gradient(
+bool map_fixed_front_field_adjoint(
     FixedFrontG2Cache& cache,
+    const DeviceBuffer<float>& d_adj_B,
+    const DeviceBuffer<float>& d_adj_grad_B,
+    const DeviceBuffer<double>& d_adj_G,
     const double* coeffs_x,
     const double* coeffs_y,
     const double* coeffs_z,
@@ -3930,47 +4293,6 @@ bool compute_fixed_front_g2_gradient(
     SgpuScoreResult& result,
     FixedFrontG2Gradient& output
 ) {
-    if (!cache.ready || !cache.field || cache.points.count <= 0) {
-        fail_result(&result, "fixed-front G2 cache is incomplete");
-        return false;
-    }
-    const int point_count = cache.points.count;
-    DeviceBuffer<float> d_iota;
-    DeviceBuffer<float> d_adj_B(static_cast<size_t>(point_count) * 3);
-    DeviceBuffer<float> d_adj_grad_B(static_cast<size_t>(point_count) * 9);
-    DeviceBuffer<double> d_adj_G(1);
-    if (!copy_to_device(d_iota, cache.alpha.iota_coefficients) ||
-        !d_adj_B.data() || !d_adj_grad_B.data() || !d_adj_G.data() ||
-        cudaMemset(d_adj_G.data(), 0, sizeof(double)) != cudaSuccess) {
-        fail_result(&result, "fixed-front G2 point-adjoint allocation failed");
-        return false;
-    }
-    const QsErrorAdjoints errors = score_qs_error_adjoints(config, result);
-    const double target_norm = std::max(
-        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
-        1.0
-    );
-    const double qp_norm = std::max(std::abs(nfp), 1);
-    const float edge_threshold = static_cast<float>(
-        config.volume_rho_min + (1.0 - config.volume_rho_min) *
-        (config.radial_bin_count - 1.0) / config.radial_bin_count
-    );
-    auto started = Clock::now();
-    constexpr int threads = 256;
-    compute_qs_point_adjoint_kernel<<<(point_count + threads - 1) / threads, threads>>>(
-        cache.B.data(), cache.grad_B.data(), cache.points.grad_s.data(),
-        cache.points.flux_derivative.data(), cache.points.rho.data(),
-        cache.points.volume_weight.data(), point_count, d_iota.data(), config.iota_degree,
-        config.target_M, config.target_N, nfp, cache.G, edge_threshold,
-        cache.qs_sums[0], cache.qs_sums[2], result.qs_global_error,
-        result.qs_edge_error, result.qs_qa_global_error,
-        result.qs_qp_global_error_per_helicity * qp_norm,
-        errors.target, errors.target_edge, errors.qa, errors.qp,
-        d_adj_B.data(), d_adj_grad_B.data(), d_adj_G.data()
-    );
-    if (!cuda_stage_ok(cudaDeviceSynchronize(), result, "fixed-front QS point VJP")) return false;
-    output.point_vjp_s = seconds_since(started);
-
     const int segment_count = sgpu_segment_count(cache.field);
     DeviceBuffer<float> d_adj_segment_position(static_cast<size_t>(segment_count) * 3);
     DeviceBuffer<float> d_adj_segment_weight(static_cast<size_t>(segment_count) * 3);
@@ -3978,10 +4300,10 @@ bool compute_fixed_front_g2_gradient(
         fail_result(&result, "fixed-front segment-adjoint allocation failed");
         return false;
     }
-    started = Clock::now();
+    auto started = Clock::now();
     if (sgpu_internal_B_grad_segment_vjp_f32_device(
             cache.field, cache.points.xyz.data(), d_adj_B.data(), d_adj_grad_B.data(),
-            point_count, d_adj_segment_position.data(), d_adj_segment_weight.data()) ||
+            cache.points.count, d_adj_segment_position.data(), d_adj_segment_weight.data()) ||
         !cuda_stage_ok(cudaDeviceSynchronize(), result, "fixed-front Biot-Savart VJP")) {
         if (!result.error_message[0]) fail_from_backend(&result, "fixed-front Biot-Savart VJP");
         return false;
@@ -4095,6 +4417,356 @@ bool compute_fixed_front_g2_gradient(
     }
     output.parameter_map_s = seconds_since(started);
     return true;
+}
+
+bool compute_fixed_front_g2_gradient(
+    FixedFrontG2Cache& cache,
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig& config,
+    SgpuScoreResult& result,
+    FixedFrontG2Gradient& output
+) {
+    if (!cache.ready || !cache.field || cache.points.count <= 0) {
+        fail_result(&result, "fixed-front G2 cache is incomplete");
+        return false;
+    }
+    const int point_count = cache.points.count;
+    DeviceBuffer<float> d_iota;
+    DeviceBuffer<float> d_adj_B(static_cast<size_t>(point_count) * 3);
+    DeviceBuffer<float> d_adj_grad_B(static_cast<size_t>(point_count) * 9);
+    DeviceBuffer<double> d_adj_G(1);
+    if (!copy_to_device(d_iota, cache.alpha.iota_coefficients) ||
+        !d_adj_B.data() || !d_adj_grad_B.data() || !d_adj_G.data() ||
+        cudaMemset(d_adj_G.data(), 0, sizeof(double)) != cudaSuccess) {
+        fail_result(&result, "fixed-front G2 point-adjoint allocation failed");
+        return false;
+    }
+    const QsErrorAdjoints errors = score_qs_error_adjoints(config, result);
+    const double target_norm = std::max(
+        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
+        1.0
+    );
+    const double qp_norm = std::max(std::abs(nfp), 1);
+    const float edge_threshold = static_cast<float>(
+        config.volume_rho_min + (1.0 - config.volume_rho_min) *
+        (config.radial_bin_count - 1.0) / config.radial_bin_count
+    );
+    auto started = Clock::now();
+    constexpr int threads = 256;
+    compute_qs_point_adjoint_kernel<<<(point_count + threads - 1) / threads, threads>>>(
+        cache.B.data(), cache.grad_B.data(), cache.points.grad_s.data(),
+        cache.points.flux_derivative.data(), cache.points.rho.data(),
+        cache.points.volume_weight.data(), point_count, d_iota.data(), config.iota_degree,
+        config.target_M, config.target_N, nfp, cache.G, edge_threshold,
+        cache.qs_sums[0], cache.qs_sums[2], result.qs_global_error,
+        result.qs_edge_error, result.qs_qa_global_error,
+        result.qs_qp_global_error_per_helicity * qp_norm,
+        errors.target, errors.target_edge, errors.qa, errors.qp,
+        d_adj_B.data(), d_adj_grad_B.data(), d_adj_G.data()
+    );
+    if (!cuda_stage_ok(cudaDeviceSynchronize(), result, "fixed-front QS point VJP")) return false;
+    output.point_vjp_s = seconds_since(started);
+    return map_fixed_front_field_adjoint(
+        cache, d_adj_B, d_adj_grad_B, d_adj_G,
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp, config, result, output
+    );
+}
+
+void add_iota_score_solution_adjoint(
+    const AlphaFitNative& alpha,
+    const SgpuScoreConfig& config,
+    const SgpuScoreResult& result,
+    std::vector<double>& adj_solution
+) {
+    if (config.target_M == 0 || config.target_N == 0 || alpha.iota_coefficients.empty()) return;
+    double iota_min = std::numeric_limits<double>::infinity();
+    double iota_max = -std::numeric_limits<double>::infinity();
+    double u_at_min = 0.0;
+    double u_at_max = 0.0;
+    const double u_min = config.volume_rho_min * config.volume_rho_min;
+    for (int sample = 0; sample <= 256; ++sample) {
+        const double u = u_min + (1.0 - u_min) * sample / 256.0;
+        double value = 0.0;
+        double power = 1.0;
+        for (float coefficient : alpha.iota_coefficients) {
+            value += coefficient * power;
+            power *= u;
+        }
+        if (value < iota_min) {
+            iota_min = value;
+            u_at_min = u;
+        }
+        if (value > iota_max) {
+            iota_max = value;
+            u_at_max = u;
+        }
+    }
+    if (iota_min <= 0.0 && iota_max >= 0.0) return;
+    const bool use_min = std::abs(iota_min) <= std::abs(iota_max);
+    const double active_iota = use_min ? iota_min : iota_max;
+    const double active_u = use_min ? u_at_min : u_at_max;
+    const double magnitude = std::abs(active_iota);
+    if (!(magnitude > 0.0) || magnitude >= config.score_qh_iota_threshold) return;
+    const double ratio = magnitude / config.score_qh_iota_threshold;
+    const double d_iota_score_d_magnitude = config.score_qh_iota_power *
+        std::pow(ratio, config.score_qh_iota_power - 1.0) /
+        config.score_qh_iota_threshold;
+    double total_weight = 0.0;
+    for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
+        total_weight += std::max(config.score_weights[component], 0.0);
+    }
+    if (!(total_weight > 0.0)) return;
+    const double iota_component_active =
+        result.components[SGPU_SCORE_COMPONENT_IOTA] > 0.0 &&
+        result.components[SGPU_SCORE_COMPONENT_IOTA] < 100.0;
+    const double volume_component_active =
+        result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] > 0.0 &&
+        result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] < 100.0;
+    const double d_before = 100.0 / total_weight * (
+        (iota_component_active ? std::max(config.score_weights[SGPU_SCORE_COMPONENT_IOTA], 0.0) : 0.0) +
+        (volume_component_active
+            ? std::max(config.score_weights[SGPU_SCORE_COMPONENT_VOLUME_QS], 0.0) *
+                result.score_qs_residual * result.score_volume_qs_size_factor *
+                (1.0 - config.score_volume_qs_iota_floor)
+            : 0.0)
+    );
+    const double d_score_d_iota_score = result.score_qh_total_helicity_factor * (
+        result.score_qh_total_iota_factor * d_before +
+        result.score_before_qh_iota_gate * (1.0 - config.score_qh_total_iota_floor)
+    );
+    const double active_scale = d_score_d_iota_score * d_iota_score_d_magnitude *
+        std::copysign(1.0, active_iota);
+    double power = 1.0;
+    for (size_t degree = 0; degree < alpha.iota_coefficients.size(); ++degree) {
+        adj_solution[alpha.mode_count + degree] += active_scale * power;
+        power *= active_u;
+    }
+}
+
+bool compute_alpha_iota_g3_gradient(
+    FixedFrontG2Cache& cache,
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig& config,
+    SgpuScoreResult& result,
+    FixedFrontG2Gradient& output
+) {
+    AlphaFitNative& alpha = cache.alpha;
+    if (!cache.ready || !cache.field || !alpha.adjoint_ready || config.alpha_solver_mode != 2 ||
+        alpha.fit_count <= 0 || alpha.column_count <= 0 || alpha.qr_rows <= 0) {
+        fail_result(&result, "G3 alpha QR adjoint cache is incomplete");
+        return false;
+    }
+    const auto started = Clock::now();
+    constexpr int threads = 256;
+    DeviceBuffer<float> d_iota;
+    DeviceBuffer<double> d_adj_iota(config.iota_degree + 1);
+    if (!copy_to_device(d_iota, alpha.iota_coefficients) || !d_adj_iota.data() ||
+        cudaMemset(d_adj_iota.data(), 0, d_adj_iota.size() * sizeof(double)) != cudaSuccess) {
+        fail_result(&result, "G3 iota adjoint allocation failed");
+        return false;
+    }
+    const QsErrorAdjoints errors = score_qs_error_adjoints(config, result);
+    const float edge_threshold = static_cast<float>(
+        config.volume_rho_min + (1.0 - config.volume_rho_min) *
+        (config.radial_bin_count - 1.0) / config.radial_bin_count
+    );
+    compute_qs_iota_adjoint_kernel<<<
+        (cache.points.count + threads - 1) / threads, threads
+    >>>(
+        cache.B.data(), cache.grad_B.data(), cache.points.grad_s.data(),
+        cache.points.flux_derivative.data(), cache.points.rho.data(),
+        cache.points.volume_weight.data(), cache.points.count, d_iota.data(),
+        config.iota_degree, config.target_M, config.target_N, cache.G, edge_threshold,
+        cache.qs_sums[0], cache.qs_sums[2], result.qs_global_error,
+        result.qs_edge_error, result.qs_qa_global_error,
+        errors.target, errors.target_edge, errors.qa, d_adj_iota.data()
+    );
+    std::vector<double> adj_iota(config.iota_degree + 1, 0.0);
+    if (!cuda_stage_ok(cudaMemcpy(
+            adj_iota.data(), d_adj_iota.data(),
+            adj_iota.size() * sizeof(double), cudaMemcpyDeviceToHost
+        ), result, "G3 iota adjoint copy")) {
+        return false;
+    }
+    std::vector<double> adj_solution(alpha.column_count, 0.0);
+    for (size_t degree = 0; degree < adj_iota.size(); ++degree) {
+        adj_solution[alpha.mode_count + degree] = adj_iota[degree];
+    }
+    add_iota_score_solution_adjoint(alpha, config, result, adj_solution);
+
+    double total_weight = 0.0;
+    for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
+        total_weight += std::max(config.score_weights[component], 0.0);
+    }
+    const bool coordinate_active = result.components[SGPU_SCORE_COMPONENT_COORDINATE] > 0.0 &&
+        result.components[SGPU_SCORE_COMPONENT_COORDINATE] < 100.0;
+    const double coordinate_scale = coordinate_active && total_weight > 0.0
+        ? result.score_qh_total_iota_factor * result.score_qh_total_helicity_factor *
+            100.0 * std::max(config.score_weights[SGPU_SCORE_COMPONENT_COORDINATE], 0.0) /
+            total_weight
+        : 0.0;
+    const float adj_relative = static_cast<float>(
+        coordinate_scale * 0.20 * q_down_derivative(
+            result.alpha_relative_l2, config.score_alpha_relative_l2_scale, 1.0
+        )
+    );
+    const float adj_normal = static_cast<float>(
+        coordinate_scale * 0.35 * q_down_derivative(
+            result.alpha_normal_B_relative_l2, config.score_alpha_normal_B_scale, 1.0
+        )
+    );
+    std::vector<float> adj_solution_f(alpha.column_count);
+    std::transform(adj_solution.begin(), adj_solution.end(), adj_solution_f.begin(), [](double value) {
+        return static_cast<float>(value);
+    });
+    DeviceBuffer<float> d_adj_solution;
+    DeviceBuffer<float> d_adj_residual(alpha.fit_count), d_adj_rhs(alpha.fit_count);
+    DeviceBuffer<float> d_adj_scaled_solution(alpha.column_count);
+    DeviceBuffer<float> d_multiplier(alpha.column_count);
+    DeviceBuffer<float> d_matrix_multiplier(alpha.fit_count);
+    DeviceBuffer<float> d_dot_adjoint_matrix(alpha.column_count);
+    DeviceBuffer<float> d_adj_weight(alpha.fit_count), d_adj_b_theta(alpha.fit_count), d_adj_b_phi(alpha.fit_count);
+    DeviceBuffer<int> d_mode_m, d_mode_n, d_mode_kind;
+    DeviceBuffer<float> d_radial_coefficients;
+    if (!copy_to_device(d_adj_solution, adj_solution_f) ||
+        !copy_to_device(d_mode_m, alpha.modes.m) || !copy_to_device(d_mode_n, alpha.modes.n) ||
+        !copy_to_device(d_mode_kind, alpha.modes.kind) ||
+        !copy_to_device(d_radial_coefficients, alpha.modes.radial_coefficients) ||
+        !d_adj_residual.data() || !d_adj_rhs.data() || !d_adj_scaled_solution.data() ||
+        !d_multiplier.data() || !d_matrix_multiplier.data() || !d_dot_adjoint_matrix.data() ||
+        !d_adj_weight.data() || !d_adj_b_theta.data() || !d_adj_b_phi.data()) {
+        fail_result(&result, "G3 alpha LS adjoint allocation failed");
+        return false;
+    }
+    alpha_residual_adjoint_kernel<<<(alpha.fit_count + threads - 1) / threads, threads>>>(
+        alpha.residual.data(), alpha.rhs_reference.data(), alpha.fit_count,
+        static_cast<float>(alpha.residual_norm), static_cast<float>(alpha.rhs_norm),
+        adj_relative, d_adj_residual.data(), d_adj_rhs.data()
+    );
+    cublasHandle_t blas = nullptr;
+    if (cublasCreate(&blas) != CUBLAS_STATUS_SUCCESS) {
+        fail_result(&result, "G3 cuBLAS initialization failed");
+        return false;
+    }
+    const float one = 1.0f;
+    const float zero = 0.0f;
+    cublasStatus_t status = cublasSgemv(
+        blas, CUBLAS_OP_T, alpha.fit_count, alpha.column_count,
+        &one, alpha.matrix_reference.data(), alpha.fit_count,
+        d_adj_residual.data(), 1, &zero, d_adj_scaled_solution.data(), 1
+    );
+    add_alpha_solution_adjoint_kernel<<<
+        (alpha.column_count + threads - 1) / threads, threads
+    >>>(
+        d_adj_solution.data(), alpha.scales.data(), alpha.column_count,
+        d_adj_scaled_solution.data()
+    );
+    if (status == CUBLAS_STATUS_SUCCESS) {
+        status = cublasScopy(
+            blas, alpha.column_count, d_adj_scaled_solution.data(), 1,
+            d_multiplier.data(), 1
+        );
+    }
+    if (status == CUBLAS_STATUS_SUCCESS) {
+        status = cublasStrsv(
+            blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, CUBLAS_DIAG_NON_UNIT,
+            alpha.column_count, alpha.qr_matrix.data(), alpha.qr_rows,
+            d_multiplier.data(), 1
+        );
+    }
+    if (status == CUBLAS_STATUS_SUCCESS) {
+        status = cublasStrsv(
+            blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
+            alpha.column_count, alpha.qr_matrix.data(), alpha.qr_rows,
+            d_multiplier.data(), 1
+        );
+    }
+    if (status == CUBLAS_STATUS_SUCCESS) {
+        status = cublasSgemv(
+            blas, CUBLAS_OP_N, alpha.fit_count, alpha.column_count,
+            &one, alpha.matrix_reference.data(), alpha.fit_count,
+            d_multiplier.data(), 1, &zero, d_matrix_multiplier.data(), 1
+        );
+    }
+    if (status == CUBLAS_STATUS_SUCCESS) {
+        status = cublasSaxpy(
+            blas, alpha.fit_count, &one, d_matrix_multiplier.data(), 1,
+            d_adj_rhs.data(), 1
+        );
+    }
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        cublasDestroy(blas);
+        fail_result(&result, "G3 alpha QR triangular adjoint failed");
+        return false;
+    }
+    alpha_column_dot_kernel<<<alpha.column_count, threads, threads * sizeof(double)>>>(
+        alpha.matrix_reference.data(), alpha.fit_count, d_adj_residual.data(),
+        alpha.residual.data(), d_multiplier.data(), d_matrix_multiplier.data(),
+        alpha.scaled_solution.data(), d_dot_adjoint_matrix.data()
+    );
+    alpha_row_adjoint_kernel<<<(alpha.fit_count + threads - 1) / threads, threads>>>(
+        alpha.matrix_reference.data(), alpha.fit_count, alpha.column_count,
+        d_adj_residual.data(), alpha.residual.data(), d_adj_rhs.data(),
+        d_multiplier.data(), d_matrix_multiplier.data(), alpha.scaled_solution.data(),
+        d_adj_solution.data(), alpha.scales.data(), d_dot_adjoint_matrix.data(),
+        d_mode_m.data(), d_mode_n.data(), d_mode_kind.data(), d_radial_coefficients.data(),
+        alpha.mode_count, config.alpha_radial_order, config.iota_degree, nfp,
+        alpha.rho.data(), alpha.theta.data(), alpha.phi.data(), alpha.b_theta.data(),
+        alpha.b_phi.data(), alpha.weights.data(), d_adj_weight.data(),
+        d_adj_b_theta.data(), d_adj_b_phi.data()
+    );
+    float adj_weight_dot_weight = 0.0f;
+    status = cublasSdot(
+        blas, alpha.fit_count, d_adj_weight.data(), 1,
+        alpha.weights.data(), 1, &adj_weight_dot_weight
+    );
+    cublasDestroy(blas);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        fail_result(&result, "G3 alpha weight normalization adjoint failed");
+        return false;
+    }
+    DeviceBuffer<float> d_adj_B(static_cast<size_t>(cache.points.count) * 3);
+    DeviceBuffer<float> d_adj_grad_B(static_cast<size_t>(cache.points.count) * 9);
+    DeviceBuffer<double> d_adj_G(1);
+    if (!d_adj_B.data() || !d_adj_grad_B.data() || !d_adj_G.data() ||
+        cudaMemset(d_adj_B.data(), 0, d_adj_B.size() * sizeof(float)) != cudaSuccess ||
+        cudaMemset(d_adj_grad_B.data(), 0, d_adj_grad_B.size() * sizeof(float)) != cudaSuccess ||
+        cudaMemset(d_adj_G.data(), 0, sizeof(double)) != cudaSuccess) {
+        fail_result(&result, "G3 alpha field-adjoint allocation failed");
+        return false;
+    }
+    const float weight_scale = static_cast<float>(
+        std::sqrt(alpha.fit_count / std::max(alpha.weight_norm2, 1.0e-300))
+    );
+    alpha_B_adjoint_kernel<<<(alpha.fit_count + threads - 1) / threads, threads>>>(
+        cache.B.data(), cache.points.grad_s.data(), cache.points.grad_theta.data(),
+        cache.points.grad_phi.data(), cache.points.count, alpha.fit_count,
+        alpha.weights.data(), d_adj_weight.data(), d_adj_b_theta.data(), d_adj_b_phi.data(),
+        weight_scale, adj_weight_dot_weight, adj_normal,
+        static_cast<float>(alpha.normal_B_relative_l2),
+        static_cast<float>(alpha.normal_numerator),
+        static_cast<float>(alpha.field_denominator), d_adj_B.data()
+    );
+    if (!cuda_stage_ok(cudaDeviceSynchronize(), result, "G3 alpha/iota point VJP")) return false;
+    output.point_vjp_s = seconds_since(started);
+    return map_fixed_front_field_adjoint(
+        cache, d_adj_B, d_adj_grad_B, d_adj_G,
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp, config, result, output
+    );
 }
 
 }  // namespace
@@ -4537,12 +5209,14 @@ int sgpu_score_coils_g2_gradient(
     }
     FixedFrontG2Cache cache;
     const auto forward_started = Clock::now();
+    g_active_gradient_group = 2;
     g_active_g2_cache = &cache;
     const int score_code = sgpu_score_coils(
         coeffs_x, coeffs_y, coeffs_z, currents_a,
         n_base_coils, n_coeff, nfp, config, score_result
     );
     g_active_g2_cache = nullptr;
+    g_active_gradient_group = 0;
     gradient_result->forward_wall_s = seconds_since(forward_started);
     if (score_code != 0 || score_result->status != SGPU_SCORE_OK || !cache.ready || !cache.field) {
         if (cache.field) sgpu_destroy_field(cache.field);
@@ -4621,6 +5295,148 @@ int sgpu_score_coils_g2_gradient(
     gradient_result->point_vjp_s = g2.point_vjp_s;
     gradient_result->field_vjp_s = g2.field_vjp_s;
     gradient_result->parameter_map_s = g2.parameter_map_s;
+    gradient_result->gradient_wall_s = seconds_since(gradient_started);
+    gradient_result->score_gradient_rms =
+        std::sqrt(score_norm2 / std::max<size_t>(gradient_count, 1));
+    gradient_result->coil_component_gradient_rms =
+        std::sqrt(component_norm2 / std::max<size_t>(gradient_count, 1));
+    gradient_result->status = 0;
+    sgpu_internal_set_error("");
+    return 0;
+}
+
+int sgpu_score_coils_g3_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+) {
+    if (!gradient_result) {
+        sgpu_internal_set_error("score gradient result pointer is null");
+        return 1;
+    }
+    std::memset(gradient_result, 0, sizeof(*gradient_result));
+    gradient_result->abi_version = SGPU_SCORE_GRADIENT_ABI_VERSION;
+    gradient_result->struct_size = sizeof(*gradient_result);
+    gradient_result->status = 1;
+    gradient_result->gradient_group = 3;
+    if (!score_result || !gradient_x || !gradient_y || !gradient_z ||
+        !gradient_current || !config || !coeffs_x || !coeffs_y || !coeffs_z ||
+        !currents_a) {
+        std::snprintf(
+            gradient_result->error_message,
+            sizeof(gradient_result->error_message),
+            "%s",
+            "G3 gradient input/output pointer is null"
+        );
+        sgpu_internal_set_error(gradient_result->error_message);
+        return 1;
+    }
+    FixedFrontG2Cache cache;
+    const auto forward_started = Clock::now();
+    g_active_gradient_group = 3;
+    g_active_g2_cache = &cache;
+    const int score_code = sgpu_score_coils(
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp, config, score_result
+    );
+    g_active_g2_cache = nullptr;
+    g_active_gradient_group = 0;
+    gradient_result->forward_wall_s = seconds_since(forward_started);
+    if (score_code != 0 || score_result->status != SGPU_SCORE_OK || !cache.ready ||
+        !cache.field || !cache.alpha.adjoint_ready) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        std::snprintf(
+            gradient_result->error_message,
+            sizeof(gradient_result->error_message),
+            "G3 requires an ok complete QR score: %.180s",
+            score_result->error_message
+        );
+        sgpu_internal_set_error(gradient_result->error_message);
+        return score_code != 0 ? score_code : 1;
+    }
+    const auto gradient_started = Clock::now();
+    CoilComponentGradient g1;
+    FixedFrontG2Gradient g2;
+    FixedFrontG2Gradient g3;
+    std::string error;
+    if (!compute_coil_component_gradient_impl(
+            coeffs_x, coeffs_y, coeffs_z, currents_a,
+            n_base_coils, n_coeff, nfp, g1, error) ||
+        !compute_fixed_front_g2_gradient(
+            cache, coeffs_x, coeffs_y, coeffs_z, currents_a,
+            n_base_coils, n_coeff, nfp, *config, *score_result, g2) ||
+        !compute_alpha_iota_g3_gradient(
+            cache, coeffs_x, coeffs_y, coeffs_z, currents_a,
+            n_base_coils, n_coeff, nfp, *config, *score_result, g3)) {
+        sgpu_destroy_field(cache.field);
+        if (!score_result->error_message[0]) {
+            std::snprintf(
+                gradient_result->error_message,
+                sizeof(gradient_result->error_message),
+                "%s",
+                error.c_str()
+            );
+        } else {
+            std::snprintf(
+                gradient_result->error_message,
+                sizeof(gradient_result->error_message),
+                "%.250s",
+                score_result->error_message
+            );
+        }
+        sgpu_internal_set_error(gradient_result->error_message);
+        return 1;
+    }
+    sgpu_destroy_field(cache.field);
+    cache.field = nullptr;
+
+    double total_weight = 0.0;
+    for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
+        total_weight += std::max(config->score_weights[component], 0.0);
+    }
+    const double g1_scale = total_weight > 0.0
+        ? std::max(config->score_weights[SGPU_SCORE_COMPONENT_COIL], 0.0) / total_weight *
+            score_result->score_qh_total_iota_factor * score_result->score_qh_total_helicity_factor
+        : 0.0;
+    const int parameter_count = n_base_coils * n_coeff;
+    const std::vector<double>* g1_sources[] = {&g1.x, &g1.y, &g1.z};
+    const std::vector<double>* g2_sources[] = {&g2.x, &g2.y, &g2.z};
+    const std::vector<double>* g3_sources[] = {&g3.x, &g3.y, &g3.z};
+    double* destinations[] = {gradient_x, gradient_y, gradient_z};
+    double score_norm2 = 0.0;
+    double component_norm2 = 0.0;
+    size_t gradient_count = 0;
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+        for (int parameter = 0; parameter < parameter_count; ++parameter) {
+            const double g1_value = (*g1_sources[coordinate])[parameter];
+            destinations[coordinate][parameter] =
+                g1_scale * g1_value + (*g2_sources[coordinate])[parameter] +
+                (*g3_sources[coordinate])[parameter];
+            score_norm2 += destinations[coordinate][parameter] * destinations[coordinate][parameter];
+            component_norm2 += g1_value * g1_value;
+            ++gradient_count;
+        }
+    }
+    for (int coil = 0; coil < n_base_coils; ++coil) {
+        gradient_current[coil] = g1_scale * g1.current[coil] + g2.current[coil] + g3.current[coil];
+        score_norm2 += gradient_current[coil] * gradient_current[coil];
+        component_norm2 += g1.current[coil] * g1.current[coil];
+        ++gradient_count;
+    }
+    gradient_result->point_vjp_s = g2.point_vjp_s + g3.point_vjp_s;
+    gradient_result->field_vjp_s = g2.field_vjp_s + g3.field_vjp_s;
+    gradient_result->parameter_map_s = g2.parameter_map_s + g3.parameter_map_s;
     gradient_result->gradient_wall_s = seconds_since(gradient_started);
     gradient_result->score_gradient_rms =
         std::sqrt(score_norm2 / std::max<size_t>(gradient_count, 1));

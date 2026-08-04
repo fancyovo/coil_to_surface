@@ -19,6 +19,7 @@ from stellarator_gpu import (
     coil_component_gradient_native,
     score_coils_g1_gradient_native,
     score_coils_g2_gradient_native,
+    score_coils_g3_gradient_native,
     score_coils_native,
 )
 
@@ -135,6 +136,7 @@ def main() -> None:
     forward_rows = []
     gradient_rows = []
     g2_rows = []
+    g3_rows = []
     gradient_payload = None
     for repeat in range(args.repeats):
         started = time.perf_counter()
@@ -177,9 +179,23 @@ def main() -> None:
                 "gradient_diagnostics": g2_payload["gradient_diagnostics"],
             }
         )
+        started = time.perf_counter()
+        g3_payload = score_coils_g3_gradient_native(
+            args.gradient_lib,
+            raw["x"], raw["y"], raw["z"], raw["current"], nfp,
+            target_helicity=(1, nfp),
+        )
+        g3_rows.append(
+            {
+                "wall_s": time.perf_counter() - started,
+                "result": compact_forward(g3_payload["score_result"]),
+                "gradient_diagnostics": g3_payload["gradient_diagnostics"],
+            }
+        )
 
     blackbox_rows = []
     g2_gradient = g2_payload["gradient"]
+    g3_gradient = g3_payload["gradient"]
     for direction_index in range(args.blackbox_directions):
         direction = {
             key: rng.standard_normal(raw[key].shape)
@@ -205,6 +221,7 @@ def main() -> None:
             {
                 "direction": direction_index,
                 "predicted_fixed_front": dot_gradient(g2_gradient, direction),
+                "predicted_alpha_iota": dot_gradient(g3_gradient, direction),
                 "blackbox_central": 0.5 * (endpoints[1]["score"] - endpoints[0]["score"]),
                 "minus": compact_forward(endpoints[0]),
                 "plus": compact_forward(endpoints[1]),
@@ -216,6 +233,7 @@ def main() -> None:
     forward_wall = np.asarray([row["wall_s"] for row in forward_rows])
     gradient_wall = np.asarray([row["wall_s"] for row in gradient_rows])
     g2_wall = np.asarray([row["wall_s"] for row in g2_rows])
+    g3_wall = np.asarray([row["wall_s"] for row in g3_rows])
     forward_status_match = all(
         baseline["result"]["status"] == forward["result"]["status"]
         for baseline, forward in zip(baseline_rows, forward_rows, strict=True)
@@ -232,6 +250,19 @@ def main() -> None:
         for baseline, forward in zip(baseline_rows, forward_rows, strict=True)
         for component in baseline["result"]["components"]
     )
+    gradient_forward_rows = gradient_rows + g2_rows + g3_rows
+    gradient_forward_score_max_abs_diff = max(
+        abs(row["result"]["score"] - forward_rows[index % args.repeats]["result"]["score"])
+        for index, row in enumerate(gradient_forward_rows)
+    )
+    gradient_forward_component_max_abs_diff = max(
+        abs(
+            row["result"]["components"][component]
+            - forward_rows[index % args.repeats]["result"]["components"][component]
+        )
+        for index, row in enumerate(gradient_forward_rows)
+        for component in row["result"]["components"]
+    )
     output = {
         "format": "native_score_g1_validation_v1",
         "case": str(args.case),
@@ -247,17 +278,22 @@ def main() -> None:
         "experimental_forward": forward_rows,
         "g1_gradient": gradient_rows,
         "g1_g2_gradient": g2_rows,
+        "g1_g2_g3_gradient": g3_rows,
         "blackbox_direction_rows": blackbox_rows,
         "baseline_forward_wall_median_s": float(np.median(baseline_wall)),
         "experimental_forward_wall_median_s": float(np.median(forward_wall)),
         "g1_wall_median_s": float(np.median(gradient_wall)),
         "g2_wall_median_s": float(np.median(g2_wall)),
+        "g3_wall_median_s": float(np.median(g3_wall)),
         "forward_status_match": forward_status_match,
         "forward_score_max_abs_diff": float(forward_score_max_abs_diff),
         "forward_component_max_abs_diff": float(forward_component_max_abs_diff),
+        "gradient_forward_score_max_abs_diff": float(gradient_forward_score_max_abs_diff),
+        "gradient_forward_component_max_abs_diff": float(gradient_forward_component_max_abs_diff),
         "forward_only_overhead_fraction": float(np.median(forward_wall) / np.median(baseline_wall) - 1.0),
         "g1_overhead_fraction": float(np.median(gradient_wall) / np.median(forward_wall) - 1.0),
         "g2_overhead_fraction": float(np.median(g2_wall) / np.median(forward_wall) - 1.0),
+        "g3_overhead_fraction": float(np.median(g3_wall) / np.median(forward_wall) - 1.0),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2, allow_nan=True) + "\n", encoding="utf-8")
@@ -265,11 +301,15 @@ def main() -> None:
         not forward_status_match
         or forward_score_max_abs_diff > 1.0e-10
         or forward_component_max_abs_diff > 1.0e-10
+        or gradient_forward_score_max_abs_diff > 1.0e-10
+        or gradient_forward_component_max_abs_diff > 1.0e-10
     ):
         raise RuntimeError(
             "experimental gradient library changed the production forward result: "
             f"status_match={forward_status_match}, score_diff={forward_score_max_abs_diff:.3e}, "
-            f"component_diff={forward_component_max_abs_diff:.3e}"
+            f"component_diff={forward_component_max_abs_diff:.3e}, "
+            f"gradient_score_diff={gradient_forward_score_max_abs_diff:.3e}, "
+            f"gradient_component_diff={gradient_forward_component_max_abs_diff:.3e}"
         )
 
 

@@ -303,6 +303,25 @@ int sgpu_score_coils_g2_gradient(
     SgpuScoreGradientResult* gradient_result
 );
 
+// Experimental cumulative G1+G2+G3 path. G3 additionally differentiates the
+// alpha/iota ridge-QR fit while keeping axis, psi, points, and branches fixed.
+int sgpu_score_coils_g3_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+);
+
 // Internal-oracle entrypoint: returns the reported 0--100 coil component and
 // its piecewise analytical gradient with active percentile/minimum indices
 // frozen at the supplied coil.

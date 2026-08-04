@@ -60,30 +60,38 @@ if (( idle_streak < 3 )); then
 fi
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader > "$output/gpu_preflight.csv"
 
-pids=()
-for rank in 0 1 2 3; do
-  profile=()
-  if (( rank == 1 )); then profile=(--profile); fi
-  CUDA_VISIBLE_DEVICES="$rank" python scripts/benchmark_qh_flow_vjp.py \
-    --reference-dir "$reference" \
-    --checkpoint "$checkpoint" \
-    --gradient-lib "$gradient_lib" \
-    --output-dir "$output" \
-    --center-id "${centers[$rank]}" \
-    --steps 32,64,128,256 \
-    --device cuda:0 \
-    "${profile[@]}" \
-    > "$output/worker_${rank}.log" 2>&1 &
-  pids+=("$!")
-done
-status=0
-for pid in "${pids[@]}"; do
-  if ! wait "$pid"; then status=1; fi
-done
-if (( status != 0 )); then
-  tail -n 80 "$output"/worker_*.log >&2 || true
-  exit "$status"
+gpu_count="$(nvidia-smi -L | wc -l)"
+if (( gpu_count < 1 )); then
+  echo "no allocated GPU is visible" >&2
+  exit 43
 fi
+for ((first=0; first<${#centers[@]}; first+=gpu_count)); do
+  pids=()
+  for ((rank=first; rank<first+gpu_count && rank<${#centers[@]}; rank++)); do
+    device=$((rank - first))
+    profile=()
+    if (( rank == 1 )); then profile=(--profile); fi
+    CUDA_VISIBLE_DEVICES="$device" python scripts/benchmark_qh_flow_vjp.py \
+      --reference-dir "$reference" \
+      --checkpoint "$checkpoint" \
+      --gradient-lib "$gradient_lib" \
+      --output-dir "$output" \
+      --center-id "${centers[$rank]}" \
+      --steps 32,64,128,256 \
+      --device cuda:0 \
+      "${profile[@]}" \
+      > "$output/worker_${rank}.log" 2>&1 &
+    pids+=("$!")
+  done
+  status=0
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then status=1; fi
+  done
+  if (( status != 0 )); then
+    tail -n 80 "$output"/worker_*.log >&2 || true
+    exit "$status"
+  fi
+done
 
 python scripts/benchmark_qh_flow_vjp.py \
   --reference-dir "$reference" \

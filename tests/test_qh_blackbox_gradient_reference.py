@@ -16,7 +16,7 @@ def test_rms_orthogonal_basis_has_expected_normalization() -> None:
 
 
 def test_case_rows_include_one_center_and_antithetic_endpoints() -> None:
-    centers = [{"center_id": "sample", "dimension": 3}]
+    centers = [{"center_id": "sample", "dimension": 12, "direction_count": 3}]
     rows = case_rows(centers, (0.1, 0.05))
     assert len(rows) == 1 + 2 * 3 * 2
     assert rows[0]["kind"] == "center"

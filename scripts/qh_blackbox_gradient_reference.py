@@ -168,7 +168,7 @@ def case_rows(center_rows: list[dict[str, Any]], scales: tuple[float, ...]) -> l
             }
         )
         for scale_index, scale in enumerate(scales):
-            for direction_index in range(int(center["dimension"])):
+            for direction_index in range(int(center.get("direction_count", center["dimension"]))):
                 for sign in (-1, 1):
                     rows.append(
                         {
@@ -199,6 +199,9 @@ def prepare(args: argparse.Namespace) -> None:
     for center_index, (label, path) in enumerate(args.center):
         noise, nfp, payload = load_center(path)
         dimension = int(noise.size)
+        direction_count = dimension if args.direction_count == 0 else args.direction_count
+        if not 1 <= direction_count <= dimension:
+            raise ValueError("direction count must be zero/full or in [1, latent dimension]")
         dimensions.add(dimension)
         recorded = payload["flow_prior_standard_adam_trajectory"].get("native_score", {})
         center_rows.append(
@@ -209,13 +212,18 @@ def prepare(args: argparse.Namespace) -> None:
                 "nfp": nfp,
                 "n_coils": int(noise.shape[0]),
                 "dimension": dimension,
+                "direction_count": direction_count,
                 "recorded_iteration": int(payload["flow_prior_standard_adam_trajectory"]["iteration"]),
                 "recorded_score": float(recorded.get("score", float("nan"))),
                 "direction_seed": int(args.seed + 1009 * center_index),
             }
         )
         noises.append(noise)
-        directions.append(rms_orthogonal_basis(dimension, args.seed + 1009 * center_index))
+        directions.append(
+            rms_orthogonal_basis(dimension, args.seed + 1009 * center_index)[
+                :direction_count
+            ]
+        )
     if len(dimensions) != 1:
         raise ValueError("the first reference batch requires centers with a common latent dimension")
 
@@ -480,6 +488,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=2026080401)
     parser.add_argument("--rk4-steps", type=int, default=256)
     parser.add_argument("--decode-batch-size", type=int, default=32)
+    parser.add_argument(
+        "--direction-count",
+        type=int,
+        default=0,
+        help="Use zero for the full basis; positive values are for smoke/diagnostic subsets.",
+    )
     parser.add_argument("--torch-device", default="cuda:0")
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--score-only", action="store_true")
@@ -497,7 +511,7 @@ def main() -> None:
         raise ValueError("select exactly one of --prepare-only, --score-only, --analyze-only")
     if args.rank < 0 or args.world_size < 1 or args.rank >= args.world_size:
         raise ValueError("rank must be in [0, world_size)")
-    if args.rk4_steps < 1 or args.decode_batch_size < 1:
+    if args.rk4_steps < 1 or args.decode_batch_size < 1 or args.direction_count < 0:
         raise ValueError("RK4 steps and decode batch size must be positive")
     if args.prepare_only:
         if not args.center:

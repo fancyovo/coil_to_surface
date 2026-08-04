@@ -57,7 +57,9 @@ once the task is accepted.
   coordinate bases, weights, and the field Hessian-vector path. Axis response
   remains separate G5, and surface-trace differentiation is optional pending
   evidence. Full derivation, difficulty assessment, and validation gates are in
-  section 15 of `reports/qh_blackbox_gradient_exploration_report.md`.
+  section 15 of `reports/qh_blackbox_gradient_exploration_report.md`. The
+  report and this conclusion are committed as `1a30454` and synchronized to
+  the remote `qh-blackbox-gradient` worktree.
 - On 2026-08-04, the post-peak G2 reversal investigation completed. The earlier
   200-direction reference did not sample the current `start_10` basin: it
   covered nfp6/nc2 steps 0/200/400 and a separate nfp4/nc2 step 50, whereas the

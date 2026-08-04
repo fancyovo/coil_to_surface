@@ -96,6 +96,8 @@ once the task is accepted.
   compiled benchmark, score/component differences were at `1e-14`, retained
   median was `4.38 s`, and both postflight GPUs were 2 MiB/0%. Commit
   `20ac604` is therefore the validated public execution interface.
+  Report section 10 and all curated benchmark assets were committed as
+  `b872936` and synchronized to the remote worktree.
 - On 2026-08-04, the user clarified that this cluster's `sbatch --test-only`
   predicted start time is generally inaccurate and jobs commonly start
   immediately after real submission. Use `--test-only` only to validate request

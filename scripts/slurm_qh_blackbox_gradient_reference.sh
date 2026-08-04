@@ -16,7 +16,7 @@ set -euo pipefail
 
 project="${PROJECT:-$HOME/local_surface_evaluator_worktrees/qh-blackbox-gradient}"
 checkpoint="${FLOW_CHECKPOINT:-$HOME/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
-lib="${SCORE_LIB:-$HOME/local_surface_evaluator/gpu_backend/build_native_score/libstellarator_gpu.so}"
+lib="${SCORE_LIB:-$HOME/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu_backend/build_native_score/libstellarator_gpu.so}"
 expected_checkpoint_sha="${EXPECTED_CHECKPOINT_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}"
 expected_score_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5}"
 output="${OUTPUT_DIR:-$project/runs/qh_blackbox_gradient_reference_${SLURM_JOB_ID}}"

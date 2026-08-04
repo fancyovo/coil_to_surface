@@ -38,6 +38,26 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, branch `qh-blackbox-gradient` commit `0e877ae` adds a
+  restartable multi-scale black-box reference-gradient driver, a four-GPU
+  Slurm launcher, and a one-direction GPU smoke launcher. The production
+  ABI-9 forward interface is unchanged. Reference preparation freezes latent
+  centers, independent RMS-orthogonal banks, RK4-256 decoded physical coils,
+  scales, source/checkpoint/library hashes, and branch fingerprints; four
+  score shards append each result independently and can resume. The first
+  formal batch is configured for nfp6 steps 0/200/400 and nfp4 step 50, all
+  200 directions and $h=0.01/0.005/0.0025/0.00125$ (6400 endpoints plus four
+  centers). Remote smoke job `31638` is currently submitted on P107 using
+  checkpoint SHA `39a3293a...` and the validated corrected ABI-9 library SHA
+  `40dca742...`. The main repository's current same-named build has SHA
+  `d2cfcab1...` and is explicitly not used; the validated library is pinned at
+  `~/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu_backend/build_native_score/libstellarator_gpu.so`.
+  Smoke job `31638` completed `0:0` in `00:01:06`: all three cases were
+  `ok`, the endpoint pair retained the center fingerprint, score latency was
+  `6.213 s` mean / `8.007 s` P95, and the RK4-256 re-decoded center scored
+  `74.42519` versus historical recorded `74.43583`. Formal four-GPU job
+  `31640` is now submitted for the 6404-case batch; its output directory is
+  `~/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_blackbox_gradient_reference_31640/`.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

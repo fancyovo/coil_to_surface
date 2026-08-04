@@ -7,6 +7,7 @@
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 16
+#define SGPU_SCORE_GRADIENT_ABI_VERSION 1u
 
 enum SgpuScoreStatus {
     SGPU_SCORE_OK = 0,
@@ -228,6 +229,18 @@ struct SgpuScoreResult {
     char error_message[256];
 };
 
+struct SgpuScoreGradientResult {
+    std::uint32_t abi_version;
+    std::uint32_t struct_size;
+    std::int32_t status;
+    std::int32_t gradient_group;
+    double forward_wall_s;
+    double gradient_wall_s;
+    double score_gradient_rms;
+    double coil_component_gradient_rms;
+    char error_message[256];
+};
+
 extern "C" {
 
 int sgpu_default_score_config(SgpuScoreConfig* config);
@@ -245,6 +258,45 @@ int sgpu_score_coils(
     int nfp,
     const SgpuScoreConfig* config,
     SgpuScoreResult* result
+);
+
+std::size_t sgpu_score_gradient_result_size();
+
+// Experimental opt-in G1 path. The production sgpu_score_coils ABI and path
+// remain independent and do not allocate or evaluate gradients.
+int sgpu_score_coils_g1_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+);
+
+// Internal-oracle entrypoint: returns the reported 0--100 coil component and
+// its piecewise analytical gradient with active percentile/minimum indices
+// frozen at the supplied coil.
+int sgpu_coil_component_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    double* component_value,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current
 );
 
 int sgpu_create_field(

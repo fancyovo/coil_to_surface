@@ -235,6 +235,20 @@ class _SgpuScoreResult(ctypes.Structure):
     ]
 
 
+class _SgpuScoreGradientResult(ctypes.Structure):
+    _fields_ = [
+        ("abi_version", ctypes.c_uint32),
+        ("struct_size", ctypes.c_uint32),
+        ("status", ctypes.c_int32),
+        ("gradient_group", ctypes.c_int32),
+        ("forward_wall_s", ctypes.c_double),
+        ("gradient_wall_s", ctypes.c_double),
+        ("score_gradient_rms", ctypes.c_double),
+        ("coil_component_gradient_rms", ctypes.c_double),
+        ("error_message", ctypes.c_char * 256),
+    ]
+
+
 def _bind_native_score(lib: ctypes.CDLL) -> None:
     lib.sgpu_score_config_size.restype = ctypes.c_size_t
     lib.sgpu_score_config_size.argtypes = []
@@ -259,6 +273,85 @@ def _bind_native_score(lib: ctypes.CDLL) -> None:
         raise GpuError("native score config ABI size mismatch")
     if lib.sgpu_score_result_size() != ctypes.sizeof(_SgpuScoreResult):
         raise GpuError("native score result ABI size mismatch")
+
+
+def _bind_native_gradient(lib: ctypes.CDLL) -> None:
+    if getattr(lib, "_sgpu_gradient_bound", False):
+        return
+    try:
+        lib.sgpu_score_gradient_result_size.restype = ctypes.c_size_t
+        lib.sgpu_score_gradient_result_size.argtypes = []
+        lib.sgpu_coil_component_gradient.restype = ctypes.c_int
+        lib.sgpu_coil_component_gradient.argtypes = [
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+        ]
+        lib.sgpu_score_coils_g1_gradient.restype = ctypes.c_int
+        lib.sgpu_score_coils_g1_gradient.argtypes = [
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.POINTER(_SgpuScoreConfig),
+            ctypes.POINTER(_SgpuScoreResult),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(_SgpuScoreGradientResult),
+        ]
+    except AttributeError as exc:
+        raise GpuError("native library does not provide the experimental G1 gradient API") from exc
+    if lib.sgpu_score_gradient_result_size() != ctypes.sizeof(_SgpuScoreGradientResult):
+        raise GpuError("native score gradient result ABI size mismatch")
+    lib._sgpu_gradient_bound = True
+
+
+def _coerce_score_inputs(coeffs_x, coeffs_y, coeffs_z, currents_a):
+    coeffs_x = np.ascontiguousarray(np.atleast_2d(coeffs_x), dtype=np.float64)
+    coeffs_y = np.ascontiguousarray(np.atleast_2d(coeffs_y), dtype=np.float64)
+    coeffs_z = np.ascontiguousarray(np.atleast_2d(coeffs_z), dtype=np.float64)
+    currents_a = np.ascontiguousarray(currents_a, dtype=np.float64).ravel()
+    if not (coeffs_x.shape == coeffs_y.shape == coeffs_z.shape):
+        raise ValueError("coeffs_x/y/z must have the same shape")
+    if currents_a.size != coeffs_x.shape[0]:
+        raise ValueError("currents size must equal n_base_coils")
+    return coeffs_x, coeffs_y, coeffs_z, currents_a
+
+
+def _score_result_dict(result: _SgpuScoreResult) -> dict:
+    diagnostics = {
+        name: getattr(result, name)
+        for name, _ in _SgpuScoreResult._fields_
+        if name not in {"components", "timings", "error_message"}
+    }
+    diagnostics["error_message"] = bytes(result.error_message).split(b"\0", 1)[0].decode("utf-8", "replace")
+    return {
+        "score": float(result.score),
+        "status": SGPU_SCORE_STATUS_NAMES.get(int(result.status), f"unknown_{result.status}"),
+        "components": {
+            name: float(result.components[index])
+            for index, name in enumerate(SGPU_SCORE_COMPONENT_NAMES)
+        },
+        "timing": {
+            name: float(result.timings[index])
+            for index, name in enumerate(SGPU_SCORE_TIMING_NAMES)
+        },
+        "diagnostics": diagnostics,
+    }
 
 
 def score_coils_native(
@@ -329,6 +422,131 @@ def score_coils_native(
             for index, name in enumerate(SGPU_SCORE_TIMING_NAMES)
         },
         "diagnostics": diagnostics,
+    }
+
+
+def coil_component_gradient_native(
+    lib_path: str | Path,
+    coeffs_x,
+    coeffs_y,
+    coeffs_z,
+    currents_a,
+    nfp: int,
+) -> dict:
+    """Return the 0--100 coil component and its active-branch analytical gradient."""
+    path = str(Path(lib_path).resolve())
+    lib = _NATIVE_SCORE_LIB_CACHE.get(path)
+    if lib is None:
+        lib = ctypes.CDLL(path)
+        _bind_native_score(lib)
+        _NATIVE_SCORE_LIB_CACHE[path] = lib
+    _bind_native_gradient(lib)
+    coeffs_x, coeffs_y, coeffs_z, currents_a = _coerce_score_inputs(
+        coeffs_x, coeffs_y, coeffs_z, currents_a
+    )
+    gradient_x = np.empty_like(coeffs_x)
+    gradient_y = np.empty_like(coeffs_y)
+    gradient_z = np.empty_like(coeffs_z)
+    gradient_current = np.empty_like(currents_a)
+    component = ctypes.c_double()
+    code = lib.sgpu_coil_component_gradient(
+        coeffs_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        coeffs_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        coeffs_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        currents_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_int(coeffs_x.shape[0]),
+        ctypes.c_int(coeffs_x.shape[1]),
+        ctypes.c_int(int(nfp)),
+        ctypes.byref(component),
+        gradient_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gradient_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gradient_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gradient_current.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    _check_lib_code(lib, code)
+    return {
+        "component": float(component.value),
+        "gradient": {
+            "x": gradient_x,
+            "y": gradient_y,
+            "z": gradient_z,
+            "current": gradient_current,
+        },
+    }
+
+
+def score_coils_g1_gradient_native(
+    lib_path: str | Path,
+    coeffs_x,
+    coeffs_y,
+    coeffs_z,
+    currents_a,
+    nfp: int,
+    *,
+    device_id: int = 0,
+    target_helicity: tuple[int, int] = (1, 0),
+    config_overrides: dict | None = None,
+) -> dict:
+    """Run the exact score and opt-in G1 score gradient as a separate path."""
+    path = str(Path(lib_path).resolve())
+    lib = _NATIVE_SCORE_LIB_CACHE.get(path)
+    if lib is None:
+        lib = ctypes.CDLL(path)
+        _bind_native_score(lib)
+        _NATIVE_SCORE_LIB_CACHE[path] = lib
+    _bind_native_gradient(lib)
+    config = _SgpuScoreConfig()
+    _check_lib_code(lib, lib.sgpu_default_score_config(ctypes.byref(config)))
+    config.device_id = int(device_id)
+    config.target_M = int(target_helicity[0])
+    config.target_N = int(target_helicity[1])
+    for name, value in (config_overrides or {}).items():
+        if not hasattr(config, name):
+            raise ValueError(f"unknown native score config field {name!r}")
+        setattr(config, name, value)
+    coeffs_x, coeffs_y, coeffs_z, currents_a = _coerce_score_inputs(
+        coeffs_x, coeffs_y, coeffs_z, currents_a
+    )
+    gradient_x = np.empty_like(coeffs_x)
+    gradient_y = np.empty_like(coeffs_y)
+    gradient_z = np.empty_like(coeffs_z)
+    gradient_current = np.empty_like(currents_a)
+    score_result = _SgpuScoreResult()
+    gradient_result = _SgpuScoreGradientResult()
+    code = lib.sgpu_score_coils_g1_gradient(
+        coeffs_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        coeffs_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        coeffs_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        currents_a.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_int(coeffs_x.shape[0]),
+        ctypes.c_int(coeffs_x.shape[1]),
+        ctypes.c_int(int(nfp)),
+        ctypes.byref(config),
+        ctypes.byref(score_result),
+        gradient_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gradient_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gradient_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        gradient_current.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(gradient_result),
+    )
+    _check_lib_code(lib, code)
+    gradient_diagnostics = {
+        name: getattr(gradient_result, name)
+        for name, _ in _SgpuScoreGradientResult._fields_
+        if name != "error_message"
+    }
+    gradient_diagnostics["error_message"] = bytes(gradient_result.error_message).split(b"\0", 1)[0].decode(
+        "utf-8", "replace"
+    )
+    return {
+        "score_result": _score_result_dict(score_result),
+        "gradient": {
+            "x": gradient_x,
+            "y": gradient_y,
+            "z": gradient_z,
+            "current": gradient_current,
+        },
+        "gradient_diagnostics": gradient_diagnostics,
     }
 
 

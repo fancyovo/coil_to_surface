@@ -90,6 +90,8 @@ def main() -> None:
         if int(row["center_index"]) == center_index and row["kind"] == "center"
     )
     center_tokens = np.asarray(raw[int(center_case["case_id"])], dtype=np.float64)
+    center_result = scored[int(center_case["case_id"])]["result"]
+    center_fingerprint = tuple(center_result["branch_fingerprint"])
     x, y, z, current = score_arguments(center_tokens)
     g1 = score_coils_g1_gradient_native(
         args.gradient_lib, x, y, z, current, nfp, target_helicity=(1, nfp)
@@ -180,10 +182,38 @@ def main() -> None:
             }
         )
 
-    reference = np.load(args.reference_dir / "reference_gradients.npz")
-    scales = np.asarray(reference["scales"], dtype=np.float64)
-    scale_index = int(np.flatnonzero(np.isclose(scales, args.scale, rtol=0.0, atol=1.0e-12))[0])
-    reference_gradient = np.asarray(reference["gradients"][center_index, scale_index], dtype=np.float64)
+    endpoint_index = {
+        (
+            int(row["center_index"]),
+            int(row["direction_index"]),
+            int(row["sign"]),
+            float(row["scale"]),
+        ): row
+        for row in cases
+        if row["kind"] == "endpoint"
+    }
+    all_slopes = np.full(directions.shape[1], np.nan, dtype=np.float64)
+    safe_mask = np.zeros(directions.shape[1], dtype=bool)
+    for direction_index in range(directions.shape[1]):
+        endpoint_results = []
+        for sign in (-1, 1):
+            case = endpoint_index[(center_index, direction_index, sign, args.scale)]
+            endpoint_results.append(scored[int(case["case_id"])]["result"])
+        if all(
+            result is not None
+            and result["status"] == "ok"
+            and tuple(result["branch_fingerprint"]) == center_fingerprint
+            for result in endpoint_results
+        ):
+            safe_mask[direction_index] = True
+            all_slopes[direction_index] = (
+                float(endpoint_results[1]["score"]) - float(endpoint_results[0]["score"])
+            ) / (2.0 * args.scale)
+    if not np.any(safe_mask):
+        raise RuntimeError("selected center and scale have no same-branch reference directions")
+    reference_gradient = np.mean(
+        all_slopes[safe_mask, None] * directions[center_index, safe_mask], axis=0
+    ).reshape(center["n_coils"], 100)
     output = {
         "format": "qh_latent_gradient_validation_v1",
         "reference_dir": str(args.reference_dir),
@@ -192,6 +222,9 @@ def main() -> None:
         "nfp": nfp,
         "scale": args.scale,
         "direction_count": selected_directions,
+        "reference_safe_direction_count": int(np.sum(safe_mask)),
+        "reference_safe_fraction": float(np.mean(safe_mask)),
+        "reference_kind": "full" if np.all(safe_mask) else "safe_subspace_projection",
         "checkpoint_step": int(checkpoint["step"]),
         "decoded_center_relative_l2": decode_relative_l2,
         "g1_score": g1["score_result"],
@@ -221,6 +254,8 @@ def main() -> None:
         g2_latent=latent_g2,
         g3_latent=latent_g3,
         reference_latent=reference_gradient,
+        reference_safe_mask=safe_mask,
+        reference_slopes=all_slopes,
     )
 
 

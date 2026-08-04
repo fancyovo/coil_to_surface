@@ -74,8 +74,13 @@ once the task is accepted.
   `0.568/0.558`. This removes the numerical pathology but shows no preliminary
   G3 benefit; the formal 200-direction result is still required. G3b median
   wall/reverse times are `5.2165/0.1685 s`, and postflight was 2 MiB at 0%.
-  The remote worktree currently has code HEAD `2f446f7`; the next metadata and
-  parameterized latent-launcher commit remains local until synchronized.
+  Commit `d236a1f` parameterizes latent center/scale/direction selection in the
+  common launcher and is synchronized remotely. The next analysis commit adds
+  explicit safe-subspace reconstruction: a single branch-changing direction
+  no longer turns an otherwise useful 200-direction reference into an
+  unexplained NaN. It also bootstraps random-K subsets from the frozen
+  orthogonal bank, explicitly labeled as bank reuse rather than independently
+  scored random blocks.
 - On 2026-08-04, the user granted the active black-box-gradient exploration
   continuing access to the `Students` partition's additional 2 RTX 5090 GPUs
   and 24 CPUs until the user explicitly revokes that permission. This is in

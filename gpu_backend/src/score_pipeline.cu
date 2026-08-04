@@ -2700,6 +2700,7 @@ struct AlphaFitNative {
 };
 
 struct FixedFrontG2Cache {
+    AxisData axis;
     DeviceVolumePoints points;
     DeviceBuffer<float> B;
     DeviceBuffer<float> grad_B;
@@ -3598,7 +3599,8 @@ bool run_downstream_gpu(
     const PsiData& psi,
     std::vector<SurfaceScreen>& screens,
     const SgpuScoreConfig& config,
-    SgpuScoreResult& result
+    SgpuScoreResult& result,
+    bool verify_long_horizon = true
 ) {
     DevicePsiData device_psi;
     if (!upload_psi_data(psi, axis, device_psi)) {
@@ -3619,11 +3621,13 @@ bool run_downstream_gpu(
     bool flux_ok = false;
     for (SurfaceScreen* candidate : candidates) {
         const auto trace_started = Clock::now();
-        if (!verify_surface_long_horizon(field, axis, psi, nfp, config, *candidate)) {
-            fail_from_backend(&result, "long-horizon surface trace");
-            return false;
+        if (verify_long_horizon) {
+            if (!verify_surface_long_horizon(field, axis, psi, nfp, config, *candidate)) {
+                fail_from_backend(&result, "long-horizon surface trace");
+                return false;
+            }
+            result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] += seconds_since(trace_started);
         }
-        result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] += seconds_since(trace_started);
         if (!candidate->strict) {
             ++result.surface_long_trace_rejected_count;
             if (!closest_rejected_surface ||
@@ -4758,6 +4762,124 @@ bool evaluate_fixed_front_g3_scalar(
     return true;
 }
 
+bool evaluate_fixed_branch_g4_scalar(
+    const FixedFrontG2Cache& cache,
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig& config,
+    const SgpuScoreResult& center,
+    SgpuScoreResult& query,
+    std::string& error
+) {
+    initialize_result(&query, config.device_id);
+    const auto total_started = Clock::now();
+    const CoilMetrics coil = compute_coil_metrics(
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp
+    );
+    query.coil_length_mean = coil.length_mean;
+    query.coil_curvature_p95 = coil.curvature_p95;
+    query.coil_curvature_max = coil.curvature_max;
+    query.coil_min_intercoil_distance = coil.min_intercoil_distance;
+    query.coil_min_axis_distance = coil.min_axis_distance;
+    query.coil_high_mode_energy_fraction = coil.high_mode_fraction;
+    query.coil_current_abs_max_a = coil.current_abs_max;
+    query.axis_R = center.axis_R;
+    query.axis_Z = center.axis_Z;
+    query.axis_residual = center.axis_residual;
+    query.axis_topology_trace = center.axis_topology_trace;
+    query.axis_topology_det = center.axis_topology_det;
+    query.axis_ellipse_aspect = center.axis_ellipse_aspect;
+    query.axis_candidate_count = center.axis_candidate_count;
+    query.stable_surface_count = center.stable_surface_count;
+    query.stage_completed = SCORE_STAGE_AXIS;
+
+    void* field = nullptr;
+    auto started = Clock::now();
+    if (sgpu_create_field(
+            coeffs_x, coeffs_y, coeffs_z, currents_a, n_base_coils, n_coeff,
+            nfp, config.segments_per_coil, config.device_id, &field)) {
+        error = "fixed-branch G4 query field creation failed";
+        return false;
+    }
+    query.timings[SGPU_SCORE_TIME_FIELD_CREATE] = seconds_since(started);
+    query.stage_completed = SCORE_STAGE_FIELD;
+
+    PsiData psi;
+    bool ok = fit_psi_native(
+        field, cache.axis, nfp, config, psi,
+        query.timings[SGPU_SCORE_TIME_PSI_POINTS],
+        query.timings[SGPU_SCORE_TIME_PSI_FIT]
+    );
+    if (!ok) {
+        error = "fixed-branch G4 query psi fit failed";
+    } else {
+        started = Clock::now();
+        ok = validate_psi_native(field, cache.axis, nfp, config, psi);
+        query.timings[SGPU_SCORE_TIME_PSI_VALIDATE] = seconds_since(started);
+        if (!ok) error = "fixed-branch G4 query psi validation failed";
+    }
+    if (ok) {
+        query.psi_train_rms = psi.train_rms;
+        query.psi_angle_mean = psi.angle_mean;
+        query.psi_angle_p95 = psi.angle_p95;
+        query.psi_angle_l2 = psi.angle_l2;
+        query.stage_completed = SCORE_STAGE_PSI;
+
+        SurfaceScreen selected;
+        selected.level = center.surface_level;
+        selected.relative_drift_p95 = center.surface_drift_relative_p95;
+        selected.one_period_relative_drift_p95 = center.surface_one_period_drift_relative_p95;
+        selected.long_trace_periods_completed = center.surface_long_trace_periods_completed;
+        selected.stable = true;
+        selected.strict = true;
+        selected.verified = true;
+        selected.long_verified = true;
+        std::vector<SurfaceScreen> screens{selected};
+        ok = run_downstream_gpu(
+            field, currents_a, n_base_coils, nfp, cache.axis, psi,
+            screens, config, query, false
+        );
+        fill_early_components(config, coil, cache.axis, psi, screens, query);
+
+        // Axis, drift and discrete surface-count terms define the fixed branch.
+        // Only the continuously recomputed flux volume changes the surface-size term.
+        query.components[SGPU_SCORE_COMPONENT_AXIS] =
+            center.components[SGPU_SCORE_COMPONENT_AXIS] / 100.0;
+        query.components[SGPU_SCORE_COMPONENT_SURFACE] =
+            center.components[SGPU_SCORE_COMPONENT_SURFACE] / 100.0 +
+            0.65 * (query.score_surface_size - center.score_surface_size);
+        if (!ok && query.status == SGPU_SCORE_INTERNAL_ERROR) {
+            error = query.error_message[0]
+                ? query.error_message : "fixed-branch G4 downstream query failed";
+        }
+    }
+    sgpu_destroy_field(field);
+    if (!ok && query.status == SGPU_SCORE_INTERNAL_ERROR) return false;
+
+    if (query.status == SGPU_SCORE_OK &&
+        center.volume_candidate_count == center.volume_available_count &&
+        query.volume_candidate_count != query.volume_available_count) {
+        query.status = SGPU_SCORE_FLUX_REJECTED;
+        std::snprintf(
+            query.error_message,
+            sizeof(query.error_message),
+            "%s",
+            "fixed-branch G4 volume active set changed"
+        );
+    }
+    started = Clock::now();
+    finalize_score(config, query);
+    query.timings[SGPU_SCORE_TIME_SCORE] = seconds_since(started);
+    query.timings[SGPU_SCORE_TIME_TOTAL] = seconds_since(total_started);
+    return true;
+}
+
 void add_iota_score_solution_adjoint(
     const AlphaFitNative& alpha,
     const SgpuScoreConfig& config,
@@ -5288,6 +5410,9 @@ int sgpu_score_coils(
             if (result->status == SGPU_SCORE_INTERNAL_ERROR) return_code = 1;
             break;
         }
+        if (g_active_g2_cache && g_active_g2_cache->ready) {
+            g_active_g2_cache->axis = axis;
+        }
     } while (false);
 
     if (g_active_g2_cache && g_active_g2_cache->ready) {
@@ -5785,6 +5910,78 @@ int sgpu_score_coils_g3_frozen_batch(
     }
     sgpu_destroy_field(cache.field);
     cache.field = nullptr;
+    sgpu_internal_set_error("");
+    return 0;
+}
+
+int sgpu_score_coils_g4_fixed_branch_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    SgpuScoreResult* query_score_results
+) {
+    if (!center_coeffs_x || !center_coeffs_y || !center_coeffs_z ||
+        !center_currents_a || !query_coeffs_x || !query_coeffs_y ||
+        !query_coeffs_z || !query_currents_a || query_count <= 0 ||
+        n_base_coils <= 0 || n_coeff <= 0 || nfp <= 0 || !config ||
+        !center_score_result || !query_score_results) {
+        sgpu_internal_set_error("invalid G4 fixed-branch batch input");
+        return 1;
+    }
+    FixedFrontG2Cache cache;
+    g_active_gradient_group = 2;
+    g_active_g2_cache = &cache;
+    const int score_code = sgpu_score_coils(
+        center_coeffs_x, center_coeffs_y, center_coeffs_z, center_currents_a,
+        n_base_coils, n_coeff, nfp, config, center_score_result
+    );
+    g_active_g2_cache = nullptr;
+    g_active_gradient_group = 0;
+    if (score_code != 0 || center_score_result->status != SGPU_SCORE_OK ||
+        !cache.ready || cache.axis.R.empty()) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        sgpu_internal_set_error("G4 fixed-branch center score is not ok");
+        return score_code != 0 ? score_code : 1;
+    }
+    if (cache.field) {
+        sgpu_destroy_field(cache.field);
+        cache.field = nullptr;
+    }
+
+    const size_t coefficient_stride = static_cast<size_t>(n_base_coils) * n_coeff;
+    for (int query_index = 0; query_index < query_count; ++query_index) {
+        std::string error;
+        if (!evaluate_fixed_branch_g4_scalar(
+                cache,
+                query_coeffs_x + query_index * coefficient_stride,
+                query_coeffs_y + query_index * coefficient_stride,
+                query_coeffs_z + query_index * coefficient_stride,
+                query_currents_a + static_cast<size_t>(query_index) * n_base_coils,
+                n_base_coils, n_coeff, nfp, *config, *center_score_result,
+                query_score_results[query_index], error)) {
+            std::snprintf(
+                center_score_result->error_message,
+                sizeof(center_score_result->error_message),
+                "G4 fixed-branch query %d failed: %.205s",
+                query_index,
+                error.c_str()
+            );
+            center_score_result->status = SGPU_SCORE_INTERNAL_ERROR;
+            sgpu_internal_set_error(center_score_result->error_message);
+            return 1;
+        }
+    }
     sgpu_internal_set_error("");
     return 0;
 }

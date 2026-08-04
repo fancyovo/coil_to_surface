@@ -395,6 +395,33 @@ def _bind_native_g3_frozen(lib: ctypes.CDLL) -> None:
     lib._sgpu_g3_frozen_bound = True
 
 
+def _bind_native_g4_fixed_branch(lib: ctypes.CDLL) -> None:
+    if getattr(lib, "_sgpu_g4_fixed_branch_bound", False):
+        return
+    try:
+        lib.sgpu_score_coils_g4_fixed_branch_batch.restype = ctypes.c_int
+        lib.sgpu_score_coils_g4_fixed_branch_batch.argtypes = [
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.POINTER(_SgpuScoreConfig),
+            ctypes.POINTER(_SgpuScoreResult),
+            ctypes.POINTER(_SgpuScoreResult),
+        ]
+    except AttributeError as exc:
+        raise GpuError("native library does not provide the G4 fixed-branch oracle") from exc
+    lib._sgpu_g4_fixed_branch_bound = True
+
+
 def _coerce_score_inputs(coeffs_x, coeffs_y, coeffs_z, currents_a):
     coeffs_x = np.ascontiguousarray(np.atleast_2d(coeffs_x), dtype=np.float64)
     coeffs_y = np.ascontiguousarray(np.atleast_2d(coeffs_y), dtype=np.float64)
@@ -876,6 +903,83 @@ def score_coils_g3_frozen_batch_native(
     return {
         "center_score_result": _score_result_dict(center_result),
         **{name: value for name, value in zip(names, outputs, strict=True)},
+    }
+
+
+def score_coils_g4_fixed_branch_batch_native(
+    lib_path: str | Path,
+    center_coeffs_x,
+    center_coeffs_y,
+    center_coeffs_z,
+    center_currents_a,
+    query_coeffs_x,
+    query_coeffs_y,
+    query_coeffs_z,
+    query_currents_a,
+    nfp: int,
+    *,
+    device_id: int = 0,
+    target_helicity: tuple[int, int] = (1, 0),
+    config_overrides: dict | None = None,
+) -> dict:
+    """Recompute the continuous G4 front while fixing the center axis/level."""
+    path = str(Path(lib_path).resolve())
+    lib = _NATIVE_SCORE_LIB_CACHE.get(path)
+    if lib is None:
+        lib = ctypes.CDLL(path)
+        _bind_native_score(lib)
+        _NATIVE_SCORE_LIB_CACHE[path] = lib
+    _bind_native_g4_fixed_branch(lib)
+    config = _SgpuScoreConfig()
+    _check_lib_code(lib, lib.sgpu_default_score_config(ctypes.byref(config)))
+    config.device_id = int(device_id)
+    config.target_M = int(target_helicity[0])
+    config.target_N = int(target_helicity[1])
+    _apply_score_config_overrides(config, config_overrides)
+    center_x, center_y, center_z, center_current = _coerce_score_inputs(
+        center_coeffs_x, center_coeffs_y, center_coeffs_z, center_currents_a
+    )
+    query_x = np.ascontiguousarray(query_coeffs_x, dtype=np.float64)
+    query_y = np.ascontiguousarray(query_coeffs_y, dtype=np.float64)
+    query_z = np.ascontiguousarray(query_coeffs_z, dtype=np.float64)
+    query_current = np.ascontiguousarray(query_currents_a, dtype=np.float64)
+    if query_x.ndim == 2:
+        query_x = query_x[None]
+        query_y = query_y[None]
+        query_z = query_z[None]
+    if query_current.ndim == 1:
+        query_current = query_current[None]
+    expected_shape = (query_x.shape[0], *center_x.shape)
+    if not (query_x.shape == query_y.shape == query_z.shape == expected_shape):
+        raise ValueError(f"query coeffs must all have shape {expected_shape}")
+    if query_current.shape != (query_x.shape[0], center_x.shape[0]):
+        raise ValueError("query currents must have shape (query_count, n_base_coils)")
+    center_result = _SgpuScoreResult()
+    query_results = (_SgpuScoreResult * query_x.shape[0])()
+    code = lib.sgpu_score_coils_g4_fixed_branch_batch(
+        center_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        center_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        center_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        center_current.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        query_x.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        query_y.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        query_z.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        query_current.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_int(query_x.shape[0]),
+        ctypes.c_int(center_x.shape[0]),
+        ctypes.c_int(center_x.shape[1]),
+        ctypes.c_int(int(nfp)),
+        ctypes.byref(config),
+        ctypes.byref(center_result),
+        query_results,
+    )
+    _check_lib_code(lib, code)
+    return {
+        "center_score_result": _score_result_dict(center_result),
+        "query_score_results": [
+            _score_result_dict(query_results[index])
+            for index in range(query_x.shape[0])
+        ],
     }
 
 

@@ -74,6 +74,17 @@ def result_score(result: dict[str, Any]) -> float:
     return value if math.isfinite(value) else 0.0
 
 
+def accept_exact_score_candidate(
+    current_result: dict[str, Any],
+    candidate_result: dict[str, Any],
+    *,
+    accept_drop: float,
+) -> bool:
+    if candidate_result.get("status") != "ok":
+        return False
+    return result_score(candidate_result) >= result_score(current_result) - accept_drop
+
+
 def diagnostic(result: dict[str, Any], name: str) -> float:
     return float(result.get("diagnostics", {}).get(name, float("nan")))
 
@@ -349,6 +360,12 @@ def main() -> None:
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument("--backtrack-fractions", type=parse_floats, default=(0.5, 0.25, 0.125))
+    parser.add_argument(
+        "--accept-drop",
+        type=float,
+        default=0.0,
+        help="Maximum exact ABI-9 score decrease accepted after backtracking.",
+    )
     parser.add_argument("--noise-limit", type=float, default=6.0)
     parser.add_argument("--plot-every", type=int, default=10)
     parser.add_argument("--compile-flow-model", action="store_true")
@@ -361,6 +378,8 @@ def main() -> None:
         raise ValueError("Adam betas must be in [0, 1)")
     if args.noise_limit <= 0.0:
         raise ValueError("noise limit must be positive")
+    if args.accept_drop < 0.0:
+        raise ValueError("accept-drop must be nonnegative")
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
 
@@ -401,7 +420,8 @@ def main() -> None:
         "betas": [float(args.beta1), float(args.beta2)],
         "adam_epsilon": float(args.adam_epsilon),
         "backtrack_fractions": list(args.backtrack_fractions),
-        "acceptance": "first status=ok candidate; no score monotonicity gate",
+        "acceptance": "first differentiable candidate passing exact ABI-9 score gate",
+        "accept_drop": float(args.accept_drop),
         "noise_limit": float(args.noise_limit),
         "flow_dtype": "torch.float32",
         "flow_method": "rk4_retained_activations",
@@ -526,9 +546,20 @@ def main() -> None:
                     "valid_gradient": bool(candidate.valid),
                     "clipped_fraction": clipped_fraction,
                     "wall_s": float(candidate.wall_s),
+                    "exact_score_accepted": bool(
+                        candidate.valid and accept_exact_score_candidate(
+                            current.score_result,
+                            candidate.score_result,
+                            accept_drop=args.accept_drop,
+                        )
+                    ),
                 }
             )
-            if candidate.valid:
+            if candidate.valid and accept_exact_score_candidate(
+                current.score_result,
+                candidate.score_result,
+                accept_drop=args.accept_drop,
+            ):
                 accepted = candidate
                 accepted_fraction = float(fraction)
                 accepted_clipped_fraction = clipped_fraction

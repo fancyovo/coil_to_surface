@@ -386,6 +386,28 @@ int sgpu_score_coils_g3_frozen_batch(
     double* iota_maxima
 );
 
+// Diagnostic fixed-branch G4 oracle. The center selects the magnetic axis and
+// surface level once. Every query then refits psi, recalibrates flux, rebuilds
+// volume points/weights, refits alpha/iota, and recomputes QS without rerunning
+// axis search or surface tracing. Query results expose branch changes normally.
+int sgpu_score_coils_g4_fixed_branch_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    SgpuScoreResult* query_score_results
+);
+
 // Internal-oracle entrypoint: returns the reported 0--100 coil component and
 // its piecewise analytical gradient with active percentile/minimum indices
 // frozen at the supplied coil.

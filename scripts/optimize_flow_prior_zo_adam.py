@@ -169,8 +169,12 @@ def load_initial_noise(path: Path) -> tuple[np.ndarray, dict[str, Any]]:
         noise = payload["flow_prior_standard_adam"]["noise"]
     elif "flow_prior_subspace_bfgs" in payload:
         noise = payload["flow_prior_subspace_bfgs"]["noise"]
+    elif "flow_prior_g3_informed_subspace_adam" in payload:
+        noise = payload["flow_prior_g3_informed_subspace_adam"]["noise"]
     elif "flow_prior_cem" in payload:
         noise = payload["flow_prior_cem"]["noise"]
+    elif "noise" in payload:
+        noise = payload["noise"]
     else:
         raise ValueError("initial case does not contain flow-prior noise")
     value = np.asarray(noise, dtype=np.float32)

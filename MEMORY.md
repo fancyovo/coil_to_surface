@@ -38,6 +38,46 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, deterministic-bias investigation completed after the accepted
+  G2-Adam sweep. Local/remote branch commit `8d43791` adds saved-trajectory bias
+  analysis and a short exact-score G2/G3 probe. Existing trajectory evidence
+  already proves this is not a dirty-gradient event: for the three complete
+  lr=0.003 runs, from the score peak to the first surface-level change, every
+  saved G2 dot actual-Adam-update is positive, while exact score decreases on
+  `25/35`, `30/39`, and `30/39` transitions. Median consecutive-gradient
+  cosines are `0.983/0.988/0.986`, gradient RMS stays roughly `0.082--0.089`,
+  and exact score loses `0.380/0.426/0.422` before any branch change. Across
+  the same interval axis, coordinate, and volume-QS all fall while surface and
+  coil improve; the RK4-64 QH residual worsens smoothly from `0.01434` to
+  `0.01737`. This supersedes any explanation that attributes the long smooth
+  reversal only to dirty gradients or the later discrete surface drop. The
+  code audit has found no global sign inversion in Adam, q-score derivatives,
+  or flow VJP; the definite protocol error is that the optimizer accepted the
+  first `status=ok` candidate without the exact-score acceptance/backtracking
+  required by the original G2 design. G2 is also structurally biased because
+  it omits axis/psi/surface/coordinate derivatives and freezes psi, volume
+  points, weights, and fitted iota in the direct QS VJP. Short P107 jobs
+  `31938` (step 89), `31937` (step 100), and `31939` (step 120) probe exact
+  antithetic score along G2, cumulative G3, and the actual Adam tangent at
+  three small latent RMS scales. They use the original experiment library
+  SHA-256 `fdf142...0f8d4`, did not continue optimization, and wrote under
+  `runs/qh_physical_gradient_bias_probe_20260804/`. All three completed `0:0`
+  in `2:55/2:58/2:06`; all 54 endpoints were OK and stayed on the same branch,
+  with clean 2 MiB/0% GPU postflights. G2/G3 latent cosines were
+  `0.9845/0.9869/0.9893`, so G3 does not supply a material correction. At step
+  120 the exact centered slopes along the actual Adam tangent were
+  `-10.16/-8.23/-3.90` for latent RMS scales
+  `0.0003125/0.000625/0.00125`, while G2/G3 predicted `+16.82/+16.29`.
+  Therefore the missing smooth G4 geometry dependencies, not G3 alone, are the
+  next physical-gradient target. Detailed evidence and the countermeasure
+  ranking are in report section 13. Immediate correctness priority is to
+  restore the intended contract: G2 only proposes, exact ABI-9 score applies a
+  noise-aware trust/acceptance gate and always preserves best state. Preferred
+  short-term correction is antithetic verification along the proposal plus a
+  low-rank control-variate correction in the span of that direction and a few
+  random orthogonal directions; K=4 SPSA remains the fallback. Do not use
+  unselected zero-mean normal noise as a claimed debiasing method, because its
+  expected direction remains the biased G2 field. No jobs remain active.
 - On 2026-08-04, the physical-gradient Adam sweep was accepted without any
   rerun or new job. All formal jobs `31855--31869` are terminal: only the three
   `lr=0.003` jobs completed 200 steps; the other 12 failed after 8--71 recorded

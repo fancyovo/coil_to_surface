@@ -19,6 +19,8 @@ reference="${REFERENCE_DIR:-$project/runs/qh_blackbox_gradient_reference_31640}"
 checkpoint="${FLOW_CHECKPOINT:-$HOME/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 gradient_lib="${GRADIENT_LIB:-$project/gpu_backend/build_gradient_sm120/libstellarator_gpu.so}"
 output="${OUTPUT_DIR:-$project/runs/qh_flow_vjp_benchmark_${SLURM_JOB_ID}}"
+rk4_steps="${RK4_STEPS:-32,64,128,256}"
+profile_rank="${PROFILE_RANK:--1}"
 centers=(main_nfp6_step0 main_nfp6_step200 main_nfp6_step400 cross_nfp4_step50)
 
 mkdir -p "$project/logs" "$output"
@@ -70,14 +72,14 @@ for ((first=0; first<${#centers[@]}; first+=gpu_count)); do
   for ((rank=first; rank<first+gpu_count && rank<${#centers[@]}; rank++)); do
     device=$((rank - first))
     profile=()
-    if (( rank == 1 )); then profile=(--profile); fi
+    if (( rank == profile_rank )); then profile=(--profile); fi
     CUDA_VISIBLE_DEVICES="$device" python scripts/benchmark_qh_flow_vjp.py \
       --reference-dir "$reference" \
       --checkpoint "$checkpoint" \
       --gradient-lib "$gradient_lib" \
       --output-dir "$output" \
       --center-id "${centers[$rank]}" \
-      --steps 32,64,128,256 \
+      --steps "$rk4_steps" \
       --device cuda:0 \
       "${profile[@]}" \
       > "$output/worker_${rank}.log" 2>&1 &

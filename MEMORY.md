@@ -38,6 +38,12 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, the user granted the active black-box-gradient exploration
+  continuing access to the `Students` partition's additional 2 RTX 5090 GPUs
+  and 24 CPUs until the user explicitly revokes that permission. This is in
+  addition to the existing P107 allowance. Foreground validation may therefore
+  use Students without waiting behind P107 work, while all scheduler/account,
+  one-GPU-per-process, idle-GPU timing, and cleanup requirements still apply.
 - On 2026-08-04, branch `qh-blackbox-gradient` commit `0e877ae` adds a
   restartable multi-scale black-box reference-gradient driver, a four-GPU
   Slurm launcher, and a one-direction GPU smoke launcher. The production

@@ -69,7 +69,10 @@ for _ in {1..60}; do
   while IFS=',' read -r utilization memory_used; do
     utilization="${utilization// /}"
     memory_used="${memory_used// /}"
-    if (( utilization != 0 || memory_used > 16 )); then idle=0; fi
+    # Some idle 5090 drivers retain a stale nonzero utilization sample after
+    # the previous context exits. Memory and the compute-process table are the
+    # authoritative ownership checks.
+    if (( memory_used > 16 )); then idle=0; fi
   done < <(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits)
   if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
     idle=0

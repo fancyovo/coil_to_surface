@@ -69,9 +69,9 @@ def reference_tables(
         (
             int(row["center_index"]),
             row["kind"],
-            int(row.get("direction_index", -1)),
+            -1 if row.get("direction_index") is None else int(row["direction_index"]),
             int(row.get("sign", 0)),
-            int(row.get("scale_index", -1)),
+            -1 if row.get("scale_index") is None else int(row["scale_index"]),
         ): int(row["case_id"])
         for row in cases
     }

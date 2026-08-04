@@ -38,6 +38,43 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, commits `1f9e121/cddb07f` add a proposal-level acceptance
+  experiment for the black-box-gradient branch. It normalizes the already
+  validated G2 and G3b latent VJPs to unit RMS, decodes antithetic proposals at
+  latent RMS steps `0.0025/0.005/0.01` with FP32 RK4-256, and evaluates all 48
+  proposals with the pinned production ABI-9 score library. The ordinary score
+  path remains unchanged. Students job `31754` completed all 48 cases: every
+  result was `status=ok`, and the positive-gradient endpoint beat its
+  antithetic negative endpoint in all 24 method/scale pairs. However, only
+  12/24 positive endpoints beat the center; the mature step-400 center lost
+  score on both sides even at RMS step `0.0025`, showing that direction quality
+  and an acceptable trust radius are separate questions. Both postflight GPUs
+  were 2 MiB/0%. Output is
+  `runs/qh_blackbox_gradient_proposal_31754/`. Commit `92cd8c6` parameterizes
+  the trust scales. Students backtracking job `31758` completed `0:0` in
+  `00:03:09` at scales `0.0003125/0.000625/0.00125`: all 48 candidates were
+  `ok` and same-branch, all 24 positive endpoints beat their antithetic
+  negatives, and 23/24 beat the center. Step-400 recovered gains up to
+  `+0.0957`, proving its first-run loss was excessive step size rather than a
+  reversed gradient. The only negative was a `-0.0150` G2 score at step-200,
+  scale `0.000625`, between positive adjacent scales and therefore consistent
+  with a finite-scale score wrinkle. Both GPUs again ended at 2 MiB/0%.
+  Future physical-VJP optimization must use true ABI-9 acceptance and trust-
+  radius backtracking; no fixed latent step is valid across stages. These jobs
+  verify exact score gain and branch retention; they do not run an optimizer.
+- On 2026-08-04, the decision-grade 200-direction study is complete and
+  supersedes all earlier 4-direction gradient impressions. At `h=0.005`, G2
+  cosine across nfp6 steps 0/200/400 and nfp4 step 50 is
+  `0.854/0.425/0.863/0.418`; G3b is `0.854/0.455/0.866/0.479`. Both greatly
+  exceed same-bank random K=4 cosine near `0.13`; G2/G3b are equivalent to
+  roughly K=64 or more. G3b's gain over G2 is only `0.0005/0.030/0.0033/0.061`,
+  so G2 is the preferred experimental direction and G3b is not a justified
+  default. G1 alone is weak. One latent physical VJP step costs about
+  `17.4--19.8 s`; native reverse is only `0.12--0.16 s`, while FP32 RK4-256
+  flow backward is `8.5--9.5 s`. Therefore pure VJP has no current wall-clock
+  advantage over four-direction Adam. Full evidence and plots are in
+  `reports/qh_blackbox_gradient_exploration_report.md`. Experimental APIs
+  remain opt-in; production `sgpu_score_coils` and ABI-9 are unchanged.
 - On 2026-08-04, commit `ac99266` adds the opt-in cumulative G3 gradient path.
   G3 keeps the production `sgpu_score_coils` ABI/path unchanged and, only for
   `sgpu_score_coils_g3_gradient`, caches the existing FP32 augmented-QR factors
@@ -45,8 +82,10 @@ once the task is accepted.
   It adds the resulting iota/QS, alpha-fit-residual, and normal-field adjoints
   to G1+G2 before the existing CUDA Biot-Savart and Fourier/current map. Eight
   local independent math/flow-VJP tests pass, including scaled ridge-LS,
-  normalized alpha-weight, and alpha field-preprocess adjoints. This CUDA path
-  is not yet numerically accepted. Students job `31720` completed `0:0` in
+  normalized alpha-weight, and alpha field-preprocess adjoints. At this
+  intermediate point the CUDA path was not yet numerically accepted; the
+  completed acceptance result is recorded above. Students job `31720`
+  completed `0:0` in
   `00:04:03` on one idle-checked RTX 5090 with 12 CPUs. CUDA 13/sm120 build SHA
   is `ab8c069c...`; ordinary and all three gradient-entry forwards agree with
   the pinned production score/component values within `2.85e-14`. Median G3
@@ -71,11 +110,11 @@ once the task is accepted.
   Replacement job `31731` completed `0:0` in `00:03:59`; build SHA is
   `fdf142aa...`, all forward values remain within `2.85e-14`, G3 RMS is now
   `23.11` versus G2 `22.75`, and four-direction G2/G3 cosines are
-  `0.568/0.558`. This removes the numerical pathology but shows no preliminary
-  G3 benefit; the formal 200-direction result is still required. G3b median
+  `0.568/0.558`. This removed the numerical pathology but showed no preliminary
+  G3 benefit; the formal 200-direction result is now complete above. G3b median
   wall/reverse times are `5.2165/0.1685 s`, and postflight was 2 MiB at 0%.
   Commit `d236a1f` parameterizes latent center/scale/direction selection in the
-  common launcher and is synchronized remotely. The next analysis commit adds
+  common launcher and is synchronized remotely. Commits `74c3de4/38a1a33` add
   explicit safe-subspace reconstruction: a single branch-changing direction
   no longer turns an otherwise useful 200-direction reference into an
   unexplained NaN. It also bootstraps random-K subsets from the frozen
@@ -87,6 +126,13 @@ once the task is accepted.
   addition to the existing P107 allowance. Foreground validation may therefore
   use Students without waiting behind P107 work, while all scheduler/account,
   one-GPU-per-process, idle-GPU timing, and cleanup requirements still apply.
+- Formal reference job `31640` completed `0:0` in `02:21:23` on four P107 RTX
+  5090 GPUs: all 6404 cases finished, mean/P95 score latency was
+  `4.905/5.213 s`, and postflight was 2 MiB/0% on all cards. Dependent latent
+  VJP jobs `31738/31740/31742/31744` also completed `0:0`; RK4-256 re-decoding
+  relative L2 was `4.8e-14--1.13e-7`. The formal analysis and compact assets
+  are preserved locally under `reports/assets/qh_blackbox_gradient_*` and
+  `reports/assets/qh_native_g1_validation_3173*/3174*`.
 - On 2026-08-04, branch `qh-blackbox-gradient` commit `0e877ae` adds a
   restartable multi-scale black-box reference-gradient driver, a four-GPU
   Slurm launcher, and a one-direction GPU smoke launcher. The production

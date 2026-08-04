@@ -1,0 +1,67 @@
+{
+  "format": "qh_blackbox_gradient_proposal_v1",
+  "created_unix_s": 1785830126.8625023,
+  "reference_dir": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_blackbox_gradient_reference_31640",
+  "reference_manifest_sha256": "59435af15daf5cde50908a126814566ec66c9b96c2c25283543f5a8a9d5efc6a",
+  "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu_backend/build_native_score/libstellarator_gpu.so",
+  "score_library_sha256": "40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5",
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "flow_checkpoint_step": 30000,
+  "rk4_steps": 256,
+  "steps": [
+    0.0003125,
+    0.000625,
+    0.00125
+  ],
+  "methods": [
+    "g2",
+    "g3"
+  ],
+  "case_count": 48,
+  "decode_wall_s": 11.724586811033078,
+  "validations": {
+    "main_nfp6_step0": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_native_g1_validation_31738/latent",
+      "summary_sha256": "ae9d9b614b1ee8d31db28ce4a5fa5a263a2264d243a86bbc5e969d3778c97027",
+      "gradients_sha256": "df6094a41af061d22c3d7871f1f3a1753deabb2e0b6ce63f9da483f78e2218a1",
+      "gradient_rms": {
+        "g2": 1.3909098597151004,
+        "g3": 1.4030970866610677
+      },
+      "decoded_center_relative_l2": 8.019972395222146e-08
+    },
+    "main_nfp6_step200": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_native_g1_validation_31740/latent",
+      "summary_sha256": "80fade83b691bc0bdbf5ac87f5bf4f7123db10b481afa5a5b3f8f74682866d67",
+      "gradients_sha256": "64253c82331971bf3b22542243b131a2a0dbe2f8dcd82a607557967d61e66eb6",
+      "gradient_rms": {
+        "g2": 0.2400543931930314,
+        "g3": 0.23536386115780308
+      },
+      "decoded_center_relative_l2": 8.940157073788661e-08
+    },
+    "main_nfp6_step400": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_native_g1_validation_31742/latent",
+      "summary_sha256": "a0f8b489bd0711a6ea975aa08cc72b2b652c73b195ab4e4e601984daf7f62eac",
+      "gradients_sha256": "043449029d14b299708c5f546a8319188fa89863ff6308931786803da7b6a727",
+      "gradient_rms": {
+        "g2": 1.133018199657762,
+        "g3": 1.1308795750837202
+      },
+      "decoded_center_relative_l2": 1.1273802089262498e-07
+    },
+    "cross_nfp4_step50": {
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_native_g1_validation_31744/latent",
+      "summary_sha256": "65ef8615e0f4bc0f887088a42e7c925529117ae467c7ccde07e385ed9ae9a522",
+      "gradients_sha256": "053c154cccefefb24ad0292da412c819f7fb8186dbd35269568a0bdd948b259e",
+      "gradient_rms": {
+        "g2": 0.8132482862678128,
+        "g3": 0.699920027328627
+      },
+      "decoded_center_relative_l2": 4.7659028470402864e-14
+    }
+  },
+  "state": "complete",
+  "summary": "summary.json"
+}

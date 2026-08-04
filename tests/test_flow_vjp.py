@@ -6,6 +6,7 @@ import torch
 from flow_matching.data import CoilNormalizer
 from flow_matching.vjp import (
     canonicalize_currents_torch,
+    decode_physical_vjp_with_provider,
     integrate_flow_differentiable,
     inverse_normalizer_torch,
 )
@@ -87,3 +88,57 @@ def test_current_gauge_vjp_matches_centered_difference() -> None:
     finite = torch.sum((plus - minus) * cotangent) / (2.0 * step)
     predicted = torch.sum(gradient * direction)
     np.testing.assert_allclose(predicted.item(), finite.item(), rtol=2.0e-9, atol=2.0e-9)
+
+
+def test_provider_runs_between_decode_and_vjp() -> None:
+    normalizer = CoilNormalizer(
+        mean=np.zeros(100, dtype=np.float32),
+        std=np.ones(100, dtype=np.float32),
+        current_l1_a={"4:2": 8.0},
+    )
+    noise = np.zeros((2, 100), dtype=np.float32)
+    noise[:, -1] = [3.0, -1.0]
+    calls = []
+
+    def provider(physical: np.ndarray):
+        calls.append(physical.copy())
+        return np.ones_like(physical), {"score": 12.0}
+
+    physical, gradient, payload, diagnostics = decode_physical_vjp_with_provider(
+        LinearVelocity(),
+        normalizer,
+        noise,
+        provider,
+        nfp=4,
+        device=torch.device("cpu"),
+        rk4_steps=8,
+        use_checkpoint=False,
+    )
+    assert len(calls) == 1
+    np.testing.assert_allclose(calls[0], physical)
+    assert gradient is not None and gradient.shape == (1, 2, 100)
+    assert payload == {"score": 12.0}
+    assert diagnostics.provider_wall_s >= 0.0
+
+
+def test_provider_can_skip_vjp_for_invalid_state() -> None:
+    normalizer = CoilNormalizer(
+        mean=np.zeros(100, dtype=np.float32),
+        std=np.ones(100, dtype=np.float32),
+        current_l1_a={"4:2": 8.0},
+    )
+    noise = np.zeros((2, 100), dtype=np.float32)
+    noise[:, -1] = [3.0, -1.0]
+    _, gradient, payload, diagnostics = decode_physical_vjp_with_provider(
+        LinearVelocity(),
+        normalizer,
+        noise,
+        lambda _: (None, {"status": "no_axis"}),
+        nfp=4,
+        device=torch.device("cpu"),
+        rk4_steps=8,
+        use_checkpoint=False,
+    )
+    assert gradient is None
+    assert payload == {"status": "no_axis"}
+    assert diagnostics.backward_wall_s == 0.0

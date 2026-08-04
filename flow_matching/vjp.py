@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import time
-from typing import Literal
+from typing import Callable, Literal, TypeVar
 
 import numpy as np
 import torch
@@ -15,6 +15,7 @@ from flow_matching.flow import prepare_velocity_model
 @dataclass(frozen=True)
 class FlowVjpDiagnostics:
     decode_wall_s: float
+    provider_wall_s: float
     backward_wall_s: float
     use_checkpoint: bool
     checkpoint_steps: int
@@ -24,6 +25,9 @@ class FlowVjpDiagnostics:
     total_peak_memory_allocated_bytes: int
     dominant_current_index: tuple[int, ...]
     dominant_current_sign: tuple[int, ...]
+
+
+PayloadT = TypeVar("PayloadT")
 
 
 def canonicalize_currents_torch(
@@ -142,26 +146,25 @@ def integrate_flow_differentiable(
     return value
 
 
-def decode_physical_vjp(
+def decode_physical_vjp_with_provider(
     model,
     normalizer: CoilNormalizer,
     noise: np.ndarray,
-    physical_cotangent: np.ndarray,
+    cotangent_provider: Callable[
+        [np.ndarray], tuple[np.ndarray | None, PayloadT]
+    ],
     *,
     nfp: int,
     device: torch.device,
     rk4_steps: int = 256,
     checkpoint_steps: int = 8,
     use_checkpoint: bool = False,
-) -> tuple[np.ndarray, np.ndarray, FlowVjpDiagnostics]:
+) -> tuple[np.ndarray, np.ndarray | None, PayloadT, FlowVjpDiagnostics]:
     values = np.asarray(noise, dtype=np.float32)
-    cotangent = np.asarray(physical_cotangent, dtype=np.float32)
     if values.ndim == 2:
         values = values[None]
-    if cotangent.ndim == 2:
-        cotangent = cotangent[None]
-    if values.shape != cotangent.shape or values.ndim != 3 or values.shape[-1] != 100:
-        raise ValueError("noise and physical cotangent must share shape (batch, coils, 100)")
+    if values.ndim != 3 or values.shape[-1] != 100:
+        raise ValueError("noise must have shape (batch, coils, 100)")
     if values.shape[0] != 1:
         raise ValueError("the first validated VJP path supports one center at a time")
     key = (int(nfp), int(values.shape[1]))
@@ -186,23 +189,41 @@ def decode_physical_vjp(
         use_checkpoint=use_checkpoint,
     )
     physical, dominant, dominant_sign = inverse_normalizer_torch(normalized, normalizer, key)
-    torch.cuda.synchronize(device)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     decode_wall_s = time.perf_counter() - started
     forward_peak_memory_allocated_bytes = (
         int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
     )
-    objective = torch.sum(
-        physical * torch.from_numpy(cotangent).to(device=device, dtype=torch.float32)
-    )
-    started = time.perf_counter()
-    (latent_gradient,) = torch.autograd.grad(objective, latent)
-    torch.cuda.synchronize(device)
-    backward_wall_s = time.perf_counter() - started
+    provider_started = time.perf_counter()
+    physical_numpy = physical.detach().cpu().numpy()
+    cotangent_value, payload = cotangent_provider(physical_numpy)
+    provider_wall_s = time.perf_counter() - provider_started
+    latent_gradient = None
+    backward_wall_s = 0.0
+    if cotangent_value is not None:
+        cotangent = np.asarray(cotangent_value, dtype=np.float32)
+        if cotangent.ndim == 2:
+            cotangent = cotangent[None]
+        if cotangent.shape != values.shape:
+            raise ValueError(
+                "provider cotangent must share shape (batch, coils, 100)"
+            )
+        objective = torch.sum(
+            physical * torch.from_numpy(cotangent).to(device=device, dtype=torch.float32)
+        )
+        started = time.perf_counter()
+        (latent_gradient_tensor,) = torch.autograd.grad(objective, latent)
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
+        backward_wall_s = time.perf_counter() - started
+        latent_gradient = latent_gradient_tensor.detach().cpu().numpy()
     total_peak_memory_allocated_bytes = (
         int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
     )
     diagnostics = FlowVjpDiagnostics(
         decode_wall_s=float(decode_wall_s),
+        provider_wall_s=float(provider_wall_s),
         backward_wall_s=float(backward_wall_s),
         use_checkpoint=bool(use_checkpoint),
         checkpoint_steps=int(checkpoint_steps),
@@ -214,7 +235,44 @@ def decode_physical_vjp(
         dominant_current_sign=tuple(int(value) for value in dominant_sign.detach().cpu().tolist()),
     )
     return (
-        physical.detach().cpu().numpy(),
-        latent_gradient.detach().cpu().numpy(),
+        physical_numpy,
+        latent_gradient,
+        payload,
         diagnostics,
     )
+
+
+def decode_physical_vjp(
+    model,
+    normalizer: CoilNormalizer,
+    noise: np.ndarray,
+    physical_cotangent: np.ndarray,
+    *,
+    nfp: int,
+    device: torch.device,
+    rk4_steps: int = 256,
+    checkpoint_steps: int = 8,
+    use_checkpoint: bool = False,
+) -> tuple[np.ndarray, np.ndarray, FlowVjpDiagnostics]:
+    cotangent = np.asarray(physical_cotangent, dtype=np.float32)
+    values = np.asarray(noise, dtype=np.float32)
+    if values.ndim == 2:
+        values = values[None]
+    if cotangent.ndim == 2:
+        cotangent = cotangent[None]
+    if values.shape != cotangent.shape:
+        raise ValueError("noise and physical cotangent must share shape")
+    physical, latent_gradient, _, diagnostics = decode_physical_vjp_with_provider(
+        model,
+        normalizer,
+        values,
+        lambda _: (cotangent, None),
+        nfp=nfp,
+        device=device,
+        rk4_steps=rk4_steps,
+        checkpoint_steps=checkpoint_steps,
+        use_checkpoint=use_checkpoint,
+    )
+    if latent_gradient is None:
+        raise RuntimeError("the fixed cotangent provider did not produce a VJP")
+    return physical, latent_gradient, diagnostics

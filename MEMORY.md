@@ -48,6 +48,18 @@ once the task is accepted.
   primary validation set uses saved random-start Adam states across early,
   middle, mature, and feasibility-boundary scales on the nfp6/nc2 and
   nfp4/nc2 trajectories, rather than relying on inverse-QUASR near-optima.
+  Follow-up commit d0034ee makes the metric protocol explicit. Smooth
+  two-coil anchors use all 200 RMS-orthogonal antithetic directions to build a
+  finite-scale black-box reference gradient, against which cumulative
+  G1/G2/G3 physical gradients and repeated random-K estimates are compared by
+  cosine. Hard branch cliffs and all-ok scale-inconsistent cliffs are detected
+  separately; symmetric perturbations backtrack only to a recorded minimum
+  scale, then persistent cliffs become active constraints rather than zero or
+  silently discarded derivatives. Boundary points remain in a separate suite
+  evaluated by safe-subspace cosine, feasible-step rate, backtracking, and
+  exact score gain. Random direction counts K=1--64 use repeated independent
+  blocks to report mean/std/quantiles and an equivalent black-box direction
+  count with bootstrap uncertainty. No experiment has yet been run.
 - On 2026-08-03, root `README.md` was comprehensively rewritten on branch
   `qh-small-condition-adam` by commit `fcab3ee`. It now treats ABI-9 native
   C++/CUDA scoring and sample-specific full physical evaluation as the two

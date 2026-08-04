@@ -119,6 +119,17 @@ once the task is accepted.
   conclusion; formal 200-direction job `31640` remains authoritative. Future
   validation now hard-fails if status differs or score/component drift exceeds
   `1e-10`. Artifacts are under `runs/qh_native_g1_validation_31672/`.
+  Two additional Students cross-case smokes then completed concurrently:
+  `31680` tested nfp6 step 0 in `00:02:50`, and `31681` tested nfp4 step 50 in
+  `00:02:29`. Both retained production forward results within `8e-14`, and G1
+  component median relative errors remained `1.12e-8/2.25e-9`. Their four-
+  direction G2-versus-full-score cosines were respectively `-0.278/0.819`,
+  with only 50% sign agreement in each tiny sample. These results are
+  preliminary variance diagnostics, not reference gradients: they show that
+  fixed-front G2 usefulness can vary strongly by optimization stage and make
+  the alpha/iota G3 dependency worth testing, while job `31640` remains the
+  decision-grade 200-direction comparison. Artifacts are under
+  `runs/qh_native_g1_validation_31680/` and `..._31681/`.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

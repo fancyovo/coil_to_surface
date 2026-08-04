@@ -52,6 +52,34 @@ once the task is accepted.
   it must not change the ordinary score ABI/path or break old gradient-library
   loading. Do not claim G4 is the cause unless the first two closures pass and
   the same-basin full reference shows the omitted response dominates.
+  Commit `25d0bc3` implements the opt-in frozen-front closure oracle, current
+  physical-gradient trajectory loading, component-gradient reference output,
+  and Slurm launchers; local Python/reference tests pass `10/10`. P107 smoke
+  job `31985` completed `0:0` in `00:02:38` for nfp4/nc3 step 120 with 8
+  random directions and four latent RMS scales. It built isolated gradient
+  library SHA-256 `2f3c48...0162`. The frozen scalar reproduced the center
+  score to `4.8e-7`; frozen-FD versus native physical G2 cosines were
+  `0.9973--0.9980`, physical-secant versus flow-VJP predictions were
+  `0.999997--0.9999999`, and frozen-FD versus latent predictions were
+  `0.9973--0.9980`. Along the actual step-120 Adam tangent, G2 predicted
+  `+16.82`, the frozen scalar measured `+15.91--+16.43`, and its frozen
+  volume-QS component measured about `+38.0`, whereas the independently
+  measured complete-score slope was negative. This rules out a G2 sign error
+  and a flow-VJP sign/attachment error at step 120; the contradiction is now
+  localized to dependencies recomputed by the complete score but frozen by
+  G2. It does not yet identify which dependency dominates. Artifacts are in
+  `runs/qh_g2_fixed_front_closure_smoke_20260804/`; same-basin pre/peak/post
+  closures and a 300-direction full-score reference remain required. P107
+  jobs `31996--31999` completed `0:0` for steps `50/89/100/120`, respectively,
+  using 32 random directions each and the pinned diagnostic-library hash above.
+  At the smallest scale, frozen-FD/native-G2 cosines were
+  `1.0000/1.0000/0.9995/0.9960`, while physical-secant/flow-VJP closure stayed
+  above `0.999995`; actual-Adam frozen-score slopes were all positive at about
+  `+22.03/+16.28/+16.30/+16.43`. Outputs are
+  `runs/qh_g2_fixed_front_closure_step{0050,0089,0100,0120}_20260804/`.
+  Four-GPU P107 job `32001` is active for the same four centers and a complete
+  300-direction, two-scale (`0.005/0.0025`) exact-score/component reference;
+  output is `runs/qh_g2_current_basin_reference_20260804/`.
 - On 2026-08-04, deterministic-bias investigation completed after the accepted
   G2-Adam sweep. Commit `8d43791` adds the diagnostic code and commit `61b5cd6`
   archives the final report, saved-trajectory analysis, figures, and short

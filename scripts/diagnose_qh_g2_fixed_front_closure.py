@@ -26,6 +26,7 @@ from stellarator_gpu import (
     score_coils_g1_gradient_native,
     score_coils_g2_frozen_batch_native,
     score_coils_g2_gradient_native,
+    score_coils_g3_frozen_batch_native,
     score_coils_g3_gradient_native,
 )
 
@@ -200,6 +201,22 @@ def main() -> None:
         target_helicity=(1, nfp),
     )
     frozen_wall_s = time.perf_counter() - frozen_started
+    g3_frozen_started = time.perf_counter()
+    g3_frozen = score_coils_g3_frozen_batch_native(
+        args.gradient_lib,
+        x,
+        y,
+        z,
+        current,
+        query_x,
+        query_y,
+        query_z,
+        query_current,
+        nfp,
+        device_id=0,
+        target_helicity=(1, nfp),
+    )
+    g3_frozen_wall_s = time.perf_counter() - g3_frozen_started
 
     rows: list[dict[str, Any]] = []
     for index, metadata in enumerate(candidate_metadata):
@@ -215,6 +232,21 @@ def main() -> None:
                         "target_error",
                         "qa_error",
                         "qp_error",
+                    )
+                },
+                **{
+                    f"g3_{name}": float(np.asarray(g3_frozen[name])[index])
+                    for name in (
+                        "frozen_score",
+                        "volume_qs_component",
+                        "coordinate_component",
+                        "iota_component",
+                        "coil_component",
+                        "target_error",
+                        "qa_error",
+                        "qp_error",
+                        "iota_min",
+                        "iota_max",
                     )
                 },
             }
@@ -251,6 +283,9 @@ def main() -> None:
                 "g2_physical_secant_prediction": float(
                     np.sum(physical_gradients["g2"] * physical_secant)
                 ),
+                "g3_physical_secant_prediction": float(
+                    np.sum(physical_gradients["g3"] * physical_secant)
+                ),
             }
             for key in (
                 "frozen_score",
@@ -261,6 +296,19 @@ def main() -> None:
                 "qp_error",
             ):
                 pair[f"{key}_slope"] = (plus[key] - minus[key]) / (2.0 * scale)
+            for key in (
+                "g3_frozen_score",
+                "g3_volume_qs_component",
+                "g3_coordinate_component",
+                "g3_iota_component",
+                "g3_coil_component",
+                "g3_target_error",
+                "g3_qa_error",
+                "g3_qp_error",
+                "g3_iota_min",
+                "g3_iota_max",
+            ):
+                pair[f"{key}_slope"] = (plus[key] - minus[key]) / (2.0 * scale)
             pairs.append(pair)
 
     scale_summaries = []
@@ -269,6 +317,9 @@ def main() -> None:
         observed = np.asarray([row["frozen_score_slope"] for row in selected])
         physical = np.asarray([row["g2_physical_secant_prediction"] for row in selected])
         latent = np.asarray([row["g2_prediction"] for row in selected])
+        g3_observed = np.asarray([row["g3_frozen_score_slope"] for row in selected])
+        g3_physical = np.asarray([row["g3_physical_secant_prediction"] for row in selected])
+        g3_latent = np.asarray([row["g3_prediction"] for row in selected])
         scale_summaries.append(
             {
                 "scale": float(scale),
@@ -279,11 +330,17 @@ def main() -> None:
                 "frozen_slope_rms": rms(observed),
                 "physical_prediction_rms": rms(physical),
                 "latent_prediction_rms": rms(latent),
+                "g3_frozen_vs_physical_cosine": cosine(g3_observed, g3_physical),
+                "g3_frozen_vs_latent_cosine": cosine(g3_observed, g3_latent),
+                "g3_physical_vs_latent_cosine": cosine(g3_physical, g3_latent),
+                "g3_frozen_slope_rms": rms(g3_observed),
+                "g3_physical_prediction_rms": rms(g3_physical),
+                "g3_latent_prediction_rms": rms(g3_latent),
             }
         )
 
     output = {
-        "format": "qh_g2_fixed_front_closure_v1",
+        "format": "qh_g2_g3_fixed_geometry_closure_v2",
         "iteration": int(args.iteration),
         "nfp": nfp,
         "n_coils": int(noise.shape[0]),
@@ -305,6 +362,10 @@ def main() -> None:
         "frozen_center_score_delta": float(
             frozen["frozen_score"][0] - frozen["center_score_result"]["score"]
         ),
+        "g3_frozen_center_score": float(g3_frozen["frozen_score"][0]),
+        "g3_frozen_center_score_delta": float(
+            g3_frozen["frozen_score"][0] - g3_frozen["center_score_result"]["score"]
+        ),
         "native_gradient_diagnostics": {
             name: payload["gradient_diagnostics"] for name, payload in native.items()
         },
@@ -318,13 +379,15 @@ def main() -> None:
         },
         "candidate_decode_wall_s": float(candidate_decode_wall_s),
         "frozen_batch_wall_s": float(frozen_wall_s),
+        "g3_frozen_batch_wall_s": float(g3_frozen_wall_s),
         "scale_summaries": scale_summaries,
         "pairs": pairs,
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_json(args.output_dir / "summary.json", output)
     print(json.dumps({key: output[key] for key in (
-        "iteration", "frozen_center_score_delta", "scale_summaries"
+        "iteration", "frozen_center_score_delta", "g3_frozen_center_score_delta",
+        "scale_summaries"
     )}, indent=2))
 
 

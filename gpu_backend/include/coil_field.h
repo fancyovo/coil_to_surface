@@ -354,6 +354,38 @@ int sgpu_score_coils_g2_frozen_batch(
     double* qp_errors
 );
 
+// Diagnostic-only closure oracle for cumulative G1+G2+G3. Geometry, psi,
+// volume points, and coordinate weights stay frozen at the center, while each
+// query refits alpha/iota by the production QR path. The coordinate normal-B
+// term remains frozen because its compensating geometry derivative belongs to
+// G4. Query coefficient arrays are flattened as [query][coil][coefficient].
+int sgpu_score_coils_g3_frozen_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    double* frozen_scores,
+    double* volume_components,
+    double* coordinate_components,
+    double* iota_components,
+    double* coil_components,
+    double* target_errors,
+    double* qa_errors,
+    double* qp_errors,
+    double* iota_minima,
+    double* iota_maxima
+);
+
 // Internal-oracle entrypoint: returns the reported 0--100 coil component and
 // its piecewise analytical gradient with active percentile/minimum indices
 // frozen at the supplied coil.

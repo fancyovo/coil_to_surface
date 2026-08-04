@@ -38,6 +38,69 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, branch `qh-blackbox-gradient` commits
+  `90c789e/a595d80/700a4b3/9d1219e/2656285/0390ae5`
+  added an opt-in flow-VJP performance experiment without changing the existing
+  checkpointed default. It compares FP32 RK4-32/64/128/256 against RK4-256 at
+  four saved optimization stages, validates physical geometry, current native
+  G2 score/components/branch, fixed-cotangent and end-to-end latent VJPs, and
+  measures checkpointed versus retained-activation latency and peak allocated
+  memory. The launcher supports either four GPUs in one wave or two GPUs in two
+  waves while keeping one process per GPU. Students job `31791` completed
+  `0:0` in `00:09:50`; about five minutes were one-time profiler CPU event
+  aggregation. Retaining all activations used at most about `0.47 GiB`
+  incremental allocated memory and reduced RK4-256 flow forward+VJP median
+  latency from `14.18 s` to `6.71 s` with checkpoint/retained gradients
+  numerically consistent. RK4-128 retained excellent direction agreement but
+  failed the strict forward-accuracy gate: worst position error was `18.4%` of
+  the formal `h=0.00125` optimizer perturbation, score/component errors reached
+  `0.0212/0.1145`, and worst end-to-end VJP cosine was `0.999281`. Output is
+  `runs/qh_flow_vjp_benchmark_31791/` and local report assets are under the
+  same basename. P107 four-GPU refinement job `31806` failed in 27 seconds
+  before numerical work because Slurm parsed the commas in
+  `--export=ALL,RK4_STEPS=160,192,224,256` as variable separators and passed
+  only RK4-160; all workers correctly rejected the missing RK4-256 reference.
+  It has no numerical result. Replacement `31809` completed `0:0` in
+  `00:03:02` and showed that FP32 integration error is non-monotone: RK4-192
+  was closer to RK4-256 than RK4-224 at all four centers, but no tested step
+  count below 256 passed the strict geometry/score/component/VJP gate. Keep
+  RK4-256; do not infer acceptable steps from fourth-order asymptotics alone.
+  Job `31815` then failed because the model's per-call tensor-valued nfp check
+  blocked full-graph compile. The integrators now validate nfp once and use the
+  identical unchecked mathematical body; 13 local flow/model/VJP tests pass.
+  This structural fix had no measurable eager speed benefit and is not claimed
+  as one. First compiled replacement `31822` failed because
+  `mode=reduce-overhead` CUDAGraph storage overwrote outputs still needed by
+  RK4; it has no numerical result. Default Inductor replacement `31824`
+  completed `0:0` in `00:02:27`, and same-Students eager control `31833`
+  completed `0:0` in `00:02:07`. On RK4-256, eager checkpoint/retained medians
+  were `17.36/8.06 s`, while compiled checkpoint/retained were `9.12/4.39 s`.
+  Retained activations use at most about `0.50 GiB` incremental allocated
+  memory and are now the default for the batch-1 `decode_physical_vjp`; the
+  generic integrator remains checkpointed by default. Compiled versus eager
+  latent-gradient minimum cosine was `0.9999999996`, maximum relative L2 was
+  `3.0e-5`, and maximum score difference was `0.0186`; compile remains opt-in
+  through `compile_flow_transformer()` / `--compile-flow-model` because its
+  one-time compilation must be amortized and it is not bitwise equivalent.
+  Same-condition steady-state speedup is `2.22x` from retained activations,
+  `1.84x` further from compile, and about `3.95x` combined. One-time profiling
+  observed 299,583 CUDA events, 2,854,825 total profiler events, and about
+  `1.77 s` summed self-device operator time, confirming launch/framework
+  overhead; event aggregation itself took about five minutes and must not be a
+  routine benchmark. All successful jobs ended with every allocated GPU at
+  2 MiB and 0% utilization. Detailed evidence is report section 10 and local
+  assets
+  `reports/assets/qh_flow_vjp_benchmark_{31791,31809,31821,31824,31833,31836}`.
+  Final public-helper regression job `31836` completed `0:0` in `00:02:00`:
+  its four center gradients were bitwise identical to the private-wrapper
+  compiled benchmark, score/component differences were at `1e-14`, retained
+  median was `4.38 s`, and both postflight GPUs were 2 MiB/0%. Commit
+  `20ac604` is therefore the validated public execution interface.
+- On 2026-08-04, the user clarified that this cluster's `sbatch --test-only`
+  predicted start time is generally inaccurate and jobs commonly start
+  immediately after real submission. Use `--test-only` only to validate request
+  syntax/resources; use the real job's `squeue/sacct` state for scheduling
+  decisions, and do not change partitions solely because of its start estimate.
 - On 2026-08-04, commits `1f9e121/cddb07f` add a proposal-level acceptance
   experiment for the black-box-gradient branch. It normalizes the already
   validated G2 and G3b latent VJPs to unit RMS, decodes antithetic proposals at

@@ -1,0 +1,169 @@
+{
+  "format": "qh_flow_vjp_benchmark_center_v1",
+  "center_id": "main_nfp6_step200",
+  "center_index": 1,
+  "nfp": 6,
+  "n_coils": 2,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "gradient_library_sha256": "fdf142aad0f0e0739c61cf61fde9d7195a688079a26016a9c010571d9440f8d4",
+  "compile_model": true,
+  "reference_dir": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_blackbox_gradient_reference_31640",
+  "reference_steps": 256,
+  "perturbation_scale": 0.00125,
+  "perturbation_position_rms_m": 0.0002699878637421198,
+  "rk4_reference_to_formal_center": {
+    "position_delta_rms_m": 3.1922194211723636e-08,
+    "position_delta_p95_m": 4.934352538116844e-08,
+    "position_delta_max_m": 5.571247020593154e-08,
+    "coefficient_relative_l2": 3.748638373207571e-08,
+    "current_relative_l2": 8.940157073856081e-08
+  },
+  "thresholds": {
+    "max_position_error_to_perturbation": 0.01,
+    "max_score_abs_error": 0.02,
+    "max_component_abs_error": 0.02,
+    "min_vjp_cosine": 0.995,
+    "max_fixed_vjp_relative_l2": 0.02
+  },
+  "selected_steps": 256,
+  "rows": [
+    {
+      "steps": 256,
+      "network_evaluations_forward": 1024,
+      "no_grad_decode_wall_s": 9.453236082568765,
+      "native_forward_wall_s": 5.933978332,
+      "native_reverse_wall_s": 0.093869028,
+      "score": {
+        "score": 83.47304651689846,
+        "status": "ok",
+        "components": {
+          "axis": 92.02492979460543,
+          "psi": 97.8279354451481,
+          "surface": 86.8687051396918,
+          "coordinate": 79.0710477489607,
+          "volume_qs": 78.77711219562691,
+          "iota": 100.0,
+          "coil": 60.09246977368197
+        },
+        "timing": {
+          "total_s": 5.933973627,
+          "field_create_s": 0.002395001,
+          "coil_geometry_s": 0.021101465,
+          "axis_search_s": 2.106971422,
+          "axis_trace_s": 0.048828685,
+          "psi_points_s": 0.037962255,
+          "psi_fit_s": 0.791386309,
+          "psi_validate_s": 0.17491905,
+          "surface_screen_s": 2.558895776,
+          "flux_s": 0.980485128,
+          "volume_points_s": 0.002313962,
+          "field_volume_s": 0.001143106,
+          "alpha_assemble_s": 0.002289499,
+          "alpha_solve_s": 0.177448731,
+          "qs_metrics_s": 0.000795587,
+          "score_s": 4.94e-07
+        },
+        "diagnostics": {
+          "stage_completed": 8,
+          "axis_R": 1.1831258474535673,
+          "axis_Z": 3.597468911046264e-09,
+          "axis_residual": 5.563931304837899e-09,
+          "axis_topology_trace": -1.4059043532152364,
+          "axis_topology_det": 1.0000001171057284,
+          "axis_ellipse_aspect": 3.8727960417126135,
+          "psi_angle_p95": 7.149364899824114e-05,
+          "surface_level": 0.16,
+          "surface_drift_relative_p95": 0.007088650929999222,
+          "surface_one_period_drift_relative_p95": 0.0034315574786335135,
+          "surface_inverse_aspect_ratio": 0.025126230872600665,
+          "surface_volume": 0.011608457906717329,
+          "flux_attempt_count": 1,
+          "flux_edge": -0.0001831891172689452,
+          "iota_min": 2.0842654705047607,
+          "iota_max": 2.0842654705047607,
+          "score_before_qh_iota_gate": 83.47304651689846,
+          "score_qh_total_iota_factor": 1.0,
+          "score_qh_helicity_advantage": 0.6960250621901205,
+          "score_qh_helicity_quality": 1.0,
+          "score_qh_total_helicity_factor": 1.0,
+          "qs_global_error": 0.06255058257655582,
+          "qs_qa_global_error": 0.15511522466233832,
+          "qs_qp_global_error": 0.023546024762220414,
+          "stable_surface_count": 8,
+          "volume_candidate_count": 125952,
+          "volume_available_count": 125952,
+          "volume_point_count": 100000,
+          "alpha_column_count": 2269,
+          "surface_long_trace_rejected_count": 0
+        },
+        "branch_fingerprint": [
+          "ok",
+          0.16,
+          8,
+          0,
+          1,
+          125952,
+          125952,
+          100000,
+          2269
+        ]
+      },
+      "status_matches_reference": true,
+      "branch_matches_reference": true,
+      "score_abs_error": 0.0,
+      "component_abs_error_max": 0.0,
+      "position_error_rms_m": 0.0,
+      "position_error_to_perturbation": 0.0,
+      "coefficient_relative_l2": 0.0,
+      "current_relative_l2": 0.0,
+      "fixed_cotangent_vjp_cosine": 1.0,
+      "fixed_cotangent_vjp_relative_l2": 0.0,
+      "end_to_end_vjp_cosine": 1.0,
+      "end_to_end_vjp_relative_l2": 0.0,
+      "end_to_end_vjp_norm_ratio": 1.0,
+      "checkpoint": {
+        "error": null,
+        "diagnostics": {
+          "decode_wall_s": 3.7810203675180674,
+          "backward_wall_s": 5.53362756408751,
+          "use_checkpoint": true,
+          "checkpoint_steps": 8,
+          "rk4_steps": 256,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 190219264,
+          "total_peak_memory_allocated_bytes": 202664448,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "retained": {
+        "diagnostics": {
+          "decode_wall_s": 2.3772912435233593,
+          "backward_wall_s": 2.0927440598607063,
+          "use_checkpoint": false,
+          "checkpoint_steps": 8,
+          "rk4_steps": 256,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 597161472,
+          "total_peak_memory_allocated_bytes": 597274112,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "checkpoint_to_retained_physical_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_cosine": 1.0,
+      "passed": true
+    }
+  ],
+  "profile": null
+}

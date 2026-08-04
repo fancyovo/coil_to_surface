@@ -417,3 +417,84 @@ $$
 5. **最后才考虑新积分/新模型。** Heun、离散 adjoint、连续 adjoint或 reflow/distillation 都可能减少网络函数评估，但会改变精度或训练对象，必须重新做 RK4-256 同级的正反追踪、VJP 余弦和真实 score 提案验证，不能只看速度。
 
 因此当前的准确判断不是“反传天然很慢”，而是“现有高精度单样本实现用了 1024 次串行小 Transformer 调用，并为省显存在 backward 中重算这 1024 次前向”。这条路径有明确优化空间，尤其是减少 RK4 网络调用、取消单样本 checkpoint 和批量多起点 VJP。
+
+## 10. Flow VJP 精度与速度优化
+
+本节落实第 9.4 节的前三项低风险优化。实验仍使用同一个 FP32 flow checkpoint、同一个 G2 物理余切定义和同一个 ABI-9 原生评分器；普通 score 路径没有改动。四个验证中心覆盖 nfp6 优化的 step 0、200、400，以及 nfp4 的 step 50。所有计时均在作业分配后连续检查为空闲的 RTX 5090 上完成。
+
+### 10.1 验收协议
+
+RK4-256 仍作为已验证参考。对每个候选步数 $N$，依次比较：
+
+1. 解码后的三维线圈位置与 RK4-256 的 RMS 偏差；
+2. 当前线圈的 G2 score、七个 score 分量、状态和 branch fingerprint；
+3. 固定 RK4-256 物理余切 $g_x^{256}$ 时的 flow VJP；
+4. 在候选线圈上重新计算 $g_x^N$ 后的端到端潜梯度。
+
+位置误差不除以整个线圈尺度，而除以正式参考库中 latent RMS 步长 $h=0.00125$ 所造成的物理位置扰动：
+
+$$
+r_x(N)=
+\frac{\operatorname{RMS}\!\left[x_N-x_{256}\right]}
+{\operatorname{median}\operatorname{RMS}\!\left[x(z\pm0.00125d)-x(z)\right]}.
+$$
+
+严格通过条件为 $r_x\leq 0.01$、score 绝对误差不超过 $0.02$、任一 score 分量误差不超过 $0.02$、状态与 branch 完全一致、固定余切和端到端 VJP 余弦均不低于 $0.995$，并且固定余切 VJP 相对 $L^2$ 误差不超过 $2\%$。这个门槛比只看重建相对误差严格得多，因为当前 score 对几十纳米级的重解码差异也可产生约 $10^{-2}$ 分的变化。
+
+### 10.2 RK4 步数扫描
+
+作业 `31791` 扫描 32/64/128/256 步，作业 `31809` 进一步扫描 160/192/224/256 步。表中均取四个中心的最差值。
+
+| RK4 步数 | $r_x$ | score 最大误差 | 分量最大误差 | 固定余切最小余弦 | 端到端最小余弦 | 严格通过 |
+|---:|---:|---:|---:|---:|---:|---|
+| 32 | 1.370 | 0.0336 | 0.2997 | 0.999922 | 0.997879 | 否 |
+| 64 | 0.675 | 0.0139 | 0.1942 | 0.999974 | 0.995649 | 否 |
+| 128 | 0.184 | 0.0212 | 0.1145 | 0.999998 | 0.999281 | 否 |
+| 160 | 0.664 | 0.0169 | 0.1221 | 0.999991 | 0.998417 | 否 |
+| 192 | 0.223 | 0.00943 | 0.1174 | 0.999999 | 0.999828 | 否 |
+| 224 | 0.514 | 0.0807 | 0.7646 | 0.999977 | 0.995496 | 否 |
+| 256 | 0 | 0 | 0 | 1 | 1 | 是 |
+
+误差并不随步数单调下降：四个中心都表现为 RK4-192 比 RK4-224 更接近 RK4-256。当前是 FP32 学习速度场，不处于可依赖简单 $N^{-4}$ 外推的渐近区间；时间嵌入、离散采样与浮点舍入共同使误差随步数振荡。因此不能根据 128 和 256 两点猜测 224 必然合格，也不应在没有同级验收时把步数降到 192。严格结论是继续使用 RK4-256。
+
+![Flow VJP 精度与速度汇总](assets/qh_flow_vjp_speed_summary_20260804.png)
+
+### 10.3 保留激活而不 checkpoint
+
+原实现每 8 个 ODE step 做一次 activation checkpoint。它把峰值激活显存压得很低，但 backward 必须重算全部 1024 次网络前向。新实现保留完全相同的 RK4 运算顺序，只增加 `use_checkpoint=False` 路径。独立线性场单测证明两种路径的输出和 VJP 逐位一致，四个真实中心的 checkpoint/retained VJP 相对误差也为 0。
+
+Students 同分区、同型号硬件的 RK4-256 结果如下：
+
+| eager 模式 | flow 前向 + VJP 中位数 | P95 | 最大增量峰值显存 |
+|---|---:|---:|---:|
+| 每 8 步 checkpoint | 17.36 s | 18.37 s | 0.046 GiB |
+| 保留全部激活 | 8.06 s | 8.82 s | 0.497 GiB |
+
+按逐中心速度比取中位数，保留激活加速 $2.22\times$。另一轮 Students 作业 `31791` 得到 14.18 s 对 6.71 s，速度比同样约 $2.1\times$，说明结论不依赖单次墙钟波动。约 0.5 GiB 的增量显存远低于当前空闲 5090 的容量，所以对当前强制 batch 1、两线圈 token 的 VJP，checkpoint 是明显不合适的时间换空间。`decode_physical_vjp()` 现默认保留激活；底层通用积分器仍保留 checkpoint 默认值，批量扩展前不能把单样本显存结论机械外推。
+
+### 10.4 `torch.compile` 与 launch 开销
+
+一次性 profiler 在 RK4-256 retained 路径中记录了 299,583 个 CUDA event 和 2,854,825 个 profiler event。插桩后的算子 self-device 时间总和约 1.77 s，self-CPU 时间总和约 9.71 s，而插桩墙钟达到 31.61 s。由于 profiler 本身显著扰动时序，这些量不能与未插桩墙钟直接相减；但它们和 top operator 中大量小 `mm`、small-N GEMV、attention kernel 一致，足以确认该路径主要受细碎 launch 和框架调度限制，而非 5090 浮点吞吐饱和。逐 event 聚合本身又额外消耗约五分钟 CPU 时间，因此只保留为一次性诊断，不进入常规评估。
+
+第一版 compile 尝试暴露了两个真实工程问题：模型在每次 `forward()` 内用 GPU `torch.any` 检查 `nfp`，既形成重复同步又阻止 full-graph 编译；`reduce-overhead` 模式自动启用 CUDAGraph，又会覆盖连续 RK4 调用仍需使用的静态输出。最终实现保持公开 `forward()` 的安全检查，但积分器只在入口校验一次 $N_{\mathrm{FP}}$，随后调用相同数学主体；compile 使用不启用 CUDAGraph 的默认 Inductor 模式，且没有启用 TF32。
+
+同一 Students 配置下的结果为：
+
+| RK4-256 模式 | flow 前向 + VJP 中位数 | P95 | 最大增量峰值显存 |
+|---|---:|---:|---:|
+| eager + checkpoint | 17.36 s | 18.37 s | 0.046 GiB |
+| eager + retained | 8.06 s | 8.82 s | 0.497 GiB |
+| compiled + checkpoint | 9.12 s | 9.29 s | 0.012 GiB |
+| compiled + retained | 4.39 s | 4.64 s | 0.380 GiB |
+
+compile 相对 eager retained 再加速 $1.84\times$；相对原 eager checkpoint 的组合加速为 $3.95\times$。compiled 与 eager 潜梯度的最小余弦为 $0.9999999996$，最大相对 $L^2$ 误差为 $3.0\times10^{-5}$；两者重解码相对正式 RK4-256 中心的位置 RMS 都在 $6\times10^{-8}\,\mathrm{m}$ 内。compiled/eager score 最大差为 0.0186，处于既定 score 容差内；最大单分量差为 0.171，反映当前 score 对极小重解码差异的敏感性。方向优化所需的梯度精度是充分的，但 compile 会改变 FP32 kernel 融合和运算顺序，不能声称 bitwise 等价。
+
+compile 有一次性图编译成本：包含两波四中心完整 benchmark 的 compiled 作业墙钟为 2 分 27 秒，eager 对照为 2 分 07 秒，尽管 steady-state 单次 VJP 明显更快。因此它适合多步优化或多次 VJP，不适合只求一次梯度。接口 `compile_flow_transformer()` 与验证脚本的 `--compile-flow-model` 均保持显式 opt-in。
+
+最终公共 helper 回归作业 `31836` 完成于 2 分 00 秒。它相对先前 benchmark 私有包装器的四中心潜梯度逐位相同，score 与分量差异仅为 $10^{-14}$ 量级；compiled retained 中位数为 4.38 s，与上表 4.39 s 一致。两张卡在 postflight 均为 2 MiB 显存占用和 0% 利用率。
+
+### 10.5 最终选择
+
+当前推荐的单轨迹 flow VJP 配置是 FP32 RK4-256、保留全部激活；需要反复求梯度时再启用 `compile_flow_transformer()`。这在不降低 RK4 精度的前提下把 steady-state flow 前向加 VJP 从约 17.36 s 降到 8.06 s，重复优化场景可进一步降到 4.39 s。原生 G2 前向约 4--5 s、reverse 仅约 0.1--0.2 s，因此 compiled retained 后完整物理 VJP 步的主要成本重新回到 native score 前向，flow 不再是原先约 13--15 s 的绝对瓶颈。
+
+尚未处理的是多起点 batch VJP。此前批量解码已经证明吞吐量远好于 batch 1；后续若同时优化多个相同 $(N_{\mathrm{FP}},n_c)$ 的起点，应按条件分组扩展 VJP batch，而不是继续压缩已经通过严格门槛的 RK4 步数。

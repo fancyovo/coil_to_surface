@@ -1,0 +1,42 @@
+{
+  "format": "qh_flow_vjp_benchmark_summary_v1",
+  "center_count": 4,
+  "centers": [
+    "cross_nfp4_step50",
+    "main_nfp6_step0",
+    "main_nfp6_step200",
+    "main_nfp6_step400"
+  ],
+  "reference_steps": 256,
+  "selected_steps": 256,
+  "thresholds": {
+    "max_position_error_to_perturbation": 0.01,
+    "max_score_abs_error": 0.02,
+    "max_component_abs_error": 0.02,
+    "min_vjp_cosine": 0.995,
+    "max_fixed_vjp_relative_l2": 0.02
+  },
+  "aggregate_rows": [
+    {
+      "steps": 256,
+      "all_centers_passed": true,
+      "max_position_error_to_perturbation": 0.0,
+      "max_score_abs_error": 0.0,
+      "max_component_abs_error": 0.0,
+      "min_fixed_cotangent_vjp_cosine": 1.0,
+      "max_fixed_cotangent_vjp_relative_l2": 0.0,
+      "min_end_to_end_vjp_cosine": 1.0,
+      "max_end_to_end_vjp_relative_l2": 0.0,
+      "max_checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_flow_wall_median_s": 9.117024447768927,
+      "checkpoint_flow_wall_p95_s": 9.28796165958047,
+      "retained_flow_wall_median_s": 4.394574990496039,
+      "retained_flow_wall_p95_s": 4.644655908644199,
+      "retained_speedup_over_checkpoint_median": 2.0908834114292967,
+      "checkpoint_incremental_peak_memory_max_gib": 0.012022018432617188,
+      "retained_incremental_peak_memory_max_gib": 0.3795309066772461
+    }
+  ],
+  "combined_speedup_vs_checkpoint_rk4_256": 2.074608913828056,
+  "profiles": []
+}

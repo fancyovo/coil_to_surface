@@ -1,0 +1,311 @@
+{
+  "format": "qh_flow_vjp_benchmark_summary_v1",
+  "center_count": 4,
+  "centers": [
+    "cross_nfp4_step50",
+    "main_nfp6_step0",
+    "main_nfp6_step200",
+    "main_nfp6_step400"
+  ],
+  "reference_steps": 256,
+  "selected_steps": 256,
+  "thresholds": {
+    "max_position_error_to_perturbation": 0.01,
+    "max_score_abs_error": 0.02,
+    "max_component_abs_error": 0.02,
+    "min_vjp_cosine": 0.995,
+    "max_fixed_vjp_relative_l2": 0.02
+  },
+  "aggregate_rows": [
+    {
+      "steps": 32,
+      "all_centers_passed": false,
+      "max_position_error_to_perturbation": 1.3704023212837881,
+      "max_score_abs_error": 0.03364642103497317,
+      "max_component_abs_error": 0.2997387242582903,
+      "min_fixed_cotangent_vjp_cosine": 0.9999224702565838,
+      "max_fixed_cotangent_vjp_relative_l2": 0.016706095279435493,
+      "min_end_to_end_vjp_cosine": 0.9978794815666883,
+      "max_end_to_end_vjp_relative_l2": 0.07196369978597951,
+      "max_checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_flow_wall_median_s": 11.40805339999497,
+      "checkpoint_flow_wall_p95_s": 15.528021287173033,
+      "retained_flow_wall_median_s": 1.2698241723701358,
+      "retained_flow_wall_p95_s": 1.6631447637453676,
+      "retained_speedup_over_checkpoint_median": 7.92735629867966,
+      "checkpoint_incremental_peak_memory_max_gib": 0.04590415954589844,
+      "retained_incremental_peak_memory_max_gib": 0.08952617645263672
+    },
+    {
+      "steps": 64,
+      "all_centers_passed": false,
+      "max_position_error_to_perturbation": 0.6754853842776244,
+      "max_score_abs_error": 0.01385992743684028,
+      "max_component_abs_error": 0.19422885818183033,
+      "min_fixed_cotangent_vjp_cosine": 0.9999736338518364,
+      "max_fixed_cotangent_vjp_relative_l2": 0.007771408794288954,
+      "min_end_to_end_vjp_cosine": 0.9956485702553957,
+      "max_end_to_end_vjp_relative_l2": 0.09435139288723636,
+      "max_checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_flow_wall_median_s": 3.9181148521602154,
+      "checkpoint_flow_wall_p95_s": 4.296682454925031,
+      "retained_flow_wall_median_s": 1.7346164360642433,
+      "retained_flow_wall_p95_s": 1.9816546404734252,
+      "retained_speedup_over_checkpoint_median": 2.3119223585489377,
+      "checkpoint_incremental_peak_memory_max_gib": 0.014657974243164062,
+      "retained_incremental_peak_memory_max_gib": 0.11644268035888672
+    },
+    {
+      "steps": 128,
+      "all_centers_passed": false,
+      "max_position_error_to_perturbation": 0.18357872853221288,
+      "max_score_abs_error": 0.02123372550063607,
+      "max_component_abs_error": 0.11452417262584902,
+      "min_fixed_cotangent_vjp_cosine": 0.9999976494284075,
+      "max_fixed_cotangent_vjp_relative_l2": 0.0024039679892089365,
+      "min_end_to_end_vjp_cosine": 0.9992810766984027,
+      "max_end_to_end_vjp_relative_l2": 0.03867791702882663,
+      "max_checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_flow_wall_median_s": 6.8831516886129975,
+      "checkpoint_flow_wall_p95_s": 6.9899384318850935,
+      "retained_flow_wall_median_s": 3.324186629615724,
+      "retained_flow_wall_p95_s": 3.54638860123232,
+      "retained_speedup_over_checkpoint_median": 2.009249466478651,
+      "checkpoint_incremental_peak_memory_max_gib": 0.014665603637695312,
+      "retained_incremental_peak_memory_max_gib": 0.23277568817138672
+    },
+    {
+      "steps": 256,
+      "all_centers_passed": true,
+      "max_position_error_to_perturbation": 0.0,
+      "max_score_abs_error": 0.0,
+      "max_component_abs_error": 0.0,
+      "min_fixed_cotangent_vjp_cosine": 1.0,
+      "max_fixed_cotangent_vjp_relative_l2": 0.0,
+      "min_end_to_end_vjp_cosine": 1.0,
+      "max_end_to_end_vjp_relative_l2": 0.0,
+      "max_checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_flow_wall_median_s": 14.179852906614542,
+      "checkpoint_flow_wall_p95_s": 14.566864936985075,
+      "retained_flow_wall_median_s": 6.710901155136526,
+      "retained_flow_wall_p95_s": 7.2630849209614095,
+      "retained_speedup_over_checkpoint_median": 2.0947158205613237,
+      "checkpoint_incremental_peak_memory_max_gib": 0.014680862426757812,
+      "retained_incremental_peak_memory_max_gib": 0.4654417037963867
+    }
+  ],
+  "combined_speedup_vs_checkpoint_rk4_256": 2.112958092932315,
+  "profiles": [
+    {
+      "center_id": "main_nfp6_step200",
+      "steps": 256,
+      "mode": "retained_activations",
+      "profiled_wall_s": 31.61263890378177,
+      "flow_diagnostics": {
+        "decode_wall_s": 5.348996549844742,
+        "backward_wall_s": 7.26359099522233,
+        "use_checkpoint": false,
+        "checkpoint_steps": 8,
+        "rk4_steps": 256,
+        "baseline_memory_allocated_bytes": 189755904,
+        "forward_peak_memory_allocated_bytes": 689430016,
+        "total_peak_memory_allocated_bytes": 689520128,
+        "dominant_current_index": [
+          0
+        ],
+        "dominant_current_sign": [
+          1
+        ]
+      },
+      "operator_self_device_time_sum_s": 1.7726524899993907,
+      "operator_self_cpu_time_sum_s": 9.712597240000479,
+      "cuda_event_count": 299583,
+      "profiler_event_count": 2854825,
+      "top_device_operators": [
+        {
+          "name": "aten::mm",
+          "count": 83968,
+          "self_device_time_s": 0.4805868640001287,
+          "self_cpu_time_s": 1.2471079249997516
+        },
+        {
+          "name": "void gemmSN_TN_kernel<float, 128, 16, 2, 4, 2, 2, true, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float> >(cublasGemmSmallNParams<cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float>)",
+          "count": 34816,
+          "self_device_time_s": 0.1925986470000216,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "void gemmSN_NN_kernel<float, 256, 4, 2, 8, 2, 4, false, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float> >(cublasGemmSmallNParams<cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float>)",
+          "count": 26624,
+          "self_device_time_s": 0.18823772499997074,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "aten::_efficient_attention_backward",
+          "count": 8192,
+          "self_device_time_s": 0.11772205299988575,
+          "self_cpu_time_s": 0.19353497599987404
+        },
+        {
+          "name": "fmha_cutlassB_f32_aligned_64x64_k64_sm80(PyTorchMemEffAttention::AttentionBackwardKernel<cutlass::arch::Sm80, float, true, false, false, 64, 64, 64, false>::Params)",
+          "count": 8192,
+          "self_device_time_s": 0.11772205299988575,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "aten::_efficient_attention_forward",
+          "count": 8192,
+          "self_device_time_s": 0.055749059999998345,
+          "self_cpu_time_s": 0.08930346600007179
+        },
+        {
+          "name": "fmha_cutlassF_f32_aligned_64x64_rf_sm80(PyTorchMemEffAttention::AttentionKernel<float, cutlass::arch::Sm80, true, 64, 64, 64, true, true>::Params)",
+          "count": 8192,
+          "self_device_time_s": 0.055749059999998345,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "void gemv2T_kernel_val<int, int, float, float, float, float, 128, 16, 2, 2, false, false, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float> >(cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float>, float, float)",
+          "count": 16384,
+          "self_device_time_s": 0.05269494299999247,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "aten::mul",
+          "count": 37903,
+          "self_device_time_s": 0.047270608000045684,
+          "self_cpu_time_s": 0.359772367000153
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x32_8x5_nn_align1>(cutlass_80_simt_sgemm_128x32_8x5_nn_align1::Params)",
+          "count": 8192,
+          "self_device_time_s": 0.03885355200011376,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "aten::add",
+          "count": 35585,
+          "self_device_time_s": 0.03467804699999166,
+          "self_cpu_time_s": 0.3420558780000474
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul> >(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+          "count": 37379,
+          "self_device_time_s": 0.03212478199990893,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "aten::_fused_rms_norm",
+          "count": 17408,
+          "self_device_time_s": 0.028771733000032128,
+          "self_cpu_time_s": 0.20462957299999782
+        },
+        {
+          "name": "void at::native::(anonymous namespace)::vectorized_layer_norm_kernel<float, float, true>(int, float, float const*, float const*, float const*, float*, float*, float*)",
+          "count": 17408,
+          "self_device_time_s": 0.028771733000032128,
+          "self_cpu_time_s": 0.0
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int)#1})",
+          "count": 17418,
+          "self_device_time_s": 0.024316420999957043,
+          "self_cpu_time_s": 0.0
+        }
+      ],
+      "top_cpu_operators": [
+        {
+          "name": "cudaLaunchKernel",
+          "count": 281143,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 1.4120292879998482
+        },
+        {
+          "name": "aten::mm",
+          "count": 83968,
+          "self_device_time_s": 0.4805868640001287,
+          "self_cpu_time_s": 1.2471079249997516
+        },
+        {
+          "name": "aten::empty",
+          "count": 128014,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.5887661530000527
+        },
+        {
+          "name": "aten::transpose",
+          "count": 260096,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.39491800499984814
+        },
+        {
+          "name": "aten::mul",
+          "count": 37903,
+          "self_device_time_s": 0.047270608000045684,
+          "self_cpu_time_s": 0.359772367000153
+        },
+        {
+          "name": "aten::add",
+          "count": 35585,
+          "self_device_time_s": 0.03467804699999166,
+          "self_cpu_time_s": 0.3420558780000474
+        },
+        {
+          "name": "autograd::engine::evaluate_function: ViewBackward0",
+          "count": 53248,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.22834172300003375
+        },
+        {
+          "name": "aten::view",
+          "count": 165888,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.21307049100014117
+        },
+        {
+          "name": "aten::_fused_rms_norm",
+          "count": 17408,
+          "self_device_time_s": 0.028771733000032128,
+          "self_cpu_time_s": 0.20462957299999782
+        },
+        {
+          "name": "autograd::engine::evaluate_function: FusedRmsNormBackward0",
+          "count": 17408,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.19446799300011713
+        },
+        {
+          "name": "aten::_efficient_attention_backward",
+          "count": 8192,
+          "self_device_time_s": 0.11772205299988575,
+          "self_cpu_time_s": 0.19353497599987404
+        },
+        {
+          "name": "autograd::engine::evaluate_function: MmBackward0",
+          "count": 32768,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.17655235099993832
+        },
+        {
+          "name": "autograd::engine::evaluate_function: AddBackward0",
+          "count": 34561,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.16509450099992565
+        },
+        {
+          "name": "aten::cat",
+          "count": 17409,
+          "self_device_time_s": 0.016289391999907317,
+          "self_cpu_time_s": 0.15813783799994927
+        },
+        {
+          "name": "aten::t",
+          "count": 88064,
+          "self_device_time_s": 0.0,
+          "self_cpu_time_s": 0.15360210299998364
+        }
+      ],
+      "interpretation": "Profiler operator sums are approximate serialized kernel work; compare them with the profiled wall time only to diagnose launch/synchronization gaps. Use the unprofiled FlowVjpDiagnostics timings for performance decisions."
+    }
+  ]
+}

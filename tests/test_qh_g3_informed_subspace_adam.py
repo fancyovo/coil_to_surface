@@ -4,6 +4,7 @@ from scripts.optimize_qh_g3_informed_subspace_adam import (
     best_improving_branch_endpoint,
     exact_subspace_gradient,
     informed_orthogonal_directions,
+    score_improves_by,
 )
 
 
@@ -84,3 +85,11 @@ def test_improving_branch_endpoint_is_selected_separately() -> None:
     selected = best_improving_branch_endpoint(center, endpoints, minimum_gain=0.1)
 
     assert selected == 2
+
+
+def test_branch_endpoint_must_beat_smooth_candidate() -> None:
+    smooth = score_result(52.0)
+
+    assert not score_improves_by(score_result(52.005), smooth, minimum_gain=0.01)
+    assert score_improves_by(score_result(52.02), smooth, minimum_gain=0.01)
+    assert not score_improves_by(None, smooth, minimum_gain=0.01)

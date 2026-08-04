@@ -144,6 +144,19 @@ def best_improving_branch_endpoint(
     return max(candidates, key=lambda index: result_score(endpoint_results[index])) if candidates else None
 
 
+def score_improves_by(
+    candidate_result: dict[str, Any] | None,
+    incumbent_result: dict[str, Any] | None,
+    *,
+    minimum_gain: float,
+) -> bool:
+    return bool(
+        result_valid(candidate_result)
+        and result_valid(incumbent_result)
+        and result_score(candidate_result) > result_score(incumbent_result) + minimum_gain
+    )
+
+
 def make_best_case(
     evaluation: Evaluation,
     *,
@@ -298,7 +311,10 @@ def main() -> None:
         "backtrack_fractions": list(args.backtrack_fractions),
         "accept_drop": float(args.accept_drop),
         "branch_accept_minimum_gain": float(args.branch_accept_minimum_gain),
-        "acceptance": "same-branch secants plus monotone exact ABI-9 candidate gate",
+        "acceptance": (
+            "same-branch secants plus monotone exact ABI-9 gate; improving discrete "
+            "endpoints compete with the smooth Adam candidate"
+        ),
         "noise_limit": float(args.noise_limit),
         "seed": int(args.seed),
         "gpu_ids": list(gpu_ids),
@@ -396,57 +412,16 @@ def main() -> None:
             gradient = np.zeros_like(current.noise, dtype=np.float64)
             projected_rms = 0.0 if projected is None else rms(projected)
             previous_noise = current.noise.copy()
+            tentative_first: np.ndarray | None = None
+            tentative_second: np.ndarray | None = None
+            next_adam_step = adam_step
             branch_endpoint_index = best_improving_branch_endpoint(
                 current.score_result,
                 pair_results,
                 minimum_gain=args.branch_accept_minimum_gain,
             )
-            if branch_endpoint_index is not None:
-                branch_candidate = evaluate(
-                    model,
-                    normalizer,
-                    pair_states[branch_endpoint_index],
-                    nfp=args.nfp,
-                    rk4_steps=args.rk4_steps,
-                    gradient_lib=args.gradient_lib,
-                    device=device,
-                    gradient_group=3,
-                )
-                exact_accepted = bool(
-                    branch_candidate.valid
-                    and accept_exact_score_candidate(
-                        current.score_result,
-                        branch_candidate.score_result,
-                        accept_drop=args.accept_drop,
-                    )
-                )
-                direction_index = branch_endpoint_index % count
-                sign = 1 if branch_endpoint_index < count else -1
-                candidate_rows.append(
-                    {
-                        "mode": "branch_endpoint",
-                        "endpoint_index": int(branch_endpoint_index),
-                        "direction_index": int(direction_index),
-                        "direction_kind": "g3" if direction_index == 0 else "random",
-                        "sign": sign,
-                        "status": str(branch_candidate.score_result.get("status")),
-                        "score": result_score(branch_candidate.score_result),
-                        "valid_g3": bool(branch_candidate.valid),
-                        "exact_score_accepted": exact_accepted,
-                        "wall_s": float(branch_candidate.wall_s),
-                    }
-                )
-                if exact_accepted:
-                    accepted = branch_candidate
-                    accepted_mode = "branch_endpoint"
-                    current = accepted
-                    first_moment = np.zeros_like(first_moment)
-                    second_moment = np.zeros_like(second_moment)
-                    adam_step = 0
-
             if (
-                accepted is None
-                and projected is not None
+                projected is not None
                 and projected_rms > 0.0
                 and math.isfinite(projected_rms)
             ):
@@ -499,11 +474,69 @@ def main() -> None:
                         accepted_fraction = float(fraction)
                         accepted_mode = "adam"
                         break
-                if accepted is not None:
-                    current = accepted
+
+            incumbent = current if accepted is None else accepted
+            branch_pair_competitive = bool(
+                branch_endpoint_index is not None
+                and score_improves_by(
+                    pair_results[branch_endpoint_index],
+                    incumbent.score_result,
+                    minimum_gain=args.branch_accept_minimum_gain,
+                )
+            )
+            if branch_pair_competitive:
+                branch_candidate = evaluate(
+                    model,
+                    normalizer,
+                    pair_states[branch_endpoint_index],
+                    nfp=args.nfp,
+                    rk4_steps=args.rk4_steps,
+                    gradient_lib=args.gradient_lib,
+                    device=device,
+                    gradient_group=3,
+                )
+                wins_competition = bool(
+                    branch_candidate.valid
+                    and score_improves_by(
+                        branch_candidate.score_result,
+                        incumbent.score_result,
+                        minimum_gain=args.branch_accept_minimum_gain,
+                    )
+                )
+                direction_index = branch_endpoint_index % count
+                sign = 1 if branch_endpoint_index < count else -1
+                candidate_rows.append(
+                    {
+                        "mode": "branch_endpoint",
+                        "endpoint_index": int(branch_endpoint_index),
+                        "direction_index": int(direction_index),
+                        "direction_kind": "g3" if direction_index == 0 else "random",
+                        "sign": sign,
+                        "pair_score": result_score(pair_results[branch_endpoint_index]),
+                        "status": str(branch_candidate.score_result.get("status")),
+                        "score": result_score(branch_candidate.score_result),
+                        "valid_g3": bool(branch_candidate.valid),
+                        "exact_score_accepted": wins_competition,
+                        "wins_competition": wins_competition,
+                        "wall_s": float(branch_candidate.wall_s),
+                    }
+                )
+                if wins_competition:
+                    accepted = branch_candidate
+                    accepted_fraction = 0.0
+                    accepted_mode = "branch_endpoint"
+
+            if accepted is not None:
+                current = accepted
+                if accepted_mode == "adam":
+                    assert tentative_first is not None and tentative_second is not None
                     first_moment = tentative_first
                     second_moment = tentative_second
                     adam_step = next_adam_step
+                else:
+                    first_moment = np.zeros_like(first_moment)
+                    second_moment = np.zeros_like(second_moment)
+                    adam_step = 0
 
             if result_score(current.score_result) > result_score(best.score_result):
                 best = current

@@ -98,6 +98,14 @@ once the task is accepted.
   setting; only the same-architecture rerun may establish forward overhead or
   G2 agreement. Artifacts from the invalid-architecture run are retained under
   `runs/qh_native_g1_validation_31662/` and must remain labeled accordingly.
+  A first `sm_120` replacement, Students job `31666`, failed during compilation
+  in `00:01:04` because the launcher still selected system NVCC 12.0, which
+  does not support `compute_120`; no numerical validation ran. The validated
+  production build uses `/public/app/cuda/13.0/bin/nvcc`. The launcher now
+  matches `scripts/slurm_build_native_score.sh` by fixing CUDA 13.0 compiler,
+  toolkit, runtime, and architecture, and uses a fresh
+  `gpu_backend/build_gradient_sm120/` directory so the old `sm_52` CMake cache
+  cannot leak into the rerun.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

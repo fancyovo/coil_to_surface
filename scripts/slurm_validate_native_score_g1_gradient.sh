@@ -16,7 +16,7 @@ set -euo pipefail
 
 project="${PROJECT:-$HOME/local_surface_evaluator_worktrees/qh-blackbox-gradient}"
 baseline_lib="$HOME/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu_backend/build_native_score/libstellarator_gpu.so"
-build="$project/gpu_backend/build_gradient"
+build="$project/gpu_backend/build_gradient_sm120"
 gradient_lib="$build/libstellarator_gpu.so"
 case_path="$project/reports/assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/trajectory/step_0200.json"
 output="${OUTPUT_DIR:-$project/runs/qh_native_g1_validation_${SLURM_JOB_ID}}"
@@ -29,8 +29,12 @@ cd "$project"
 source "$HOME/coil/.venv/bin/activate"
 export PYTHONPATH="$project:$project/gpu_backend/python${PYTHONPATH:+:$PYTHONPATH}"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+module load cuda/13.0 2>/dev/null || true
+export CUDA_HOME=/public/app/cuda/13.0
+export CUDACXX="$CUDA_HOME/bin/nvcc"
+export PATH="$CUDA_HOME/bin:$PATH"
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
-export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$cuda_wheel_lib:$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 python - <<'PY'
 import runpy
@@ -46,6 +50,8 @@ print(f"standalone gradient checks passed: {count}")
 PY
 cmake -S gpu_backend -B "$build" \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CUDA_COMPILER="$CUDACXX" \
+  -DCUDAToolkit_ROOT="$CUDA_HOME" \
   -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build "$build" --parallel "$build_jobs"
 test -f "$gradient_lib"

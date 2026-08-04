@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-04 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-05 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,6 +38,26 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, a source-level theoretical audit established the scope of G4.
+  On a fixed regular branch (same axis candidate, selected surface/flux
+  candidate, simple unclamped ray roots, fixed valid-point/index set, stable
+  active extrema/quantiles, and well-conditioned ridge LS), the downstream
+  score is a composition of smooth maps and implicit solves; its local total
+  derivative exists and G4 is theoretically feasible. There is no fundamental
+  derivative barrier in psi/flux LS, simple level roots, moving coordinates,
+  weights, B, grad-B, or fixed-geometry alpha/iota. The largest missing CUDA
+  primitive is the material derivative of grad-B at moving volume points,
+  requiring a Biot--Savart Hessian-vector contraction without materializing a
+  full Hessian. The global ABI-9 score remains nondifferentiable at axis or
+  surface candidate switches, hard rejection thresholds, root changes/clamps,
+  valid-mask/CUB-compaction changes, integer counts, and score kinks. Therefore
+  G4 must return a branch-conditional gradient plus branch margins; it cannot
+  replace exact-score acceptance/backtracking. G4a should first add psi/flux
+  implicit VJPs and simple-root response; G4b should then add moving points,
+  coordinate bases, weights, and the field Hessian-vector path. Axis response
+  remains separate G5, and surface-trace differentiation is optional pending
+  evidence. Full derivation, difficulty assessment, and validation gates are in
+  section 15 of `reports/qh_blackbox_gradient_exploration_report.md`.
 - On 2026-08-04, the post-peak G2 reversal investigation completed. The earlier
   200-direction reference did not sample the current `start_10` basin: it
   covered nfp6/nc2 steps 0/200/400 and a separate nfp4/nc2 step 50, whereas the

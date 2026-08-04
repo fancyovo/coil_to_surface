@@ -46,9 +46,20 @@ once the task is accepted.
   to G1+G2 before the existing CUDA Biot-Savart and Fourier/current map. Eight
   local independent math/flow-VJP tests pass, including scaled ridge-LS,
   normalized alpha-weight, and alpha field-preprocess adjoints. This CUDA path
-  is not yet numerically accepted: Students job `31720` is submitted on one
-  idle-checked RTX 5090 with 12 CPUs to compile CUDA 13/sm120 and run forward,
-  timing, G1, G2, and G3 validation. Remote worktree HEAD is `ac99266`.
+  is not yet numerically accepted. Students job `31720` completed `0:0` in
+  `00:04:03` on one idle-checked RTX 5090 with 12 CPUs. CUDA 13/sm120 build SHA
+  is `ab8c069c...`; ordinary and all three gradient-entry forwards agree with
+  the pinned production score/component values within `2.85e-14`. Median G3
+  wall time was `5.2260 s` versus `5.0735 s` for the experimental ordinary
+  forward (`+3.01%`); total G3 reverse was `0.1653 s`. However, on the same
+  four preliminary complete-score directions, G2/G3 cosines were
+  `0.568/-0.137`, and cumulative gradient RMS jumped from `22.75` to `396.65`.
+  Four directions are not a final statistical comparison, but this is a hard
+  diagnostic stop: do not use G3 for optimization until component-isolated
+  and formal 200-direction checks determine whether the cause is a VJP bug or
+  cancellation by frozen flux/psi/point-motion dependencies. Postflight had
+  2 MiB allocated and no compute process; artifacts are under
+  `runs/qh_native_g1_validation_31720/`. Remote worktree HEAD is `ac99266`.
 - On 2026-08-04, the user granted the active black-box-gradient exploration
   continuing access to the `Students` partition's additional 2 RTX 5090 GPUs
   and 24 CPUs until the user explicitly revokes that permission. This is in

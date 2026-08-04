@@ -339,6 +339,22 @@ def _coerce_score_inputs(coeffs_x, coeffs_y, coeffs_z, currents_a):
     return coeffs_x, coeffs_y, coeffs_z, currents_a
 
 
+def _apply_score_config_overrides(config: _SgpuScoreConfig, overrides: dict | None) -> None:
+    for name, value in (overrides or {}).items():
+        if not hasattr(config, name):
+            raise ValueError(f"unknown native score config field {name!r}")
+        target = getattr(config, name)
+        if isinstance(target, ctypes.Array):
+            values = tuple(value)
+            if len(values) != len(target):
+                raise ValueError(
+                    f"native score config array {name!r} requires {len(target)} values"
+                )
+            target[:] = values
+        else:
+            setattr(config, name, value)
+
+
 def _score_result_dict(result: _SgpuScoreResult) -> dict:
     diagnostics = {
         name: getattr(result, name)
@@ -385,10 +401,7 @@ def score_coils_native(
     config.device_id = int(device_id)
     config.target_M = int(target_helicity[0])
     config.target_N = int(target_helicity[1])
-    for name, value in (config_overrides or {}).items():
-        if not hasattr(config, name):
-            raise ValueError(f"unknown native score config field {name!r}")
-        setattr(config, name, value)
+    _apply_score_config_overrides(config, config_overrides)
 
     coeffs_x = np.ascontiguousarray(np.atleast_2d(coeffs_x), dtype=np.float64)
     coeffs_y = np.ascontiguousarray(np.atleast_2d(coeffs_y), dtype=np.float64)
@@ -507,10 +520,7 @@ def score_coils_g1_gradient_native(
     config.device_id = int(device_id)
     config.target_M = int(target_helicity[0])
     config.target_N = int(target_helicity[1])
-    for name, value in (config_overrides or {}).items():
-        if not hasattr(config, name):
-            raise ValueError(f"unknown native score config field {name!r}")
-        setattr(config, name, value)
+    _apply_score_config_overrides(config, config_overrides)
     coeffs_x, coeffs_y, coeffs_z, currents_a = _coerce_score_inputs(
         coeffs_x, coeffs_y, coeffs_z, currents_a
     )
@@ -582,10 +592,7 @@ def score_coils_g2_gradient_native(
     config.device_id = int(device_id)
     config.target_M = int(target_helicity[0])
     config.target_N = int(target_helicity[1])
-    for name, value in (config_overrides or {}).items():
-        if not hasattr(config, name):
-            raise ValueError(f"unknown native score config field {name!r}")
-        setattr(config, name, value)
+    _apply_score_config_overrides(config, config_overrides)
     coeffs_x, coeffs_y, coeffs_z, currents_a = _coerce_score_inputs(
         coeffs_x, coeffs_y, coeffs_z, currents_a
     )
@@ -657,10 +664,7 @@ def score_coils_g3_gradient_native(
     config.device_id = int(device_id)
     config.target_M = int(target_helicity[0])
     config.target_N = int(target_helicity[1])
-    for name, value in (config_overrides or {}).items():
-        if not hasattr(config, name):
-            raise ValueError(f"unknown native score config field {name!r}")
-        setattr(config, name, value)
+    _apply_score_config_overrides(config, config_overrides)
     coeffs_x, coeffs_y, coeffs_z, currents_a = _coerce_score_inputs(
         coeffs_x, coeffs_y, coeffs_z, currents_a
     )
@@ -726,10 +730,7 @@ def native_score_config_snapshot(
     config.device_id = int(device_id)
     config.target_M = int(target_helicity[0])
     config.target_N = int(target_helicity[1])
-    for name, value in (config_overrides or {}).items():
-        if not hasattr(config, name):
-            raise ValueError(f"unknown native score config field {name!r}")
-        setattr(config, name, value)
+    _apply_score_config_overrides(config, config_overrides)
     snapshot = {}
     for name, _ in _SgpuScoreConfig._fields_:
         value = getattr(config, name)

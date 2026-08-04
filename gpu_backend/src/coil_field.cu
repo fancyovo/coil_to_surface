@@ -1121,6 +1121,115 @@ __global__ void B_grad_segment_vjp_kernel(
     }
 }
 
+__global__ void B_grad_point_vjp_kernel(
+    const float* __restrict__ seg_x,
+    const float* __restrict__ seg_y,
+    const float* __restrict__ seg_z,
+    const float* __restrict__ seg_wx,
+    const float* __restrict__ seg_wy,
+    const float* __restrict__ seg_wz,
+    int nseg,
+    const float* __restrict__ xyz,
+    const float* __restrict__ adj_B,
+    const float* __restrict__ adj_grad_B,
+    int npoints,
+    float* __restrict__ adj_xyz
+) {
+    extern __shared__ float shared[];
+    float* sx = shared;
+    float* sy = sx + SEG_TILE;
+    float* sz = sy + SEG_TILE;
+    float* swx = sz + SEG_TILE;
+    float* swy = swx + SEG_TILE;
+    float* swz = swy + SEG_TILE;
+
+    const int tid = threadIdx.x;
+    const int lane = tid & (WARP_SIZE - 1);
+    const int point = blockIdx.x * WARPS_PER_BLOCK + tid / WARP_SIZE;
+    const bool valid = point < npoints;
+    const float px = valid ? xyz[3 * point] : 0.0f;
+    const float py = valid ? xyz[3 * point + 1] : 0.0f;
+    const float pz = valid ? xyz[3 * point + 2] : 0.0f;
+    const float abx = valid ? adj_B[3 * point] : 0.0f;
+    const float aby = valid ? adj_B[3 * point + 1] : 0.0f;
+    const float abz = valid ? adj_B[3 * point + 2] : 0.0f;
+    const float* aJ = valid ? adj_grad_B + 9 * point : nullptr;
+    float accum_x = 0.0f;
+    float accum_y = 0.0f;
+    float accum_z = 0.0f;
+
+    for (int base = 0; base < nseg; base += SEG_TILE) {
+        const int count = min(SEG_TILE, nseg - base);
+        for (int index = tid; index < count; index += blockDim.x) {
+            sx[index] = seg_x[base + index];
+            sy[index] = seg_y[base + index];
+            sz[index] = seg_z[base + index];
+            swx[index] = seg_wx[base + index];
+            swy[index] = seg_wy[base + index];
+            swz[index] = seg_wz[base + index];
+        }
+        __syncthreads();
+        if (valid) {
+            for (int index = lane; index < count; index += WARP_SIZE) {
+                const float rx = px - sx[index];
+                const float ry = py - sy[index];
+                const float rz = pz - sz[index];
+                const float wx = swx[index];
+                const float wy = swy[index];
+                const float wz = swz[index];
+                const float r2 = rx * rx + ry * ry + rz * rz + 1.0e-30f;
+                const float invr = rsqrtf(r2);
+                const float invr2 = invr * invr;
+                const float invr3 = invr * invr2;
+                const float invr5 = invr3 * invr2;
+                const float invr7 = invr5 * invr2;
+                const float ux = wy * rz - wz * ry;
+                const float uy = wz * rx - wx * rz;
+                const float uz = wx * ry - wy * rx;
+
+                float au_x = MU0_OVER_4PI * invr3 * abx;
+                float au_y = MU0_OVER_4PI * invr3 * aby;
+                float au_z = MU0_OVER_4PI * invr3 * abz;
+                float adj_invr3 = MU0_OVER_4PI * (abx * ux + aby * uy + abz * uz);
+                adj_invr3 += MU0_OVER_4PI * (
+                    aJ[3] * wz - aJ[6] * wy - aJ[1] * wz +
+                    aJ[7] * wx + aJ[2] * wy - aJ[5] * wx
+                );
+                const float aJ_r_x = aJ[0] * rx + aJ[1] * ry + aJ[2] * rz;
+                const float aJ_r_y = aJ[3] * rx + aJ[4] * ry + aJ[5] * rz;
+                const float aJ_r_z = aJ[6] * rx + aJ[7] * ry + aJ[8] * rz;
+                const float factor_u = -3.0f * MU0_OVER_4PI * invr5;
+                au_x += factor_u * aJ_r_x;
+                au_y += factor_u * aJ_r_y;
+                au_z += factor_u * aJ_r_z;
+                float ar_x = factor_u * (aJ[0] * ux + aJ[3] * uy + aJ[6] * uz);
+                float ar_y = factor_u * (aJ[1] * ux + aJ[4] * uy + aJ[7] * uz);
+                float ar_z = factor_u * (aJ[2] * ux + aJ[5] * uy + aJ[8] * uz);
+                const float outer = ux * aJ_r_x + uy * aJ_r_y + uz * aJ_r_z;
+                const float adj_invr5 = -3.0f * MU0_OVER_4PI * outer;
+
+                ar_x += au_y * wz - au_z * wy;
+                ar_y += au_z * wx - au_x * wz;
+                ar_z += au_x * wy - au_y * wx;
+                const float radial =
+                    -3.0f * adj_invr3 * invr5 - 5.0f * adj_invr5 * invr7;
+                accum_x += ar_x + radial * rx;
+                accum_y += ar_y + radial * ry;
+                accum_z += ar_z + radial * rz;
+            }
+        }
+        __syncthreads();
+    }
+    accum_x = warp_sum_t(accum_x);
+    accum_y = warp_sum_t(accum_y);
+    accum_z = warp_sum_t(accum_z);
+    if (valid && lane == 0) {
+        adj_xyz[3 * point] = accum_x;
+        adj_xyz[3 * point + 1] = accum_y;
+        adj_xyz[3 * point + 2] = accum_z;
+    }
+}
+
 __device__ inline void periodic_hermite_uniform(
     double phi,
     const double* values,
@@ -1923,6 +2032,61 @@ int sgpu_eval_B_grad_f32(void* handle, const float* xyz_host, float* B_host, flo
         return 1;
     }
     cudaFree(d_xyz); cudaFree(d_B); cudaFree(d_grad_B);
+    set_error("");
+    return 0;
+}
+
+int sgpu_eval_B_grad_point_vjp_f32(
+    void* handle,
+    const float* xyz_host,
+    const float* adj_B_host,
+    const float* adj_grad_B_host,
+    float* adj_xyz_host,
+    int n_points
+) {
+    auto* field = reinterpret_cast<CoilField*>(handle);
+    if (!field || !xyz_host || !adj_B_host || !adj_grad_B_host ||
+        !adj_xyz_host || n_points < 0) {
+        set_error("invalid eval_B_grad_point_vjp_f32 arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "point VJP cudaSetDevice")) return 1;
+    const size_t xyz_bytes = static_cast<size_t>(n_points) * 3 * sizeof(float);
+    const size_t grad_bytes = static_cast<size_t>(n_points) * 9 * sizeof(float);
+    float* d_xyz = nullptr;
+    float* d_adj_B = nullptr;
+    float* d_adj_grad_B = nullptr;
+    float* d_adj_xyz = nullptr;
+    auto cleanup = [&]() {
+        cudaFree(d_xyz);
+        cudaFree(d_adj_B);
+        cudaFree(d_adj_grad_B);
+        cudaFree(d_adj_xyz);
+    };
+    if (cuda_check(cudaMalloc(&d_xyz, xyz_bytes), "point VJP d_xyz") ||
+        cuda_check(cudaMalloc(&d_adj_B, xyz_bytes), "point VJP d_adj_B") ||
+        cuda_check(cudaMalloc(&d_adj_grad_B, grad_bytes), "point VJP d_adj_grad_B") ||
+        cuda_check(cudaMalloc(&d_adj_xyz, xyz_bytes), "point VJP d_adj_xyz") ||
+        cuda_check(cudaMemcpy(d_xyz, xyz_host, xyz_bytes, cudaMemcpyHostToDevice), "point VJP copy xyz") ||
+        cuda_check(cudaMemcpy(d_adj_B, adj_B_host, xyz_bytes, cudaMemcpyHostToDevice), "point VJP copy adj_B") ||
+        cuda_check(cudaMemcpy(d_adj_grad_B, adj_grad_B_host, grad_bytes, cudaMemcpyHostToDevice), "point VJP copy adj_grad_B")) {
+        cleanup();
+        return 1;
+    }
+    const int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    B_grad_point_vjp_kernel<<<blocks, THREADS_PER_BLOCK, shared_bytes>>>(
+        field->d_x_f, field->d_y_f, field->d_z_f,
+        field->d_wx_f, field->d_wy_f, field->d_wz_f,
+        field->n_segments, d_xyz, d_adj_B, d_adj_grad_B, n_points, d_adj_xyz
+    );
+    if (cuda_check(cudaGetLastError(), "point VJP kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "point VJP sync") ||
+        cuda_check(cudaMemcpy(adj_xyz_host, d_adj_xyz, xyz_bytes, cudaMemcpyDeviceToHost), "point VJP copy output")) {
+        cleanup();
+        return 1;
+    }
+    cleanup();
     set_error("");
     return 0;
 }
@@ -3027,6 +3191,32 @@ int sgpu_internal_B_grad_segment_vjp_f32_device(
         n_points, adj_segment_position_device, adj_segment_weight_device
     );
     return cuda_check(cudaGetLastError(), "internal B/grad(B) segment VJP kernel");
+}
+
+int sgpu_internal_B_grad_point_vjp_f32_device(
+    void* handle,
+    const float* xyz_device,
+    const float* adj_B_device,
+    const float* adj_grad_B_device,
+    int n_points,
+    float* adj_xyz_device
+) {
+    auto* field = reinterpret_cast<CoilField*>(handle);
+    if (!field || !xyz_device || !adj_B_device || !adj_grad_B_device ||
+        n_points <= 0 || !adj_xyz_device) {
+        set_error("invalid internal B/grad(B) point VJP arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "internal point VJP cudaSetDevice")) return 1;
+    const int blocks = (n_points + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    B_grad_point_vjp_kernel<<<blocks, THREADS_PER_BLOCK, shared_bytes>>>(
+        field->d_x_f, field->d_y_f, field->d_z_f,
+        field->d_wx_f, field->d_wy_f, field->d_wz_f,
+        field->n_segments, xyz_device, adj_B_device, adj_grad_B_device,
+        n_points, adj_xyz_device
+    );
+    return cuda_check(cudaGetLastError(), "internal B/grad(B) point VJP kernel");
 }
 
 void sgpu_internal_set_error(const char* message) {

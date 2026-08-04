@@ -473,6 +473,17 @@ int sgpu_eval_B_grad_f32(
     int n_points
 );
 
+// Experimental point-coordinate VJP for the FP32 B/grad(B) evaluator. This
+// contracts the spatial Hessian internally and never materializes it.
+int sgpu_eval_B_grad_point_vjp_f32(
+    void* handle,
+    const float* xyz_host,
+    const float* adj_B_host,
+    const float* adj_grad_B_host,
+    float* adj_xyz_host,
+    int n_points
+);
+
 int sgpu_normal_eq(
     void* handle,
     const double* mat_host,

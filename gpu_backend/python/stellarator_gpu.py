@@ -1295,6 +1295,19 @@ class CoilFieldGpu:
                 ctypes.POINTER(ctypes.c_float),
                 ctypes.c_int,
             ]
+        self.has_eval_B_grad_point_vjp = hasattr(
+            self.lib, "sgpu_eval_B_grad_point_vjp_f32"
+        )
+        if self.has_eval_B_grad_point_vjp:
+            self.lib.sgpu_eval_B_grad_point_vjp_f32.restype = ctypes.c_int
+            self.lib.sgpu_eval_B_grad_point_vjp_f32.argtypes = [
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.POINTER(ctypes.c_float),
+                ctypes.c_int,
+            ]
         self.lib.sgpu_normal_eq.restype = ctypes.c_int
         self.lib.sgpu_normal_eq.argtypes = [
             ctypes.c_void_p,
@@ -1443,6 +1456,26 @@ class CoilFieldGpu:
         )
         self._check(code)
         return field, gradient
+
+    def eval_B_grad_point_vjp(self, xyz, adj_B, adj_grad_B):
+        if not self.has_eval_B_grad_point_vjp:
+            raise GpuError("this GPU backend does not provide the B/grad(B) point VJP")
+        points = np.ascontiguousarray(xyz, dtype=np.float32).reshape(-1, 3)
+        field_adjoint = np.ascontiguousarray(adj_B, dtype=np.float32).reshape(-1, 3)
+        gradient_adjoint = np.ascontiguousarray(adj_grad_B, dtype=np.float32).reshape(-1, 3, 3)
+        if field_adjoint.shape != points.shape or gradient_adjoint.shape != (len(points), 3, 3):
+            raise ValueError("point and B/grad(B) adjoint shapes must agree")
+        point_adjoint = np.empty_like(points)
+        code = self.lib.sgpu_eval_B_grad_point_vjp_f32(
+            self.handle,
+            points.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            field_adjoint.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            gradient_adjoint.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            point_adjoint.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            ctypes.c_int(len(points)),
+        )
+        self._check(code)
+        return point_adjoint
 
     def normal_eq(self, mat, rhs, precision: str = "fp64"):
         precision = precision.lower()

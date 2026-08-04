@@ -236,6 +236,9 @@ struct SgpuScoreGradientResult {
     std::int32_t gradient_group;
     double forward_wall_s;
     double gradient_wall_s;
+    double point_vjp_s;
+    double field_vjp_s;
+    double parameter_map_s;
     double score_gradient_rms;
     double coil_component_gradient_rms;
     char error_message[256];
@@ -265,6 +268,25 @@ std::size_t sgpu_score_gradient_result_size();
 // Experimental opt-in G1 path. The production sgpu_score_coils ABI and path
 // remain independent and do not allocate or evaluate gradients.
 int sgpu_score_coils_g1_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+);
+
+// Experimental cumulative G1+G2 path. G2 freezes the selected axis, psi,
+// volume points, weights, fitted iota, and all discrete branch choices.
+int sgpu_score_coils_g2_gradient(
     const double* coeffs_x,
     const double* coeffs_y,
     const double* coeffs_z,

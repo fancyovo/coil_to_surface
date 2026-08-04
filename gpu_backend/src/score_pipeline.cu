@@ -2677,6 +2677,19 @@ struct AlphaFitNative {
     int column_count = 0;
 };
 
+struct FixedFrontG2Cache {
+    DeviceVolumePoints points;
+    DeviceBuffer<float> B;
+    DeviceBuffer<float> grad_B;
+    AlphaFitNative alpha;
+    std::array<double, 9> qs_sums{};
+    double G = 0.0;
+    void* field = nullptr;
+    bool ready = false;
+};
+
+thread_local FixedFrontG2Cache* g_active_g2_cache = nullptr;
+
 bool fit_alpha_native(
     const DeviceVolumePoints& points,
     const float* d_B,
@@ -3011,6 +3024,134 @@ __global__ void compute_qs_metric_kernel(
     }
 }
 
+__global__ void compute_qs_point_adjoint_kernel(
+    const float* __restrict__ B,
+    const float* __restrict__ grad_B,
+    const float* __restrict__ grad_s,
+    const float* __restrict__ flux_derivative,
+    const float* __restrict__ rho,
+    const float* __restrict__ volume_weight,
+    int point_count,
+    const float* __restrict__ iota_coefficients,
+    int iota_degree,
+    int helicity_M,
+    int helicity_N,
+    int nfp,
+    double G,
+    float edge_rho_threshold,
+    double weight_sum,
+    double edge_weight_sum,
+    double target_rms,
+    double target_edge_rms,
+    double qa_rms,
+    double qp_rms,
+    double d_target_error,
+    double d_target_edge_error,
+    double d_qa_error,
+    double d_qp_error,
+    float* __restrict__ adj_B,
+    float* __restrict__ adj_grad_B,
+    double* __restrict__ adj_G
+) {
+    const int point = blockIdx.x * blockDim.x + threadIdx.x;
+    if (point >= point_count) return;
+    float b[3];
+    float magnitude2 = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        b[component] = B[3 * point + component];
+        magnitude2 += b[component] * b[component];
+    }
+    const float magnitude = sqrtf(fmaxf(magnitude2, 1.0e-30f));
+    float q[3] = {};
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+        for (int component = 0; component < 3; ++component) {
+            q[coordinate] += grad_B[9 * point + 3 * component + coordinate] * b[component];
+        }
+        q[coordinate] /= magnitude;
+    }
+    float p[3];
+    for (int component = 0; component < 3; ++component) {
+        p[component] = flux_derivative[point] * grad_s[3 * point + component];
+    }
+    const float cross[3] = {
+        b[1] * p[2] - b[2] * p[1],
+        b[2] * p[0] - b[0] * p[2],
+        b[0] * p[1] - b[1] * p[0],
+    };
+    const float A = cross[0] * q[0] + cross[1] * q[1] + cross[2] * q[2];
+    const float C = b[0] * q[0] + b[1] * q[1] + b[2] * q[2];
+    const float u = rho[point] * rho[point];
+    float iota = 0.0f;
+    float power = 1.0f;
+    for (int degree = 0; degree <= iota_degree; ++degree) {
+        iota += iota_coefficients[degree] * power;
+        power *= u;
+    }
+    const double k_target = helicity_M * static_cast<double>(iota) - helicity_N;
+    const double f_target = k_target * A - helicity_M * G * C;
+    const double f_qa = static_cast<double>(iota) * A - G * C;
+    const double f_qp = -static_cast<double>(nfp) * A;
+    const double magnitude3 = fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
+    const double r_target = f_target / magnitude3;
+    const double r_qa = f_qa / magnitude3;
+    const double r_qp = f_qp / magnitude3;
+    const double weight = volume_weight[point];
+    const double target_norm = fmax(
+        hypot(static_cast<double>(helicity_M), static_cast<double>(helicity_N)), 1.0
+    );
+    const double qp_norm = fmax(abs(nfp), 1);
+    double lambda_target = 0.0;
+    if (target_rms > 1.0e-30 && weight_sum > 0.0) {
+        lambda_target += d_target_error * weight * r_target /
+            (weight_sum * target_rms * target_norm);
+    }
+    if (rho[point] >= edge_rho_threshold && target_edge_rms > 1.0e-30 && edge_weight_sum > 0.0) {
+        lambda_target += d_target_edge_error * weight * r_target /
+            (edge_weight_sum * target_edge_rms * target_norm);
+    }
+    const double lambda_qa = qa_rms > 1.0e-30 && weight_sum > 0.0
+        ? d_qa_error * weight * r_qa / (weight_sum * qa_rms)
+        : 0.0;
+    const double lambda_qp = qp_rms > 1.0e-30 && weight_sum > 0.0
+        ? d_qp_error * weight * r_qp / (weight_sum * qp_rms * qp_norm)
+        : 0.0;
+
+    const double adj_A =
+        (lambda_target * k_target + lambda_qa * iota - lambda_qp * nfp) / magnitude3;
+    const double adj_C = (-lambda_target * helicity_M * G - lambda_qa * G) / magnitude3;
+    double adj_magnitude = -3.0 * (
+        lambda_target * f_target + lambda_qa * f_qa + lambda_qp * f_qp
+    ) / (magnitude3 * magnitude);
+    const double point_adj_G =
+        (-lambda_target * helicity_M * C - lambda_qa * C) / magnitude3;
+    double adj_b[3] = {
+        adj_A * (p[1] * q[2] - p[2] * q[1]) + adj_C * q[0],
+        adj_A * (p[2] * q[0] - p[0] * q[2]) + adj_C * q[1],
+        adj_A * (p[0] * q[1] - p[1] * q[0]) + adj_C * q[2],
+    };
+    const double adj_q[3] = {
+        adj_A * cross[0] + adj_C * b[0],
+        adj_A * cross[1] + adj_C * b[1],
+        adj_A * cross[2] + adj_C * b[2],
+    };
+    double adj_y[3];
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+        adj_y[coordinate] = adj_q[coordinate] / magnitude;
+        adj_magnitude -= adj_q[coordinate] * q[coordinate] / magnitude;
+    }
+    for (int component = 0; component < 3; ++component) {
+        for (int coordinate = 0; coordinate < 3; ++coordinate) {
+            adj_b[component] +=
+                grad_B[9 * point + 3 * component + coordinate] * adj_y[coordinate];
+            adj_grad_B[9 * point + 3 * component + coordinate] =
+                static_cast<float>(b[component] * adj_y[coordinate]);
+        }
+        adj_b[component] += adj_magnitude * b[component] / magnitude;
+        adj_B[3 * point + component] = static_cast<float>(adj_b[component]);
+    }
+    atomic_add_double(adj_G, point_adj_G);
+}
+
 bool compute_qs_metric_native(
     const DeviceVolumePoints& points,
     const float* d_B,
@@ -3021,7 +3162,8 @@ bool compute_qs_metric_native(
     int nfp,
     double edge_toroidal_flux,
     const SgpuScoreConfig& config,
-    SgpuScoreResult& result
+    SgpuScoreResult& result,
+    std::array<double, 9>* raw_sums
 ) {
     DeviceBuffer<float> d_iota;
     DeviceBuffer<float> d_absolute(points.count);
@@ -3083,6 +3225,7 @@ bool compute_qs_metric_native(
         sums[2] * sums[2] / std::max(sums[6] * sums[5], 1.0e-300);
     result.qs_abs_p95 = p95;
     result.qs_abs_p95_per_helicity = p95 / target_helicity_norm;
+    if (raw_sums) *raw_sums = sums;
     return true;
 }
 
@@ -3224,9 +3367,11 @@ bool run_downstream_gpu(
     }
     result.stage_completed = SCORE_STAGE_ALPHA;
     started = Clock::now();
+    std::array<double, 9> qs_sums{};
     if (!compute_qs_metric_native(
             points, d_B.data(), d_grad_B.data(), alpha, currents_a,
-            n_base_coils, nfp, flux.edge_flux, config, result)) {
+            n_base_coils, nfp, flux.edge_flux, config, result,
+            g_active_g2_cache ? &qs_sums : nullptr)) {
         return false;
     }
     result.timings[SGPU_SCORE_TIME_QS_METRICS] = seconds_since(started);
@@ -3286,6 +3431,15 @@ bool run_downstream_gpu(
         residual_score * size_factor * iota_factor;
     result.status = SGPU_SCORE_OK;
     result.stage_completed = SCORE_STAGE_QS;
+    if (g_active_g2_cache) {
+        g_active_g2_cache->points = std::move(points);
+        g_active_g2_cache->B = std::move(d_B);
+        g_active_g2_cache->grad_B = std::move(d_grad_B);
+        g_active_g2_cache->alpha = std::move(alpha);
+        g_active_g2_cache->qs_sums = qs_sums;
+        g_active_g2_cache->G = result.qs_vacuum_G;
+        g_active_g2_cache->ready = true;
+    }
     return true;
 }
 
@@ -3673,6 +3827,276 @@ bool compute_coil_component_gradient_impl(
     return true;
 }
 
+struct FixedFrontG2Gradient {
+    std::vector<double> x;
+    std::vector<double> y;
+    std::vector<double> z;
+    std::vector<double> current;
+    double point_vjp_s = 0.0;
+    double field_vjp_s = 0.0;
+    double parameter_map_s = 0.0;
+};
+
+struct QsErrorAdjoints {
+    double target = 0.0;
+    double target_edge = 0.0;
+    double qa = 0.0;
+    double qp = 0.0;
+};
+
+double helicity_quality_derivative(double advantage, const SgpuScoreConfig& config) {
+    double derivative = 0.0;
+    const double linear_position = advantage / config.score_qh_helicity_good;
+    if (linear_position > 0.0 && linear_position < 1.0) {
+        derivative += config.score_qh_helicity_exploration_fraction /
+            config.score_qh_helicity_good;
+    }
+    const double window_position =
+        (advantage - config.score_qh_helicity_bad) /
+        (config.score_qh_helicity_good - config.score_qh_helicity_bad);
+    if (window_position > 0.0 && window_position < 1.0) {
+        derivative += (1.0 - config.score_qh_helicity_exploration_fraction) *
+            6.0 * window_position * (1.0 - window_position) /
+            (config.score_qh_helicity_good - config.score_qh_helicity_bad);
+    }
+    return derivative;
+}
+
+QsErrorAdjoints score_qs_error_adjoints(
+    const SgpuScoreConfig& config,
+    const SgpuScoreResult& result
+) {
+    QsErrorAdjoints output;
+    double total_weight = 0.0;
+    for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
+        total_weight += std::max(config.score_weights[component], 0.0);
+    }
+    if (!(total_weight > 0.0)) return output;
+    const double d_global = q_down_derivative(
+        result.qs_target_global_error_per_helicity, config.score_qs_global_scale, 0.9
+    );
+    const double d_edge = q_down_derivative(
+        result.qs_target_edge_error_per_helicity, config.score_qs_edge_scale, 0.9
+    );
+    const double volume_scale = result.score_volume_qs_size_factor *
+        result.score_volume_qs_iota_factor;
+    const double score_before_scale =
+        100.0 * std::max(config.score_weights[SGPU_SCORE_COMPONENT_VOLUME_QS], 0.0) /
+        total_weight * volume_scale;
+    const double d_before_target = score_before_scale * 0.80 * d_global;
+    const double d_before_edge = score_before_scale * 0.20 * d_edge;
+    const double iota_gate = result.score_qh_total_iota_factor;
+    const double helicity_gate = result.score_qh_total_helicity_factor;
+    output.target = iota_gate * helicity_gate * d_before_target;
+    output.target_edge = iota_gate * helicity_gate * d_before_edge;
+
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    if (!qh_target) return output;
+    const double target_error = result.qs_target_global_error_per_helicity;
+    const bool qa_competitor =
+        result.qs_qa_global_error_per_helicity <= result.qs_qp_global_error_per_helicity;
+    const double competitor = qa_competitor
+        ? result.qs_qa_global_error_per_helicity
+        : result.qs_qp_global_error_per_helicity;
+    const double denominator = target_error + competitor;
+    if (!(denominator > 1.0e-30)) return output;
+    const double raw_advantage = competitor / denominator;
+    if (!(raw_advantage > 0.0 && raw_advantage < 1.0)) return output;
+    const double d_quality = helicity_quality_derivative(raw_advantage, config);
+    const double d_gate_d_advantage =
+        (1.0 - config.score_qh_total_helicity_floor) * d_quality;
+    const double common = iota_gate * result.score_before_qh_iota_gate *
+        d_gate_d_advantage;
+    output.target += common * (-competitor / (denominator * denominator));
+    const double d_competitor = common * target_error / (denominator * denominator);
+    if (qa_competitor) {
+        output.qa = d_competitor;
+    } else {
+        output.qp = d_competitor;
+    }
+    return output;
+}
+
+bool compute_fixed_front_g2_gradient(
+    FixedFrontG2Cache& cache,
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig& config,
+    SgpuScoreResult& result,
+    FixedFrontG2Gradient& output
+) {
+    if (!cache.ready || !cache.field || cache.points.count <= 0) {
+        fail_result(&result, "fixed-front G2 cache is incomplete");
+        return false;
+    }
+    const int point_count = cache.points.count;
+    DeviceBuffer<float> d_iota;
+    DeviceBuffer<float> d_adj_B(static_cast<size_t>(point_count) * 3);
+    DeviceBuffer<float> d_adj_grad_B(static_cast<size_t>(point_count) * 9);
+    DeviceBuffer<double> d_adj_G(1);
+    if (!copy_to_device(d_iota, cache.alpha.iota_coefficients) ||
+        !d_adj_B.data() || !d_adj_grad_B.data() || !d_adj_G.data() ||
+        cudaMemset(d_adj_G.data(), 0, sizeof(double)) != cudaSuccess) {
+        fail_result(&result, "fixed-front G2 point-adjoint allocation failed");
+        return false;
+    }
+    const QsErrorAdjoints errors = score_qs_error_adjoints(config, result);
+    const double target_norm = std::max(
+        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
+        1.0
+    );
+    const double qp_norm = std::max(std::abs(nfp), 1);
+    const float edge_threshold = static_cast<float>(
+        config.volume_rho_min + (1.0 - config.volume_rho_min) *
+        (config.radial_bin_count - 1.0) / config.radial_bin_count
+    );
+    auto started = Clock::now();
+    constexpr int threads = 256;
+    compute_qs_point_adjoint_kernel<<<(point_count + threads - 1) / threads, threads>>>(
+        cache.B.data(), cache.grad_B.data(), cache.points.grad_s.data(),
+        cache.points.flux_derivative.data(), cache.points.rho.data(),
+        cache.points.volume_weight.data(), point_count, d_iota.data(), config.iota_degree,
+        config.target_M, config.target_N, nfp, cache.G, edge_threshold,
+        cache.qs_sums[0], cache.qs_sums[2], result.qs_global_error,
+        result.qs_edge_error, result.qs_qa_global_error,
+        result.qs_qp_global_error_per_helicity * qp_norm,
+        errors.target, errors.target_edge, errors.qa, errors.qp,
+        d_adj_B.data(), d_adj_grad_B.data(), d_adj_G.data()
+    );
+    if (!cuda_stage_ok(cudaDeviceSynchronize(), result, "fixed-front QS point VJP")) return false;
+    output.point_vjp_s = seconds_since(started);
+
+    const int segment_count = sgpu_segment_count(cache.field);
+    DeviceBuffer<float> d_adj_segment_position(static_cast<size_t>(segment_count) * 3);
+    DeviceBuffer<float> d_adj_segment_weight(static_cast<size_t>(segment_count) * 3);
+    if (segment_count <= 0 || !d_adj_segment_position.data() || !d_adj_segment_weight.data()) {
+        fail_result(&result, "fixed-front segment-adjoint allocation failed");
+        return false;
+    }
+    started = Clock::now();
+    if (sgpu_internal_B_grad_segment_vjp_f32_device(
+            cache.field, cache.points.xyz.data(), d_adj_B.data(), d_adj_grad_B.data(),
+            point_count, d_adj_segment_position.data(), d_adj_segment_weight.data()) ||
+        !cuda_stage_ok(cudaDeviceSynchronize(), result, "fixed-front Biot-Savart VJP")) {
+        if (!result.error_message[0]) fail_from_backend(&result, "fixed-front Biot-Savart VJP");
+        return false;
+    }
+    output.field_vjp_s = seconds_since(started);
+
+    started = Clock::now();
+    std::vector<float> adj_segment_position(static_cast<size_t>(segment_count) * 3);
+    std::vector<float> adj_segment_weight(static_cast<size_t>(segment_count) * 3);
+    double adj_G = 0.0;
+    if (cudaMemcpy(
+            adj_segment_position.data(), d_adj_segment_position.data(),
+            adj_segment_position.size() * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(
+            adj_segment_weight.data(), d_adj_segment_weight.data(),
+            adj_segment_weight.size() * sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(&adj_G, d_adj_G.data(), sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess) {
+        fail_result(&result, "fixed-front segment-adjoint copy failed");
+        return false;
+    }
+    const int parameter_count = n_base_coils * n_coeff;
+    output.x.assign(parameter_count, 0.0);
+    output.y.assign(parameter_count, 0.0);
+    output.z.assign(parameter_count, 0.0);
+    output.current.assign(n_base_coils, 0.0);
+    std::vector<double>* coordinate_outputs[] = {&output.x, &output.y, &output.z};
+    int segment = 0;
+    for (int coil = 0; coil < n_base_coils; ++coil) {
+        for (int sample = 0; sample < config.segments_per_coil; ++sample) {
+            const double t = (static_cast<double>(sample) + 0.5) / config.segments_per_coil;
+            double px, vx, unused, py, vy, pz, vz;
+            eval_fourier_interleaved(
+                coeffs_x + static_cast<size_t>(coil) * n_coeff, n_coeff, t, px, vx, unused
+            );
+            eval_fourier_interleaved(
+                coeffs_y + static_cast<size_t>(coil) * n_coeff, n_coeff, t, py, vy, unused
+            );
+            eval_fourier_interleaved(
+                coeffs_z + static_cast<size_t>(coil) * n_coeff, n_coeff, t, pz, vz, unused
+            );
+            const Vec3d base_velocity{
+                vx / config.segments_per_coil,
+                vy / config.segments_per_coil,
+                vz / config.segments_per_coil,
+            };
+            for (int period = 0; period < nfp; ++period) {
+                for (int reflected = 0; reflected < 2; ++reflected) {
+                    if (segment >= segment_count) {
+                        fail_result(&result, "fixed-front segment ordering mismatch");
+                        return false;
+                    }
+                    const Vec3d adj_position{
+                        adj_segment_position[3 * segment],
+                        adj_segment_position[3 * segment + 1],
+                        adj_segment_position[3 * segment + 2],
+                    };
+                    const Vec3d adj_weight{
+                        adj_segment_weight[3 * segment],
+                        adj_segment_weight[3 * segment + 1],
+                        adj_segment_weight[3 * segment + 2],
+                    };
+                    const double current_sign = reflected ? -1.0 : 1.0;
+                    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+                        for (int coefficient = 0; coefficient < n_coeff; ++coefficient) {
+                            double basis, first, second;
+                            fourier_basis(n_coeff, t, coefficient, basis, first, second);
+                            const Vec3d d_position = transformed_basis_vector(
+                                coordinate, basis, reflected, period, nfp
+                            );
+                            Vec3d d_weight = transformed_basis_vector(
+                                coordinate,
+                                first / config.segments_per_coil,
+                                reflected,
+                                period,
+                                nfp
+                            );
+                            d_weight.x *= current_sign * currents_a[coil];
+                            d_weight.y *= current_sign * currents_a[coil];
+                            d_weight.z *= current_sign * currents_a[coil];
+                            (*coordinate_outputs[coordinate])[coil * n_coeff + coefficient] +=
+                                vec_dot(adj_position, d_position) + vec_dot(adj_weight, d_weight);
+                        }
+                    }
+                    Vec3d d_weight_current = base_velocity;
+                    if (reflected) {
+                        d_weight_current.y = -d_weight_current.y;
+                        d_weight_current.z = -d_weight_current.z;
+                    }
+                    d_weight_current = rotate_z(
+                        d_weight_current, TWOPI * static_cast<double>(period) / nfp
+                    );
+                    d_weight_current.x *= current_sign;
+                    d_weight_current.y *= current_sign;
+                    d_weight_current.z *= current_sign;
+                    output.current[coil] += vec_dot(adj_weight, d_weight_current);
+                    ++segment;
+                }
+            }
+        }
+    }
+    if (segment != segment_count) {
+        fail_result(&result, "fixed-front segment count mismatch");
+        return false;
+    }
+    const double G_current_scale = std::copysign(4.0e-7 * nfp, cache.G);
+    for (int coil = 0; coil < n_base_coils; ++coil) {
+        if (currents_a[coil] != 0.0) {
+            output.current[coil] +=
+                adj_G * G_current_scale * std::copysign(1.0, currents_a[coil]);
+        }
+    }
+    output.parameter_map_s = seconds_since(started);
+    return true;
+}
+
 }  // namespace
 
 extern "C" {
@@ -3916,7 +4340,11 @@ int sgpu_score_coils(
         }
     } while (false);
 
-    sgpu_destroy_field(field);
+    if (g_active_g2_cache && g_active_g2_cache->ready) {
+        g_active_g2_cache->field = field;
+        field = nullptr;
+    }
+    if (field) sgpu_destroy_field(field);
     stage_started = Clock::now();
     finalize_score(*config, *result);
     result->timings[SGPU_SCORE_TIME_SCORE] = seconds_since(stage_started);
@@ -4063,6 +4491,139 @@ int sgpu_score_coils_g1_gradient(
     }
     gradient_result->gradient_wall_s = seconds_since(gradient_started);
     gradient_result->score_gradient_rms = std::sqrt(score_norm2 / std::max<size_t>(gradient_count, 1));
+    gradient_result->coil_component_gradient_rms =
+        std::sqrt(component_norm2 / std::max<size_t>(gradient_count, 1));
+    gradient_result->status = 0;
+    sgpu_internal_set_error("");
+    return 0;
+}
+
+int sgpu_score_coils_g2_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+) {
+    if (!gradient_result) {
+        sgpu_internal_set_error("score gradient result pointer is null");
+        return 1;
+    }
+    std::memset(gradient_result, 0, sizeof(*gradient_result));
+    gradient_result->abi_version = SGPU_SCORE_GRADIENT_ABI_VERSION;
+    gradient_result->struct_size = sizeof(*gradient_result);
+    gradient_result->status = 1;
+    gradient_result->gradient_group = 2;
+    if (!score_result || !gradient_x || !gradient_y || !gradient_z ||
+        !gradient_current || !config || !coeffs_x || !coeffs_y || !coeffs_z ||
+        !currents_a) {
+        std::snprintf(
+            gradient_result->error_message,
+            sizeof(gradient_result->error_message),
+            "%s",
+            "G2 gradient input/output pointer is null"
+        );
+        sgpu_internal_set_error(gradient_result->error_message);
+        return 1;
+    }
+    FixedFrontG2Cache cache;
+    const auto forward_started = Clock::now();
+    g_active_g2_cache = &cache;
+    const int score_code = sgpu_score_coils(
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp, config, score_result
+    );
+    g_active_g2_cache = nullptr;
+    gradient_result->forward_wall_s = seconds_since(forward_started);
+    if (score_code != 0 || score_result->status != SGPU_SCORE_OK || !cache.ready || !cache.field) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        std::snprintf(
+            gradient_result->error_message,
+            sizeof(gradient_result->error_message),
+            "G2 requires an ok complete score: %.190s",
+            score_result->error_message
+        );
+        sgpu_internal_set_error(gradient_result->error_message);
+        return score_code != 0 ? score_code : 1;
+    }
+    const auto gradient_started = Clock::now();
+    CoilComponentGradient g1;
+    FixedFrontG2Gradient g2;
+    std::string error;
+    if (!compute_coil_component_gradient_impl(
+            coeffs_x, coeffs_y, coeffs_z, currents_a,
+            n_base_coils, n_coeff, nfp, g1, error) ||
+        !compute_fixed_front_g2_gradient(
+            cache, coeffs_x, coeffs_y, coeffs_z, currents_a,
+            n_base_coils, n_coeff, nfp, *config, *score_result, g2)) {
+        sgpu_destroy_field(cache.field);
+        if (!score_result->error_message[0]) {
+            std::snprintf(
+                gradient_result->error_message,
+                sizeof(gradient_result->error_message),
+                "%s",
+                error.c_str()
+            );
+        } else {
+            std::snprintf(
+                gradient_result->error_message,
+                sizeof(gradient_result->error_message),
+                "%.250s",
+                score_result->error_message
+            );
+        }
+        sgpu_internal_set_error(gradient_result->error_message);
+        return 1;
+    }
+    sgpu_destroy_field(cache.field);
+    cache.field = nullptr;
+
+    double total_weight = 0.0;
+    for (int component = 0; component < SGPU_SCORE_COMPONENT_COUNT; ++component) {
+        total_weight += std::max(config->score_weights[component], 0.0);
+    }
+    const double g1_scale = total_weight > 0.0
+        ? std::max(config->score_weights[SGPU_SCORE_COMPONENT_COIL], 0.0) / total_weight *
+            score_result->score_qh_total_iota_factor * score_result->score_qh_total_helicity_factor
+        : 0.0;
+    const int parameter_count = n_base_coils * n_coeff;
+    const std::vector<double>* g1_sources[] = {&g1.x, &g1.y, &g1.z};
+    const std::vector<double>* g2_sources[] = {&g2.x, &g2.y, &g2.z};
+    double* destinations[] = {gradient_x, gradient_y, gradient_z};
+    double score_norm2 = 0.0;
+    double component_norm2 = 0.0;
+    size_t gradient_count = 0;
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+        for (int parameter = 0; parameter < parameter_count; ++parameter) {
+            const double g1_value = (*g1_sources[coordinate])[parameter];
+            destinations[coordinate][parameter] =
+                g1_scale * g1_value + (*g2_sources[coordinate])[parameter];
+            score_norm2 += destinations[coordinate][parameter] * destinations[coordinate][parameter];
+            component_norm2 += g1_value * g1_value;
+            ++gradient_count;
+        }
+    }
+    for (int coil = 0; coil < n_base_coils; ++coil) {
+        gradient_current[coil] = g1_scale * g1.current[coil] + g2.current[coil];
+        score_norm2 += gradient_current[coil] * gradient_current[coil];
+        component_norm2 += g1.current[coil] * g1.current[coil];
+        ++gradient_count;
+    }
+    gradient_result->point_vjp_s = g2.point_vjp_s;
+    gradient_result->field_vjp_s = g2.field_vjp_s;
+    gradient_result->parameter_map_s = g2.parameter_map_s;
+    gradient_result->gradient_wall_s = seconds_since(gradient_started);
+    gradient_result->score_gradient_rms =
+        std::sqrt(score_norm2 / std::max<size_t>(gradient_count, 1));
     gradient_result->coil_component_gradient_rms =
         std::sqrt(component_norm2 / std::max<size_t>(gradient_count, 1));
     gradient_result->status = 0;

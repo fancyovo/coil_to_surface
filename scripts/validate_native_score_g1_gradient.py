@@ -18,6 +18,7 @@ if str(GPU_PYTHON) not in sys.path:
 from stellarator_gpu import (
     coil_component_gradient_native,
     score_coils_g1_gradient_native,
+    score_coils_g2_gradient_native,
     score_coils_native,
 )
 
@@ -87,6 +88,7 @@ def main() -> None:
     parser.add_argument("--directions", type=int, default=24)
     parser.add_argument("--steps", default="1,0.5,0.25")
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--blackbox-directions", type=int, default=4)
     parser.add_argument("--seed", type=int, default=2026080402)
     args = parser.parse_args()
 
@@ -132,6 +134,7 @@ def main() -> None:
     baseline_rows = []
     forward_rows = []
     gradient_rows = []
+    g2_rows = []
     gradient_payload = None
     for repeat in range(args.repeats):
         started = time.perf_counter()
@@ -161,11 +164,58 @@ def main() -> None:
                 "gradient_diagnostics": gradient_payload["gradient_diagnostics"],
             }
         )
+        started = time.perf_counter()
+        g2_payload = score_coils_g2_gradient_native(
+            args.gradient_lib,
+            raw["x"], raw["y"], raw["z"], raw["current"], nfp,
+            target_helicity=(1, nfp),
+        )
+        g2_rows.append(
+            {
+                "wall_s": time.perf_counter() - started,
+                "result": compact_forward(g2_payload["score_result"]),
+                "gradient_diagnostics": g2_payload["gradient_diagnostics"],
+            }
+        )
+
+    blackbox_rows = []
+    g2_gradient = g2_payload["gradient"]
+    for direction_index in range(args.blackbox_directions):
+        direction = {
+            key: rng.standard_normal(raw[key].shape)
+            for key in ("x", "y", "z", "current")
+        }
+        geometry_rms = np.sqrt(
+            np.mean(np.concatenate([direction[key].ravel() for key in ("x", "y", "z")]) ** 2)
+        )
+        current_rms = np.sqrt(np.mean(direction["current"] ** 2))
+        for key in ("x", "y", "z"):
+            direction[key] *= 1.0e-5 / max(float(geometry_rms), 1.0e-30)
+        direction["current"] *= 10.0 / max(float(current_rms), 1.0e-30)
+        endpoints = []
+        for sign in (-1.0, 1.0):
+            perturbed = {key: raw[key] + sign * direction[key] for key in direction}
+            endpoint = score_coils_native(
+                args.gradient_lib,
+                perturbed["x"], perturbed["y"], perturbed["z"],
+                perturbed["current"], nfp, target_helicity=(1, nfp),
+            )
+            endpoints.append(endpoint)
+        blackbox_rows.append(
+            {
+                "direction": direction_index,
+                "predicted_fixed_front": dot_gradient(g2_gradient, direction),
+                "blackbox_central": 0.5 * (endpoints[1]["score"] - endpoints[0]["score"]),
+                "minus": compact_forward(endpoints[0]),
+                "plus": compact_forward(endpoints[1]),
+            }
+        )
 
     relative_errors = np.asarray([row["relative_error"] for row in direction_rows])
     baseline_wall = np.asarray([row["wall_s"] for row in baseline_rows])
     forward_wall = np.asarray([row["wall_s"] for row in forward_rows])
     gradient_wall = np.asarray([row["wall_s"] for row in gradient_rows])
+    g2_wall = np.asarray([row["wall_s"] for row in g2_rows])
     output = {
         "format": "native_score_g1_validation_v1",
         "case": str(args.case),
@@ -180,11 +230,15 @@ def main() -> None:
         "baseline_forward": baseline_rows,
         "experimental_forward": forward_rows,
         "g1_gradient": gradient_rows,
+        "g1_g2_gradient": g2_rows,
+        "blackbox_direction_rows": blackbox_rows,
         "baseline_forward_wall_median_s": float(np.median(baseline_wall)),
         "experimental_forward_wall_median_s": float(np.median(forward_wall)),
         "g1_wall_median_s": float(np.median(gradient_wall)),
+        "g2_wall_median_s": float(np.median(g2_wall)),
         "forward_only_overhead_fraction": float(np.median(forward_wall) / np.median(baseline_wall) - 1.0),
         "g1_overhead_fraction": float(np.median(gradient_wall) / np.median(forward_wall) - 1.0),
+        "g2_overhead_fraction": float(np.median(g2_wall) / np.median(forward_wall) - 1.0),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2, allow_nan=True) + "\n", encoding="utf-8")

@@ -71,11 +71,17 @@ once the task is accepted.
   discrete branches, then applies a pointwise QH/QA/QP score VJP, a CUDA
   segment-level Biot-Savart VJP, and an analytical segment-to-Fourier/current
   map. These implementations are not yet numerically validated. P107 job
-  `31642` is submitted to compile them, test G1 against 24 multi-scale
-  directional differences, compare forward-only old/new binaries, time
-  explicit G1/G2, and run four small true-score direction checks; it is
-  pending behind the four-GPU reference job because of the per-user resource
-  limit.
+  `31642` was cancelled while still pending with zero allocated resources,
+  after the continuing Students allowance made migration preferable. The first
+  Students replacement `31655` failed before compilation in three seconds
+  because the shared runtime venv has no `pytest`; no numerical or CUDA check
+  ran. Commit `a442e13` separates native and latent validation, follows the
+  allocated CPU count when compiling, and enforces an idle-GPU preflight. The
+  launcher now invokes the five dependency-free test functions directly, so
+  the missing optional test runner cannot block the actual Release CUDA build,
+  24-direction G1 check, old/new forward benchmark, G2 timing, and four true-
+  score direction checks. Latent validation remains disabled until formal
+  reference job `31640` has completed.
 - On 2026-08-04, branch `qh-blackbox-gradient` was created from
   `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
   plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no

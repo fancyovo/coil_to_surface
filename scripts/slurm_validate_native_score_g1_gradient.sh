@@ -32,7 +32,18 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_TH
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-python -m pytest tests/test_qs_gradient_math.py tests/test_flow_vjp.py -q
+python - <<'PY'
+import runpy
+
+count = 0
+for path in ("tests/test_qs_gradient_math.py", "tests/test_flow_vjp.py"):
+    namespace = runpy.run_path(path)
+    for name, value in sorted(namespace.items()):
+        if name.startswith("test_") and callable(value):
+            value()
+            count += 1
+print(f"standalone gradient checks passed: {count}")
+PY
 cmake -S gpu_backend -B "$build" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$build" --parallel "$build_jobs"
 test -f "$gradient_lib"

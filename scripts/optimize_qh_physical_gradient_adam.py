@@ -31,7 +31,7 @@ from scripts.qh_blackbox_gradient_reference import (
     file_sha256,
     write_json,
 )
-from stellarator_gpu import score_coils_g2_gradient_native
+from stellarator_gpu import score_coils_g2_gradient_native, score_coils_g3_gradient_native
 
 
 COMPONENT_NAMES = ("axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil")
@@ -118,13 +118,21 @@ def evaluate(
     rk4_steps: int,
     gradient_lib: Path,
     device: torch.device,
+    gradient_group: int = 2,
 ) -> Evaluation:
     started = time.perf_counter()
+    providers = {
+        2: score_coils_g2_gradient_native,
+        3: score_coils_g3_gradient_native,
+    }
+    if gradient_group not in providers:
+        raise ValueError("gradient_group must be 2 or 3")
+    gradient_provider = providers[gradient_group]
 
     def native_provider(physical: np.ndarray):
         tokens = np.asarray(physical[0], dtype=np.float64)
         x, y, z, current = score_arguments(tokens)
-        native = score_coils_g2_gradient_native(
+        native = gradient_provider(
             gradient_lib,
             x,
             y,
@@ -136,7 +144,7 @@ def evaluate(
         )
         message = str(native["gradient_diagnostics"].get("error_message", ""))
         if message:
-            raise RuntimeError(f"native G2 gradient failed: {message}")
+            raise RuntimeError(f"native G{gradient_group} gradient failed: {message}")
         physical_gradient = token_cotangent(native["gradient"])
         score_result = native["score_result"]
         cotangent = None
@@ -189,7 +197,7 @@ def optimizer_case(
         "best_score": float(best_score),
         "noise": evaluation.noise.tolist(),
         "native_score": compact_result(evaluation.score_result),
-        "gradient_method": "native_fixed_front_g2_vjp_through_flow",
+        "gradient_method": manifest["gradient_method"],
         "manifest": manifest,
     }
     return case
@@ -332,7 +340,7 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
     axes[2, 0].legend()
     for key, label in (
         ("flow_decode_wall_s", "flow forward"),
-        ("native_provider_wall_s", "native G2"),
+        ("native_provider_wall_s", "native gradient"),
         ("flow_backward_wall_s", "flow VJP"),
     ):
         axes[2, 1].plot(iteration, [row[key] for row in rows], label=label)
@@ -350,6 +358,7 @@ def main() -> None:
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--gradient-lib", type=Path, required=True)
+    parser.add_argument("--gradient-group", type=int, choices=(2, 3), default=2)
     parser.add_argument("--initial-case", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--nfp", type=int, default=4)
@@ -410,7 +419,7 @@ def main() -> None:
 
     manifest = {
         "format": "qh_physical_gradient_adam_v1",
-        "gradient_method": "native_fixed_front_g2_vjp_through_flow",
+        "gradient_method": f"native_fixed_front_g{args.gradient_group}_vjp_through_flow",
         "score_path": "native_cpp_cuda_abi9_exact_forward",
         "nfp": int(args.nfp),
         "n_coils": int(current_noise.shape[0]),
@@ -460,6 +469,7 @@ def main() -> None:
         rk4_steps=args.rk4_steps,
         gradient_lib=args.gradient_lib,
         device=device,
+        gradient_group=args.gradient_group,
     )
     if not current.valid:
         raise RuntimeError(f"initial state is not differentiable: {current.score_result.get('status')}")
@@ -537,6 +547,7 @@ def main() -> None:
                 rk4_steps=args.rk4_steps,
                 gradient_lib=args.gradient_lib,
                 device=device,
+                gradient_group=args.gradient_group,
             )
             trials.append(
                 {

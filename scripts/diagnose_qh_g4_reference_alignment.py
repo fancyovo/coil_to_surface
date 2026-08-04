@@ -63,9 +63,12 @@ def projection(gradient: np.ndarray, direction: np.ndarray) -> float:
 
 
 def reconstruct_gradient(slopes: np.ndarray, directions: np.ndarray) -> np.ndarray:
-    if not np.all(np.isfinite(slopes)):
+    finite = np.isfinite(slopes)
+    if not np.any(finite):
         return np.full(directions.shape[1], np.nan, dtype=np.float64)
-    return np.mean(slopes[:, None] * directions, axis=0)
+    # Each row has squared norm d. Dividing by the full dimension reconstructs
+    # the orthogonal projection even when a few branch-changing rows are omitted.
+    return np.sum(slopes[finite, None] * directions[finite], axis=0) / directions.shape[1]
 
 
 def main() -> None:

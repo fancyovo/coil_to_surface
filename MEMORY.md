@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-03 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-04 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,6 +38,16 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, branch `qh-blackbox-gradient` was created from
+  `qh-small-condition-adam` commit `4b14658`. Commit `c45c42e` adds the
+  plan-only report `reports/qh_blackbox_gradient_exploration_plan.md`; no
+  gradient implementation, compilation, remote job, or numerical experiment
+  has started. The plan introduces cumulative gradient groups from score/cache
+  instrumentation and coil engineering through fixed-front volume-QS,
+  alpha/iota LS, s/psi geometry, and finally conditional axis dependence. Its
+  primary validation set uses saved random-start Adam states across early,
+  middle, mature, and feasibility-boundary scales on the nfp6/nc2 and
+  nfp4/nc2 trajectories, rather than relying on inverse-QUASR near-optima.
 - On 2026-08-03, root `README.md` was comprehensively rewritten on branch
   `qh-small-condition-adam` by commit `fcab3ee`. It now treats ABI-9 native
   C++/CUDA scoring and sample-specific full physical evaluation as the two

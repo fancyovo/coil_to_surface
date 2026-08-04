@@ -286,7 +286,7 @@ def evaluate_center(args: argparse.Namespace) -> None:
         for parameter in model.parameters():
             parameter.requires_grad_(False)
         model = torch.compile(
-            UncheckedFlowModel(model), mode="reduce-overhead", fullgraph=True
+            UncheckedFlowModel(model), mode="default", fullgraph=True
         )
         warmup_cotangent = np.ones_like(noise, dtype=np.float32)
         run_vjp(

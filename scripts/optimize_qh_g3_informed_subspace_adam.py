@@ -115,6 +115,9 @@ def exact_subspace_gradient(
                 "minus_score": result_score(minus),
                 "plus_same_branch": plus_branch == center_branch,
                 "minus_same_branch": minus_branch == center_branch,
+                "center_branch": list(center_branch),
+                "plus_branch": list(plus_branch),
+                "minus_branch": list(minus_branch),
             }
         )
     if not accepted_slopes:

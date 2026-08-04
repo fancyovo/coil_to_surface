@@ -29,6 +29,7 @@ learning_rate="${LEARNING_RATE:-0.01}"
 beta1="${BETA1:-0.5}"
 beta2="${BETA2:-0.999}"
 seed="${SEED:-2026080504}"
+gpus="${GPUS:-0,1,2,3}"
 child=""
 
 cleanup() {
@@ -102,7 +103,7 @@ python scripts/optimize_qh_g3_informed_subspace_adam.py \
   --beta1 "$beta1" \
   --beta2 "$beta2" \
   --seed "$seed" \
-  --gpus 0,1,2,3 &
+  --gpus "$gpus" &
 child="$!"
 wait "$child"
 child=""

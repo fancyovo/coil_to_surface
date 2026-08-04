@@ -4623,11 +4623,10 @@ bool compute_alpha_iota_g3_gradient(
             result.alpha_relative_l2, config.score_alpha_relative_l2_scale, 1.0
         )
     );
-    const float adj_normal = static_cast<float>(
-        coordinate_scale * 0.35 * q_down_derivative(
-            result.alpha_normal_B_relative_l2, config.score_alpha_normal_B_scale, 1.0
-        )
-    );
+    // The normal-field residual is covariant with the fitted psi geometry. Its
+    // frozen-surface partial is singular near B.normal = 0 and must be added
+    // together with the compensating psi/surface-motion terms in G4.
+    constexpr float adj_normal = 0.0f;
     std::vector<float> adj_solution_f(alpha.column_count);
     std::transform(adj_solution.begin(), adj_solution.end(), adj_solution_f.begin(), [](double value) {
         return static_cast<float>(value);

@@ -305,6 +305,8 @@ int sgpu_score_coils_g2_gradient(
 
 // Experimental cumulative G1+G2+G3 path. G3 additionally differentiates the
 // alpha/iota ridge-QR fit while keeping axis, psi, points, and branches fixed.
+// The geometry-covariant normal-field residual is deferred until psi/surface
+// motion can be differentiated as one bundle.
 int sgpu_score_coils_g3_gradient(
     const double* coeffs_x,
     const double* coeffs_y,

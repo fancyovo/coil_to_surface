@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=64G
-#SBATCH --time=00:30:00
+#SBATCH --time=01:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -37,5 +37,11 @@ nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,nohea
 python scripts/validate_native_score_g1_gradient.py \
   --case "$case_path" --baseline-lib "$baseline_lib" --gradient-lib "$gradient_lib" \
   --output "$output/validation.json" --directions 24 --steps 1,0.5,0.25 --repeats 3
+python scripts/validate_qh_latent_gradient.py \
+  --reference-dir "$project/runs/qh_blackbox_gradient_reference_31640" \
+  --checkpoint "$HOME/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt" \
+  --gradient-lib "$gradient_lib" --output-dir "$output/latent" \
+  --center-id main_nfp6_step200 --scale 0.005 --directions 8 \
+  --rk4-steps 256 --checkpoint-steps 8
 sha256sum "$gradient_lib" > "$output/gradient_library_sha256.txt"
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader > "$output/gpu_postflight.csv"

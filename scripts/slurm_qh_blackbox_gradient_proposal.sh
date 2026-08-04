@@ -21,7 +21,8 @@ lib="${SCORE_LIB:-$HOME/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu
 expected_checkpoint_sha="${EXPECTED_CHECKPOINT_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}"
 expected_score_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5}"
 output="${OUTPUT_DIR:-$project/runs/qh_blackbox_gradient_proposal_${SLURM_JOB_ID}}"
-world_size=4
+world_size="${WORLD_SIZE:-4}"
+(( world_size >= 1 ))
 children=()
 
 cleanup() {
@@ -87,7 +88,7 @@ python scripts/qh_blackbox_gradient_proposal.py \
   --validation "cross_nfp4_step50=$project/runs/qh_native_g1_validation_31744/latent" \
   --steps 0.0025,0.005,0.01 --rk4-steps 256 --prepare-only
 
-for rank in 0 1 2 3; do
+for rank in $(seq 0 $((world_size - 1))); do
   CUDA_VISIBLE_DEVICES="$rank" python scripts/qh_blackbox_gradient_proposal.py \
     --output-dir "$output" --reference-dir "$reference" --checkpoint "$checkpoint" --lib "$lib" \
     --score-only --rank "$rank" --world-size "$world_size" --device-id 0 \

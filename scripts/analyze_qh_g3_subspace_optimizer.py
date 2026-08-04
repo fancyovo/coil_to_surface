@@ -116,6 +116,7 @@ def main() -> None:
         walls = [float(row["iteration_wall_s"]) for row in history]
         accepted_steps = sum(row["accepted_mode"] != "rejected" for row in history)
         adam_steps = sum(row["accepted_mode"] == "adam" for row in history)
+        projected_steps = sum(row["accepted_mode"] == "projected" for row in history)
         branch_steps = sum(row["accepted_mode"] == "branch_endpoint" for row in history)
         probe_steps = sum(row["accepted_mode"] == "probe_endpoint" for row in history)
         summary_rows.append(
@@ -130,6 +131,9 @@ def main() -> None:
                 "best_iteration": int(summary["best_iteration"]),
                 "accepted_steps": int(summary.get("accepted_steps", accepted_steps)),
                 "adam_accepted_steps": int(summary.get("adam_accepted_steps", adam_steps)),
+                "projected_accepted_steps": int(
+                    summary.get("projected_accepted_steps", projected_steps)
+                ),
                 "branch_accepted_steps": int(summary.get("branch_accepted_steps", branch_steps)),
                 "probe_accepted_steps": int(summary.get("probe_accepted_steps", probe_steps)),
                 "rejected_steps": int(summary.get("rejected_steps", len(history) - accepted_steps)),

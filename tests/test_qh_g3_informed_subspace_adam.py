@@ -5,6 +5,7 @@ from scripts.optimize_qh_g3_informed_subspace_adam import (
     best_improving_endpoint,
     exact_subspace_gradient,
     informed_orthogonal_directions,
+    projected_trust_update,
     score_improves_by,
 )
 
@@ -56,6 +57,20 @@ def test_full_informed_basis_recovers_linear_gradient() -> None:
     assert all(row["valid"] for row in rows)
     assert predicted_gain > 0.0
     assert np.allclose(recovered, gradient, rtol=2.0e-6, atol=2.0e-6)
+
+
+def test_projected_trust_update_preserves_direction_and_rms() -> None:
+    gradient = np.asarray([[2.0, -1.0, 0.5], [0.25, 3.0, -2.0]])
+    update = projected_trust_update(gradient, step_rms=0.0025)
+
+    assert update is not None
+    assert np.allclose(update / gradient, update.flat[0] / gradient.flat[0])
+    assert np.isclose(np.sqrt(np.mean(np.square(update))), 0.0025)
+    assert np.vdot(update, gradient) > 0.0
+
+
+def test_projected_trust_update_rejects_zero_gradient() -> None:
+    assert projected_trust_update(np.zeros((2, 3)), step_rms=0.0025) is None
 
 
 def test_one_sided_same_branch_endpoint_is_used_as_a_derivative() -> None:

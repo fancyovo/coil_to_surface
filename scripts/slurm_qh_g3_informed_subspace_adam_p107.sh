@@ -26,6 +26,8 @@ rk4_steps="${RK4_STEPS:-64}"
 random_directions="${RANDOM_DIRECTIONS:-4}"
 perturbation="${PERTURBATION:-0.005}"
 learning_rate="${LEARNING_RATE:-0.01}"
+proposal_mode="${PROPOSAL_MODE:-adam}"
+projected_step_rms="${PROJECTED_STEP_RMS:-$perturbation}"
 beta1="${BETA1:-0.5}"
 beta2="${BETA2:-0.999}"
 seed="${SEED:-2026080504}"
@@ -103,6 +105,8 @@ python scripts/optimize_qh_g3_informed_subspace_adam.py \
   --random-directions "$random_directions" \
   --perturbation "$perturbation" \
   --learning-rate "$learning_rate" \
+  --proposal-mode "$proposal_mode" \
+  --projected-step-rms "$projected_step_rms" \
   --beta1 "$beta1" \
   --beta2 "$beta2" \
   --seed "$seed" \

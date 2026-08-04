@@ -133,6 +133,20 @@ def exact_subspace_gradient(
     return gradient, rows, predicted_gain
 
 
+def projected_trust_update(
+    projected_gradient: np.ndarray,
+    *,
+    step_rms: float,
+) -> np.ndarray | None:
+    if step_rms <= 0.0:
+        raise ValueError("step_rms must be positive")
+    gradient = np.asarray(projected_gradient, dtype=np.float64)
+    scale = rms(gradient)
+    if not math.isfinite(scale) or scale <= 0.0:
+        return None
+    return gradient * (step_rms / scale)
+
+
 def best_improving_branch_endpoint(
     center_result: dict[str, Any],
     endpoint_results: list[dict[str, Any] | None],
@@ -284,6 +298,17 @@ def main() -> None:
     parser.add_argument("--random-directions", type=int, default=4)
     parser.add_argument("--perturbation", type=float, default=0.005)
     parser.add_argument("--learning-rate", type=float, default=0.01)
+    parser.add_argument(
+        "--proposal-mode",
+        choices=("adam", "projected"),
+        default="adam",
+    )
+    parser.add_argument(
+        "--projected-step-rms",
+        type=float,
+        default=None,
+        help="RMS trust radius for projected mode; defaults to --perturbation.",
+    )
     parser.add_argument("--beta1", type=float, default=0.5)
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
@@ -301,6 +326,11 @@ def main() -> None:
     parser.add_argument("--plot-every", type=int, default=5)
     parser.add_argument("--seed", type=int, default=2026080504)
     args = parser.parse_args()
+    projected_step_rms = (
+        float(args.perturbation)
+        if args.projected_step_rms is None
+        else float(args.projected_step_rms)
+    )
     gpu_ids = parse_ints(args.gpus)
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required")
@@ -313,6 +343,7 @@ def main() -> None:
         or args.probe_accept_minimum_gain < 0.0
         or args.branch_accept_minimum_gain < 0.0
         or args.noise_limit <= 0.0
+        or projected_step_rms <= 0.0
     ):
         raise ValueError("accept-drop and noise-limit are invalid")
     if not gpu_ids:
@@ -336,7 +367,10 @@ def main() -> None:
 
     manifest = {
         "format": "qh_g3_informed_subspace_adam_v1",
-        "algorithm": "exact_secant_projection_over_g3_plus_random_orthogonal_subspace_then_adam",
+        "algorithm": (
+            "exact_secant_projection_over_g3_plus_random_orthogonal_subspace_then_"
+            + args.proposal_mode
+        ),
         "score_path": "native_cpp_cuda_abi9_exact_forward",
         "gradient_reference": "native_fixed_geometry_g3_vjp_through_flow",
         "nfp": int(args.nfp),
@@ -347,6 +381,8 @@ def main() -> None:
         "total_secant_directions": int(args.random_directions + 1),
         "perturbation": float(args.perturbation),
         "learning_rate": float(args.learning_rate),
+        "proposal_mode": str(args.proposal_mode),
+        "projected_step_rms": projected_step_rms,
         "betas": [float(args.beta1), float(args.beta2)],
         "adam_epsilon": float(args.adam_epsilon),
         "backtrack_fractions": list(args.backtrack_fractions),
@@ -478,15 +514,24 @@ def main() -> None:
                 and projected_rms > 0.0
                 and math.isfinite(projected_rms)
             ):
-                gradient = projected * (rms(g3_gradient) / projected_rms)
-                next_adam_step = adam_step + 1
-                tentative_first = args.beta1 * first_moment + (1.0 - args.beta1) * gradient
-                tentative_second = args.beta2 * second_moment + (1.0 - args.beta2) * gradient * gradient
-                first_hat = tentative_first / (1.0 - args.beta1**next_adam_step)
-                second_hat = tentative_second / (1.0 - args.beta2**next_adam_step)
-                full_update = args.learning_rate * first_hat / (
-                    np.sqrt(second_hat) + args.adam_epsilon
-                )
+                if args.proposal_mode == "adam":
+                    gradient = projected * (rms(g3_gradient) / projected_rms)
+                    next_adam_step = adam_step + 1
+                    tentative_first = args.beta1 * first_moment + (1.0 - args.beta1) * gradient
+                    tentative_second = args.beta2 * second_moment + (1.0 - args.beta2) * gradient * gradient
+                    first_hat = tentative_first / (1.0 - args.beta1**next_adam_step)
+                    second_hat = tentative_second / (1.0 - args.beta2**next_adam_step)
+                    full_update = args.learning_rate * first_hat / (
+                        np.sqrt(second_hat) + args.adam_epsilon
+                    )
+                else:
+                    gradient = projected
+                    trust_update = projected_trust_update(
+                        projected,
+                        step_rms=projected_step_rms,
+                    )
+                    assert trust_update is not None
+                    full_update = trust_update
                 for fraction in (1.0, *args.backtrack_fractions):
                     proposal = np.clip(
                         current.noise.astype(np.float64) + fraction * full_update,
@@ -513,7 +558,7 @@ def main() -> None:
                     )
                     candidate_rows.append(
                         {
-                            "mode": "adam",
+                            "mode": args.proposal_mode,
                             "fraction": float(fraction),
                             "status": str(candidate.score_result.get("status")),
                             "score": result_score(candidate.score_result),
@@ -525,7 +570,7 @@ def main() -> None:
                     if exact_accepted:
                         accepted = candidate
                         accepted_fraction = float(fraction)
-                        accepted_mode = "adam"
+                        accepted_mode = args.proposal_mode
                         break
 
             incumbent = current if accepted is None else accepted
@@ -713,6 +758,9 @@ def main() -> None:
         "best_iteration": int(best_iteration),
         "accepted_steps": int(sum(row["accepted_mode"] != "rejected" for row in history)),
         "adam_accepted_steps": int(sum(row["accepted_mode"] == "adam" for row in history)),
+        "projected_accepted_steps": int(
+            sum(row["accepted_mode"] == "projected" for row in history)
+        ),
         "branch_accepted_steps": int(
             sum(row["accepted_mode"] == "branch_endpoint" for row in history)
         ),

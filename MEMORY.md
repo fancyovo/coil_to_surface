@@ -38,20 +38,20 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-04, the post-peak G2 reversal attribution is reopened and the
-  previous G4 conclusion is provisional. The earlier 200-direction reference
-  did not sample the current `start_10` basin: it covered nfp6/nc2 steps
-  0/200/400 and a separate nfp4/nc2 step 50, whereas the reversing trajectory
-  is nfp4/nc3. Existing component data also make a missing-component-only
-  explanation insufficient: the G2-covered volume-QS component itself falls
-  smoothly after the peak. The required isolation is now three-level:
-  (1) finite-difference the exact frozen-front scalar represented by G1+G2,
-  (2) close its physical cotangent through the actual FP32 RK4-64 flow VJP,
-  and (3) compare both with a same-basin 300-direction full-score reference at
-  pre-peak, peak, and post-peak states. Diagnostic-only source is being added;
-  it must not change the ordinary score ABI/path or break old gradient-library
-  loading. Do not claim G4 is the cause unless the first two closures pass and
-  the same-basin full reference shows the omitted response dominates.
+- On 2026-08-04, the post-peak G2 reversal investigation completed. The earlier
+  200-direction reference did not sample the current `start_10` basin: it
+  covered nfp6/nc2 steps 0/200/400 and a separate nfp4/nc2 step 50, whereas the
+  reversing trajectory is nfp4/nc3. Do not cite the old high cosines as
+  same-basin evidence. Three independent closures now establish that G2 is the
+  correct derivative of its frozen-front scalar, G3 correctly adds the
+  fixed-geometry alpha/iota FP32-QR response, and the FP32 RK4-64 flow VJP does
+  not reverse or attach the cotangent to the wrong point. The actual method
+  error is treating this frozen partial derivative as the complete ABI-9 score
+  derivative: omitted psi/flux/moving-surface/volume-point/weight response
+  reverses even the volume-QS derivative after the peak. A separate confirmed
+  optimizer bug accepts the first `status=ok` candidate without requiring an
+  exact-score improvement, so the biased direction accumulates for dozens of
+  steps. Detailed evidence and countermeasures are in report section 14.
   Commit `25d0bc3` implements the opt-in frozen-front closure oracle, current
   physical-gradient trajectory loading, component-gradient reference output,
   and Slurm launchers; local Python/reference tests pass `10/10`. P107 smoke
@@ -67,9 +67,8 @@ once the task is accepted.
   measured complete-score slope was negative. This rules out a G2 sign error
   and a flow-VJP sign/attachment error at step 120; the contradiction is now
   localized to dependencies recomputed by the complete score but frozen by
-  G2. It does not yet identify which dependency dominates. Artifacts are in
-  `runs/qh_g2_fixed_front_closure_smoke_20260804/`; same-basin pre/peak/post
-  closures and a 300-direction full-score reference remain required. P107
+  G2. Artifacts are in
+  `runs/qh_g2_fixed_front_closure_smoke_20260804/`. P107
   jobs `31996--31999` completed `0:0` for steps `50/89/100/120`, respectively,
   using 32 random directions each and the pinned diagnostic-library hash above.
   At the smallest scale, frozen-FD/native-G2 cosines were
@@ -77,9 +76,42 @@ once the task is accepted.
   above `0.999995`; actual-Adam frozen-score slopes were all positive at about
   `+22.03/+16.28/+16.30/+16.43`. Outputs are
   `runs/qh_g2_fixed_front_closure_step{0050,0089,0100,0120}_20260804/`.
-  Four-GPU P107 job `32001` is active for the same four centers and a complete
+  Four-GPU P107 job `32001` completed the same four centers and a complete
   300-direction, two-scale (`0.005/0.0025`) exact-score/component reference;
-  output is `runs/qh_g2_current_basin_reference_20260804/`.
+  output is `runs/qh_g2_current_basin_reference_20260804/`. At `h=0.0025`, all
+  four centers retained 300/300 same-branch directions. Full/G2 cosines at
+  steps `50/89/100/120` were `+0.052/-0.118/-0.180/-0.305`; full/G3 cosines
+  were `+0.238/-0.110/-0.160/-0.272`. Full-score projections on the actual Adam
+  direction were `+37.60/-4.95/-20.99/-24.60`, while G2/G3 remained positive
+  near `+16--23`. At `h=0.005`, step 100 independently remained negative;
+  step 120 retained 298/300 branches and was not force-reconstructed. The
+  4804 evaluations averaged `5.909 s` with `6.194 s` P95; pre/postflight was
+  clean at 2 MiB/0% on all four RTX 5090s. Curated reference summary and NPZ
+  SHA-256 values are `0984c0...60ba` and `8b47bd...27c` under
+  `reports/assets/qh_g2_same_basin_diagnosis_20260804/`.
+  Commit `8f8d39a` adds a second diagnostic-only scalar that freezes geometry,
+  psi, volume points and weights but refits alpha/iota with the production FP32
+  QR for every query; its center derivative should equal cumulative G1+G2+G3.
+  It is synchronized remotely. Students job `32007` completed `0:0` in
+  `00:02:26`; isolated library SHA-256 is `97933e...a38c`. At step 120 its
+  eight-direction G3-frozen/native-G3 cosines were `0.9972--0.9983` and the
+  physical-secant/flow-VJP cosines exceeded `0.999997`. Along the actual Adam
+  tangent G3 predicted `+16.29`, the mixed scalar measured `+15.39--+15.90`,
+  and fixed-geometry/refitted-alpha volume-QS measured about `+39.25`; hence
+  the alpha/iota QR response does not explain the complete volume-QS slope
+  `-28.46`. Artifacts are in
+  `runs/qh_g3_fixed_geometry_closure_smoke_20260804/`. Students jobs
+  `32009--32012` completed `0:0` for 32-direction G2/G3 closures at steps
+  `50/89/100/120`. At the smallest scale, G3-frozen/native-G3 cosines were
+  `1.0000/1.0000/0.9995/0.9958`; physical-secant/flow-VJP closure stayed above
+  `0.999995`. Actual-Adam G3-frozen slopes remained positive at about
+  `+23.36/+15.91/+15.89/+15.91`. Thus neither G2, G3, nor the flow VJP develops
+  a sign reversal across the pre-peak/peak/post-peak trajectory.
+  Students job `32027` completed `0:0` for the missing step-50 small-scale
+  exact-score directional probe. Along the actual Adam tangent, complete-score
+  slopes were positive at `+89.38/+44.17/+26.69` for scales
+  `0.0003125/0.000625/0.00125`, providing the pre-peak contrast to the robustly
+  negative post-peak step-120 slopes.
 - On 2026-08-04, deterministic-bias investigation completed after the accepted
   G2-Adam sweep. Commit `8d43791` adds the diagnostic code and commit `61b5cd6`
   archives the final report, saved-trajectory analysis, figures, and short

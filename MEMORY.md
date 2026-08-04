@@ -38,6 +38,50 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-04, the new physical-gradient Adam sweep is active on branch
+  `qh-blackbox-gradient` at commit `8aca1dc53`. The fixed comparison object is
+  the main-document nfp4/nc3 score-93 case: the original IID `start_10` latent
+  in `reports/assets/qh_score_adam_start_panel_29960/start_10.json`, source case
+  2912. Its canonical float32 latent SHA-256 is
+  `bf3c7b5ed577f6e5690d83e685a7873150522060268096abb46cd1cc1c4700ad`;
+  use this logical hash rather than the JSON file hash, which differs between
+  CRLF and LF worktrees. The historical job-31058 baseline started from this
+  latent with zero Adam moments and four antithetic black-box directions under
+  FP32 RK4-256, improving `85.8832483 -> best 93.1655597 at step 197 -> final
+  93.1601644` in 200 steps. The new optimizer always restarts from the same
+  original latent, not the score-93 endpoint.
+  Commits `1579044/8aca1dc` add a provider-based retained-activation flow VJP,
+  `scripts/optimize_qh_physical_gradient_adam.py`, partition-specific one-GPU
+  launchers, and the reproducible sweep submitter. Each state performs one
+  compiled FP32 RK4 decode, calls the native fixed-front G2 physical gradient
+  while the graph is retained, and VJPs that cotangent to latent space. The
+  native forward score remains the exact ABI-9 C++/CUDA score; G2 is explicitly
+  an approximate gradient, not an exact derivative of every score dependency.
+  Every step saves latent, physical coil tokens, all score components and key
+  diagnostics, physical/latent gradients, Adam moments, trials, and timing.
+  Invalid candidates have bounded backtracking `[0.5,0.25,0.125]`; there is no
+  score-monotonicity acceptance gate. The pinned checkpoint is SHA-256
+  `39a3293a...`, and the active experimental gradient library is SHA-256
+  `fdf142aad0f0e0739c61cf61fde9d7195a688079a26016a9c010571d9440f8d4`.
+  Local VJP/reference tests passed `9/9` before submission.
+  P107 smoke job `31854` completed `0:0` in `00:03:10` with clean 2 MiB/0%
+  postflight. Under RK4-64 it improved `85.8605792 -> 87.3911770` in two
+  accepted steps; steady iteration walls were `9.55/8.70 s`. Its complete
+  artifacts are under `runs/qh_physical_gradient_adam_smoke/`.
+  Formal jobs `31855--31869` cover RK4 steps `{64,128,256}` crossed with learning
+  rates `{0.003,0.01,0.03,0.05,0.1}`, each for 200 steps. The authoritative job
+  mapping is
+  `runs/qh_physical_gradient_adam_start10_sweep_20260804/submitted_jobs.tsv`.
+  At handoff, jobs `31855,31856` occupied the two allowed Students GPUs and
+  `31860--31863` occupied four P107 GPUs; the other nine were queued behind the
+  expected per-user GPU/job limits. All six running jobs had entered numerical
+  iterations and written valid trajectories. This is intentionally an async
+  handoff: do not resubmit while these jobs remain active. On the user's next
+  acceptance request, collect all summaries, preserve every trajectory, plot
+  all 15 score/component curves together, compare the RK4-256 runs directly
+  with job 31058, append conclusions to
+  `reports/qh_blackbox_gradient_exploration_report.md`, and only then decide
+  whether a full physical evaluation is warranted.
 - On 2026-08-04, the user's correction about RK4 step selection superseded the
   earlier blanket conclusion "keep RK4-256". Different step counts define
   different discrete maps `F_N` and therefore different self-consistent

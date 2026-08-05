@@ -27,6 +27,19 @@ def parse_run(value: str) -> tuple[str, Path]:
     return label, Path(path)
 
 
+def parse_offset(value: str) -> tuple[str, int]:
+    label, separator, offset = value.rpartition("=")
+    if not separator or not label or not offset:
+        raise argparse.ArgumentTypeError("offsets must use LABEL=ITERATION")
+    try:
+        parsed = int(offset)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("offset iteration must be an integer") from error
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("offset iteration must be nonnegative")
+    return label, parsed
+
+
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     if not rows:
         return
@@ -62,6 +75,7 @@ def normalize_history_row(row: dict[str, Any], *, direction_count: int) -> dict[
         "surface_level": float(row.get("surface_level", float("nan"))),
         "valid_directions": int(valid_directions),
         "accepted_mode": str(accepted_mode),
+        "secant_center_score": float(row.get("secant_center_score", float("nan"))),
         "iteration_wall_s": float(row["iteration_wall_s"]),
         "pair_score_wall_s": float(row["pair_score_wall_s"]),
         "components": row.get("components"),
@@ -71,10 +85,22 @@ def normalize_history_row(row: dict[str, Any], *, direction_count: int) -> dict[
 def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze G3-informed subspace optimizer runs.")
     parser.add_argument("--run", action="append", type=parse_run, required=True)
+    parser.add_argument(
+        "--offset",
+        action="append",
+        type=parse_offset,
+        default=[],
+        help="Plot a run after an iteration offset, using LABEL=ITERATION.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--baseline-score", type=float, default=93.1655597)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    offsets = dict(args.offset)
+    labels = [label for label, _ in args.run]
+    unknown_offsets = set(offsets) - set(labels)
+    if unknown_offsets:
+        raise ValueError(f"offset labels have no matching run: {sorted(unknown_offsets)}")
 
     runs: list[dict[str, Any]] = []
     summary_rows: list[dict[str, Any]] = []
@@ -104,9 +130,23 @@ def main() -> None:
             # total_wall_s is recorded cumulatively in the raw history.
             raw_last = read_jsonl(directory / "history.jsonl")[-1]
             summary["total_wall_s"] = float(raw_last["total_wall_s"])
+        previous_score = float(summary["initial_score"])
+        center_repeat_deltas: list[float] = []
+        accepted_gains: list[float] = []
+        for row in history:
+            center_repeat_delta = float(row["secant_center_score"]) - previous_score
+            accepted_gain = float(row["current_score"]) - previous_score
+            row["center_repeat_delta"] = center_repeat_delta
+            row["accepted_score_gain"] = accepted_gain
+            if np.isfinite(center_repeat_delta):
+                center_repeat_deltas.append(center_repeat_delta)
+            if row["accepted_mode"] != "rejected":
+                accepted_gains.append(accepted_gain)
+            previous_score = float(row["current_score"])
         runs.append(
             {
                 "label": label,
+                "iteration_offset": int(offsets.get(label, 0)),
                 "directory": directory,
                 "summary": summary,
                 "manifest": manifest,
@@ -126,6 +166,7 @@ def main() -> None:
         summary_rows.append(
             {
                 "label": label,
+                "iteration_offset": int(offsets.get(label, 0)),
                 "directory": str(directory.resolve()),
                 "completed": summary_path.is_file(),
                 "iterations": len(history),
@@ -133,6 +174,8 @@ def main() -> None:
                 "final_score": float(summary["final_score"]),
                 "best_score": float(summary["best_score"]),
                 "best_iteration": int(summary["best_iteration"]),
+                "plotted_best_iteration": int(offsets.get(label, 0))
+                + int(summary["best_iteration"]),
                 "accepted_steps": int(summary.get("accepted_steps", accepted_steps)),
                 "adam_accepted_steps": int(summary.get("adam_accepted_steps", adam_steps)),
                 "projected_accepted_steps": int(
@@ -147,6 +190,14 @@ def main() -> None:
                 "branch_accepted_steps": int(summary.get("branch_accepted_steps", branch_steps)),
                 "probe_accepted_steps": int(summary.get("probe_accepted_steps", probe_steps)),
                 "rejected_steps": int(summary.get("rejected_steps", len(history) - accepted_steps)),
+                "max_abs_center_repeat_delta": (
+                    float(np.max(np.abs(center_repeat_deltas)))
+                    if center_repeat_deltas
+                    else None
+                ),
+                "minimum_accepted_score_gain": (
+                    float(np.min(accepted_gains)) if accepted_gains else None
+                ),
                 "mean_iteration_wall_s": float(np.mean(walls)),
                 "p95_iteration_wall_s": finite_percentile(walls, 95.0),
                 "max_iteration_wall_s": float(np.max(walls)),
@@ -161,6 +212,8 @@ def main() -> None:
                 {
                     "label": label,
                     "iteration": int(row["iteration"]),
+                    "plotted_iteration": int(offsets.get(label, 0))
+                    + int(row["iteration"]),
                     "current_score": float(row["current_score"]),
                     "best_score": float(row["best_score"]),
                     "qh_error": float(row["qh_error"]),
@@ -170,6 +223,8 @@ def main() -> None:
                     "surface_level": float(row["surface_level"]),
                     "valid_directions": int(row["valid_directions"]),
                     "accepted_mode": str(row.get("accepted_mode", "adam")),
+                    "center_repeat_delta": float(row["center_repeat_delta"]),
+                    "accepted_score_gain": float(row["accepted_score_gain"]),
                     "iteration_wall_s": float(row["iteration_wall_s"]),
                 }
             )
@@ -184,19 +239,20 @@ def main() -> None:
     figure, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
     for run in runs:
         history = run["history"]
-        steps = [0, *[int(row["iteration"]) for row in history]]
+        offset = int(run["iteration_offset"])
+        steps = [offset, *[offset + int(row["iteration"]) for row in history]]
         initial = float(run["summary"]["initial_score"])
         current = [initial, *[float(row["current_score"]) for row in history]]
         best = [initial, *[float(row["best_score"]) for row in history]]
         axes[0, 0].plot(steps, current, label=run["label"])
         axes[0, 1].plot(steps, best, label=run["label"])
         axes[1, 0].plot(
-            [int(row["iteration"]) for row in history],
+            [offset + int(row["iteration"]) for row in history],
             [float(row["qh_error"]) for row in history],
             label=run["label"],
         )
         axes[1, 1].plot(
-            [int(row["iteration"]) for row in history],
+            [offset + int(row["iteration"]) for row in history],
             [int(row["valid_directions"]) for row in history],
             label=run["label"],
         )
@@ -217,7 +273,8 @@ def main() -> None:
         raise ValueError("at least one run must provide score components")
     selected = max(detailed_runs, key=lambda run: float(run["summary"]["best_score"]))
     history = selected["history"]
-    steps = [int(row["iteration"]) for row in history]
+    offset = int(selected["iteration_offset"])
+    steps = [offset + int(row["iteration"]) for row in history]
     figure, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
     for component in COMPONENTS:
         axes[0, 0].plot(steps, [float(row["components"][component]) for row in history], label=component)

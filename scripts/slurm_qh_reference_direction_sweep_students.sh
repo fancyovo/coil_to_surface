@@ -23,6 +23,8 @@ expected_gradient_sha="${EXPECTED_GRADIENT_SHA:-071f67925a8eca6cfc702ed6b8380f46
 initial_case="${INITIAL_CASE:-$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json}"
 output_root="${OUTPUT_ROOT:-$project/runs/qh_reference_direction_sweep_20260806}"
 shard_index="${SHARD_INDEX:?SHARD_INDEX is required}"
+iterations="${ITERATIONS:-100}"
+seed="${SEED:-2026080601}"
 allocated_gpus="${CUDA_VISIBLE_DEVICES:?CUDA_VISIBLE_DEVICES is required}"
 child=""
 
@@ -96,7 +98,9 @@ python scripts/run_qh_reference_direction_sweep_shard.py \
   --checkpoint "$checkpoint" \
   --gradient-lib "$gradient_lib" \
   --initial-case "$initial_case" \
-  --gpus "$allocated_gpus" &
+  --gpus "$allocated_gpus" \
+  --iterations "$iterations" \
+  --seed "$seed" &
 child="$!"
 wait "$child"
 child=""

@@ -118,6 +118,9 @@ def main() -> None:
         adam_steps = sum(row["accepted_mode"] == "adam" for row in history)
         projected_steps = sum(row["accepted_mode"] == "projected" for row in history)
         quadratic_steps = sum(row["accepted_mode"] == "quadratic" for row in history)
+        quadratic_axis_steps = sum(
+            row["accepted_mode"] == "quadratic_axis" for row in history
+        )
         branch_steps = sum(row["accepted_mode"] == "branch_endpoint" for row in history)
         probe_steps = sum(row["accepted_mode"] == "probe_endpoint" for row in history)
         summary_rows.append(
@@ -137,6 +140,9 @@ def main() -> None:
                 ),
                 "quadratic_accepted_steps": int(
                     summary.get("quadratic_accepted_steps", quadratic_steps)
+                ),
+                "quadratic_axis_accepted_steps": int(
+                    summary.get("quadratic_axis_accepted_steps", quadratic_axis_steps)
                 ),
                 "branch_accepted_steps": int(summary.get("branch_accepted_steps", branch_steps)),
                 "probe_accepted_steps": int(summary.get("probe_accepted_steps", probe_steps)),

@@ -187,6 +187,16 @@ def diagonal_quadratic_trust_update(
             coefficient = perturbation
         elif scheme == "backward" and minus_score > center_score:
             coefficient = -perturbation
+        if scheme == "centered":
+            unscaled_predicted_gain = (
+                linear * coefficient + quadratic * coefficient * coefficient
+            )
+        elif coefficient > 0.0:
+            unscaled_predicted_gain = max(plus_score - center_score, 0.0)
+        elif coefficient < 0.0:
+            unscaled_predicted_gain = max(minus_score - center_score, 0.0)
+        else:
+            unscaled_predicted_gain = 0.0
         coefficients.append(coefficient)
         model_rows.append(
             {
@@ -196,6 +206,7 @@ def diagonal_quadratic_trust_update(
                 "linear": linear,
                 "quadratic": quadratic,
                 "unscaled_coefficient": coefficient,
+                "unscaled_predicted_gain": unscaled_predicted_gain,
             }
         )
     coefficient_array = np.asarray(coefficients, dtype=np.float64)
@@ -387,7 +398,7 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.01)
     parser.add_argument(
         "--proposal-mode",
-        choices=("adam", "projected", "quadratic"),
+        choices=("adam", "projected", "quadratic", "quadratic_axis"),
         default="adam",
     )
     parser.add_argument(
@@ -577,6 +588,9 @@ def main() -> None:
             gradient = np.zeros_like(current.noise, dtype=np.float64)
             quadratic_rows: list[dict[str, Any]] = []
             quadratic_predicted_gain = 0.0
+            quadratic_axis_rows: list[dict[str, Any]] = []
+            quadratic_axis_decode_wall_s = 0.0
+            quadratic_axis_score_wall_s = 0.0
             projected_rms = 0.0 if projected is None else rms(projected)
             previous_noise = current.noise.copy()
             tentative_first: np.ndarray | None = None
@@ -624,7 +638,7 @@ def main() -> None:
                     )
                     assert trust_update is not None
                     full_update = trust_update
-                else:
+                elif args.proposal_mode == "quadratic":
                     gradient = projected
                     quadratic_update, quadratic_rows, quadratic_predicted_gain = (
                         diagonal_quadratic_trust_update(
@@ -639,6 +653,17 @@ def main() -> None:
                         full_update = np.zeros_like(current.noise, dtype=np.float64)
                     else:
                         full_update = quadratic_update
+                else:
+                    gradient = projected
+                    _, quadratic_rows, quadratic_predicted_gain = (
+                        diagonal_quadratic_trust_update(
+                            current.score_result,
+                            direction_rows,
+                            directions,
+                            perturbation=args.perturbation,
+                            max_step_rms=projected_step_rms,
+                        )
+                    )
                 candidate_fractions = (
                     (1.0, *args.backtrack_fractions) if np.any(full_update) else ()
                 )
@@ -684,6 +709,117 @@ def main() -> None:
                         break
 
             incumbent = current if accepted is None else accepted
+            if args.proposal_mode == "quadratic_axis":
+                axis_entries: list[tuple[int, float, np.ndarray]] = []
+                endpoint_tolerance = args.perturbation * 1.0e-6
+                for row, direction in zip(quadratic_rows, directions, strict=True):
+                    coefficient = float(row["unscaled_coefficient"])
+                    if (
+                        coefficient == 0.0
+                        or abs(abs(coefficient) - args.perturbation) <= endpoint_tolerance
+                    ):
+                        continue
+                    state = np.clip(
+                        current.noise.astype(np.float64) + coefficient * direction,
+                        -args.noise_limit,
+                        args.noise_limit,
+                    ).astype(np.float32)
+                    axis_entries.append((int(row["index"]), coefficient, state))
+                if axis_entries:
+                    axis_states = np.stack([entry[2] for entry in axis_entries])
+                    axis_tokens, quadratic_axis_decode_wall_s = decode_noise_rk4(
+                        model,
+                        normalizer,
+                        axis_states,
+                        nfp=args.nfp,
+                        steps=args.rk4_steps,
+                        device=device,
+                    )
+                    (
+                        axis_results,
+                        _,
+                        axis_errors,
+                        quadratic_axis_score_wall_s,
+                    ) = score_tokens(
+                        pool,
+                        axis_tokens,
+                        nfp=args.nfp,
+                        target="QH",
+                        timeout_s=args.batch_timeout_s,
+                        metadata={"phase": "quadratic_axis", "iteration": iteration},
+                    )
+                    if any(error is not None for error in axis_errors):
+                        raise RuntimeError(
+                            f"quadratic-axis score worker failed at iteration {iteration}: "
+                            f"{axis_errors}"
+                        )
+                    for entry, result in zip(axis_entries, axis_results, strict=True):
+                        model_index, coefficient, _ = entry
+                        quadratic_axis_rows.append(
+                            {
+                                "direction_index": model_index,
+                                "coefficient": coefficient,
+                                "status": str(result.get("status")),
+                                "score": result_score(result),
+                                "same_branch": branch_fingerprint(result)
+                                == branch_fingerprint(current.score_result),
+                            }
+                        )
+                    axis_index = best_improving_endpoint(
+                        current.score_result,
+                        axis_results,
+                        same_branch_minimum_gain=args.probe_accept_minimum_gain,
+                        branch_minimum_gain=args.branch_accept_minimum_gain,
+                    )
+                    if axis_index is not None:
+                        model_index, coefficient, axis_state = axis_entries[axis_index]
+                        axis_candidate = evaluate(
+                            model,
+                            normalizer,
+                            axis_state,
+                            nfp=args.nfp,
+                            rk4_steps=args.rk4_steps,
+                            gradient_lib=args.gradient_lib,
+                            device=device,
+                            gradient_group=3,
+                        )
+                        axis_same_branch = (
+                            branch_fingerprint(axis_candidate.score_result)
+                            == branch_fingerprint(current.score_result)
+                        )
+                        axis_minimum_gain = (
+                            args.probe_accept_minimum_gain
+                            if axis_same_branch
+                            else args.branch_accept_minimum_gain
+                        )
+                        axis_wins = bool(
+                            axis_candidate.valid
+                            and score_improves_by(
+                                axis_candidate.score_result,
+                                incumbent.score_result,
+                                minimum_gain=axis_minimum_gain,
+                            )
+                        )
+                        candidate_rows.append(
+                            {
+                                "mode": "quadratic_axis",
+                                "direction_index": model_index,
+                                "coefficient": coefficient,
+                                "batch_score": result_score(axis_results[axis_index]),
+                                "same_branch": axis_same_branch,
+                                "status": str(axis_candidate.score_result.get("status")),
+                                "score": result_score(axis_candidate.score_result),
+                                "valid_g3": bool(axis_candidate.valid),
+                                "exact_score_accepted": axis_wins,
+                                "wall_s": float(axis_candidate.wall_s),
+                            }
+                        )
+                        if axis_wins:
+                            accepted = axis_candidate
+                            accepted_fraction = abs(coefficient) / args.perturbation
+                            accepted_mode = "quadratic_axis"
+                            incumbent = accepted
+
             probe_pair_competitive = bool(
                 probe_endpoint_index is not None
                 and score_improves_by(
@@ -765,6 +901,9 @@ def main() -> None:
                 "predicted_local_gain": predicted_gain,
                 "quadratic_model_rows": quadratic_rows,
                 "quadratic_predicted_gain": quadratic_predicted_gain,
+                "quadratic_axis_rows": quadratic_axis_rows,
+                "quadratic_axis_decode_wall_s": quadratic_axis_decode_wall_s,
+                "quadratic_axis_score_wall_s": quadratic_axis_score_wall_s,
                 "g3_gradient_rms": rms(g3_gradient),
                 "projected_gradient_rms": projected_rms,
                 "used_gradient_rms": rms(gradient),
@@ -780,6 +919,7 @@ def main() -> None:
                 ),
                 "pair_decode_wall_s": pair_decode_wall_s,
                 "pair_score_wall_s": pair_score_wall_s,
+                "quadratic_axis_score_wall_s": quadratic_axis_score_wall_s,
                 "pair_score_elapsed_s": pair_elapsed_s,
                 "candidate_trials": candidate_rows,
             }
@@ -875,6 +1015,9 @@ def main() -> None:
         ),
         "quadratic_accepted_steps": int(
             sum(row["accepted_mode"] == "quadratic" for row in history)
+        ),
+        "quadratic_axis_accepted_steps": int(
+            sum(row["accepted_mode"] == "quadratic_axis" for row in history)
         ),
         "branch_accepted_steps": int(
             sum(row["accepted_mode"] == "branch_endpoint" for row in history)

@@ -59,8 +59,9 @@ once the task is accepted.
   can be plotted on one honest iteration axis. A standalone plain-language
   midterm status, terminology guide, algorithm walkthrough, bug ledger, and
   explicit list of supported/unsupported conclusions is appended as section
-  19 of `reports/qh_blackbox_gradient_exploration_report.md`; it is currently
-  an uncommitted report update pending the final long-run results. Students job
+  19 of `reports/qh_blackbox_gradient_exploration_report.md`. Section 18/19,
+  the clean smoke, and the batch-1 G4 reference assets are archived in commit
+  `83b40cb`; final long-run results will be appended separately. Students job
   `32459` is queued with `afterok:32451` for a strict
   three-step A/B against job `32434` using the same high center, seed, and
   projected proposal; it writes

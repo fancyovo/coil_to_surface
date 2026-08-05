@@ -110,6 +110,7 @@ def main() -> None:
     parser.add_argument("--split", default="calibration")
     parser.add_argument("--variant-profile", choices=("selected", "matrix"), default="matrix")
     parser.add_argument("--total-limit", type=int, default=128)
+    parser.add_argument("--sample-offset", type=int, default=0)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
     parser.add_argument("--device", type=int, required=True)
@@ -121,7 +122,7 @@ def main() -> None:
         if row.get("_split") == args.split and int(row["helicity"]) == 1
     ]
     rows.sort(key=lambda row: float(row["qs_error"]))
-    rows = dispersed(rows)[: args.total_limit]
+    rows = dispersed(rows)[args.sample_offset : args.sample_offset + args.total_limit]
     rows = rows[args.worker_index :: args.worker_count]
     if not rows:
         raise ValueError("worker has no selected rows")

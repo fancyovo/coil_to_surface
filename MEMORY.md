@@ -39,6 +39,14 @@ once the task is accepted.
 ## 2. Current Snapshot
 
 - On 2026-08-05, branch `score-fast-continuation` reached local/remote commit
+  `ed6a861`. P107 single-GPU build/smoke job `32794` completed successfully,
+  compiling and testing the flux-weighted isotonic confidence follow-up.
+  Legacy remained 96.184742, continuous p1 remained ok at 94.852610 and
+  3.216 s, exact legacy hint reproduced legacy exactly, and an impossible hint
+  returned `branch_lost` in 0.031 s. The next final ranking audit must use the
+  second fixed 128-case block of the validation split (`sample_offset=128`),
+  because the first block was used to diagnose and fix the near-axis issue.
+- On 2026-08-05, branch `score-fast-continuation` reached local/remote commit
   `8cf934b`. P107 single-GPU build/smoke job `32763` completed successfully.
   Legacy score remained 96.184742; an exact strict hint reproduced it exactly,
   reduced the axis stage from about 2.09 s to 0.206 s, and an impossible hint

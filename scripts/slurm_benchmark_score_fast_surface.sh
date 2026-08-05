@@ -19,6 +19,7 @@ project="${PROJECT:?PROJECT must name the score-fast worktree}"
 case_dir="${CASE_DIR:-$HOME/local_surface_evaluator_data/volume_score_2000/cases}"
 metadata="${METADATA:-$HOME/local_surface_evaluator_data/volume_score_2000/metadata_selected.json}"
 total_samples="${TOTAL_SAMPLES:-128}"
+sample_offset="${SAMPLE_OFFSET:-0}"
 split="${SPLIT:-calibration}"
 variant_profile="${VARIANT_PROFILE:-matrix}"
 output_dir="${OUTPUT_DIR:-$project/runs/score_fast_continuation/calibration_${SLURM_JOB_ID}}"
@@ -71,6 +72,7 @@ for worker in 0 1 2 3; do
         --split "$split" \
         --variant-profile "$variant_profile" \
         --total-limit "$total_samples" \
+        --sample-offset "$sample_offset" \
         --worker-index "$worker" \
         --worker-count 4 \
         --device "$worker" \
@@ -83,6 +85,6 @@ for child in "${children[@]}"; do
 done
 children=()
 finished=$(date +%s.%N)
-printf '{"split":"%s","total_samples":%d,"wall_started":%s,"wall_finished":%s}\n' \
-    "$split" "$total_samples" "$started" "$finished" > "$output_dir/job.json"
+printf '{"split":"%s","sample_offset":%d,"total_samples":%d,"wall_started":%s,"wall_finished":%s}\n' \
+    "$split" "$sample_offset" "$total_samples" "$started" "$finished" > "$output_dir/job.json"
 exit "$status"

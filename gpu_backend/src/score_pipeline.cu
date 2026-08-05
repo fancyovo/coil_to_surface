@@ -785,7 +785,20 @@ bool find_axis_native(
     timings[SGPU_SCORE_TIME_AXIS_DOMAIN] += seconds_since(substage_started);
     std::vector<AxisCandidate> candidates;
     if (config.axis_hint_enabled) {
-        candidates.push_back({config.axis_hint_R, config.axis_hint_Z});
+        const bool hint_in_domain = config.axis_hint_R >= domain.r_min &&
+            config.axis_hint_R <= domain.r_max &&
+            config.axis_hint_Z >= domain.z_min && config.axis_hint_Z <= domain.z_max;
+        if (!hint_in_domain) {
+            axis.hint_distance = std::numeric_limits<double>::infinity();
+            if (config.axis_hint_require_continuation) {
+                axis.branch_lost = true;
+                return true;
+            }
+        } else {
+            candidates.push_back({config.axis_hint_R, config.axis_hint_Z});
+        }
+    }
+    if (config.axis_hint_enabled && !candidates.empty()) {
         substage_started = Clock::now();
         if (!refine_axis_candidates(
                 field, candidates, domain, nfp, config, config.axis_newton_iters)) {
@@ -1400,7 +1413,16 @@ bool screen_surface_confidence_native(
         );
         monotone_risk = std::max(monotone_risk, risk[level_index]);
         risk[level_index] = monotone_risk;
-        confidence[level_index] = logistic_confidence(monotone_risk, config);
+        const double radius_limit = config.surface_max_radius_scale * config.psi_a;
+        const double radius_margin = (0.995 * radius_limit - radius_max[level_index]) /
+            std::max(0.003 * radius_limit, 1.0e-14);
+        const double radius_confidence = radius_margin >= 40.0
+            ? 1.0
+            : radius_margin <= -40.0
+                ? 0.0
+                : 1.0 / (1.0 + std::exp(-radius_margin));
+        confidence[level_index] = logistic_confidence(monotone_risk, config) *
+            radius_confidence;
     }
 
     double effective_level = 0.0;

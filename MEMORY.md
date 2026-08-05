@@ -38,6 +38,21 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, branch `score-fast-continuation` is at local/remote source
+  commit `c71a5fb`. P107 single-GPU build/smoke job `32728` was submitted from
+  `scripts/slurm_score_fast_build_smoke.sh`; it writes under
+  `runs/score_fast_continuation/smoke_32728*` and tests legacy, continuous
+  1/2/4-period, valid strict axis-hint, and invalid strict-hint paths. It passed
+  `sbatch --test-only`, compiled successfully, and left the allocated GPU at
+  2 MiB/0%. On the score-96.185 smoke case, the strict valid hint reproduced
+  the legacy score exactly and reduced axis search+trace from about 2.085 s to
+  0.401 s. Fine timing split the 3.445 s legacy surface stage into about
+  0.472 s mixed one-period work, 1.070 s FP64 recheck, and 1.901 s long-trace
+  work. The first continuous prototype correctly removed the latter two costs,
+  but incorrectly retained radius-clipped outer levels and returned
+  `no_surface`; this result is diagnostic-only. The local follow-up now applies
+  a smooth radius-limit confidence and immediately rejects out-of-domain strict
+  hints; it is not yet committed or remotely validated.
 - On 2026-08-05, branch `score-fast-continuation` gained an unvalidated ABI-10
   prototype. It preserves legacy defaults while adding 16 fine-grained native
   timing fields, an opt-in continuous short-horizon surface-confidence mode,

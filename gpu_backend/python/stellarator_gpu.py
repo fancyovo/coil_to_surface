@@ -27,7 +27,7 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 9
+SGPU_SCORE_ABI_VERSION = 10
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",
@@ -54,6 +54,22 @@ SGPU_SCORE_TIMING_NAMES = (
     "alpha_solve_s",
     "qs_metrics_s",
     "score_s",
+    "axis_domain_s",
+    "axis_primary_grid_trace_s",
+    "axis_fallback_grid_trace_s",
+    "axis_candidate_extract_s",
+    "axis_candidate_refine_s",
+    "axis_fp64_verify_s",
+    "axis_topology_s",
+    "surface_ray_roots_s",
+    "surface_mixed_trace_s",
+    "surface_mixed_reduce_s",
+    "surface_fp64_trace_s",
+    "surface_fp64_reduce_s",
+    "surface_long_trace_s",
+    "surface_long_reduce_s",
+    "flux_calibration_s",
+    "surface_confidence_s",
 )
 SGPU_SCORE_STATUS_NAMES = {
     0: "ok",
@@ -62,6 +78,7 @@ SGPU_SCORE_STATUS_NAMES = {
     3: "drift_rejected",
     4: "flux_rejected",
     5: "alpha_failed",
+    6: "branch_lost",
     100: "internal_error",
 }
 
@@ -151,6 +168,17 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("score_qh_helicity_bad", ctypes.c_double),
         ("score_qh_helicity_good", ctypes.c_double),
         ("score_qh_helicity_exploration_fraction", ctypes.c_double),
+        ("surface_selection_mode", ctypes.c_int32),
+        ("surface_confidence_periods", ctypes.c_int32),
+        ("surface_confidence_drift_center", ctypes.c_double),
+        ("surface_confidence_drift_temperature", ctypes.c_double),
+        ("surface_confidence_smoothmax_temperature", ctypes.c_double),
+        ("surface_confidence_minimum", ctypes.c_double),
+        ("axis_hint_enabled", ctypes.c_int32),
+        ("axis_hint_require_continuation", ctypes.c_int32),
+        ("axis_hint_R", ctypes.c_double),
+        ("axis_hint_Z", ctypes.c_double),
+        ("axis_hint_max_distance", ctypes.c_double),
     ]
 
 
@@ -164,7 +192,7 @@ class _SgpuScoreResult(ctypes.Structure):
         ("flux_attempt_count", ctypes.c_int32),
         ("score", ctypes.c_double),
         ("components", ctypes.c_double * 7),
-        ("timings", ctypes.c_double * 16),
+        ("timings", ctypes.c_double * 32),
         ("axis_R", ctypes.c_double),
         ("axis_Z", ctypes.c_double),
         ("axis_residual", ctypes.c_double),
@@ -216,6 +244,11 @@ class _SgpuScoreResult(ctypes.Structure):
         ("volume_valid_fraction", ctypes.c_double),
         ("volume_weight_effective_fraction", ctypes.c_double),
         ("edge_weight_effective_fraction", ctypes.c_double),
+        ("surface_confidence_mean", ctypes.c_double),
+        ("surface_confidence_edge", ctypes.c_double),
+        ("surface_effective_level", ctypes.c_double),
+        ("surface_confidence_risk", ctypes.c_double),
+        ("axis_hint_distance", ctypes.c_double),
         ("coil_length_mean", ctypes.c_double),
         ("coil_curvature_p95", ctypes.c_double),
         ("coil_curvature_max", ctypes.c_double),
@@ -231,6 +264,7 @@ class _SgpuScoreResult(ctypes.Structure):
         ("alpha_column_count", ctypes.c_int32),
         ("surface_long_trace_periods_completed", ctypes.c_int32),
         ("surface_long_trace_rejected_count", ctypes.c_int32),
+        ("axis_used_hint", ctypes.c_int32),
         ("error_message", ctypes.c_char * 256),
     ]
 

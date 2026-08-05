@@ -144,6 +144,11 @@ void initialize_result(SgpuScoreResult* result, int device_id) {
     result->volume_valid_fraction = nan;
     result->volume_weight_effective_fraction = nan;
     result->edge_weight_effective_fraction = nan;
+    result->surface_confidence_mean = nan;
+    result->surface_confidence_edge = nan;
+    result->surface_effective_level = nan;
+    result->surface_confidence_risk = nan;
+    result->axis_hint_distance = nan;
     result->coil_length_mean = nan;
     result->coil_curvature_p95 = nan;
     result->coil_curvature_max = nan;
@@ -689,7 +694,9 @@ bool search_axis_grid(
     int grid,
     int max_candidates,
     int newton_iters,
-    std::vector<AxisCandidate>& candidates
+    std::vector<AxisCandidate>& candidates,
+    bool fallback,
+    double* timings
 ) {
     std::vector<double> rs(grid), zs(grid), R(static_cast<size_t>(grid) * grid), Z(R.size());
     for (int i = 0; i < grid; ++i) {
@@ -704,14 +711,21 @@ bool search_axis_grid(
         }
     }
     std::vector<double> R_end, Z_end;
+    auto substage_started = Clock::now();
     if (!trace_map(field, R, Z, nfp, config.axis_trace_steps, false, R_end, Z_end)) return false;
+    timings[fallback ? SGPU_SCORE_TIME_AXIS_FALLBACK_GRID_TRACE
+                     : SGPU_SCORE_TIME_AXIS_PRIMARY_GRID_TRACE] += seconds_since(substage_started);
     std::vector<double> dR(R.size()), dZ(Z.size());
     for (size_t i = 0; i < R.size(); ++i) {
         dR[i] = R_end[i] - R[i];
         dZ[i] = Z_end[i] - Z[i];
     }
+    substage_started = Clock::now();
     candidates = find_grid_candidates(rs, zs, dR, dZ, max_candidates);
+    timings[SGPU_SCORE_TIME_AXIS_CANDIDATE_EXTRACT] += seconds_since(substage_started);
+    substage_started = Clock::now();
     if (!refine_axis_candidates(field, candidates, domain, nfp, config, newton_iters)) return false;
+    timings[SGPU_SCORE_TIME_AXIS_CANDIDATE_REFINE] += seconds_since(substage_started);
     std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.residual < rhs.residual;
     });
@@ -722,14 +736,18 @@ bool search_axis_grid(
             verify_R[i] = candidates[i].R;
             verify_Z[i] = candidates[i].Z;
         }
+        substage_started = Clock::now();
         if (!trace_map(field, verify_R, verify_Z, nfp, config.axis_trace_steps, true, end_R, end_Z)) return false;
+        timings[SGPU_SCORE_TIME_AXIS_FP64_VERIFY] += seconds_since(substage_started);
         for (size_t i = 0; i < candidates.size(); ++i) {
             candidates[i].residual = std::hypot(end_R[i] - verify_R[i], end_Z[i] - verify_Z[i]);
         }
         std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
             return lhs.residual < rhs.residual;
         });
+        substage_started = Clock::now();
         classify_axis_topology(field, candidates, domain, nfp, config);
+        timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
     }
     return true;
 }
@@ -741,6 +759,9 @@ struct AxisData {
     std::vector<double> R_phi;
     std::vector<double> Z_phi;
     int candidate_count = 0;
+    bool used_hint = false;
+    bool branch_lost = false;
+    double hint_distance = std::numeric_limits<double>::quiet_NaN();
 };
 
 bool find_axis_native(
@@ -753,17 +774,63 @@ bool find_axis_native(
     int nfp,
     const SgpuScoreConfig& config,
     AxisData& axis,
-    double& trace_time
+    double& trace_time,
+    double* timings
 ) {
     trace_time = 0.0;
+    auto substage_started = Clock::now();
     const AxisDomain domain = build_axis_domain(
         coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff, config
     );
+    timings[SGPU_SCORE_TIME_AXIS_DOMAIN] += seconds_since(substage_started);
     std::vector<AxisCandidate> candidates;
-    if (!search_axis_grid(
-            field, domain, nfp, config, config.axis_grid,
-            config.axis_max_candidates, config.axis_newton_iters, candidates)) {
-        return false;
+    if (config.axis_hint_enabled) {
+        candidates.push_back({config.axis_hint_R, config.axis_hint_Z});
+        substage_started = Clock::now();
+        if (!refine_axis_candidates(
+                field, candidates, domain, nfp, config, config.axis_newton_iters)) {
+            return false;
+        }
+        timings[SGPU_SCORE_TIME_AXIS_CANDIDATE_REFINE] += seconds_since(substage_started);
+        if (!candidates.empty()) {
+            std::vector<double> verify_R{candidates[0].R}, verify_Z{candidates[0].Z};
+            std::vector<double> end_R, end_Z;
+            substage_started = Clock::now();
+            if (!trace_map(
+                    field, verify_R, verify_Z, nfp, config.axis_trace_steps,
+                    true, end_R, end_Z)) {
+                return false;
+            }
+            timings[SGPU_SCORE_TIME_AXIS_FP64_VERIFY] += seconds_since(substage_started);
+            candidates[0].residual = std::hypot(
+                end_R[0] - verify_R[0], end_Z[0] - verify_Z[0]
+            );
+            substage_started = Clock::now();
+            classify_axis_topology(field, candidates, domain, nfp, config);
+            timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
+            axis.hint_distance = std::hypot(
+                candidates[0].R - config.axis_hint_R,
+                candidates[0].Z - config.axis_hint_Z
+            );
+            axis.used_hint = candidates[0].residual <= config.axis_tolerance &&
+                candidates[0].elliptic &&
+                axis.hint_distance <= config.axis_hint_max_distance;
+        }
+        if (!axis.used_hint) {
+            candidates.clear();
+            if (config.axis_hint_require_continuation) {
+                axis.branch_lost = true;
+                return true;
+            }
+        }
+    }
+    if (!axis.used_hint) {
+        if (!search_axis_grid(
+                field, domain, nfp, config, config.axis_grid,
+                config.axis_max_candidates, config.axis_newton_iters, candidates,
+                false, timings)) {
+            return false;
+        }
     }
     auto eligible = [](const AxisCandidate& candidate, double tolerance) {
         return candidate.residual <= tolerance && candidate.elliptic;
@@ -775,12 +842,12 @@ bool find_axis_native(
     bool has_robust = std::any_of(candidates.begin(), candidates.end(), [&](const auto& candidate) {
         return robust(candidate);
     });
-    if (!has_robust && nfp <= config.axis_fallback_max_nfp) {
+    if (!axis.used_hint && !has_robust && nfp <= config.axis_fallback_max_nfp) {
         std::vector<AxisCandidate> fallback;
         if (!search_axis_grid(
                 field, domain, nfp, config, config.axis_fallback_grid,
                 config.axis_fallback_max_candidates, config.axis_fallback_newton_iters,
-                fallback)) {
+                fallback, true, timings)) {
             return false;
         }
         axis.candidate_count = static_cast<int>(candidates.size() + fallback.size());
@@ -1124,12 +1191,14 @@ bool screen_surfaces_native(
     const PsiData& psi,
     int nfp,
     const SgpuScoreConfig& config,
-    std::vector<SurfaceScreen>& screens
+    std::vector<SurfaceScreen>& screens,
+    double* timings
 ) {
     const int levels = config.surface_level_count;
     const int theta_count = config.surface_theta_count;
     const size_t count = static_cast<size_t>(levels) * theta_count;
     std::vector<double> R(count), Z(count), radii(count), theta(count), R_end, Z_end;
+    auto substage_started = Clock::now();
     for (int level_index = 0; level_index < levels; ++level_index) {
         for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
             const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
@@ -1141,7 +1210,11 @@ bool screen_surfaces_native(
             Z[index] = axis.Z[0] + radii[index] * std::sin(theta[index]);
         }
     }
+    timings[SGPU_SCORE_TIME_SURFACE_RAY_ROOTS] += seconds_since(substage_started);
+    substage_started = Clock::now();
     if (!trace_map(field, R, Z, nfp, config.surface_trace_steps, false, R_end, Z_end)) return false;
+    timings[SGPU_SCORE_TIME_SURFACE_MIXED_TRACE] += seconds_since(substage_started);
+    substage_started = Clock::now();
     screens.resize(levels);
     for (int level_index = 0; level_index < levels; ++level_index) {
         std::vector<double> distances;
@@ -1174,6 +1247,7 @@ bool screen_surfaces_native(
         screen.strict = screen.stable &&
                         screen.relative_drift_p95 <= config.surface_drift_relative_tolerance;
     }
+    timings[SGPU_SCORE_TIME_SURFACE_MIXED_REDUCE] += seconds_since(substage_started);
 
     std::vector<int> verify_indices;
     // Keep the expensive long-horizon path bounded: only the six largest
@@ -1190,7 +1264,10 @@ bool screen_surfaces_native(
             verify_R.insert(verify_R.end(), R.begin() + offset, R.begin() + offset + theta_count);
             verify_Z.insert(verify_Z.end(), Z.begin() + offset, Z.begin() + offset + theta_count);
         }
+        substage_started = Clock::now();
         if (!trace_map(field, verify_R, verify_Z, nfp, config.surface_trace_steps, true, verify_R_end, verify_Z_end)) return false;
+        timings[SGPU_SCORE_TIME_SURFACE_FP64_TRACE] += seconds_since(substage_started);
+        substage_started = Clock::now();
         for (size_t block = 0; block < verify_indices.size(); ++block) {
             const int level_index = verify_indices[block];
             std::vector<double> distances;
@@ -1219,7 +1296,174 @@ bool screen_surfaces_native(
                 screens[level_index].relative_drift_p95 <= config.surface_drift_relative_tolerance;
             screens[level_index].verified = true;
         }
+        timings[SGPU_SCORE_TIME_SURFACE_FP64_REDUCE] += seconds_since(substage_started);
     }
+    return true;
+}
+
+double smooth_tail_risk(const std::vector<double>& values, double temperature) {
+    if (values.empty()) return std::numeric_limits<double>::infinity();
+    const double maximum = *std::max_element(values.begin(), values.end());
+    if (!std::isfinite(maximum)) return std::numeric_limits<double>::infinity();
+    double sum = 0.0;
+    for (double value : values) {
+        sum += std::exp((value - maximum) / temperature);
+    }
+    return maximum + temperature * std::log(sum / values.size());
+}
+
+double logistic_confidence(double risk, const SgpuScoreConfig& config) {
+    if (!std::isfinite(risk)) return 0.0;
+    const double argument = (risk - config.surface_confidence_drift_center) /
+        config.surface_confidence_drift_temperature;
+    if (argument >= 40.0) return 0.0;
+    if (argument <= -40.0) return 1.0;
+    return 1.0 / (1.0 + std::exp(argument));
+}
+
+bool screen_surface_confidence_native(
+    void* field,
+    const AxisData& axis,
+    const PsiData& psi,
+    int nfp,
+    const SgpuScoreConfig& config,
+    std::vector<SurfaceScreen>& screens,
+    SgpuScoreResult& result
+) {
+    const int levels = config.surface_level_count;
+    const int theta_count = config.surface_theta_count;
+    const size_t count = static_cast<size_t>(levels) * theta_count;
+    std::vector<double> R(count), Z(count), radii(count), radius_mean(levels, 0.0);
+    std::vector<double> radius_max(levels, 0.0), R_end, Z_end;
+    auto substage_started = Clock::now();
+    for (int level_index = 0; level_index < levels; ++level_index) {
+        for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+            const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
+            const double theta = TWOPI * theta_index / theta_count;
+            std::array<double, 25> polynomial;
+            ray_polynomial_phi0(psi, config, theta, polynomial);
+            radii[index] = solve_ray_radius(
+                polynomial, config.surface_levels[level_index], config
+            );
+            radius_mean[level_index] += radii[index] / theta_count;
+            radius_max[level_index] = std::max(radius_max[level_index], radii[index]);
+            R[index] = axis.R[0] + radii[index] * std::cos(theta);
+            Z[index] = axis.Z[0] + radii[index] * std::sin(theta);
+        }
+    }
+    result.timings[SGPU_SCORE_TIME_SURFACE_RAY_ROOTS] += seconds_since(substage_started);
+
+    std::vector<double> maximum_relative_drift(count, 0.0);
+    for (int period = 0; period < config.surface_confidence_periods; ++period) {
+        substage_started = Clock::now();
+        if (!trace_map(field, R, Z, nfp, config.surface_trace_steps, false, R_end, Z_end)) {
+            return false;
+        }
+        result.timings[SGPU_SCORE_TIME_SURFACE_MIXED_TRACE] += seconds_since(substage_started);
+        substage_started = Clock::now();
+        for (int level_index = 0; level_index < levels; ++level_index) {
+            for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+                const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
+                double value, gR, gZ, gPhi;
+                evaluate_psi_host(
+                    psi, axis, config, nfp, R_end[index], Z_end[index], TWOPI / nfp,
+                    value, gR, gZ, gPhi
+                );
+                const double gradient_norm = std::sqrt(
+                    gR * gR + gZ * gZ + std::pow(gPhi / R_end[index], 2.0)
+                );
+                const double distance = std::abs(value - config.surface_levels[level_index]) /
+                    std::max(gradient_norm, 1.0e-14);
+                const double relative = distance / std::max(radius_mean[level_index], 1.0e-14);
+                maximum_relative_drift[index] = std::max(
+                    maximum_relative_drift[index],
+                    std::isfinite(relative) ? relative : std::numeric_limits<double>::infinity()
+                );
+            }
+        }
+        R.swap(R_end);
+        Z.swap(Z_end);
+        result.timings[SGPU_SCORE_TIME_SURFACE_MIXED_REDUCE] += seconds_since(substage_started);
+    }
+
+    substage_started = Clock::now();
+    std::vector<double> risk(levels), confidence(levels);
+    double monotone_risk = 0.0;
+    for (int level_index = 0; level_index < levels; ++level_index) {
+        const size_t offset = static_cast<size_t>(level_index) * theta_count;
+        std::vector<double> level_values(
+            maximum_relative_drift.begin() + offset,
+            maximum_relative_drift.begin() + offset + theta_count
+        );
+        risk[level_index] = smooth_tail_risk(
+            level_values, config.surface_confidence_smoothmax_temperature
+        );
+        monotone_risk = std::max(monotone_risk, risk[level_index]);
+        risk[level_index] = monotone_risk;
+        confidence[level_index] = logistic_confidence(monotone_risk, config);
+    }
+
+    double effective_level = 0.0;
+    double previous_level = 0.0;
+    double previous_confidence = 1.0;
+    for (int level_index = 0; level_index < levels; ++level_index) {
+        const double level = config.surface_levels[level_index];
+        effective_level += 0.5 * (previous_confidence + confidence[level_index]) *
+            (level - previous_level);
+        previous_level = level;
+        previous_confidence = confidence[level_index];
+    }
+    effective_level = std::min(
+        config.surface_levels[levels - 1], std::max(0.0, effective_level)
+    );
+    const auto interpolate = [&](const std::vector<double>& values, double initial) {
+        if (effective_level <= config.surface_levels[0]) {
+            const double weight = effective_level / config.surface_levels[0];
+            return initial + weight * (values[0] - initial);
+        }
+        for (int index = 1; index < levels; ++index) {
+            if (effective_level <= config.surface_levels[index]) {
+                const double weight = (effective_level - config.surface_levels[index - 1]) /
+                    (config.surface_levels[index] - config.surface_levels[index - 1]);
+                return values[index - 1] + weight * (values[index] - values[index - 1]);
+            }
+        }
+        return values.back();
+    };
+    const double effective_risk = interpolate(risk, 0.0);
+    const double effective_confidence = logistic_confidence(effective_risk, config);
+    result.surface_confidence_mean = effective_level / config.surface_levels[levels - 1];
+    result.surface_confidence_edge = effective_confidence;
+    result.surface_effective_level = effective_level;
+    result.surface_confidence_risk = effective_risk;
+
+    SurfaceScreen screen;
+    screen.level = std::max(effective_level, config.surface_levels[0]);
+    double mean_radius = 0.0;
+    double maximum_radius = 0.0;
+    for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+        const double theta = TWOPI * theta_index / theta_count;
+        std::array<double, 25> polynomial;
+        ray_polynomial_phi0(psi, config, theta, polynomial);
+        const double radius = solve_ray_radius(polynomial, screen.level, config);
+        mean_radius += radius / theta_count;
+        maximum_radius = std::max(maximum_radius, radius);
+    }
+    screen.radius_mean = mean_radius;
+    screen.radius_max = maximum_radius;
+    screen.relative_drift_p95 = effective_risk;
+    screen.one_period_relative_drift_p95 = effective_risk;
+    screen.drift_p95 = effective_risk * mean_radius;
+    screen.long_trace_periods_completed = config.surface_confidence_periods;
+    screen.long_verified = false;
+    screen.stable = effective_level >= config.surface_levels[0] &&
+        effective_confidence >= config.surface_confidence_minimum &&
+        maximum_radius < config.surface_max_radius_scale * config.psi_a * 0.999;
+    screen.strict = screen.stable;
+    screen.verified = true;
+    screens.assign(1, screen);
+    result.surface_confidence_edge = effective_confidence;
+    result.timings[SGPU_SCORE_TIME_SURFACE_CONFIDENCE] += seconds_since(substage_started);
     return true;
 }
 
@@ -1229,7 +1473,8 @@ bool verify_surface_long_horizon(
     const PsiData& psi,
     int nfp,
     const SgpuScoreConfig& config,
-    SurfaceScreen& screen
+    SurfaceScreen& screen,
+    double* timings
 ) {
     screen.long_verified = true;
     screen.long_trace_periods_completed = 1;
@@ -1248,9 +1493,12 @@ bool verify_surface_long_horizon(
 
     double maximum_relative_drift = screen.relative_drift_p95;
     for (int period = 1; period <= config.surface_long_trace_periods; ++period) {
+        auto substage_started = Clock::now();
         if (!trace_map(field, R, Z, nfp, config.surface_trace_steps, false, R_end, Z_end)) {
             return false;
         }
+        timings[SGPU_SCORE_TIME_SURFACE_LONG_TRACE] += seconds_since(substage_started);
+        substage_started = Clock::now();
         std::vector<double> distances;
         distances.reserve(theta_count);
         for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
@@ -1273,6 +1521,7 @@ bool verify_surface_long_horizon(
         screen.long_trace_periods_completed = period;
         R.swap(R_end);
         Z.swap(Z_end);
+        timings[SGPU_SCORE_TIME_SURFACE_LONG_REDUCE] += seconds_since(substage_started);
         if (maximum_relative_drift > config.surface_long_trace_relative_tolerance) break;
     }
     screen.relative_drift_p95 = maximum_relative_drift;
@@ -1318,7 +1567,16 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         !(config.score_qh_helicity_good > config.score_qh_helicity_bad) ||
         config.axis_topology_margin < 0.0 || config.axis_topology_margin >= 2.0 ||
         config.score_qh_helicity_exploration_fraction < 0.0 ||
-        config.score_qh_helicity_exploration_fraction > 1.0) {
+        config.score_qh_helicity_exploration_fraction > 1.0 ||
+        config.surface_selection_mode < 0 || config.surface_selection_mode > 1 ||
+        config.surface_confidence_periods < 1 || config.surface_confidence_periods > 16 ||
+        !(config.surface_confidence_drift_center > 0.0) ||
+        !(config.surface_confidence_drift_temperature > 0.0) ||
+        !(config.surface_confidence_smoothmax_temperature > 0.0) ||
+        config.surface_confidence_minimum < 0.0 || config.surface_confidence_minimum > 1.0 ||
+        config.axis_hint_enabled < 0 || config.axis_hint_enabled > 1 ||
+        config.axis_hint_require_continuation < 0 || config.axis_hint_require_continuation > 1 ||
+        !(config.axis_hint_max_distance > 0.0)) {
         reason = "invalid score configuration dimensions";
         return false;
     }
@@ -1361,7 +1619,10 @@ void fill_early_components(
     );
     result.score_surface_size = size;
     const double drift = q_down(minimum_drift, config.score_surface_drift_scale, 1.0, 0.15);
-    const double count = q_up(strict_count, 2.0, 1.0);
+    const double count = config.surface_selection_mode == 1 &&
+            std::isfinite(result.surface_confidence_mean)
+        ? clip01(result.surface_confidence_mean)
+        : q_up(strict_count, 2.0, 1.0);
     result.components[SGPU_SCORE_COMPONENT_SURFACE] = blend({{0.65, size}, {0.25, drift}, {0.10, count}});
     result.components[SGPU_SCORE_COMPONENT_COIL] = coil_component(coil);
 }
@@ -3622,7 +3883,8 @@ bool run_downstream_gpu(
     for (SurfaceScreen* candidate : candidates) {
         const auto trace_started = Clock::now();
         if (verify_long_horizon) {
-            if (!verify_surface_long_horizon(field, axis, psi, nfp, config, *candidate)) {
+            if (!verify_surface_long_horizon(
+                    field, axis, psi, nfp, config, *candidate, result.timings)) {
                 fail_from_backend(&result, "long-horizon surface trace");
                 return false;
             }
@@ -3638,9 +3900,11 @@ bool run_downstream_gpu(
         }
         ++result.flux_attempt_count;
         FluxCalibrationNative trial;
+        const auto calibration_started = Clock::now();
         const bool trial_ok = calibrate_flux_native(
             field, device_psi, axis, psi, nfp, candidate->level, config, trial, result
         );
+        result.timings[SGPU_SCORE_TIME_FLUX_CALIBRATION] += seconds_since(calibration_started);
         if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
         if (!selected_surface || trial_ok) {
             selected_surface = candidate;
@@ -5275,6 +5539,17 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_qh_helicity_bad = 0.10;
     config->score_qh_helicity_good = 0.30;
     config->score_qh_helicity_exploration_fraction = 0.20;
+    config->surface_selection_mode = 0;
+    config->surface_confidence_periods = 2;
+    config->surface_confidence_drift_center = 0.05;
+    config->surface_confidence_drift_temperature = 0.0125;
+    config->surface_confidence_smoothmax_temperature = 0.005;
+    config->surface_confidence_minimum = 0.05;
+    config->axis_hint_enabled = 0;
+    config->axis_hint_require_continuation = 0;
+    config->axis_hint_R = 0.0;
+    config->axis_hint_Z = 0.0;
+    config->axis_hint_max_distance = 0.10;
     sgpu_internal_set_error("");
     return 0;
 }
@@ -5335,7 +5610,7 @@ int sgpu_score_coils(
         double axis_trace_time = 0.0;
         if (!find_axis_native(
                 field, coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff,
-                nfp, *config, axis, axis_trace_time)) {
+                nfp, *config, axis, axis_trace_time, result->timings)) {
             return_code = fail_from_backend(result, "axis search");
             break;
         }
@@ -5343,8 +5618,10 @@ int sgpu_score_coils(
         result->timings[SGPU_SCORE_TIME_AXIS_SEARCH] =
             std::max(0.0, seconds_since(stage_started) - axis_trace_time);
         result->axis_candidate_count = axis.candidate_count;
+        result->axis_used_hint = axis.used_hint ? 1 : 0;
+        result->axis_hint_distance = axis.hint_distance;
         if (axis.R.empty()) {
-            result->status = SGPU_SCORE_NO_AXIS;
+            result->status = axis.branch_lost ? SGPU_SCORE_BRANCH_LOST : SGPU_SCORE_NO_AXIS;
             result->stage_completed = SCORE_STAGE_AXIS;
             result->components[SGPU_SCORE_COMPONENT_COIL] = coil_component(coil);
             break;
@@ -5379,7 +5656,12 @@ int sgpu_score_coils(
 
         std::vector<SurfaceScreen> screens;
         stage_started = Clock::now();
-        if (!screen_surfaces_native(field, axis, psi, nfp, *config, screens)) {
+        const bool screen_ok = config->surface_selection_mode == 1
+            ? screen_surface_confidence_native(
+                field, axis, psi, nfp, *config, screens, *result)
+            : screen_surfaces_native(
+                field, axis, psi, nfp, *config, screens, result->timings);
+        if (!screen_ok) {
             return_code = fail_from_backend(result, "surface screen");
             break;
         }
@@ -5404,7 +5686,7 @@ int sgpu_score_coils(
         }
         const bool downstream_ok = run_downstream_gpu(
                 field, currents_a, n_base_coils, nfp, axis, psi,
-                screens, *config, *result);
+                screens, *config, *result, config->surface_selection_mode == 0);
         fill_early_components(*config, coil, axis, psi, screens, *result);
         if (!downstream_ok) {
             if (result->status == SGPU_SCORE_INTERNAL_ERROR) return_code = 1;

@@ -3,10 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 9u
+#define SGPU_SCORE_ABI_VERSION 10u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
-#define SGPU_SCORE_TIMING_COUNT 16
+#define SGPU_SCORE_TIMING_COUNT 32
 #define SGPU_SCORE_GRADIENT_ABI_VERSION 1u
 
 enum SgpuScoreStatus {
@@ -16,6 +16,7 @@ enum SgpuScoreStatus {
     SGPU_SCORE_DRIFT_REJECTED = 3,
     SGPU_SCORE_FLUX_REJECTED = 4,
     SGPU_SCORE_ALPHA_FAILED = 5,
+    SGPU_SCORE_BRANCH_LOST = 6,
     SGPU_SCORE_INTERNAL_ERROR = 100,
 };
 
@@ -46,6 +47,22 @@ enum SgpuScoreTiming {
     SGPU_SCORE_TIME_ALPHA_QR = 13,
     SGPU_SCORE_TIME_QS_METRICS = 14,
     SGPU_SCORE_TIME_SCORE = 15,
+    SGPU_SCORE_TIME_AXIS_DOMAIN = 16,
+    SGPU_SCORE_TIME_AXIS_PRIMARY_GRID_TRACE = 17,
+    SGPU_SCORE_TIME_AXIS_FALLBACK_GRID_TRACE = 18,
+    SGPU_SCORE_TIME_AXIS_CANDIDATE_EXTRACT = 19,
+    SGPU_SCORE_TIME_AXIS_CANDIDATE_REFINE = 20,
+    SGPU_SCORE_TIME_AXIS_FP64_VERIFY = 21,
+    SGPU_SCORE_TIME_AXIS_TOPOLOGY = 22,
+    SGPU_SCORE_TIME_SURFACE_RAY_ROOTS = 23,
+    SGPU_SCORE_TIME_SURFACE_MIXED_TRACE = 24,
+    SGPU_SCORE_TIME_SURFACE_MIXED_REDUCE = 25,
+    SGPU_SCORE_TIME_SURFACE_FP64_TRACE = 26,
+    SGPU_SCORE_TIME_SURFACE_FP64_REDUCE = 27,
+    SGPU_SCORE_TIME_SURFACE_LONG_TRACE = 28,
+    SGPU_SCORE_TIME_SURFACE_LONG_REDUCE = 29,
+    SGPU_SCORE_TIME_FLUX_CALIBRATION = 30,
+    SGPU_SCORE_TIME_SURFACE_CONFIDENCE = 31,
 };
 
 struct SgpuScoreConfig {
@@ -139,6 +156,19 @@ struct SgpuScoreConfig {
     double score_qh_helicity_bad;
     double score_qh_helicity_good;
     double score_qh_helicity_exploration_fraction;
+
+    std::int32_t surface_selection_mode;
+    std::int32_t surface_confidence_periods;
+    double surface_confidence_drift_center;
+    double surface_confidence_drift_temperature;
+    double surface_confidence_smoothmax_temperature;
+    double surface_confidence_minimum;
+
+    std::int32_t axis_hint_enabled;
+    std::int32_t axis_hint_require_continuation;
+    double axis_hint_R;
+    double axis_hint_Z;
+    double axis_hint_max_distance;
 };
 
 struct SgpuScoreResult {
@@ -210,6 +240,12 @@ struct SgpuScoreResult {
     double volume_weight_effective_fraction;
     double edge_weight_effective_fraction;
 
+    double surface_confidence_mean;
+    double surface_confidence_edge;
+    double surface_effective_level;
+    double surface_confidence_risk;
+    double axis_hint_distance;
+
     double coil_length_mean;
     double coil_curvature_p95;
     double coil_curvature_max;
@@ -226,6 +262,7 @@ struct SgpuScoreResult {
     std::int32_t alpha_column_count;
     std::int32_t surface_long_trace_periods_completed;
     std::int32_t surface_long_trace_rejected_count;
+    std::int32_t axis_used_hint;
     char error_message[256];
 };
 

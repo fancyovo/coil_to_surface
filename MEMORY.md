@@ -38,6 +38,18 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, branch `score-fast-continuation` gained an unvalidated ABI-10
+  prototype. It preserves legacy defaults while adding 16 fine-grained native
+  timing fields, an opt-in continuous short-horizon surface-confidence mode,
+  and an opt-in magnetic-axis hint/strict-continuation interface. The prototype
+  has passed local Python syntax and diff checks only; it must not be treated as
+  numerically accepted or deployed until remote compilation, legacy regression,
+  ranking, high-tail, smoothness, and timing A/B tests pass. No Slurm job has
+  been submitted for it yet.
+- On 2026-08-05, branch `score-fast-continuation` was created from archived
+  commit `6e3c0a4` to pursue the native-score throughput and continuity work
+  below. The branch is now active; no remote jobs have been submitted yet.
+  The previous planning-only/no-branch state is superseded.
 - On 2026-08-05, the user ended black-box-gradient development as a research
   direction and redirected the next branch toward native-score throughput and
   score continuity. No new branch has been created and no experiment has been
@@ -56,8 +68,7 @@ once the task is accepted.
   3.28 s total, 1.62 s axis search, 1.01 s surface screening, 0.43 s for all
   psi stages, and 0.058 s for alpha/iota plus QS. The plain-language design,
   equations, anti-cheat rules, validation gates, and staged action plan are in
-  `reports/qh_score_throughput_and_continuous_surface_plan.md`. Suggested future
-  branch name is `score-fast-continuation`, to be created only after approval.
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`.
 - On 2026-08-05, the 27-run G3-reference matrix sweep from commit `4a552c6`
   completed on six RTX 5090 jobs `32525`--`32530`. The durable optimizer
   contract is: native ABI-9 score remains a black box; flow-pulled

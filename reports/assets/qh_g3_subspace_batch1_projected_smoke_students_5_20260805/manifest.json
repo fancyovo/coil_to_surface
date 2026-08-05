@@ -1,0 +1,49 @@
+{
+  "format": "qh_g3_informed_subspace_adam_v1",
+  "algorithm": "exact_secant_projection_over_g3_plus_random_orthogonal_subspace_then_projected",
+  "score_path": "native_cpp_cuda_abi9_exact_forward",
+  "gradient_reference": "native_fixed_geometry_g3_vjp_through_flow",
+  "nfp": 4,
+  "n_coils": 3,
+  "iterations": 5,
+  "rk4_steps": 64,
+  "random_directions": 4,
+  "total_secant_directions": 5,
+  "perturbation": 0.0025,
+  "learning_rate": 0.01,
+  "proposal_mode": "projected",
+  "projected_step_rms": 0.0025,
+  "betas": [
+    0.5,
+    0.999
+  ],
+  "adam_epsilon": 1e-08,
+  "backtrack_fractions": [
+    0.5,
+    0.25,
+    0.125
+  ],
+  "accept_drop": 0.0,
+  "probe_accept_minimum_gain": 0.001,
+  "branch_accept_minimum_gain": 0.01,
+  "acceptance": "centered or feasible one-sided same-branch secants plus monotone exact ABI-9 gate; improving probe endpoints compete with the smooth Adam candidate",
+  "secant_flow_decode": "independent_batch1",
+  "secant_center_score": "native_score_api_in_same_worker_pool_batch",
+  "noise_limit": 6.0,
+  "seed": 2026080523,
+  "gpu_ids": [
+    0,
+    1
+  ],
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "gradient_lib": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/gpu_backend/build_g4_oracle/libstellarator_gpu.so",
+  "gradient_lib_sha256": "071f67925a8eca6cfc702ed6b8380f4677bb4c36711e6aae032b7dd227bdc88c",
+  "initial_case": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_g3_subspace_one_sided_refine_seed15_124_20260805/trajectory/step_0113.json",
+  "initial_case_sha256": "e562668dc172772851f1f0d8b558f3edc28bd946fec227c8466359db915b77fe",
+  "initial_noise_float32_sha256": "eb9e0833c043c06b230bf17dbc6eaec2c0b4d50615802ed2aa9d377b1cf24504",
+  "initial_metadata": {},
+  "slurm_job_id": "32434",
+  "slurm_partition": "Students"
+}

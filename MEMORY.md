@@ -38,6 +38,165 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, branch `qh-blackbox-gradient` reached local/remote source
+  commit `e601fb4`. Commit `7803aa2` is the batch-1 correctness baseline; the
+  two active long optimizations `32449/32451` started from that commit and are
+  unaffected by the later source update. Commit `d2545dc` removes a bounded
+  but material performance waste for future runs: all smooth backtrack states
+  are independently batch-1 decoded, their exact scores are evaluated in one
+  parallel GPU batch, and G3 is computed only for the first score-acceptable
+  candidate. The numerical mapping, backtrack order, exact gate, and accepted
+  state are unchanged; related local tests still pass `26/26`, but the new
+  fast path requires a remote numerical smoke after the active jobs release a
+  GPU. Commit `9b1e6e4` fixes a logging-only ambiguity: older accepted-step
+  rows computed `secant_center_score_delta` against the post-update score, so
+  that field represented the negative accepted gain rather than the center
+  repeat error. Future rows compare against the pre-update center and record
+  `accepted_score_gain` separately; optimization decisions and old accepted
+  scores are unaffected. The focused local suite passes `17/17`. Commit
+  `e601fb4` extends the offline analyzer with explicit continuation offsets,
+  reconstructed center-repeat errors, and accepted-score gains so staged runs
+  can be plotted on one honest iteration axis. A standalone plain-language
+  midterm status, terminology guide, algorithm walkthrough, bug ledger, and
+  explicit list of supported/unsupported conclusions is appended as section
+  19 of `reports/qh_blackbox_gradient_exploration_report.md`; it is currently
+  an uncommitted report update pending the final long-run results. Students job
+  `32459` is queued with `afterok:32451` for a strict
+  three-step A/B against job `32434` using the same high center, seed, and
+  projected proposal; it writes
+  `runs/qh_g3_subspace_batch1_batched_gate_smoke_students_3_20260805`.
+  A critical numerical-protocol error was found earlier: the old
+  exact same-basin reference decoded physical endpoints in batches of 32,
+  while G2/G3 flow VJPs and accepted optimizer candidates use batch 1; the
+  later secant optimizer likewise decoded its ten probes as one batch but
+  re-evaluated proposals at batch 1. The same latent is already known to move
+  the exact score by as much as about `0.0595` solely from the FP32 GEMM batch
+  shape. Therefore the old batch-32 full-vs-G2/G3 cosine evidence and all
+  batch-10 quadratic/secant direction-quality conclusions are superseded by
+  the clean rerun recorded below. Scores of states that passed the exact batch-1
+  acceptance gate remain valid. A controlled first-step replay used exactly
+  the same five directions, but two random-direction slopes changed sign
+  between batch 10 and batch 1; the two RMS-0.01 Adam updates had cosine only
+  `0.360` and reached exact scores `87.4827` versus `86.1107`. Commit `7803aa2`
+  makes every secant center,
+  positive/negative endpoint, and quadratic-axis candidate use independent
+  batch-1 RK4 decoding, records the independently rescored center delta, and
+  parameterizes reference decode batch size/direction count; related local
+  tests pass `26/26`. P107 four-GPU job `32432` completed the clean batch-1,
+  32-direction, `h=0.0025` exact reference rerun for start-10 steps
+  `50/89/100/120`, writing
+  `runs/qh_g2_current_basin_reference_batch1_k32_20260805`. All four centers
+  retained 32/32 smooth directions; 260 exact scores averaged `5.909 s` with
+  `6.136 s` P95, and four-GPU postflight was clean at 2 MiB/0%. Students two-GPU
+  job `32434` completed a five-step batch-1 projected-proposal smoke from the
+  score-`92.6658409` step-113 center, writing
+  `runs/qh_g3_subspace_batch1_projected_smoke_students_5_20260805`. Every
+  independently rescored center matched the optimizer center exactly; ten
+  independent flow decodes cost about `5.56 s` on the first step. No smooth
+  projected proposal was accepted, while two already measured probe endpoints
+  improved the score to `92.6842398`; mean step time was `78.46 s` on two
+  GPUs. The accepted probes' screening and independently re-decoded exact
+  scores agreed to `2e-14` and zero. Pre/postflight was clean at 2 MiB/0%.
+  This validates the batch-1 protocol and exact gate, not the projected
+  proposal as an optimizer. Single-GPU P107 alignment jobs
+  `32438/32440/32441/32442` also completed for steps `50/89/100/120`. Their
+  32-direction full/G3 cosines are `+0.238/-0.223/-0.234/+0.045`, while
+  full/fixed-G4 cosines are `-0.551/-0.149/+0.315/+0.377`. Along the recorded
+  Adam update, the estimated full-score slopes are
+  `+30.12/-16.02/-49.13/-11.37`, G3 remains positive at
+  `+23.35/+15.91/+15.88/+16.29`, and fixed-G4 is negative at
+  `-8.49/-1.56/-8.70/-2.60`. Thus batch shape materially changes magnitudes
+  and makes 32-direction cosine estimates noisy, but does not remove the
+  post-peak G3 sign contradiction or make fixed-axis G4 production-worthy.
+  P107 four-GPU job `32449` is a clean 200-step rerun from the canonical
+  `start_10` latent with the historically successful seed `2026080515`, and
+  writes `runs/qh_g3_subspace_batch1_start10_adam_seed15_200_20260805`.
+  Students two-GPU job `32451` independently runs 120 steps from the same
+  start with seed `2026080524`, writing
+  `runs/qh_g3_subspace_batch1_start10_adam_seed24_120_20260805`. Both use
+  corrected independent batch-1 secants, G3+four random directions,
+  `h=0.0025`, Adam `(lr=0.01,beta1=0.5,beta2=0.999)`, and the monotone exact
+  gate. Both passed `sbatch --test-only`, started on idle RTX 5090s with
+  2 MiB/0% preflight, and produced valid monotone progress. At the latest
+  recorded checkpoint, job `32449` reached `91.9611` at step 91 (best first
+  reached at step 82) and job `32451` reached `91.5791` at step 72; both remain
+  active and neither has accepted a score decrease.
+  P107 job `32462` is queued with `afterok:32449` for an 80-step zero-momentum
+  refinement from that run's `best.json` using seed `2026080525` and the
+  `d2545dc` fast gate plus the `9b1e6e4` logging fix. Students job `32465` is queued with `afterok:32459` for
+  a 60-step refinement from job `32451`'s `best.json` using seed `2026080526`;
+  this deliberately lets the three-step fast-path A/B run first. Both
+  refinement jobs passed `sbatch --test-only` and use the same bounded
+  `h/lr/beta` settings as their parent runs.
+- Students job `32332` completed 124 zero-momentum refinement steps from the
+  old strict-control best, improving `92.3317626 -> 92.6658409` at step 113;
+  this is a staged restart, not one continuous Adam history. P107 job `32336`
+  was deliberately cancelled after step 13 at `92.5651` because it plateaued.
+  Restart smoke `32337` failed before computation because optimizer trajectory
+  JSON was not accepted as an initial case; commit `fcdf335` fixes that
+  interface. Corrected projected-mode smoke `32338` improved
+  `92.5885592 -> 92.6218379`. Pre-fix quadratic jobs `32416/32417` completed
+  at `92.6780695/92.6688750`; quadratic-axis job `32421` completed unchanged
+  at `92.6658409`, and `32422` was deliberately cancelled after five unchanged
+  steps. These four jobs are retained only as batch-shape-contaminated
+  diagnostics and must not be used to validate the quadratic model.
+- On 2026-08-05, branch `qh-blackbox-gradient` reached local/remote source commit
+  `c5e8cfc` (report/MEMORY updates remain in progress). Commits `e581f45` through `2d75a69` implement the fixed-branch G4
+  oracle, exact ABI-9 acceptance gate, fused CUDA field-point VJP, and exact
+  same-basin G4 reference comparison; commits `48ed335` through `ee01069` add a
+  G3-informed low-rank full-score secant optimizer and make smooth Adam and
+  improving discrete-branch endpoints compete by exact score. The
+  field-point VJP is validated to about `2.1e-4` centered-FD relative error at
+  `h=2.5e-4` and costs about `0.244 ms` for 128 points and 4096 segments. Exact
+  300-direction comparisons at start-10 steps `50/89/100/120` show fixed-axis
+  G4/full-score cosines `-0.536/+0.045/+0.124/+0.314`; its slope along the
+  recorded Adam update remains negative at every center, including before the
+  old score peak. Axis response is both omitted and large, so fixed-axis G4 is
+  not a production gradient and full analytic G5 is not justified for the
+  current optimizer objective. The selected practical fallback uses the
+  RMS-normalized G3 direction plus four orthogonal random directions, exact
+  ABI-9 centered or feasible one-sided branch secants at latent RMS `h=0.0025`, Adam
+  `(lr=0.01,beta1=0.5,beta2=0.999)`, and a monotone exact-score gate. A strict
+  10-step run improved `85.8397 -> 87.7132`; K=0 and K=2 controls reached only
+  `86.1435` and `87.5722`. A superseded branch-endpoint-first run reached only
+  `87.4434`, confirming that branch endpoints must compete with rather than
+  preempt smooth proposals. P107 four-GPU A/B job `32236` completed `85.8397 ->
+  87.7132`, exactly matching the strict result; at step 2 it retained the higher
+  smooth candidate (`87.4501`) over the lower branch endpoint. The first
+  200-step seed-14 job `32238` was deliberately cancelled after step 36: strict
+  two-sided branch matching left zero usable directions on 17/36 steps and
+  rejected 20/36 steps, stalling at `88.5832`. This is a valid negative result,
+  not a crash. Commit `d3bdaf3` adds feasible one-sided same-branch secants and
+  lets any improving probe endpoint compete with Adam; a five-step smoke from
+  the formerly stuck step-30 center recovered 3/5 directions and improved
+  `88.5832 -> 88.5971` without accepting a decrease. Commit `d970383` fixes the
+  Slurm idle gate so stale utilization telemetry cannot override the stronger
+  empty compute-process/2 MiB memory evidence. Strict-control Students job
+  `32240` reached `92.3318` at step 56, then was deliberately cancelled after
+  step 76 because it made no further progress for about 20 steps; its partial
+  trajectory is retained as a control. Evidence at that center showed a
+  same-branch probe gain of `0.0057`, so commit `8e0a043` separates the
+  production thresholds: `0.001` for same-branch probes and `0.01` for
+  branch-changing endpoints. P107 one-sided job `32300` was deliberately
+  cancelled after step 57 at `90.8667`; it used the superseded common `0.01`
+  probe threshold and had low marginal progress, so it is retained only as a
+  partial control. Students two-GPU job `32332` is an active documented
+  zero-momentum refinement from job 32240's fixed step-56 best and writes
+  `runs/qh_g3_subspace_one_sided_refine_seed15_124_20260805`; by step 24 it
+  reached `92.5886`. P107 four-GPU job `32336` is an active independent
+  zero-momentum refinement from the Students step-12 snapshot (`92.5369`) and
+  writes `runs/qh_g3_subspace_high_refine_p107_100_20260805`; by step 13 it
+  reached `92.5651`. These are multi-stage refinements and must not be reported
+  as one continuous Adam trajectory. Code audit found that coordinatewise Adam
+  preconditioning maps the exact low-rank secant projection outside the
+  measured subspace, particularly reducing to a sign-like update after moment
+  resets. Commit `c5e8cfc` therefore adds an opt-in `projected` trust proposal
+  that stays parallel to the measured projection and has RMS radius equal to
+  the secant perturbation, with the same bounded exact-score gate; the two
+  active jobs still use the old `adam` proposal and are controls. This new mode
+  passed the local related tests (`11/11`) but has not yet had a GPU numerical
+  validation. Detailed evidence is being appended to
+  `reports/qh_blackbox_gradient_exploration_report.md`.
 - On 2026-08-05, a source-level theoretical audit established the scope of G4.
   On a fixed regular branch (same axis candidate, selected surface/flux
   candidate, simple unclamped ray roots, fixed valid-point/index set, stable

@@ -38,6 +38,27 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, P107 four-GPU optimizer smoke job `32802` completed from the
+  canonical nfp4/nc3 `start_10`, seed 20260804, using the old four-direction
+  SPSA/Adam settings but the selected continuous score and strict axis
+  continuation. It improved 85.3999 -> 85.9697 in three accepted steps, all
+  endpoints stayed ok, and mean iteration time was 9.135 s versus 26.655 s in
+  historical old-score job 31058 (2.92x faster). Postflight was 2 MiB/0% on all
+  four GPUs. The matching formal 200-step job `32804` was then submitted with
+  a one-hour Slurm limit and 3400 s internal limit; it writes
+  `runs/score_fast_continuation/adam_start10_200/` and is pending acceptance.
+- On 2026-08-05, P107 four-GPU holdout job `32797` completed from remote commit
+  `e1b01de` on the untouched second 128-case validation block. All 69 legacy-ok
+  cases remained continuous-ok. On that subset, overall/high-score>=90
+  Spearman was 0.9730/0.9390, top-20%/top-10% overlap was 92.3%/100%, and
+  log-QH Spearman was 0.99978. Strict continuation median/P95 was
+  0.990/1.254 s, a 5.68x paired median speedup; global continuous median/P95
+  across all statuses was 2.857/4.629 s versus legacy median 5.179 s. The new
+  bounded method accepted 44 old hard failures, but their maximum/P95 scores
+  were 89.46/88.49, so none entered the old score>=90 extreme tail. This
+  accepts p1/t128/k400 plus flux-weighted isotonic confidence as the production
+  candidate for the same-start optimizer test. Frozen results are under
+  `reports/assets/qh_score_fast_continuation_20260805/validation_holdout_offset128/`.
 - On 2026-08-05, branch `score-fast-continuation` reached local/remote commit
   `ed6a861`. P107 single-GPU build/smoke job `32794` completed successfully,
   compiling and testing the flux-weighted isotonic confidence follow-up.

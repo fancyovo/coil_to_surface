@@ -125,6 +125,7 @@ def main() -> None:
     parser.add_argument("--legacy-dir", type=Path, required=True)
     parser.add_argument("--continuous-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--cross-score", type=Path)
     args = parser.parse_args()
     old_summary, old_rows = trajectory(args.legacy_dir)
     new_summary, new_rows = trajectory(args.continuous_dir)
@@ -136,6 +137,28 @@ def main() -> None:
         result["legacy"]["mean_iteration_wall_s"] /
         result["continuous"]["mean_iteration_wall_s"]
     )
+    result["speedup_total_wall"] = (
+        result["legacy"]["total_wall_s"] / result["continuous"]["total_wall_s"]
+    )
+    if args.cross_score:
+        cross_rows = read_json(args.cross_score)
+        result["cross_score"] = {}
+        for label, row in zip(("legacy_best", "continuous_best"), cross_rows):
+            result["cross_score"][label] = {
+                mode: {
+                    "status": row[mode]["status"],
+                    "score": float(row[mode]["score"]),
+                    "surface_level": float(row[mode]["diagnostics"]["surface_level"]),
+                    "inverse_aspect_ratio": float(
+                        row[mode]["diagnostics"]["surface_inverse_aspect_ratio"]
+                    ),
+                    "qh_error_per_helicity": float(
+                        row[mode]["diagnostics"]["qs_target_global_error_per_helicity"]
+                    ),
+                    "iota_min": float(row[mode]["diagnostics"]["iota_min"]),
+                }
+                for mode in ("legacy", "continuous")
+            }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "comparison.json").write_text(
         json.dumps(result, indent=2, allow_nan=True) + "\n", encoding="utf-8"

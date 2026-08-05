@@ -19,6 +19,7 @@ project="${PROJECT:?PROJECT must name the score-fast worktree}"
 case_dir="${CASE_DIR:-$HOME/local_surface_evaluator_data/volume_score_2000/cases}"
 metadata="${METADATA:-$HOME/local_surface_evaluator_data/volume_score_2000/metadata_selected.json}"
 total_samples="${TOTAL_SAMPLES:-128}"
+split="${SPLIT:-calibration}"
 output_dir="${OUTPUT_DIR:-$project/runs/score_fast_continuation/calibration_${SLURM_JOB_ID}}"
 build_dir="${BUILD_DIR:-gpu_backend/build_score_fast}"
 children=()
@@ -66,6 +67,7 @@ for worker in 0 1 2 3; do
         --metadata "$metadata" \
         --lib "$build_dir/libstellarator_gpu.so" \
         --output "$output_dir/worker_${worker}.jsonl" \
+        --split "$split" \
         --total-limit "$total_samples" \
         --worker-index "$worker" \
         --worker-count 4 \

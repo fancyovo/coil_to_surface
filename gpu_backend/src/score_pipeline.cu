@@ -629,6 +629,53 @@ bool refine_axis_candidates(
     return true;
 }
 
+void assign_axis_topology(
+    AxisCandidate& candidate,
+    double r_plus,
+    double r_minus,
+    double z_plus,
+    double z_minus,
+    double r_end_r_plus,
+    double r_end_r_minus,
+    double z_end_r_plus,
+    double z_end_r_minus,
+    double r_end_z_plus,
+    double r_end_z_minus,
+    double z_end_z_plus,
+    double z_end_z_minus
+) {
+    const double denom_R = std::max(r_plus - r_minus, 1.0e-300);
+    const double denom_Z = std::max(z_plus - z_minus, 1.0e-300);
+    const double a = (r_end_r_plus - r_end_r_minus) / denom_R;
+    const double c = (z_end_r_plus - z_end_r_minus) / denom_R;
+    const double b = (r_end_z_plus - r_end_z_minus) / denom_Z;
+    const double d = (z_end_z_plus - z_end_z_minus) / denom_Z;
+    const double trace = a + d;
+    const double determinant = a * d - b * c;
+    candidate.topology_trace = trace;
+    candidate.topology_det = determinant;
+    candidate.elliptic = determinant > 0.0 &&
+        std::abs(trace / std::sqrt(determinant)) < 2.0;
+    if (determinant > 0.0) {
+        const double scale = std::sqrt(determinant);
+        const double q00 = c / scale;
+        const double q01 = 0.5 * (d - a) / scale;
+        const double q11 = -b / scale;
+        const double middle = 0.5 * (q00 + q11);
+        const double radius = std::hypot(0.5 * (q00 - q11), q01);
+        double eig0 = middle - radius;
+        double eig1 = middle + radius;
+        if (eig0 < 0.0 && eig1 < 0.0) {
+            const double old0 = eig0;
+            eig0 = -eig1;
+            eig1 = -old0;
+        }
+        if (eig0 > 0.0 && eig1 >= eig0) {
+            candidate.ellipse_aspect = std::sqrt(eig1 / eig0);
+        }
+    }
+}
+
 void classify_axis_topology(
     void* field,
     std::vector<AxisCandidate>& candidates,
@@ -653,36 +700,13 @@ void classify_axis_topology(
     }
     if (!trace_map(field, R, Z, nfp, config.axis_trace_steps, true, R_end, Z_end)) return;
     for (size_t j = 0; j < count; ++j) {
-        const double denom_R = std::max(R[j] - R[count + j], 1.0e-300);
-        const double denom_Z = std::max(Z[2 * count + j] - Z[3 * count + j], 1.0e-300);
-        const double a = (R_end[j] - R_end[count + j]) / denom_R;
-        const double c = (Z_end[j] - Z_end[count + j]) / denom_R;
-        const double b = (R_end[2 * count + j] - R_end[3 * count + j]) / denom_Z;
-        const double d = (Z_end[2 * count + j] - Z_end[3 * count + j]) / denom_Z;
-        const double trace = a + d;
-        const double determinant = a * d - b * c;
-        candidates[j].topology_trace = trace;
-        candidates[j].topology_det = determinant;
-        candidates[j].elliptic = determinant > 0.0 &&
-            std::abs(trace / std::sqrt(determinant)) < 2.0;
-        if (determinant > 0.0) {
-            const double scale = std::sqrt(determinant);
-            const double q00 = c / scale;
-            const double q01 = 0.5 * (d - a) / scale;
-            const double q11 = -b / scale;
-            const double middle = 0.5 * (q00 + q11);
-            const double radius = std::hypot(0.5 * (q00 - q11), q01);
-            double eig0 = middle - radius;
-            double eig1 = middle + radius;
-            if (eig0 < 0.0 && eig1 < 0.0) {
-                const double old0 = eig0;
-                eig0 = -eig1;
-                eig1 = -old0;
-            }
-            if (eig0 > 0.0 && eig1 >= eig0) {
-                candidates[j].ellipse_aspect = std::sqrt(eig1 / eig0);
-            }
-        }
+        assign_axis_topology(
+            candidates[j],
+            R[j], R[count + j], Z[2 * count + j], Z[3 * count + j],
+            R_end[j], R_end[count + j], Z_end[j], Z_end[count + j],
+            R_end[2 * count + j], R_end[3 * count + j],
+            Z_end[2 * count + j], Z_end[3 * count + j]
+        );
     }
 }
 
@@ -806,7 +830,24 @@ bool find_axis_native(
         }
         timings[SGPU_SCORE_TIME_AXIS_CANDIDATE_REFINE] += seconds_since(substage_started);
         if (!candidates.empty()) {
-            std::vector<double> verify_R{candidates[0].R}, verify_Z{candidates[0].Z};
+            const double span = std::max(
+                domain.r_max - domain.r_min, domain.z_max - domain.z_min
+            );
+            const double h = std::max(config.axis_fd_absolute, config.axis_fd_relative * span);
+            std::vector<double> verify_R{
+                candidates[0].R,
+                std::min(domain.r_max, candidates[0].R + h),
+                std::max(domain.r_min, candidates[0].R - h),
+                candidates[0].R,
+                candidates[0].R,
+            };
+            std::vector<double> verify_Z{
+                candidates[0].Z,
+                candidates[0].Z,
+                candidates[0].Z,
+                std::min(domain.z_max, candidates[0].Z + h),
+                std::max(domain.z_min, candidates[0].Z - h),
+            };
             std::vector<double> end_R, end_Z;
             substage_started = Clock::now();
             if (!trace_map(
@@ -819,7 +860,12 @@ bool find_axis_native(
                 end_R[0] - verify_R[0], end_Z[0] - verify_Z[0]
             );
             substage_started = Clock::now();
-            classify_axis_topology(field, candidates, domain, nfp, config);
+            assign_axis_topology(
+                candidates[0],
+                verify_R[1], verify_R[2], verify_Z[3], verify_Z[4],
+                end_R[1], end_R[2], end_Z[1], end_Z[2],
+                end_R[3], end_R[4], end_Z[3], end_Z[4]
+            );
             timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
             axis.hint_distance = std::hypot(
                 candidates[0].R - config.axis_hint_R,
@@ -1639,11 +1685,23 @@ void fill_early_components(
         result.surface_inverse_aspect_ratio, config.score_surface_inverse_aspect_saturation
     );
     result.score_surface_size = size;
+    if (config.surface_selection_mode == 1) {
+        const double selected_level = std::isfinite(result.surface_level)
+            ? result.surface_level : result.surface_effective_level;
+        const double extent = q_saturating_up(
+            selected_level, config.surface_levels[config.surface_level_count - 1]
+        );
+        // The selected level already combines short-horizon confidence with the
+        // continuously calibrated flux boundary. Do not reuse risk measured at
+        // the larger proposal after flux calibration has moved the edge inward.
+        result.components[SGPU_SCORE_COMPONENT_SURFACE] = blend({
+            {0.65, size}, {0.35, extent},
+        });
+        result.components[SGPU_SCORE_COMPONENT_COIL] = coil_component(coil);
+        return;
+    }
     const double drift = q_down(minimum_drift, config.score_surface_drift_scale, 1.0, 0.15);
-    const double count = config.surface_selection_mode == 1 &&
-            std::isfinite(result.surface_confidence_mean)
-        ? clip01(result.surface_confidence_mean)
-        : q_up(strict_count, 2.0, 1.0);
+    const double count = q_up(strict_count, 2.0, 1.0);
     result.components[SGPU_SCORE_COMPONENT_SURFACE] = blend({{0.65, size}, {0.25, drift}, {0.10, count}});
     result.components[SGPU_SCORE_COMPONENT_COIL] = coil_component(coil);
 }

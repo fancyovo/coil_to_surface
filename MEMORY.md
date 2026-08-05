@@ -38,6 +38,36 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, corrected four-GPU calibration job `32751` completed all 128
+  fixed QH cases in 309.88 s wall time with empty stderr. For the 65 legacy-ok
+  cases, continuous p1/t128/k400 preserved all 65 as ok, reduced median score
+  time to 1.144 s (5.36x versus the paired legacy median), and preserved the
+  physical log-QH ordering with Spearman 0.9983. Overall score Spearman was
+  0.9144, but old-score>=90 Spearman was only 0.6930. Component analysis
+  localized this high-tail mismatch to the surface subscore (high-tail
+  Spearman 0.3388): it still mixes confidence/risk measured at the originally
+  predicted edge even after flux bisection has selected a smaller actual edge.
+  Axis, psi, iota, and coil components are unchanged; coordinate high-tail
+  Spearman is 0.9945 and volume-QS high-tail Spearman is 0.8325. Therefore this
+  calibration validates the runtime mechanism and QS calculation but does not
+  yet accept the final continuous score definition. Frozen raw output is under
+  remote `runs/score_fast_continuation/calibration_fluxfix_32749/` (the path
+  contains the planned rather than actual job ID); local analysis is under
+  `reports/assets/qh_score_fast_continuation_20260805/calibration_fluxfix_128/`.
+  Offline ablation on this calibration subset selected a definition that does
+  not reuse stale proposal-edge risk: continuous surface quality is 65% of the
+  final physical inverse-aspect size quality plus 35% of a smooth quality of
+  the final continuously calibrated normalized-flux level. This reassigns the
+  legacy 25% drift plus 10% discrete-count weights to one continuous extent
+  quantity. On the development subset it raises overall/high-score>=90
+  Spearman to 0.9282/0.8120. These are selection-set figures only; the formula
+  remains unaccepted until remote smoke and an independent validation split.
+- On 2026-08-05, P107 single-GPU smoke job `32748` completed successfully from
+  commit `8f9d996`, rebuilding the ABI-10 library and confirming all legacy,
+  continuous p1/p2/p4, valid-hint, and invalid-hint paths. Corrected four-GPU
+  calibration job `32751` then completed as recorded above; due to an explicit
+  output override it writes `runs/score_fast_continuation/calibration_fluxfix_32749/`
+  despite job ID 32751.
 - On 2026-08-05, corrected P107 four-GPU calibration job `32741` completed all
   128 fixed QH cases in 318.02 s wall time with empty stderr. Legacy statuses
   were 65 ok, 46 drift-rejected, 13 no-surface, 3 flux-rejected, and 1 no-axis.

@@ -133,7 +133,11 @@ def main() -> None:
             arrays = (x, y, z, currents)
             legacy = evaluate(args.lib, arrays, nfp, args.device)
             axis = legacy["diagnostics"]
-            variants = {}
+            variants = {
+                "p1_t128_k400_global": evaluate(
+                    args.lib, arrays, nfp, args.device, VARIANTS["p1_t128_k400"]
+                )
+            }
             if legacy["status"] == "ok":
                 axis_hint = {
                     "axis_hint_enabled": 1,

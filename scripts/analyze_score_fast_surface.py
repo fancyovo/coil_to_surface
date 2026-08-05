@@ -47,6 +47,16 @@ def top_overlap(legacy: np.ndarray, candidate: np.ndarray, count: int) -> float:
     return len(old_top & new_top) / count
 
 
+def rescore_with_surface(result: dict, surface_component: float) -> float:
+    diagnostics = result["diagnostics"]
+    before = float(diagnostics["score_before_qh_iota_gate"])
+    old_surface = float(result["components"]["surface"])
+    replaced_before = before + 0.10 * (surface_component - old_surface)
+    return replaced_before * float(diagnostics["score_qh_total_iota_factor"]) * float(
+        diagnostics["score_qh_total_helicity_factor"]
+    )
+
+
 def load_rows(root: Path) -> list[dict]:
     rows = []
     for path in sorted(root.glob("worker_*.jsonl")):
@@ -113,6 +123,76 @@ def summarize(rows: list[dict]) -> dict:
             )
         high80 = old_score >= 80.0
         high90 = old_score >= 90.0
+        component_summary = {}
+        for component in subset[0]["legacy"]["components"]:
+            old_component = np.asarray([
+                row["legacy"]["components"][component] for row in subset
+            ])
+            new_component = np.asarray([
+                row["variants"][name]["components"][component] for row in subset
+            ])
+            component_summary[component] = {
+                "spearman": correlation(old_component, new_component, ranked=True),
+                "delta_median": percentile(new_component - old_component, 0.5),
+                "delta_p05": percentile(new_component - old_component, 0.05),
+                "delta_p95": percentile(new_component - old_component, 0.95),
+                "high90_spearman": correlation(
+                    old_component[high90], new_component[high90], ranked=True
+                ),
+            }
+        old_level = np.asarray([
+            row["legacy"]["diagnostics"]["surface_level"] for row in subset
+        ])
+        new_level = np.asarray([
+            row["variants"][name]["diagnostics"]["surface_level"] for row in subset
+        ])
+        alternative_surface = {
+            "size_only": [],
+            "size_confidence": [],
+            "size_level": [],
+            "selected_65size_35level": [],
+            "valid_constant": [],
+        }
+        for row in subset:
+            result = row["variants"][name]
+            diagnostics = result["diagnostics"]
+            size = 100.0 * float(diagnostics["score_surface_size"])
+            confidence = 100.0 * float(diagnostics["surface_confidence_mean"])
+            normalized_level = np.clip(
+                float(diagnostics["surface_level"]) / 0.81, 0.0, 1.0
+            )
+            level_score = 100.0 * normalized_level * normalized_level * (
+                3.0 - 2.0 * normalized_level
+            )
+            definitions = {
+                "size_only": size,
+                "size_confidence": 0.85 * size + 0.15 * confidence,
+                "size_level": 0.75 * size + 0.25 * level_score,
+                "selected_65size_35level": 0.65 * size + 0.35 * level_score,
+                "valid_constant": 100.0,
+            }
+            for definition, surface_component in definitions.items():
+                alternative_surface[definition].append(
+                    rescore_with_surface(result, surface_component)
+                )
+        surface_ablation = {}
+        for definition, values in alternative_surface.items():
+            rescored = np.asarray(values)
+            surface_ablation[definition] = {
+                "score_spearman": correlation(old_score, rescored, ranked=True),
+                "high80_spearman": correlation(
+                    old_score[high80], rescored[high80], ranked=True
+                ),
+                "high90_spearman": correlation(
+                    old_score[high90], rescored[high90], ranked=True
+                ),
+                "top20pct_overlap": top_overlap(
+                    old_score, rescored, max(1, len(subset) // 5)
+                ),
+                "top10pct_overlap": top_overlap(
+                    old_score, rescored, max(1, len(subset) // 10)
+                ),
+            }
         variant_summary = {
             "count": len(subset),
             "status_counts": statuses,
@@ -136,6 +216,10 @@ def summarize(rows: list[dict]) -> dict:
             "speedup_median_ratio": percentile(old_time, 0.5) /
                 percentile(candidate_time, 0.5),
             "axis_error_max": float(np.nanmax(axis_errors)),
+            "surface_level_spearman": correlation(old_level, new_level, ranked=True),
+            "surface_level_delta_median": percentile(new_level - old_level, 0.5),
+            "components": component_summary,
+            "surface_ablation": surface_ablation,
         }
         summary["variants"][name] = variant_summary
     return summary

@@ -38,6 +38,30 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, branch `score-fast-continuation` reached local/remote commit
+  `8cf934b`. P107 single-GPU build/smoke job `32763` completed successfully.
+  Legacy score remained 96.184742; an exact strict hint reproduced it exactly,
+  reduced the axis stage from about 2.09 s to 0.206 s, and an impossible hint
+  returned `branch_lost` in 0.031 s. The selected continuous mode completed in
+  3.216 s versus 7.701 s legacy on this global-axis smoke; its surface stage
+  was 0.484 s versus 3.520 s legacy. Postflight was idle. Independent four-GPU
+  validation job `32766` then completed 128 fixed validation-split QH cases.
+  Among 79 legacy-ok cases, selected p1/t128/k400 retained 77 as ok, achieved
+  overall/high-score>=90 Spearman 0.9571/0.9034, top-20%/top-10% overlap
+  93.3%/85.7%, and log-QH Spearman 0.9965. Strict-hint median time was 0.994 s,
+  a 6.10x paired speedup; global continuous median was 2.903 s versus 5.251 s
+  legacy across all statuses. Nineteen legacy 16-period drift rejections became
+  continuous ok; the highest scored 89.63 and most legacy rejections were just
+  beyond the old hard 5% drift cutoff. However two legacy-ok cases became
+  no-surface because near-axis relative drift at tiny normalized flux was
+  amplified by tiny radius and the prototype's cumulative maximum propagated
+  that numerical outlier to every outer level. This is an algorithmic defect,
+  not an accepted ranking change. The follow-up replaces cumulative maximum
+  with flux-interval-weighted isotonic regression of confidence, preserving a
+  nonincreasing continuous confidence while allowing stable outer evidence to
+  correct near-axis numerical noise. That follow-up remains remotely
+  unvalidated. Frozen validation output is under
+  `reports/assets/qh_score_fast_continuation_20260805/validation_selected_128/`.
 - On 2026-08-05, corrected four-GPU calibration job `32751` completed all 128
   fixed QH cases in 309.88 s wall time with empty stderr. For the 65 legacy-ok
   cases, continuous p1/t128/k400 preserved all 65 as ok, reduced median score

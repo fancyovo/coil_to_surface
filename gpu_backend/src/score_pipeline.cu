@@ -1380,6 +1380,43 @@ double logistic_confidence(double risk, const SgpuScoreConfig& config) {
     return 1.0 / (1.0 + std::exp(argument));
 }
 
+void project_nonincreasing_confidence(
+    std::vector<double>& confidence,
+    const SgpuScoreConfig& config
+) {
+    struct Block {
+        int begin;
+        int end;
+        double weight;
+        double mean;
+    };
+    std::vector<Block> blocks;
+    blocks.reserve(confidence.size());
+    double previous_level = 0.0;
+    for (int index = 0; index < static_cast<int>(confidence.size()); ++index) {
+        const double level = config.surface_levels[index];
+        const double weight = std::max(level - previous_level, 1.0e-12);
+        previous_level = level;
+        blocks.push_back({index, index + 1, weight, confidence[index]});
+        while (blocks.size() >= 2 &&
+               blocks[blocks.size() - 2].mean < blocks.back().mean) {
+            const Block right = blocks.back();
+            blocks.pop_back();
+            Block& left = blocks.back();
+            const double total_weight = left.weight + right.weight;
+            left.mean = (left.weight * left.mean + right.weight * right.mean) /
+                total_weight;
+            left.weight = total_weight;
+            left.end = right.end;
+        }
+    }
+    for (const Block& block : blocks) {
+        for (int index = block.begin; index < block.end; ++index) {
+            confidence[index] = block.mean;
+        }
+    }
+}
+
 bool screen_surface_confidence_native(
     void* field,
     const AxisData& axis,
@@ -1447,7 +1484,6 @@ bool screen_surface_confidence_native(
 
     substage_started = Clock::now();
     std::vector<double> risk(levels), confidence(levels);
-    double monotone_risk = 0.0;
     for (int level_index = 0; level_index < levels; ++level_index) {
         const size_t offset = static_cast<size_t>(level_index) * theta_count;
         std::vector<double> level_values(
@@ -1457,8 +1493,6 @@ bool screen_surface_confidence_native(
         risk[level_index] = smooth_tail_risk(
             level_values, config.surface_confidence_smoothmax_temperature
         );
-        monotone_risk = std::max(monotone_risk, risk[level_index]);
-        risk[level_index] = monotone_risk;
         const double radius_limit = config.surface_max_radius_scale * config.psi_a;
         const double radius_margin = (0.995 * radius_limit - radius_max[level_index]) /
             std::max(0.003 * radius_limit, 1.0e-14);
@@ -1467,9 +1501,10 @@ bool screen_surface_confidence_native(
             : radius_margin <= -40.0
                 ? 0.0
                 : 1.0 / (1.0 + std::exp(-radius_margin));
-        confidence[level_index] = logistic_confidence(monotone_risk, config) *
+        confidence[level_index] = logistic_confidence(risk[level_index], config) *
             radius_confidence;
     }
+    project_nonincreasing_confidence(confidence, config);
 
     double effective_level = 0.0;
     double previous_level = 0.0;

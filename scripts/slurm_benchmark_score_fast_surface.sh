@@ -20,6 +20,7 @@ case_dir="${CASE_DIR:-$HOME/local_surface_evaluator_data/volume_score_2000/cases
 metadata="${METADATA:-$HOME/local_surface_evaluator_data/volume_score_2000/metadata_selected.json}"
 total_samples="${TOTAL_SAMPLES:-128}"
 split="${SPLIT:-calibration}"
+variant_profile="${VARIANT_PROFILE:-matrix}"
 output_dir="${OUTPUT_DIR:-$project/runs/score_fast_continuation/calibration_${SLURM_JOB_ID}}"
 build_dir="${BUILD_DIR:-gpu_backend/build_score_fast}"
 children=()
@@ -68,6 +69,7 @@ for worker in 0 1 2 3; do
         --lib "$build_dir/libstellarator_gpu.so" \
         --output "$output_dir/worker_${worker}.jsonl" \
         --split "$split" \
+        --variant-profile "$variant_profile" \
         --total-limit "$total_samples" \
         --worker-index "$worker" \
         --worker-count 4 \
@@ -81,6 +83,6 @@ for child in "${children[@]}"; do
 done
 children=()
 finished=$(date +%s.%N)
-printf '{"total_samples":%d,"wall_started":%s,"wall_finished":%s}\n' \
-    "$total_samples" "$started" "$finished" > "$output_dir/job.json"
+printf '{"split":"%s","total_samples":%d,"wall_started":%s,"wall_finished":%s}\n' \
+    "$split" "$total_samples" "$started" "$finished" > "$output_dir/job.json"
 exit "$status"

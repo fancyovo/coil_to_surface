@@ -108,6 +108,7 @@ def main() -> None:
     parser.add_argument("--lib", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--split", default="calibration")
+    parser.add_argument("--variant-profile", choices=("selected", "matrix"), default="matrix")
     parser.add_argument("--total-limit", type=int, default=128)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
@@ -145,7 +146,11 @@ def main() -> None:
                     "axis_hint_R": float(axis["axis_R"]),
                     "axis_hint_Z": float(axis["axis_Z"]),
                 }
-                for name, settings in VARIANTS.items():
+                selected_variants = (
+                    {"p1_t128_k400": VARIANTS["p1_t128_k400"]}
+                    if args.variant_profile == "selected" else VARIANTS
+                )
+                for name, settings in selected_variants.items():
                     variants[name] = evaluate(
                         args.lib, arrays, nfp, args.device, {**settings, **axis_hint}
                     )

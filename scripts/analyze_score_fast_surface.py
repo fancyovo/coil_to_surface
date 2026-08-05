@@ -111,10 +111,13 @@ def summarize(rows: list[dict]) -> dict:
             row["variants"][name]["timing"]["surface_screen_s"] for row in subset
         ])
         statuses: dict[str, int] = {}
+        status_transitions: dict[str, int] = {}
         axis_errors = []
         for row in subset:
             result = row["variants"][name]
             statuses[result["status"]] = statuses.get(result["status"], 0) + 1
+            transition = f"{row['legacy']['status']}->{result['status']}"
+            status_transitions[transition] = status_transitions.get(transition, 0) + 1
             axis_errors.append(
                 np.hypot(
                     result["diagnostics"]["axis_R"] - row["legacy"]["diagnostics"]["axis_R"],
@@ -123,6 +126,14 @@ def summarize(rows: list[dict]) -> dict:
             )
         high80 = old_score >= 80.0
         high90 = old_score >= 90.0
+        legacy_ok = np.asarray([
+            row["legacy"]["status"] == "ok" for row in subset
+        ], dtype=bool)
+        candidate_ok = np.asarray([
+            row["variants"][name]["status"] == "ok" for row in subset
+        ], dtype=bool)
+        recovered = ~legacy_ok & candidate_ok
+        lost = legacy_ok & ~candidate_ok
         component_summary = {}
         for component in subset[0]["legacy"]["components"]:
             old_component = np.asarray([
@@ -196,6 +207,11 @@ def summarize(rows: list[dict]) -> dict:
         variant_summary = {
             "count": len(subset),
             "status_counts": statuses,
+            "status_transitions": status_transitions,
+            "legacy_failure_to_candidate_ok_count": int(np.count_nonzero(recovered)),
+            "legacy_ok_to_candidate_failure_count": int(np.count_nonzero(lost)),
+            "recovered_score_max": percentile(candidate[recovered], 1.0),
+            "recovered_score_p95": percentile(candidate[recovered], 0.95),
             "score_pearson": correlation(old_score, candidate),
             "score_spearman": correlation(old_score, candidate, ranked=True),
             "score_delta_median": percentile(candidate - old_score, 0.5),

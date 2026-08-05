@@ -421,6 +421,15 @@ def main() -> None:
     parser.add_argument("--iterations", type=int, default=50)
     parser.add_argument("--rk4-steps", type=int, choices=(64, 128, 256), default=64)
     parser.add_argument("--random-directions", type=int, default=4)
+    parser.add_argument(
+        "--random-direction-bank-size",
+        type=int,
+        default=0,
+        help=(
+            "Generate this many orthogonal random directions before taking the requested "
+            "prefix; 0 uses --random-directions."
+        ),
+    )
     parser.add_argument("--perturbation", type=float, default=0.005)
     parser.add_argument("--learning-rate", type=float, default=0.01)
     parser.add_argument(
@@ -450,6 +459,23 @@ def main() -> None:
     parser.add_argument("--batch-timeout-s", type=float, default=180.0)
     parser.add_argument("--plot-every", type=int, default=5)
     parser.add_argument("--seed", type=int, default=2026080504)
+    parser.add_argument(
+        "--center-rescore-every",
+        type=int,
+        default=1,
+        help="Re-evaluate the accepted center every N steps; 0 disables periodic rescoring.",
+    )
+    parser.add_argument(
+        "--candidate-score-chunk-size",
+        type=int,
+        default=0,
+        help="Exact-score this many ordered backtrack candidates at once; 0 uses the score GPU count.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue the existing out-dir to a larger total --iterations target.",
+    )
     args = parser.parse_args()
     projected_step_rms = (
         float(args.perturbation)
@@ -464,6 +490,12 @@ def main() -> None:
     if not 0.0 <= args.beta1 < 1.0 or not 0.0 <= args.beta2 < 1.0:
         raise ValueError("Adam betas must be in [0, 1)")
     if (
+        args.center_rescore_every < 0
+        or args.candidate_score_chunk_size < 0
+        or args.random_direction_bank_size < 0
+    ):
+        raise ValueError("direction and score controls must be nonnegative")
+    if (
         args.accept_drop < 0.0
         or args.probe_accept_minimum_gain < 0.0
         or args.branch_accept_minimum_gain < 0.0
@@ -473,15 +505,105 @@ def main() -> None:
         raise ValueError("accept-drop and noise-limit are invalid")
     if not gpu_ids:
         raise ValueError("at least one score GPU is required")
-    if any(path.exists() for path in (args.out_dir / "manifest.json", args.out_dir / "history.jsonl")):
-        raise FileExistsError(f"refusing to overwrite {args.out_dir}")
-
-    args.out_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.out_dir / "trajectory"
-    trajectory_dir.mkdir(exist_ok=True)
-    current_noise, initial_payload = load_initial_noise(args.initial_case)
-    current_noise = np.clip(current_noise, -args.noise_limit, args.noise_limit).astype(np.float32)
-    if args.random_directions >= current_noise.size:
+    run_paths = {
+        name: args.out_dir / name
+        for name in (
+            "manifest.json",
+            "history.jsonl",
+            "progress.json",
+            "best.json",
+            "state_latest.npz",
+            "summary.json",
+        )
+    }
+    if args.resume:
+        required = [
+            run_paths["manifest.json"],
+            run_paths["history.jsonl"],
+            run_paths["progress.json"],
+            run_paths["best.json"],
+            run_paths["state_latest.npz"],
+        ]
+        missing = [path for path in required if not path.is_file()]
+        if missing or not trajectory_dir.is_dir():
+            raise FileNotFoundError(
+                f"resume artifacts are missing: {missing}, trajectory={trajectory_dir.is_dir()}"
+            )
+        with np.load(run_paths["state_latest.npz"], allow_pickle=False) as state:
+            required_state = (
+                "current_noise",
+                "best_noise",
+                "first_moment",
+                "second_moment",
+                "iteration",
+                "adam_step",
+                "best_iteration",
+                "rng_state",
+            )
+            missing_state = [name for name in required_state if name not in state.files]
+            if missing_state:
+                raise ValueError(f"saved optimizer state cannot resume: {missing_state}")
+            current_noise = np.asarray(state["current_noise"], dtype=np.float32)
+            best_noise = np.asarray(state["best_noise"], dtype=np.float32)
+            first_moment = np.asarray(state["first_moment"], dtype=np.float64)
+            second_moment = np.asarray(state["second_moment"], dtype=np.float64)
+            start_iteration = int(state["iteration"])
+            adam_step = int(state["adam_step"])
+            best_iteration = int(state["best_iteration"])
+            rng = np.random.default_rng()
+            rng.bit_generator.state = json.loads(str(state["rng_state"].item()))
+        history = [
+            json.loads(line)
+            for line in run_paths["history.jsonl"].read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if not history or int(history[-1]["iteration"]) != start_iteration:
+            raise ValueError("history tail does not match saved optimizer iteration")
+        if args.iterations <= start_iteration:
+            raise ValueError(
+                f"resume target {args.iterations} must exceed saved iteration {start_iteration}"
+            )
+        initial_payload: dict[str, Any] = {}
+    else:
+        if args.out_dir.exists():
+            existing = [
+                path
+                for path in (*run_paths.values(), trajectory_dir)
+                if path.exists()
+            ]
+            if existing:
+                raise FileExistsError(f"refusing to overwrite existing run: {existing}")
+        args.out_dir.mkdir(parents=True, exist_ok=True)
+        trajectory_dir.mkdir(exist_ok=True)
+        current_noise, initial_payload = load_initial_noise(args.initial_case)
+        current_noise = np.clip(current_noise, -args.noise_limit, args.noise_limit).astype(
+            np.float32
+        )
+        best_noise = current_noise.copy()
+        first_moment = np.zeros_like(current_noise, dtype=np.float64)
+        second_moment = np.zeros_like(current_noise, dtype=np.float64)
+        start_iteration = 0
+        adam_step = 0
+        best_iteration = 0
+        rng = np.random.default_rng(args.seed)
+        history = []
+    expected_shape = current_noise.shape
+    for name, value in (
+        ("best_noise", best_noise),
+        ("first_moment", first_moment),
+        ("second_moment", second_moment),
+    ):
+        if value.shape != expected_shape:
+            raise ValueError(
+                f"saved {name} shape {value.shape} does not match current noise {expected_shape}"
+            )
+    random_direction_bank_size = int(
+        args.random_direction_bank_size or args.random_directions
+    )
+    if random_direction_bank_size < args.random_directions:
+        raise ValueError("random direction bank cannot be smaller than the used prefix")
+    if random_direction_bank_size >= current_noise.size:
         raise ValueError("too many random directions for latent dimension")
     torch.cuda.set_device(0)
     device = torch.device("cuda", 0)
@@ -490,19 +612,23 @@ def main() -> None:
     if normalizer_key not in normalizer.current_l1_a:
         raise ValueError(f"condition {normalizer_key} is absent from normalizer")
 
-    manifest = {
+    requested_manifest = {
         "format": "qh_g3_informed_subspace_adam_v1",
         "algorithm": (
             "exact_secant_projection_over_g3_plus_random_orthogonal_subspace_then_"
             + args.proposal_mode
         ),
         "score_path": "native_cpp_cuda_abi9_exact_forward",
-        "gradient_reference": "native_fixed_geometry_g3_vjp_through_flow",
+        "reference_direction": "native_fixed_geometry_g3_vjp_through_flow",
+        "reference_direction_role": (
+            "correlated_search_prior_only; exact score secants determine sign and magnitude"
+        ),
         "nfp": int(args.nfp),
         "n_coils": int(current_noise.shape[0]),
         "iterations": int(args.iterations),
         "rk4_steps": int(args.rk4_steps),
         "random_directions": int(args.random_directions),
+        "random_direction_bank_size": random_direction_bank_size,
         "total_secant_directions": int(args.random_directions + 1),
         "perturbation": float(args.perturbation),
         "learning_rate": float(args.learning_rate),
@@ -521,7 +647,11 @@ def main() -> None:
         "secant_flow_decode": "independent_batch1",
         "secant_center_score": "native_score_api_in_same_worker_pool_batch",
         "smooth_candidate_evaluation": (
-            "independent_batch1_score_batch_then_single_selected_g3"
+            "independent_batch1_ordered_score_chunks_then_single_selected_g3"
+        ),
+        "center_rescore_every": int(args.center_rescore_every),
+        "candidate_score_chunk_size": int(
+            args.candidate_score_chunk_size or len(gpu_ids)
         ),
         "noise_limit": float(args.noise_limit),
         "seed": int(args.seed),
@@ -538,9 +668,58 @@ def main() -> None:
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
         "slurm_partition": os.environ.get("SLURM_JOB_PARTITION"),
     }
-    write_json(args.out_dir / "manifest.json", manifest)
+    if args.resume:
+        manifest = json.loads(run_paths["manifest.json"].read_text(encoding="utf-8"))
+        stable_keys = (
+            "format",
+            "algorithm",
+            "score_path",
+            "reference_direction",
+            "reference_direction_role",
+            "nfp",
+            "n_coils",
+            "rk4_steps",
+            "random_directions",
+            "random_direction_bank_size",
+            "total_secant_directions",
+            "perturbation",
+            "learning_rate",
+            "proposal_mode",
+            "projected_step_rms",
+            "betas",
+            "adam_epsilon",
+            "backtrack_fractions",
+            "accept_drop",
+            "probe_accept_minimum_gain",
+            "branch_accept_minimum_gain",
+            "acceptance",
+            "secant_flow_decode",
+            "smooth_candidate_evaluation",
+            "center_rescore_every",
+            "candidate_score_chunk_size",
+            "noise_limit",
+            "seed",
+            "checkpoint_sha256",
+            "gradient_lib_sha256",
+            "initial_case_sha256",
+        )
+        mismatches = {
+            key: {"saved": manifest.get(key), "requested": requested_manifest.get(key)}
+            for key in stable_keys
+            if manifest.get(key) != requested_manifest.get(key)
+        }
+        if mismatches:
+            raise ValueError(f"resume configuration mismatch: {mismatches}")
+        manifest["iterations"] = int(args.iterations)
+        manifest.setdefault("iteration_targets", [int(start_iteration)]).append(
+            int(args.iterations)
+        )
+        manifest.setdefault("slurm_job_ids", []).append(os.environ.get("SLURM_JOB_ID"))
+    else:
+        manifest = requested_manifest
+        manifest["iteration_targets"] = [int(args.iterations)]
+        manifest["slurm_job_ids"] = [os.environ.get("SLURM_JOB_ID")]
 
-    rng = np.random.default_rng(args.seed)
     started = time.perf_counter()
     current = evaluate(
         model,
@@ -554,33 +733,73 @@ def main() -> None:
     )
     if not current.valid:
         raise RuntimeError(f"initial G3 state is invalid: {current.score_result.get('status')}")
-    initial_score = result_score(current.score_result)
-    first_moment = np.zeros_like(current.noise, dtype=np.float64)
-    second_moment = np.zeros_like(current.noise, dtype=np.float64)
-    adam_step = 0
-    best = current
-    best_iteration = 0
-    history: list[dict[str, Any]] = []
-    history_path = args.out_dir / "history.jsonl"
-    save_trajectory(
-        trajectory_dir,
-        iteration=0,
-        evaluation=current,
-        first_moment=first_moment,
-        second_moment=second_moment,
-        adam_step=adam_step,
-        transition=None,
-    )
-    write_json(args.out_dir / "best.json", make_best_case(best, nfp=args.nfp, iteration=0, manifest=manifest))
+    reconstruction_score_evaluations = 1
+    if args.resume and not np.array_equal(best_noise, current_noise):
+        best = evaluate(
+            model,
+            normalizer,
+            best_noise,
+            nfp=args.nfp,
+            rk4_steps=args.rk4_steps,
+            gradient_lib=args.gradient_lib,
+            device=device,
+            gradient_group=3,
+        )
+        reconstruction_score_evaluations += 1
+        if not best.valid:
+            raise RuntimeError("saved best state is invalid during resume")
+    else:
+        best = current
+    history_path = run_paths["history.jsonl"]
+    if args.resume:
+        initial_score = float(manifest["initial_score"])
+        prior_total_wall_s = float(history[-1]["total_wall_s"])
+        cumulative_direction_evaluations = int(
+            history[-1]["cumulative_direction_evaluations"]
+        )
+        cumulative_blackbox_score_evaluations = int(
+            history[-1]["cumulative_blackbox_score_evaluations"]
+        ) + reconstruction_score_evaluations
+        append_jsonl(
+            args.out_dir / "resume_events.jsonl",
+            {
+                "saved_iteration": int(start_iteration),
+                "requested_iterations": int(args.iterations),
+                "reconstruction_score_evaluations": reconstruction_score_evaluations,
+                "prior_total_wall_s": prior_total_wall_s,
+                "time_unix_s": time.time(),
+            },
+        )
+    else:
+        initial_score = result_score(current.score_result)
+        manifest["initial_score"] = float(initial_score)
+        prior_total_wall_s = 0.0
+        cumulative_direction_evaluations = 0
+        cumulative_blackbox_score_evaluations = reconstruction_score_evaluations
+        save_trajectory(
+            trajectory_dir,
+            iteration=0,
+            evaluation=current,
+            first_moment=first_moment,
+            second_moment=second_moment,
+            adam_step=adam_step,
+            transition=None,
+        )
+        write_json(
+            run_paths["best.json"],
+            make_best_case(best, nfp=args.nfp, iteration=0, manifest=manifest),
+        )
+    write_json(run_paths["manifest.json"], manifest)
 
     with NativeScorePool(args.gradient_lib, list(gpu_ids)) as pool:
-        for iteration in range(1, args.iterations + 1):
+        for iteration in range(start_iteration + 1, args.iterations + 1):
             iteration_started = time.perf_counter()
             center_score_before = result_score(current.score_result)
             g3_gradient = np.asarray(current.latent_gradient, dtype=np.float64)
-            directions = informed_orthogonal_directions(
-                rng, g3_gradient, args.random_directions
+            direction_bank = informed_orthogonal_directions(
+                rng, g3_gradient, random_direction_bank_size
             )
+            directions = direction_bank[: args.random_directions + 1]
             pair_states = np.concatenate(
                 [current.noise[None] + args.perturbation * directions,
                  current.noise[None] - args.perturbation * directions],
@@ -595,7 +814,15 @@ def main() -> None:
                 steps=args.rk4_steps,
                 device=device,
             )
-            secant_tokens = np.concatenate((current.tokens[None], pair_tokens), axis=0)
+            rescore_center = bool(
+                args.center_rescore_every > 0
+                and iteration % args.center_rescore_every == 0
+            )
+            secant_tokens = (
+                np.concatenate((current.tokens[None], pair_tokens), axis=0)
+                if rescore_center
+                else pair_tokens
+            )
             (
                 secant_results,
                 secant_elapsed_s,
@@ -613,7 +840,9 @@ def main() -> None:
                 raise RuntimeError(
                     f"score worker failed at iteration {iteration}: {secant_errors}"
                 )
-            secant_center_result = secant_results[0]
+            secant_center_result = (
+                secant_results[0] if rescore_center else current.score_result
+            )
             if not result_valid(secant_center_result):
                 raise RuntimeError(
                     "batch-1 center score disagrees with the valid optimizer center: "
@@ -622,9 +851,11 @@ def main() -> None:
             secant_center_score_delta = (
                 result_score(secant_center_result) - center_score_before
             )
-            pair_results = secant_results[1:]
-            pair_elapsed_s = secant_elapsed_s[1:]
+            pair_results = secant_results[1:] if rescore_center else secant_results
+            pair_elapsed_s = secant_elapsed_s[1:] if rescore_center else secant_elapsed_s
             count = len(directions)
+            direction_evaluations = count
+            blackbox_score_evaluations = len(secant_tokens)
             projected, direction_rows, predicted_gain = exact_subspace_gradient(
                 secant_center_result,
                 pair_results[:count],
@@ -741,89 +972,102 @@ def main() -> None:
                             device=device,
                         )
                     )
-                    (
-                        candidate_score_results,
-                        smooth_candidate_score_elapsed_s,
-                        candidate_score_errors,
-                        smooth_candidate_score_wall_s,
-                    ) = score_tokens(
-                        pool,
-                        candidate_tokens,
-                        nfp=args.nfp,
-                        target="QH",
-                        timeout_s=args.batch_timeout_s,
-                        metadata={"phase": "smooth_candidates", "iteration": iteration},
-                    )
-                    if any(error is not None for error in candidate_score_errors):
-                        raise RuntimeError(
-                            f"smooth score worker failed at iteration {iteration}: "
-                            f"{candidate_score_errors}"
+                    chunk_size = int(args.candidate_score_chunk_size or len(gpu_ids))
+                    for chunk_start in range(0, len(candidate_states), chunk_size):
+                        chunk_end = min(chunk_start + chunk_size, len(candidate_states))
+                        (
+                            chunk_results,
+                            chunk_elapsed_s,
+                            chunk_errors,
+                            chunk_score_wall_s,
+                        ) = score_tokens(
+                            pool,
+                            candidate_tokens[chunk_start:chunk_end],
+                            nfp=args.nfp,
+                            target="QH",
+                            timeout_s=args.batch_timeout_s,
+                            metadata={
+                                "phase": "smooth_candidates",
+                                "iteration": iteration,
+                                "chunk_start": chunk_start,
+                            },
                         )
-                else:
-                    candidate_score_results = []
-                for fraction, proposal, score_only_result in zip(
-                    candidate_fractions,
-                    candidate_states,
-                    candidate_score_results,
-                    strict=True,
-                ):
-                    score_only_accepted = bool(
-                        result_valid(score_only_result)
-                        and accept_exact_score_candidate(
-                            current.score_result,
-                            score_only_result,
-                            accept_drop=args.accept_drop,
-                        )
-                    )
-                    candidate_row = {
-                        "mode": args.proposal_mode,
-                        "fraction": float(fraction),
-                        "status": str(score_only_result.get("status")),
-                        "score": result_score(score_only_result),
-                        "score_only_accepted": score_only_accepted,
-                        "g3_evaluated": False,
-                        "valid_g3": None,
-                        "exact_score_accepted": False,
-                    }
-                    candidate_rows.append(candidate_row)
-                    if not score_only_accepted:
-                        continue
-                    candidate = evaluate(
-                        model,
-                        normalizer,
-                        proposal,
-                        nfp=args.nfp,
-                        rk4_steps=args.rk4_steps,
-                        gradient_lib=args.gradient_lib,
-                        device=device,
-                        gradient_group=3,
-                    )
-                    exact_accepted = bool(
-                        candidate.valid
-                        and accept_exact_score_candidate(
-                            current.score_result,
-                            candidate.score_result,
-                            accept_drop=args.accept_drop,
-                        )
-                    )
-                    candidate_row.update(
-                        status=str(candidate.score_result.get("status")),
-                        score=result_score(candidate.score_result),
-                        score_only_score=result_score(score_only_result),
-                        score_repeat_delta=(
-                            result_score(candidate.score_result)
-                            - result_score(score_only_result)
-                        ),
-                        g3_evaluated=True,
-                        valid_g3=bool(candidate.valid),
-                        exact_score_accepted=exact_accepted,
-                        wall_s=float(candidate.wall_s),
-                    )
-                    if exact_accepted:
-                        accepted = candidate
-                        accepted_fraction = float(fraction)
-                        accepted_mode = args.proposal_mode
-                        break
+                        blackbox_score_evaluations += len(chunk_results)
+                        smooth_candidate_score_elapsed_s.extend(chunk_elapsed_s)
+                        smooth_candidate_score_wall_s += chunk_score_wall_s
+                        if any(error is not None for error in chunk_errors):
+                            raise RuntimeError(
+                                f"smooth score worker failed at iteration {iteration}: "
+                                f"{chunk_errors}"
+                            )
+                        for local_index, score_only_result in enumerate(chunk_results):
+                            candidate_index = chunk_start + local_index
+                            fraction = candidate_fractions[candidate_index]
+                            proposal = candidate_states[candidate_index]
+                            score_only_accepted = bool(
+                                result_valid(score_only_result)
+                                and accept_exact_score_candidate(
+                                    current.score_result,
+                                    score_only_result,
+                                    accept_drop=args.accept_drop,
+                                )
+                            )
+                            candidate_row = {
+                                "mode": args.proposal_mode,
+                                "fraction": float(fraction),
+                                "status": (
+                                    None
+                                    if score_only_result is None
+                                    else str(score_only_result.get("status"))
+                                ),
+                                "score": result_score(score_only_result),
+                                "score_only_accepted": score_only_accepted,
+                                "g3_evaluated": False,
+                                "valid_g3": None,
+                                "exact_score_accepted": False,
+                            }
+                            candidate_rows.append(candidate_row)
+                            if not score_only_accepted:
+                                continue
+                            candidate = evaluate(
+                                model,
+                                normalizer,
+                                proposal,
+                                nfp=args.nfp,
+                                rk4_steps=args.rk4_steps,
+                                gradient_lib=args.gradient_lib,
+                                device=device,
+                                gradient_group=3,
+                            )
+                            blackbox_score_evaluations += 1
+                            exact_accepted = bool(
+                                candidate.valid
+                                and accept_exact_score_candidate(
+                                    current.score_result,
+                                    candidate.score_result,
+                                    accept_drop=args.accept_drop,
+                                )
+                            )
+                            candidate_row.update(
+                                status=str(candidate.score_result.get("status")),
+                                score=result_score(candidate.score_result),
+                                score_only_score=result_score(score_only_result),
+                                score_repeat_delta=(
+                                    result_score(candidate.score_result)
+                                    - result_score(score_only_result)
+                                ),
+                                g3_evaluated=True,
+                                valid_g3=bool(candidate.valid),
+                                exact_score_accepted=exact_accepted,
+                                wall_s=float(candidate.wall_s),
+                            )
+                            if exact_accepted:
+                                accepted = candidate
+                                accepted_fraction = float(fraction)
+                                accepted_mode = args.proposal_mode
+                                break
+                        if accepted is not None:
+                            break
 
             incumbent = current if accepted is None else accepted
             if args.proposal_mode == "quadratic_axis":
@@ -865,6 +1109,7 @@ def main() -> None:
                         timeout_s=args.batch_timeout_s,
                         metadata={"phase": "quadratic_axis", "iteration": iteration},
                     )
+                    blackbox_score_evaluations += len(axis_results)
                     if any(error is not None for error in axis_errors):
                         raise RuntimeError(
                             f"quadratic-axis score worker failed at iteration {iteration}: "
@@ -900,6 +1145,7 @@ def main() -> None:
                             device=device,
                             gradient_group=3,
                         )
+                        blackbox_score_evaluations += 1
                         axis_same_branch = (
                             branch_fingerprint(axis_candidate.score_result)
                             == branch_fingerprint(current.score_result)
@@ -956,6 +1202,7 @@ def main() -> None:
                     device=device,
                     gradient_group=3,
                 )
+                blackbox_score_evaluations += 1
                 wins_competition = bool(
                     probe_candidate.valid
                     and score_improves_by(
@@ -1013,12 +1260,15 @@ def main() -> None:
                 )
             applied_update_rms = rms(current.noise.astype(np.float64) - previous_noise)
             accepted_score_gain = result_score(current.score_result) - center_score_before
+            cumulative_direction_evaluations += direction_evaluations
+            cumulative_blackbox_score_evaluations += blackbox_score_evaluations
             transition = {
                 "directions": directions.tolist(),
                 "direction_rows": direction_rows,
                 "predicted_local_gain": predicted_gain,
                 "secant_center_score": result_score(secant_center_result),
                 "secant_center_score_delta": secant_center_score_delta,
+                "center_rescored": rescore_center,
                 "accepted_score_gain": accepted_score_gain,
                 "quadratic_model_rows": quadratic_rows,
                 "quadratic_predicted_gain": quadratic_predicted_gain,
@@ -1045,6 +1295,12 @@ def main() -> None:
                 "pair_score_wall_s": pair_score_wall_s,
                 "pair_score_elapsed_s": pair_elapsed_s,
                 "candidate_trials": candidate_rows,
+                "direction_evaluations": direction_evaluations,
+                "cumulative_direction_evaluations": cumulative_direction_evaluations,
+                "blackbox_score_evaluations": blackbox_score_evaluations,
+                "cumulative_blackbox_score_evaluations": (
+                    cumulative_blackbox_score_evaluations
+                ),
             }
             iteration_wall_s = time.perf_counter() - iteration_started
             g3_slope = float(direction_rows[0]["slope"])
@@ -1066,6 +1322,7 @@ def main() -> None:
                 "g3_slope": g3_slope,
                 "secant_center_score": result_score(secant_center_result),
                 "secant_center_score_delta": secant_center_score_delta,
+                "center_rescored": rescore_center,
                 "accepted_score_gain": accepted_score_gain,
                 "valid_directions": int(sum(item["valid"] for item in direction_rows)),
                 "accepted_fraction": accepted_fraction,
@@ -1075,8 +1332,14 @@ def main() -> None:
                 "pair_score_wall_s": pair_score_wall_s,
                 "smooth_candidate_decode_wall_s": smooth_candidate_decode_wall_s,
                 "smooth_candidate_score_wall_s": smooth_candidate_score_wall_s,
+                "direction_evaluations": direction_evaluations,
+                "cumulative_direction_evaluations": cumulative_direction_evaluations,
+                "blackbox_score_evaluations": blackbox_score_evaluations,
+                "cumulative_blackbox_score_evaluations": (
+                    cumulative_blackbox_score_evaluations
+                ),
                 "iteration_wall_s": iteration_wall_s,
-                "total_wall_s": time.perf_counter() - started,
+                "total_wall_s": prior_total_wall_s + time.perf_counter() - started,
             }
             history.append(row)
             append_jsonl(history_path, row)
@@ -1098,6 +1361,7 @@ def main() -> None:
                 iteration=np.asarray(iteration),
                 adam_step=np.asarray(adam_step),
                 best_iteration=np.asarray(best_iteration),
+                rng_state=np.asarray(json.dumps(rng.bit_generator.state)),
             )
             write_json(
                 args.out_dir / "progress.json",
@@ -1106,6 +1370,11 @@ def main() -> None:
                     "current_score": row["current_score"],
                     "best_score": row["best_score"],
                     "best_iteration": best_iteration,
+                    "initial_score": initial_score,
+                    "cumulative_direction_evaluations": cumulative_direction_evaluations,
+                    "cumulative_blackbox_score_evaluations": (
+                        cumulative_blackbox_score_evaluations
+                    ),
                     "last_row": row,
                 },
             )
@@ -1121,6 +1390,8 @@ def main() -> None:
                         "valid_directions": row["valid_directions"],
                         "accepted_fraction": accepted_fraction,
                         "accepted_mode": accepted_mode,
+                        "directions": cumulative_direction_evaluations,
+                        "score_calls": cumulative_blackbox_score_evaluations,
                         "wall_s": iteration_wall_s,
                     },
                     separators=(",", ":"),
@@ -1157,7 +1428,11 @@ def main() -> None:
         "best_components": best.score_result["components"],
         "best_diagnostics": compact_result(best.score_result)["diagnostics"],
         "mean_iteration_wall_s": float(np.mean([row["iteration_wall_s"] for row in history])),
-        "total_wall_s": float(time.perf_counter() - started),
+        "cumulative_direction_evaluations": int(cumulative_direction_evaluations),
+        "cumulative_blackbox_score_evaluations": int(
+            cumulative_blackbox_score_evaluations
+        ),
+        "total_wall_s": float(prior_total_wall_s + time.perf_counter() - started),
     }
     write_json(args.out_dir / "summary.json", summary)
     print(json.dumps(summary, separators=(",", ":")), flush=True)

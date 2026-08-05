@@ -75,7 +75,16 @@ def normalize_history_row(row: dict[str, Any], *, direction_count: int) -> dict[
         "surface_level": float(row.get("surface_level", float("nan"))),
         "valid_directions": int(valid_directions),
         "accepted_mode": str(accepted_mode),
+        "center_rescored": bool(row.get("center_rescored", True)),
         "secant_center_score": float(row.get("secant_center_score", float("nan"))),
+        "direction_evaluations": int(row.get("direction_evaluations", direction_count)),
+        "cumulative_direction_evaluations": row.get(
+            "cumulative_direction_evaluations"
+        ),
+        "blackbox_score_evaluations": row.get("blackbox_score_evaluations"),
+        "cumulative_blackbox_score_evaluations": row.get(
+            "cumulative_blackbox_score_evaluations"
+        ),
         "iteration_wall_s": float(row["iteration_wall_s"]),
         "pair_score_wall_s": float(row["pair_score_wall_s"]),
         "components": row.get("components"),
@@ -111,7 +120,12 @@ def main() -> None:
         manifest = summary.get("manifest")
         if manifest is None:
             manifest = read_json(directory / "manifest.json")
-        direction_count = int(manifest.get("random_directions", manifest.get("directions", 0)))
+        random_direction_count = int(
+            manifest.get("random_directions", manifest.get("directions", 0))
+        )
+        direction_count = int(
+            manifest.get("total_secant_directions", random_direction_count + 1)
+        )
         history = [
             normalize_history_row(row, direction_count=direction_count)
             for row in read_jsonl(directory / "history.jsonl")
@@ -131,13 +145,33 @@ def main() -> None:
             raw_last = read_jsonl(directory / "history.jsonl")[-1]
             summary["total_wall_s"] = float(raw_last["total_wall_s"])
         previous_score = float(summary["initial_score"])
+        running_direction_evaluations = 0
+        running_blackbox_score_evaluations = 0
         center_repeat_deltas: list[float] = []
         accepted_gains: list[float] = []
         for row in history:
-            center_repeat_delta = float(row["secant_center_score"]) - previous_score
+            center_repeat_delta = (
+                float(row["secant_center_score"]) - previous_score
+                if row["center_rescored"]
+                else float("nan")
+            )
             accepted_gain = float(row["current_score"]) - previous_score
             row["center_repeat_delta"] = center_repeat_delta
             row["accepted_score_gain"] = accepted_gain
+            saved_direction_total = row["cumulative_direction_evaluations"]
+            if saved_direction_total is None:
+                running_direction_evaluations += int(row["direction_evaluations"])
+            else:
+                running_direction_evaluations = int(saved_direction_total)
+            row["cumulative_direction_evaluations"] = running_direction_evaluations
+            saved_score_total = row["cumulative_blackbox_score_evaluations"]
+            if saved_score_total is None:
+                row["cumulative_blackbox_score_evaluations"] = None
+            else:
+                running_blackbox_score_evaluations = int(saved_score_total)
+                row["cumulative_blackbox_score_evaluations"] = (
+                    running_blackbox_score_evaluations
+                )
             if np.isfinite(center_repeat_delta):
                 center_repeat_deltas.append(center_repeat_delta)
             if row["accepted_mode"] != "rejected":
@@ -202,7 +236,14 @@ def main() -> None:
                 "p95_iteration_wall_s": finite_percentile(walls, 95.0),
                 "max_iteration_wall_s": float(np.max(walls)),
                 "total_wall_s": float(summary["total_wall_s"]),
-                "random_directions": direction_count,
+                "random_directions": random_direction_count,
+                "total_secant_directions": direction_count,
+                "cumulative_direction_evaluations": int(
+                    history[-1]["cumulative_direction_evaluations"]
+                ),
+                "cumulative_blackbox_score_evaluations": history[-1][
+                    "cumulative_blackbox_score_evaluations"
+                ],
                 "perturbation": float(manifest["perturbation"]),
                 "seed": int(manifest["seed"]),
             }
@@ -225,6 +266,16 @@ def main() -> None:
                     "accepted_mode": str(row.get("accepted_mode", "adam")),
                     "center_repeat_delta": float(row["center_repeat_delta"]),
                     "accepted_score_gain": float(row["accepted_score_gain"]),
+                    "direction_evaluations": int(row["direction_evaluations"]),
+                    "cumulative_direction_evaluations": int(
+                        row["cumulative_direction_evaluations"]
+                    ),
+                    "blackbox_score_evaluations": row[
+                        "blackbox_score_evaluations"
+                    ],
+                    "cumulative_blackbox_score_evaluations": row[
+                        "cumulative_blackbox_score_evaluations"
+                    ],
                     "iteration_wall_s": float(row["iteration_wall_s"]),
                 }
             )
@@ -266,6 +317,45 @@ def main() -> None:
         axis.grid(alpha=0.25)
         axis.legend(fontsize=8)
     figure.savefig(args.output_dir / "optimizer_comparison.png", dpi=180)
+    plt.close(figure)
+
+    figure, axes = plt.subplots(1, 2, figsize=(13, 5), constrained_layout=True)
+    score_call_runs = 0
+    for run in runs:
+        history = run["history"]
+        initial = float(run["summary"]["initial_score"])
+        direction_budget = [
+            0,
+            *[int(row["cumulative_direction_evaluations"]) for row in history],
+        ]
+        scores = [initial, *[float(row["current_score"]) for row in history]]
+        axes[0].plot(direction_budget, scores, label=run["label"])
+        score_call_budget = [
+            row["cumulative_blackbox_score_evaluations"] for row in history
+        ]
+        if all(value is not None for value in score_call_budget):
+            score_call_runs += 1
+            axes[1].plot(
+                [1, *[int(value) for value in score_call_budget]],
+                scores,
+                label=run["label"],
+            )
+    axes[0].set(
+        title="Score by evaluated direction budget",
+        xlabel="cumulative directions (G3 reference + random)",
+        ylabel="exact score",
+    )
+    axes[1].set(
+        title="Score by exact black-box calls",
+        xlabel="cumulative score calls",
+        ylabel="exact score",
+    )
+    for axis in axes:
+        axis.grid(alpha=0.25)
+        axis.legend(fontsize=8)
+    if score_call_runs == 0:
+        axes[1].text(0.5, 0.5, "Exact call counts unavailable", ha="center", va="center")
+    figure.savefig(args.output_dir / "optimizer_cost_comparison.png", dpi=180)
     plt.close(figure)
 
     detailed_runs = [run for run in runs if run["history"] and run["history"][0]["components"]]

@@ -1592,6 +1592,7 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         config.score_qh_helicity_exploration_fraction > 1.0 ||
         config.surface_selection_mode < 0 || config.surface_selection_mode > 1 ||
         config.surface_confidence_periods < 1 || config.surface_confidence_periods > 16 ||
+        config.surface_flux_bisection_iters < 0 || config.surface_flux_bisection_iters > 12 ||
         !(config.surface_confidence_drift_center > 0.0) ||
         !(config.surface_confidence_drift_temperature > 0.0) ||
         !(config.surface_confidence_smoothmax_temperature > 0.0) ||
@@ -3901,40 +3902,84 @@ bool run_downstream_gpu(
     FluxCalibrationNative flux;
     SurfaceScreen* selected_surface = nullptr;
     SurfaceScreen* closest_rejected_surface = nullptr;
+    SurfaceScreen continuous_surface;
     bool flux_ok = false;
-    for (SurfaceScreen* candidate : candidates) {
-        const auto trace_started = Clock::now();
-        if (verify_long_horizon) {
-            if (!verify_surface_long_horizon(
-                    field, axis, psi, nfp, config, *candidate, result.timings)) {
-                fail_from_backend(&result, "long-horizon surface trace");
-                return false;
-            }
-            result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] += seconds_since(trace_started);
-        }
-        if (!candidate->strict) {
-            ++result.surface_long_trace_rejected_count;
-            if (!closest_rejected_surface ||
-                candidate->relative_drift_p95 < closest_rejected_surface->relative_drift_p95) {
-                closest_rejected_surface = candidate;
-            }
-            continue;
-        }
+    auto calibrate_level = [&](double level, FluxCalibrationNative& trial) {
         ++result.flux_attempt_count;
-        FluxCalibrationNative trial;
         const auto calibration_started = Clock::now();
         const bool trial_ok = calibrate_flux_native(
-            field, device_psi, axis, psi, nfp, candidate->level, config, trial, result
+            field, device_psi, axis, psi, nfp, level, config, trial, result
         );
         result.timings[SGPU_SCORE_TIME_FLUX_CALIBRATION] += seconds_since(calibration_started);
+        return trial_ok;
+    };
+    if (config.surface_selection_mode == 1 && !candidates.empty()) {
+        continuous_surface = *candidates.front();
+        double high = continuous_surface.level;
+        FluxCalibrationNative high_trial;
+        const bool high_ok = calibrate_level(high, high_trial);
         if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
-        if (!selected_surface || trial_ok) {
-            selected_surface = candidate;
-            flux = std::move(trial);
-        }
-        if (trial_ok) {
+        if (high_ok) {
+            flux = std::move(high_trial);
             flux_ok = true;
-            break;
+        } else {
+            double low = config.surface_levels[0];
+            FluxCalibrationNative low_trial;
+            bool low_ok = calibrate_level(low, low_trial);
+            if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
+            if (low_ok) {
+                flux = std::move(low_trial);
+                for (int iteration = 0; iteration < config.surface_flux_bisection_iters; ++iteration) {
+                    const double middle = 0.5 * (low + high);
+                    FluxCalibrationNative middle_trial;
+                    const bool middle_ok = calibrate_level(middle, middle_trial);
+                    if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
+                    if (middle_ok) {
+                        low = middle;
+                        flux = std::move(middle_trial);
+                    } else {
+                        high = middle;
+                    }
+                }
+                continuous_surface.level = low;
+                flux_ok = true;
+            } else {
+                flux = std::move(low_trial);
+                continuous_surface.level = low;
+            }
+        }
+        selected_surface = &continuous_surface;
+        result.surface_effective_level = continuous_surface.level;
+    } else {
+        for (SurfaceScreen* candidate : candidates) {
+            const auto trace_started = Clock::now();
+            if (verify_long_horizon) {
+                if (!verify_surface_long_horizon(
+                        field, axis, psi, nfp, config, *candidate, result.timings)) {
+                    fail_from_backend(&result, "long-horizon surface trace");
+                    return false;
+                }
+                result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] += seconds_since(trace_started);
+            }
+            if (!candidate->strict) {
+                ++result.surface_long_trace_rejected_count;
+                if (!closest_rejected_surface ||
+                    candidate->relative_drift_p95 < closest_rejected_surface->relative_drift_p95) {
+                    closest_rejected_surface = candidate;
+                }
+                continue;
+            }
+            FluxCalibrationNative trial;
+            const bool trial_ok = calibrate_level(candidate->level, trial);
+            if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
+            if (!selected_surface || trial_ok) {
+                selected_surface = candidate;
+                flux = std::move(trial);
+            }
+            if (trial_ok) {
+                flux_ok = true;
+                break;
+            }
         }
     }
     result.timings[SGPU_SCORE_TIME_FLUX] = seconds_since(started);
@@ -5563,6 +5608,7 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->score_qh_helicity_exploration_fraction = 0.20;
     config->surface_selection_mode = 0;
     config->surface_confidence_periods = 2;
+    config->surface_flux_bisection_iters = 6;
     config->surface_confidence_drift_center = 0.05;
     config->surface_confidence_drift_temperature = 0.0125;
     config->surface_confidence_smoothmax_temperature = 0.005;

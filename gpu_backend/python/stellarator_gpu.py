@@ -170,6 +170,7 @@ class _SgpuScoreConfig(ctypes.Structure):
         ("score_qh_helicity_exploration_fraction", ctypes.c_double),
         ("surface_selection_mode", ctypes.c_int32),
         ("surface_confidence_periods", ctypes.c_int32),
+        ("surface_flux_bisection_iters", ctypes.c_int32),
         ("surface_confidence_drift_center", ctypes.c_double),
         ("surface_confidence_drift_temperature", ctypes.c_double),
         ("surface_confidence_smoothmax_temperature", ctypes.c_double),

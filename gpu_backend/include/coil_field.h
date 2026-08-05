@@ -159,6 +159,7 @@ struct SgpuScoreConfig {
 
     std::int32_t surface_selection_mode;
     std::int32_t surface_confidence_periods;
+    std::int32_t surface_flux_bisection_iters;
     double surface_confidence_drift_center;
     double surface_confidence_drift_temperature;
     double surface_confidence_smoothmax_temperature;

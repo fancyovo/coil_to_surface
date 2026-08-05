@@ -33,6 +33,12 @@ direction_outlier_ratio="${DIRECTION_OUTLIER_RATIO:-8.0}"
 direction_outlier_mad_factor="${DIRECTION_OUTLIER_MAD_FACTOR:-8.0}"
 seed="${SEED:-2026073004}"
 initial_case="${INITIAL_CASE:-}"
+score_surface_mode="${SCORE_SURFACE_MODE:-legacy}"
+surface_confidence_periods="${SURFACE_CONFIDENCE_PERIODS:-1}"
+surface_theta_count="${SURFACE_THETA_COUNT:-128}"
+surface_trace_steps="${SURFACE_TRACE_STEPS:-400}"
+surface_flux_bisection_iters="${SURFACE_FLUX_BISECTION_ITERS:-6}"
+axis_continuation="${AXIS_CONTINUATION:-0}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 children=()
 
@@ -75,6 +81,16 @@ if [[ "$reject_invalid_center" == "1" ]]; then
     --reject-invalid-center
     --invalid-center-backtracking "$invalid_center_backtracking"
   )
+fi
+score_mode_args=(
+  --score-surface-mode "$score_surface_mode"
+  --surface-confidence-periods "$surface_confidence_periods"
+  --surface-theta-count "$surface_theta_count"
+  --surface-trace-steps "$surface_trace_steps"
+  --surface-flux-bisection-iters "$surface_flux_bisection_iters"
+)
+if [[ "$axis_continuation" == "1" ]]; then
+  score_mode_args+=(--axis-continuation)
 fi
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 source "$HOME/coil/.venv/bin/activate"
@@ -130,6 +146,7 @@ python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --beta1 "$beta1" \
   --beta2 "$beta2" \
   --seed "$seed" \
+  "${score_mode_args[@]}" \
   "${robust_gradient_args[@]}" \
   "${initial_args[@]}" &
 children+=("$!")

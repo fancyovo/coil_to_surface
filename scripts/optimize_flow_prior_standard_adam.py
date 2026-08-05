@@ -288,6 +288,16 @@ def main() -> None:
     parser.add_argument("--plot-every", type=int, default=10)
     parser.add_argument("--seed", type=int, default=2026073004)
     parser.add_argument(
+        "--score-surface-mode",
+        choices=("legacy", "continuous"),
+        default="legacy",
+    )
+    parser.add_argument("--surface-confidence-periods", type=int, default=1)
+    parser.add_argument("--surface-theta-count", type=int, default=128)
+    parser.add_argument("--surface-trace-steps", type=int, default=400)
+    parser.add_argument("--surface-flux-bisection-iters", type=int, default=6)
+    parser.add_argument("--axis-continuation", action="store_true")
+    parser.add_argument(
         "--resume",
         action="store_true",
         help="Resume an interrupted run in --out-dir without resetting Adam state.",
@@ -333,6 +343,41 @@ def main() -> None:
         )
     if not gpu_ids:
         raise ValueError("at least one score GPU is required")
+    if (
+        args.surface_confidence_periods < 1
+        or args.surface_theta_count < 16
+        or args.surface_trace_steps < 1
+        or args.surface_flux_bisection_iters < 0
+    ):
+        raise ValueError("continuous surface controls must be non-negative and bounded")
+
+    base_score_config: dict[str, Any] = {}
+    if args.score_surface_mode == "continuous":
+        base_score_config = {
+            "surface_selection_mode": 1,
+            "surface_confidence_periods": args.surface_confidence_periods,
+            "surface_theta_count": args.surface_theta_count,
+            "surface_trace_steps": args.surface_trace_steps,
+            "surface_flux_bisection_iters": args.surface_flux_bisection_iters,
+        }
+
+    def score_config_for_center(result: dict[str, Any]) -> dict[str, Any] | None:
+        overrides = dict(base_score_config)
+        if args.axis_continuation:
+            diagnostics = result["diagnostics"]
+            axis_r = float(diagnostics["axis_R"])
+            axis_z = float(diagnostics["axis_Z"])
+            if not math.isfinite(axis_r) or not math.isfinite(axis_z):
+                raise RuntimeError("accepted center has no finite magnetic-axis token")
+            overrides.update(
+                {
+                    "axis_hint_enabled": 1,
+                    "axis_hint_require_continuation": 1,
+                    "axis_hint_R": axis_r,
+                    "axis_hint_Z": axis_z,
+                }
+            )
+        return overrides or None
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.out_dir / "trajectory"
@@ -478,6 +523,12 @@ def main() -> None:
         "native_lib_sha256": file_sha256(args.lib),
         "gpu_ids": list(gpu_ids),
         "max_wall_s": args.max_wall_s,
+        "score_surface_mode": args.score_surface_mode,
+        "surface_confidence_periods": args.surface_confidence_periods,
+        "surface_theta_count": args.surface_theta_count,
+        "surface_trace_steps": args.surface_trace_steps,
+        "surface_flux_bisection_iters": args.surface_flux_bisection_iters,
+        "axis_continuation": args.axis_continuation,
         "trajectory_artifact": (
             "one atomic JSON case for step 0 and every completed iteration; "
             "each case stores latent noise, decoded coil coefficients/current, "
@@ -517,6 +568,12 @@ def main() -> None:
             "checkpoint_sha256",
             "native_lib_sha256",
             "gpu_ids",
+            "score_surface_mode",
+            "surface_confidence_periods",
+            "surface_theta_count",
+            "surface_trace_steps",
+            "surface_flux_bisection_iters",
+            "axis_continuation",
         )
         mismatches = {
             key: {"saved": manifest.get(key), "requested": requested_manifest.get(key)}
@@ -591,6 +648,7 @@ def main() -> None:
             target=args.target,
             timeout_s=args.batch_timeout_s,
             metadata={"phase": "initial", "iteration": 0},
+            config_overrides=base_score_config or None,
         )
         if any(error is not None for error in initial_errors) or initial_results[0] is None:
             raise RuntimeError(f"initial native-score failure: {initial_errors}")
@@ -691,6 +749,7 @@ def main() -> None:
                 target=args.target,
                 timeout_s=args.batch_timeout_s,
                 metadata={"phase": "gradient", "iteration": iteration},
+                config_overrides=score_config_for_center(current_result),
             )
             if any(error is not None for error in pair_errors):
                 raise RuntimeError(
@@ -851,6 +910,7 @@ def main() -> None:
                         target=args.target,
                         timeout_s=args.batch_timeout_s,
                         metadata={"phase": "updated_center", "iteration": iteration},
+                        config_overrides=score_config_for_center(previous_result),
                     )
                 )
                 if (
@@ -898,6 +958,7 @@ def main() -> None:
                                 "iteration": iteration,
                                 "fraction": fraction,
                             },
+                            config_overrides=score_config_for_center(previous_result),
                         )
                     )
                     if any(error is not None for error in trial_errors) or trial_results[0] is None:

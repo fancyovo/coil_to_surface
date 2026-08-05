@@ -38,6 +38,19 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, corrected P107 four-GPU calibration job `32741` completed all
+  128 fixed QH cases in 318.02 s wall time with empty stderr. Legacy statuses
+  were 65 ok, 46 drift-rejected, 13 no-surface, 3 flux-rejected, and 1 no-axis.
+  The first continuous calibration is rejected as a production definition:
+  among the 65 old-ok cases, all tested variants prematurely returned
+  no-surface for 25--26 cases because the prototype still hard-rejected the
+  predicted edge before allowing flux search to shrink it. For cases reaching
+  QS, old/new log-QH Spearman was already 0.998--0.999 and all axis hints
+  matched exactly, so the dominant issue is this early gate, not alpha/QS.
+  The local follow-up removes that gate and searches descending old levels only
+  to obtain a robust passing lower bracket before six continuous bisections;
+  this fix is not yet remotely validated. Frozen first-pass analysis is under
+  `reports/assets/qh_score_fast_continuation_20260805/calibration_128/`.
 - On 2026-08-05, P107 four-GPU calibration job `32738` was cancelled after
   1m46s because all four Python workers accidentally used the default
   `device_id=0`, causing GPU0 QR allocation OOM. Its partial output is invalid

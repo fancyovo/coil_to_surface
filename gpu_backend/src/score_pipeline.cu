@@ -1478,9 +1478,7 @@ bool screen_surface_confidence_native(
     screen.drift_p95 = effective_risk * mean_radius;
     screen.long_trace_periods_completed = config.surface_confidence_periods;
     screen.long_verified = false;
-    screen.stable = effective_level >= config.surface_levels[0] &&
-        effective_confidence >= config.surface_confidence_minimum &&
-        maximum_radius < config.surface_max_radius_scale * config.psi_a * 0.999;
+    screen.stable = effective_level >= config.surface_levels[0];
     screen.strict = screen.stable;
     screen.verified = true;
     screens.assign(1, screen);
@@ -3923,10 +3921,26 @@ bool run_downstream_gpu(
             flux = std::move(high_trial);
             flux_ok = true;
         } else {
-            double low = config.surface_levels[0];
+            double low = std::numeric_limits<double>::quiet_NaN();
             FluxCalibrationNative low_trial;
-            bool low_ok = calibrate_level(low, low_trial);
-            if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) return false;
+            bool low_ok = false;
+            for (int level_index = config.surface_level_count - 1;
+                 level_index >= 0; --level_index) {
+                const double probe = config.surface_levels[level_index];
+                if (!(probe < high)) continue;
+                FluxCalibrationNative probe_trial;
+                const bool probe_ok = calibrate_level(probe, probe_trial);
+                if (result.status == SGPU_SCORE_INTERNAL_ERROR && result.error_message[0]) {
+                    return false;
+                }
+                if (probe_ok) {
+                    low = probe;
+                    low_trial = std::move(probe_trial);
+                    low_ok = true;
+                    break;
+                }
+                low_trial = std::move(probe_trial);
+            }
             if (low_ok) {
                 flux = std::move(low_trial);
                 for (int iteration = 0; iteration < config.surface_flux_bisection_iters; ++iteration) {
@@ -3945,7 +3959,7 @@ bool run_downstream_gpu(
                 flux_ok = true;
             } else {
                 flux = std::move(low_trial);
-                continuous_surface.level = low;
+                continuous_surface.level = config.surface_levels[0];
             }
         }
         selected_surface = &continuous_surface;

@@ -84,18 +84,25 @@ def summarize(rows: list[dict]) -> dict:
         status = row["legacy"]["status"]
         summary["legacy_status_counts"][status] = summary["legacy_status_counts"].get(status, 0) + 1
     for name in variants:
-        candidate = np.asarray([row["variants"][name]["score"] for row in rows])
+        subset = [row for row in rows if name in row["variants"]]
+        old_score = np.asarray([row["legacy"]["score"] for row in subset], dtype=np.float64)
+        old_qh = np.asarray([
+            row["legacy"]["diagnostics"]["qs_target_global_error_per_helicity"]
+            for row in subset
+        ])
+        old_time = np.asarray([row["legacy"]["timing"]["total_s"] for row in subset])
+        candidate = np.asarray([row["variants"][name]["score"] for row in subset])
         candidate_qh = np.asarray([
             row["variants"][name]["diagnostics"]["qs_target_global_error_per_helicity"]
-            for row in rows
+            for row in subset
         ])
-        candidate_time = np.asarray([row["variants"][name]["timing"]["total_s"] for row in rows])
+        candidate_time = np.asarray([row["variants"][name]["timing"]["total_s"] for row in subset])
         surface_time = np.asarray([
-            row["variants"][name]["timing"]["surface_screen_s"] for row in rows
+            row["variants"][name]["timing"]["surface_screen_s"] for row in subset
         ])
         statuses: dict[str, int] = {}
         axis_errors = []
-        for row in rows:
+        for row in subset:
             result = row["variants"][name]
             statuses[result["status"]] = statuses.get(result["status"], 0) + 1
             axis_errors.append(
@@ -104,28 +111,29 @@ def summarize(rows: list[dict]) -> dict:
                     result["diagnostics"]["axis_Z"] - row["legacy"]["diagnostics"]["axis_Z"],
                 )
             )
-        high80 = legacy_score >= 80.0
-        high90 = legacy_score >= 90.0
+        high80 = old_score >= 80.0
+        high90 = old_score >= 90.0
         variant_summary = {
+            "count": len(subset),
             "status_counts": statuses,
-            "score_pearson": correlation(legacy_score, candidate),
-            "score_spearman": correlation(legacy_score, candidate, ranked=True),
-            "score_delta_median": percentile(candidate - legacy_score, 0.5),
-            "score_delta_p05": percentile(candidate - legacy_score, 0.05),
-            "score_delta_p95": percentile(candidate - legacy_score, 0.95),
-            "top20pct_overlap": top_overlap(legacy_score, candidate, max(1, len(rows) // 5)),
-            "top10pct_overlap": top_overlap(legacy_score, candidate, max(1, len(rows) // 10)),
+            "score_pearson": correlation(old_score, candidate),
+            "score_spearman": correlation(old_score, candidate, ranked=True),
+            "score_delta_median": percentile(candidate - old_score, 0.5),
+            "score_delta_p05": percentile(candidate - old_score, 0.05),
+            "score_delta_p95": percentile(candidate - old_score, 0.95),
+            "top20pct_overlap": top_overlap(old_score, candidate, max(1, len(subset) // 5)),
+            "top10pct_overlap": top_overlap(old_score, candidate, max(1, len(subset) // 10)),
             "high80_count": int(np.count_nonzero(high80)),
-            "high80_spearman": correlation(legacy_score[high80], candidate[high80], ranked=True),
+            "high80_spearman": correlation(old_score[high80], candidate[high80], ranked=True),
             "high90_count": int(np.count_nonzero(high90)),
-            "high90_spearman": correlation(legacy_score[high90], candidate[high90], ranked=True),
+            "high90_spearman": correlation(old_score[high90], candidate[high90], ranked=True),
             "qh_log10_spearman": correlation(
-                np.log10(legacy_qh), np.log10(candidate_qh), ranked=True
+                np.log10(old_qh), np.log10(candidate_qh), ranked=True
             ),
             "total_s_median": percentile(candidate_time, 0.5),
             "total_s_p95": percentile(candidate_time, 0.95),
             "surface_s_median": percentile(surface_time, 0.5),
-            "speedup_median_ratio": percentile(legacy_time, 0.5) /
+            "speedup_median_ratio": percentile(old_time, 0.5) /
                 percentile(candidate_time, 0.5),
             "axis_error_max": float(np.nanmax(axis_errors)),
         }
@@ -135,11 +143,12 @@ def summarize(rows: list[dict]) -> dict:
 
 def plot(rows: list[dict], summary: dict, output: Path) -> None:
     names = sorted(summary["variants"])
-    legacy = np.asarray([row["legacy"]["score"] for row in rows])
     figure, axes = plt.subplots(2, len(names), figsize=(4.2 * len(names), 7.2), squeeze=False)
     for column, name in enumerate(names):
-        candidate = np.asarray([row["variants"][name]["score"] for row in rows])
-        timing = np.asarray([row["variants"][name]["timing"]["total_s"] for row in rows])
+        subset = [row for row in rows if name in row["variants"]]
+        legacy = np.asarray([row["legacy"]["score"] for row in subset])
+        candidate = np.asarray([row["variants"][name]["score"] for row in subset])
+        timing = np.asarray([row["variants"][name]["timing"]["total_s"] for row in subset])
         high = legacy >= 80.0
         axes[0, column].scatter(legacy[~high], candidate[~high], s=12, alpha=0.55, color="#557a95")
         axes[0, column].scatter(legacy[high], candidate[high], s=18, alpha=0.8, color="#c84b31")

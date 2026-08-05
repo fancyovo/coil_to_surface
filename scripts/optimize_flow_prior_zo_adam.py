@@ -225,6 +225,7 @@ def score_tokens(
     target: str,
     timeout_s: float,
     metadata: dict[str, Any],
+    config_overrides: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any] | None], list[float], list[str | None], float]:
     cases = [
         token_case(
@@ -236,7 +237,12 @@ def score_tokens(
         for index, value in enumerate(tokens)
     ]
     started = time.perf_counter()
-    evaluated = pool.map(cases, target=target, timeout_s=timeout_s)
+    evaluated = pool.map(
+        cases,
+        target=target,
+        timeout_s=timeout_s,
+        config_overrides=config_overrides,
+    )
     wall_s = time.perf_counter() - started
     return (
         [item[0] for item in evaluated],

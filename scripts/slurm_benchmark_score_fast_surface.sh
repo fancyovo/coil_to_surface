@@ -69,6 +69,7 @@ for worker in 0 1 2 3; do
         --total-limit "$total_samples" \
         --worker-index "$worker" \
         --worker-count 4 \
+        --device "$worker" \
         > "$output_dir/worker_${worker}.summary.json" &
     children+=("$!")
 done

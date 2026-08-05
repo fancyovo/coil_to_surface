@@ -38,6 +38,12 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, P107 four-GPU calibration job `32738` was cancelled after
+  1m46s because all four Python workers accidentally used the default
+  `device_id=0`, causing GPU0 QR allocation OOM. Its partial output is invalid
+  and must not enter analysis. The launcher is being fixed to pass each
+  worker's explicit device index; this is a benchmark orchestration bug, not a
+  score-algorithm failure.
 - On 2026-08-05, P107 single-GPU follow-up smoke job `32732` completed from
   source commit `d70635a`. Smooth radius confidence moved the predicted edge
   inward from about 0.65 to 0.568, and out-of-domain strict hints now return

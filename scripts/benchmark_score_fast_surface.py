@@ -81,12 +81,19 @@ def dispersed(rows: list[dict]) -> list[dict]:
     return [rows[(index * step) % len(rows)] for index in range(len(rows))]
 
 
-def evaluate(lib: Path, arrays, nfp: int, overrides: dict | None = None) -> dict:
+def evaluate(
+    lib: Path,
+    arrays,
+    nfp: int,
+    device: int,
+    overrides: dict | None = None,
+) -> dict:
     started = time.perf_counter()
     result = score_coils_native(
         lib,
         *arrays,
         nfp,
+        device_id=device,
         target_helicity=(1, nfp),
         config_overrides=overrides,
     )
@@ -104,6 +111,7 @@ def main() -> None:
     parser.add_argument("--total-limit", type=int, default=128)
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--worker-count", type=int, default=1)
+    parser.add_argument("--device", type=int, required=True)
     args = parser.parse_args()
 
     rows = json.loads(args.metadata.read_text(encoding="utf-8"))
@@ -123,7 +131,7 @@ def main() -> None:
             path = args.case_dir / f"id_{int(metadata['ID']):07d}.json"
             x, y, z, currents, nfp = load_case(path)
             arrays = (x, y, z, currents)
-            legacy = evaluate(args.lib, arrays, nfp)
+            legacy = evaluate(args.lib, arrays, nfp, args.device)
             axis = legacy["diagnostics"]
             variants = {}
             if legacy["status"] == "ok":
@@ -135,7 +143,7 @@ def main() -> None:
                 }
                 for name, settings in VARIANTS.items():
                     variants[name] = evaluate(
-                        args.lib, arrays, nfp, {**settings, **axis_hint}
+                        args.lib, arrays, nfp, args.device, {**settings, **axis_hint}
                     )
             payload = {
                 "case_id": case_id(path),

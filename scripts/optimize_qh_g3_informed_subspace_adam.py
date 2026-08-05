@@ -147,6 +147,93 @@ def projected_trust_update(
     return gradient * (step_rms / scale)
 
 
+def diagonal_quadratic_trust_update(
+    center_result: dict[str, Any],
+    direction_rows: list[dict[str, Any]],
+    directions: np.ndarray,
+    *,
+    perturbation: float,
+    max_step_rms: float,
+) -> tuple[np.ndarray | None, list[dict[str, Any]], float]:
+    if perturbation <= 0.0 or max_step_rms <= 0.0:
+        raise ValueError("quadratic trust radii must be positive")
+    if len(direction_rows) != len(directions):
+        raise ValueError("quadratic direction inputs are inconsistent")
+    center_score = result_score(center_result)
+    coefficients: list[float] = []
+    model_rows: list[dict[str, Any]] = []
+    for row in direction_rows:
+        scheme = str(row["difference_scheme"])
+        plus_score = float(row["plus_score"])
+        minus_score = float(row["minus_score"])
+        linear = float("nan")
+        quadratic = float("nan")
+        coefficient = 0.0
+        if scheme == "centered":
+            linear = (plus_score - minus_score) / (2.0 * perturbation)
+            quadratic = (
+                plus_score + minus_score - 2.0 * center_score
+            ) / (2.0 * perturbation * perturbation)
+            candidates = [0.0, -perturbation, perturbation]
+            if quadratic < 0.0 and math.isfinite(quadratic):
+                stationary = -linear / (2.0 * quadratic)
+                candidates.append(float(np.clip(stationary, -perturbation, perturbation)))
+
+            def modeled_gain(value: float) -> float:
+                return linear * value + quadratic * value * value
+
+            coefficient = max(candidates, key=modeled_gain)
+        elif scheme == "forward" and plus_score > center_score:
+            coefficient = perturbation
+        elif scheme == "backward" and minus_score > center_score:
+            coefficient = -perturbation
+        coefficients.append(coefficient)
+        model_rows.append(
+            {
+                "index": int(row["index"]),
+                "kind": str(row["kind"]),
+                "difference_scheme": scheme,
+                "linear": linear,
+                "quadratic": quadratic,
+                "unscaled_coefficient": coefficient,
+            }
+        )
+    coefficient_array = np.asarray(coefficients, dtype=np.float64)
+    if not np.any(coefficient_array):
+        return None, model_rows, 0.0
+    # The directions are orthonormal under the RMS inner product, so the RMS
+    # norm of their linear combination is the Euclidean norm of coefficients.
+    coefficient_norm = float(np.linalg.norm(coefficient_array))
+    if coefficient_norm > max_step_rms:
+        coefficient_array *= max_step_rms / coefficient_norm
+    update = np.tensordot(
+        coefficient_array,
+        np.asarray(directions, dtype=np.float64),
+        axes=(0, 0),
+    )
+    predicted_gain = 0.0
+    for coefficient, row in zip(coefficient_array, model_rows, strict=True):
+        row["coefficient"] = float(coefficient)
+        if row["difference_scheme"] == "centered":
+            predicted_gain += (
+                float(row["linear"]) * coefficient
+                + float(row["quadratic"]) * coefficient * coefficient
+            )
+        elif coefficient > 0.0:
+            predicted_gain += max(
+                float(direction_rows[int(row["index"])]["plus_score"]) - center_score,
+                0.0,
+            ) * coefficient / perturbation
+        elif coefficient < 0.0:
+            predicted_gain += max(
+                float(direction_rows[int(row["index"])]["minus_score"]) - center_score,
+                0.0,
+            ) * (-coefficient) / perturbation
+    if not math.isfinite(predicted_gain) or predicted_gain <= 0.0:
+        return None, model_rows, predicted_gain
+    return update, model_rows, float(predicted_gain)
+
+
 def best_improving_branch_endpoint(
     center_result: dict[str, Any],
     endpoint_results: list[dict[str, Any] | None],
@@ -300,7 +387,7 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.01)
     parser.add_argument(
         "--proposal-mode",
-        choices=("adam", "projected"),
+        choices=("adam", "projected", "quadratic"),
         default="adam",
     )
     parser.add_argument(
@@ -488,6 +575,8 @@ def main() -> None:
             candidate_rows: list[dict[str, Any]] = []
             full_update = np.zeros_like(current.noise, dtype=np.float64)
             gradient = np.zeros_like(current.noise, dtype=np.float64)
+            quadratic_rows: list[dict[str, Any]] = []
+            quadratic_predicted_gain = 0.0
             projected_rms = 0.0 if projected is None else rms(projected)
             previous_noise = current.noise.copy()
             tentative_first: np.ndarray | None = None
@@ -518,13 +607,16 @@ def main() -> None:
                     gradient = projected * (rms(g3_gradient) / projected_rms)
                     next_adam_step = adam_step + 1
                     tentative_first = args.beta1 * first_moment + (1.0 - args.beta1) * gradient
-                    tentative_second = args.beta2 * second_moment + (1.0 - args.beta2) * gradient * gradient
+                    tentative_second = (
+                        args.beta2 * second_moment
+                        + (1.0 - args.beta2) * gradient * gradient
+                    )
                     first_hat = tentative_first / (1.0 - args.beta1**next_adam_step)
                     second_hat = tentative_second / (1.0 - args.beta2**next_adam_step)
                     full_update = args.learning_rate * first_hat / (
                         np.sqrt(second_hat) + args.adam_epsilon
                     )
-                else:
+                elif args.proposal_mode == "projected":
                     gradient = projected
                     trust_update = projected_trust_update(
                         projected,
@@ -532,7 +624,25 @@ def main() -> None:
                     )
                     assert trust_update is not None
                     full_update = trust_update
-                for fraction in (1.0, *args.backtrack_fractions):
+                else:
+                    gradient = projected
+                    quadratic_update, quadratic_rows, quadratic_predicted_gain = (
+                        diagonal_quadratic_trust_update(
+                            current.score_result,
+                            direction_rows,
+                            directions,
+                            perturbation=args.perturbation,
+                            max_step_rms=projected_step_rms,
+                        )
+                    )
+                    if quadratic_update is None:
+                        full_update = np.zeros_like(current.noise, dtype=np.float64)
+                    else:
+                        full_update = quadratic_update
+                candidate_fractions = (
+                    (1.0, *args.backtrack_fractions) if np.any(full_update) else ()
+                )
+                for fraction in candidate_fractions:
                     proposal = np.clip(
                         current.noise.astype(np.float64) + fraction * full_update,
                         -args.noise_limit,
@@ -653,6 +763,8 @@ def main() -> None:
                 "directions": directions.tolist(),
                 "direction_rows": direction_rows,
                 "predicted_local_gain": predicted_gain,
+                "quadratic_model_rows": quadratic_rows,
+                "quadratic_predicted_gain": quadratic_predicted_gain,
                 "g3_gradient_rms": rms(g3_gradient),
                 "projected_gradient_rms": projected_rms,
                 "used_gradient_rms": rms(gradient),
@@ -760,6 +872,9 @@ def main() -> None:
         "adam_accepted_steps": int(sum(row["accepted_mode"] == "adam" for row in history)),
         "projected_accepted_steps": int(
             sum(row["accepted_mode"] == "projected" for row in history)
+        ),
+        "quadratic_accepted_steps": int(
+            sum(row["accepted_mode"] == "quadratic" for row in history)
         ),
         "branch_accepted_steps": int(
             sum(row["accepted_mode"] == "branch_endpoint" for row in history)

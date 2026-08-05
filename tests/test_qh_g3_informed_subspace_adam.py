@@ -3,6 +3,7 @@ import numpy as np
 from scripts.optimize_qh_g3_informed_subspace_adam import (
     best_improving_branch_endpoint,
     best_improving_endpoint,
+    diagonal_quadratic_trust_update,
     exact_subspace_gradient,
     informed_orthogonal_directions,
     projected_trust_update,
@@ -71,6 +72,41 @@ def test_projected_trust_update_preserves_direction_and_rms() -> None:
 
 def test_projected_trust_update_rejects_zero_gradient() -> None:
     assert projected_trust_update(np.zeros((2, 3)), step_rms=0.0025) is None
+
+
+def test_diagonal_quadratic_model_recovers_isotropic_concave_optimum() -> None:
+    rng = np.random.default_rng(19)
+    gradient = rng.normal(size=(2, 3))
+    directions = informed_orthogonal_directions(
+        rng,
+        gradient,
+        random_count=gradient.size - 1,
+    )
+    perturbation = 0.0025
+    curvature = 1000.0
+
+    def objective(delta: np.ndarray) -> float:
+        return 50.0 + float(np.vdot(gradient, delta)) - 0.5 * curvature * float(
+            np.vdot(delta, delta)
+        )
+
+    plus = [score_result(objective(perturbation * direction)) for direction in directions]
+    minus = [score_result(objective(-perturbation * direction)) for direction in directions]
+    _, rows, _ = exact_subspace_gradient(
+        score_result(50.0), plus, minus, directions, perturbation
+    )
+    update, model_rows, predicted_gain = diagonal_quadratic_trust_update(
+        score_result(50.0),
+        rows,
+        directions,
+        perturbation=perturbation,
+        max_step_rms=0.01,
+    )
+
+    assert update is not None
+    assert all(row["quadratic"] < 0.0 for row in model_rows)
+    assert predicted_gain > 0.0
+    np.testing.assert_allclose(update, gradient / curvature, rtol=2.0e-5, atol=2.0e-8)
 
 
 def test_one_sided_same_branch_endpoint_is_used_as_a_derivative() -> None:

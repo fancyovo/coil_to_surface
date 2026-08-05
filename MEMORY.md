@@ -82,6 +82,12 @@ once the task is accepted.
   directory; numerical artifacts remain under the project run root above.
   Initial observed step times were roughly 57--75 seconds for K=2 and 43--56
   seconds for K=1, implying about 7--8 hours from start for the slowest shard.
+  At the 2026-08-05 21:44 progress check, Students jobs `32529/32530` and P107
+  job `32528` had completed cleanly. The sweep had finished 24/27 matrix runs;
+  remaining jobs `32525/32526/32527` were all in their final run at steps
+  52/100, 52/100, and 70/100, respectively. This is 2574/2700 optimizer steps
+  (95.3%). The best completed score observed so far was `92.6847376910` for
+  `(lr=0.03, beta1=0.7, K=2)`. Estimated remaining wall time was under one hour.
 - On 2026-08-05, branch `qh-blackbox-gradient` reached local/remote source
   commit `e601fb4`. Commit `7803aa2` is the batch-1 correctness baseline; the
   two active long optimizations `32449/32451` started from that commit and are

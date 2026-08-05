@@ -47,6 +47,33 @@ from scripts.qh_blackbox_gradient_reference import (
 )
 
 
+def decode_noise_rk4_independent(
+    model,
+    normalizer,
+    values: np.ndarray,
+    *,
+    nfp: int,
+    steps: int,
+    device: torch.device,
+) -> tuple[np.ndarray, float]:
+    states = np.asarray(values, dtype=np.float32)
+    if states.ndim != 3 or not len(states):
+        raise ValueError("independent flow decode requires a nonempty state batch")
+    started = time.perf_counter()
+    decoded: list[np.ndarray] = []
+    for state in states:
+        raw, _ = decode_noise_rk4(
+            model,
+            normalizer,
+            state[None],
+            nfp=nfp,
+            steps=steps,
+            device=device,
+        )
+        decoded.append(raw[0])
+    return np.stack(decoded), float(time.perf_counter() - started)
+
+
 def informed_orthogonal_directions(
     rng: np.random.Generator,
     reference_gradient: np.ndarray,
@@ -491,6 +518,8 @@ def main() -> None:
             "centered or feasible one-sided same-branch secants plus monotone exact ABI-9 "
             "gate; improving probe endpoints compete with the smooth Adam candidate"
         ),
+        "secant_flow_decode": "independent_batch1",
+        "secant_center_score": "native_score_api_in_same_worker_pool_batch",
         "noise_limit": float(args.noise_limit),
         "seed": int(args.seed),
         "gpu_ids": list(gpu_ids),
@@ -554,7 +583,7 @@ def main() -> None:
                 axis=0,
             )
             pair_states = np.clip(pair_states, -args.noise_limit, args.noise_limit).astype(np.float32)
-            pair_tokens, pair_decode_wall_s = decode_noise_rk4(
+            pair_tokens, pair_decode_wall_s = decode_noise_rk4_independent(
                 model,
                 normalizer,
                 pair_states,
@@ -562,19 +591,35 @@ def main() -> None:
                 steps=args.rk4_steps,
                 device=device,
             )
-            pair_results, pair_elapsed_s, pair_errors, pair_score_wall_s = score_tokens(
+            secant_tokens = np.concatenate((current.tokens[None], pair_tokens), axis=0)
+            (
+                secant_results,
+                secant_elapsed_s,
+                secant_errors,
+                pair_score_wall_s,
+            ) = score_tokens(
                 pool,
-                pair_tokens,
+                secant_tokens,
                 nfp=args.nfp,
                 target="QH",
                 timeout_s=args.batch_timeout_s,
                 metadata={"phase": "informed_subspace", "iteration": iteration},
             )
-            if any(error is not None for error in pair_errors):
-                raise RuntimeError(f"score worker failed at iteration {iteration}: {pair_errors}")
+            if any(error is not None for error in secant_errors):
+                raise RuntimeError(
+                    f"score worker failed at iteration {iteration}: {secant_errors}"
+                )
+            secant_center_result = secant_results[0]
+            if not result_valid(secant_center_result):
+                raise RuntimeError(
+                    "batch-1 center score disagrees with the valid optimizer center: "
+                    f"{None if secant_center_result is None else secant_center_result.get('status')}"
+                )
+            pair_results = secant_results[1:]
+            pair_elapsed_s = secant_elapsed_s[1:]
             count = len(directions)
             projected, direction_rows, predicted_gain = exact_subspace_gradient(
-                current.score_result,
+                secant_center_result,
                 pair_results[:count],
                 pair_results[count:],
                 directions,
@@ -642,7 +687,7 @@ def main() -> None:
                     gradient = projected
                     quadratic_update, quadratic_rows, quadratic_predicted_gain = (
                         diagonal_quadratic_trust_update(
-                            current.score_result,
+                            secant_center_result,
                             direction_rows,
                             directions,
                             perturbation=args.perturbation,
@@ -657,7 +702,7 @@ def main() -> None:
                     gradient = projected
                     _, quadratic_rows, quadratic_predicted_gain = (
                         diagonal_quadratic_trust_update(
-                            current.score_result,
+                            secant_center_result,
                             direction_rows,
                             directions,
                             perturbation=args.perturbation,
@@ -727,7 +772,7 @@ def main() -> None:
                     axis_entries.append((int(row["index"]), coefficient, state))
                 if axis_entries:
                     axis_states = np.stack([entry[2] for entry in axis_entries])
-                    axis_tokens, quadratic_axis_decode_wall_s = decode_noise_rk4(
+                    axis_tokens, quadratic_axis_decode_wall_s = decode_noise_rk4_independent(
                         model,
                         normalizer,
                         axis_states,
@@ -899,6 +944,9 @@ def main() -> None:
                 "directions": directions.tolist(),
                 "direction_rows": direction_rows,
                 "predicted_local_gain": predicted_gain,
+                "secant_center_score": result_score(secant_center_result),
+                "secant_center_score_delta": result_score(secant_center_result)
+                - result_score(current.score_result),
                 "quadratic_model_rows": quadratic_rows,
                 "quadratic_predicted_gain": quadratic_predicted_gain,
                 "quadratic_axis_rows": quadratic_axis_rows,
@@ -941,6 +989,9 @@ def main() -> None:
                 "iota": diagnostic(current.score_result, "iota_min"),
                 "surface_level": diagnostic(current.score_result, "surface_level"),
                 "g3_slope": g3_slope,
+                "secant_center_score": result_score(secant_center_result),
+                "secant_center_score_delta": result_score(secant_center_result)
+                - result_score(current.score_result),
                 "valid_directions": int(sum(item["valid"] for item in direction_rows)),
                 "accepted_fraction": accepted_fraction,
                 "accepted_mode": accepted_mode,

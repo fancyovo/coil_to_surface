@@ -22,6 +22,9 @@ expected_score_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced
 run_dir="${RUN_DIR:-$project/runs/qh_physical_gradient_adam_start10_sweep_20260804/rk4_064_lr_0p003}"
 output="${OUTPUT_DIR:-$project/runs/qh_g2_current_basin_reference_${SLURM_JOB_ID}}"
 scales="${SCALES:-0.005,0.0025}"
+direction_count="${DIRECTION_COUNT:-300}"
+decode_batch_size="${DECODE_BATCH_SIZE:-32}"
+rk4_steps="${RK4_STEPS:-64}"
 world_size=4
 children=()
 
@@ -84,7 +87,9 @@ python scripts/qh_blackbox_gradient_reference.py \
   --center "nc3_step89=$run_dir/trajectory/step_0089.json" \
   --center "nc3_step100=$run_dir/trajectory/step_0100.json" \
   --center "nc3_step120=$run_dir/trajectory/step_0120.json" \
-  --scales "$scales" --rk4-steps 64 --prepare-only
+  --scales "$scales" --rk4-steps "$rk4_steps" \
+  --direction-count "$direction_count" --decode-batch-size "$decode_batch_size" \
+  --prepare-only
 
 for rank in 0 1 2 3; do
   CUDA_VISIBLE_DEVICES="$rank" python scripts/qh_blackbox_gradient_reference.py \

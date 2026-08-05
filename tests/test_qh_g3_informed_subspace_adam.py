@@ -1,8 +1,12 @@
+from unittest.mock import patch
+
 import numpy as np
+import torch
 
 from scripts.optimize_qh_g3_informed_subspace_adam import (
     best_improving_branch_endpoint,
     best_improving_endpoint,
+    decode_noise_rk4_independent,
     diagonal_quadratic_trust_update,
     exact_subspace_gradient,
     informed_orthogonal_directions,
@@ -26,6 +30,35 @@ def score_result(score: float, *, surface_level: float = 0.25) -> dict:
             "alpha_column_count": 20,
         },
     }
+
+
+def test_independent_decoder_uses_batch_one_for_every_state() -> None:
+    states = np.arange(24, dtype=np.float32).reshape(3, 2, 4)
+    seen: list[np.ndarray] = []
+
+    def fake_decode(model, normalizer, values, *, nfp, steps, device):
+        del model, normalizer, nfp, steps, device
+        seen.append(values.copy())
+        return values + 1.0, 0.0
+
+    with patch(
+        "scripts.optimize_qh_g3_informed_subspace_adam.decode_noise_rk4",
+        side_effect=fake_decode,
+    ):
+        decoded, elapsed_s = decode_noise_rk4_independent(
+            object(),
+            object(),
+            states,
+            nfp=4,
+            steps=64,
+            device=torch.device("cpu"),
+        )
+
+    assert len(seen) == len(states)
+    assert all(values.shape == (1, 2, 4) for values in seen)
+    np.testing.assert_array_equal(np.concatenate(seen), states)
+    np.testing.assert_array_equal(decoded, states + 1.0)
+    assert elapsed_s >= 0.0
 
 
 def test_informed_basis_is_rms_normalized_and_orthogonal() -> None:

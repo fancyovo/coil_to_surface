@@ -44,9 +44,14 @@ once the task is accepted.
   continuation. It improved 85.3999 -> 85.9697 in three accepted steps, all
   endpoints stayed ok, and mean iteration time was 9.135 s versus 26.655 s in
   historical old-score job 31058 (2.92x faster). Postflight was 2 MiB/0% on all
-  four GPUs. The matching formal 200-step job `32804` was then submitted with
-  a one-hour Slurm limit and 3400 s internal limit; it writes
-  `runs/score_fast_continuation/adam_start10_200/` and is pending acceptance.
+  four GPUs. The matching formal 200-step job `32804` then completed all 200
+  iterations: continuous score 85.3999 -> best 91.8749 at step 198 -> final
+  91.8716. It completed 196 Adam updates in 1862.59 s total, with mean iteration
+  time 9.058 s versus historical job 31058's 26.655 s and 5363.07 s total
+  (2.94x iteration speedup). All four GPUs ended at 2 MiB/0%. The new and old
+  score values are different definitions and must not be compared as absolute
+  restoration error; cross-scoring both best coils with the same ABI-10 binary
+  is still pending before physical acceptance.
 - On 2026-08-05, P107 four-GPU holdout job `32797` completed from remote commit
   `e1b01de` on the untouched second 128-case validation block. All 69 legacy-ok
   cases remained continuous-ok. On that subset, overall/high-score>=90

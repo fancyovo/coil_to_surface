@@ -271,6 +271,78 @@ def plot(rows: list[dict], summary: dict, output: Path) -> None:
     plt.close(figure)
 
 
+def timing_groups(result: dict) -> dict[str, float]:
+    timing = result["timing"]
+    surface = sum(
+        timing[name] for name in (
+            "surface_ray_roots_s",
+            "surface_mixed_trace_s",
+            "surface_mixed_reduce_s",
+            "surface_fp64_trace_s",
+            "surface_fp64_reduce_s",
+            "surface_long_trace_s",
+            "surface_long_reduce_s",
+            "surface_confidence_s",
+        )
+    )
+    groups = {
+        "field + coil": timing["field_create_s"] + timing["coil_geometry_s"],
+        "axis": timing["axis_search_s"] + timing["axis_trace_s"],
+        "psi": timing["psi_points_s"] + timing["psi_fit_s"] + timing["psi_validate_s"],
+        "surface": surface,
+        "flux": timing["flux_calibration_s"],
+        "volume": timing["volume_points_s"] + timing["field_volume_s"],
+        "alpha + QS": timing["alpha_assemble_s"] + timing["alpha_solve_s"] + timing["qs_metrics_s"],
+    }
+    groups["other"] = max(float(timing["total_s"]) - sum(groups.values()), 0.0)
+    return groups
+
+
+def plot_timing_breakdown(rows: list[dict], output: Path) -> dict:
+    paired = [
+        row for row in rows
+        if "p1_t128_k400" in row["variants"] and
+        "p1_t128_k400_global" in row["variants"]
+    ]
+    if not paired:
+        return {}
+    modes = {
+        "legacy global": [row["legacy"] for row in paired],
+        "continuous global": [row["variants"]["p1_t128_k400_global"] for row in paired],
+        "continuous continuation": [row["variants"]["p1_t128_k400"] for row in paired],
+    }
+    names = list(timing_groups(modes["legacy global"][0]))
+    summary = {}
+    figure, axis = plt.subplots(figsize=(11.5, 4.3), constrained_layout=True)
+    left = np.zeros(len(modes))
+    colors = plt.cm.Set2(np.linspace(0.0, 1.0, len(names)))
+    for color, name in zip(colors, names):
+        width = np.asarray([
+            np.median([timing_groups(result)[name] for result in results])
+            for results in modes.values()
+        ])
+        axis.barh(list(modes), width, left=left, label=name, color=color)
+        left += width
+    for index, (mode, results) in enumerate(modes.items()):
+        total = np.asarray([result["timing"]["total_s"] for result in results])
+        summary[mode] = {
+            "count": len(results),
+            "total_median_s": float(np.median(total)),
+            "total_p95_s": float(np.quantile(total, 0.95)),
+            "stage_medians_s": {
+                name: float(np.median([timing_groups(result)[name] for result in results]))
+                for name in names
+            },
+        }
+        axis.text(left[index] + 0.06, index, f"median {np.median(total):.2f} s", va="center")
+    axis.set(xlabel="median stage time (s)", title="Paired score timing on 69 legacy-ok holdout cases")
+    axis.grid(axis="x", alpha=0.2)
+    axis.legend(ncol=4, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.18))
+    figure.savefig(output, dpi=190, bbox_inches="tight")
+    plt.close(figure)
+    return summary
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("run_root", type=Path)
@@ -285,6 +357,12 @@ def main() -> None:
         json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
     )
     plot(rows, summary, args.output_dir / "ranking_and_timing.png")
+    timing_summary = plot_timing_breakdown(
+        rows, args.output_dir / "timing_breakdown.png"
+    )
+    (args.output_dir / "timing_breakdown.json").write_text(
+        json.dumps(timing_summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
+    )
     print(json.dumps(summary, allow_nan=True))
 
 

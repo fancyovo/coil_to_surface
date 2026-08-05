@@ -576,6 +576,7 @@ def main() -> None:
     with NativeScorePool(args.gradient_lib, list(gpu_ids)) as pool:
         for iteration in range(1, args.iterations + 1):
             iteration_started = time.perf_counter()
+            center_score_before = result_score(current.score_result)
             g3_gradient = np.asarray(current.latent_gradient, dtype=np.float64)
             directions = informed_orthogonal_directions(
                 rng, g3_gradient, args.random_directions
@@ -618,6 +619,9 @@ def main() -> None:
                     "batch-1 center score disagrees with the valid optimizer center: "
                     f"{None if secant_center_result is None else secant_center_result.get('status')}"
                 )
+            secant_center_score_delta = (
+                result_score(secant_center_result) - center_score_before
+            )
             pair_results = secant_results[1:]
             pair_elapsed_s = secant_elapsed_s[1:]
             count = len(directions)
@@ -1008,13 +1012,14 @@ def main() -> None:
                     make_best_case(best, nfp=args.nfp, iteration=best_iteration, manifest=manifest),
                 )
             applied_update_rms = rms(current.noise.astype(np.float64) - previous_noise)
+            accepted_score_gain = result_score(current.score_result) - center_score_before
             transition = {
                 "directions": directions.tolist(),
                 "direction_rows": direction_rows,
                 "predicted_local_gain": predicted_gain,
                 "secant_center_score": result_score(secant_center_result),
-                "secant_center_score_delta": result_score(secant_center_result)
-                - result_score(current.score_result),
+                "secant_center_score_delta": secant_center_score_delta,
+                "accepted_score_gain": accepted_score_gain,
                 "quadratic_model_rows": quadratic_rows,
                 "quadratic_predicted_gain": quadratic_predicted_gain,
                 "quadratic_axis_rows": quadratic_axis_rows,
@@ -1060,8 +1065,8 @@ def main() -> None:
                 "surface_level": diagnostic(current.score_result, "surface_level"),
                 "g3_slope": g3_slope,
                 "secant_center_score": result_score(secant_center_result),
-                "secant_center_score_delta": result_score(secant_center_result)
-                - result_score(current.score_result),
+                "secant_center_score_delta": secant_center_score_delta,
+                "accepted_score_gain": accepted_score_gain,
                 "valid_directions": int(sum(item["valid"] for item in direction_rows)),
                 "accepted_fraction": accepted_fraction,
                 "accepted_mode": accepted_mode,

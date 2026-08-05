@@ -1,0 +1,134 @@
+{
+  "format": "qh_reference_direction_sweep_analysis_v1",
+  "validated_run_count": 27,
+  "validated_step_count": 2700,
+  "accepted_score_drop_count": 0,
+  "center_repeat_count": 135,
+  "max_abs_center_repeat_error": 5.684341886080802e-14,
+  "minimum_accepted_score_gain": 8.738206766167878e-05,
+  "total_evaluated_directions": 5400,
+  "required_plus_minus_endpoint_calls": 10800,
+  "actual_blackbox_score_calls": 18712,
+  "conservative_blackbox_call_upper_bound": 27162,
+  "actual_to_upper_bound_fraction": 0.6889036153449672,
+  "score_calls_per_evaluated_direction": 3.4651851851851854,
+  "summed_gpu_hours": 37.42738394480121,
+  "parallel_shard_wall_hours": [
+    7.122664548622238,
+    7.191297215951813,
+    6.735503112607532,
+    4.863127709759606,
+    5.309750570654869,
+    6.2426323456896675
+  ],
+  "parallel_wall_hours": 7.191297215951813,
+  "best_run": {
+    "run_name": "lr_0p03_b1_0p7_k_2",
+    "learning_rate": 0.03,
+    "beta1": 0.7,
+    "random_directions_k": 2,
+    "total_directions_per_step": 3,
+    "initial_score": 85.83967989612671,
+    "final_score": 92.68473769100156,
+    "best_score": 92.68473769100156,
+    "score_gain": 6.8450577948748474,
+    "best_iteration": 87,
+    "accepted_steps": 64,
+    "adam_accepted_steps": 28,
+    "probe_accepted_steps": 34,
+    "branch_accepted_steps": 2,
+    "rejected_steps": 36,
+    "g3_valid_steps": 66,
+    "valid_direction_count": 262,
+    "valid_direction_fraction": 0.8733333333333333,
+    "evaluated_directions": 300,
+    "blackbox_score_calls": 1035,
+    "score_calls_per_direction": 3.45,
+    "total_wall_s": 7254.9334388880525,
+    "mean_iteration_wall_s": 72.36147700757836,
+    "best_qh_error": 0.010666886684298084,
+    "best_qa_error": 0.11254882219473916,
+    "best_qp_error": 0.028106008373902844,
+    "best_iota": 1.6023973226547241,
+    "best_surface_level": 0.36,
+    "best_component_axis": 97.19940143136068,
+    "best_component_psi": 98.54547817091117,
+    "best_component_surface": 97.86014683783665,
+    "best_component_coordinate": 89.34068963279425,
+    "best_component_volume_qs": 93.59560132337263,
+    "best_component_iota": 100.0,
+    "best_component_coil": 63.50016909868461
+  },
+  "gap_to_historical_k4_score": 0.4808220089984445,
+  "grouped": {
+    "random_directions_k": {
+      "0": {
+        "count": 9,
+        "mean_best_score": 88.73207074296242,
+        "median_best_score": 89.32293785487147,
+        "max_best_score": 89.51303695697415,
+        "mean_score_calls": 345.6666666666667
+      },
+      "1": {
+        "count": 9,
+        "mean_best_score": 89.81819949990737,
+        "median_best_score": 90.64340784708274,
+        "max_best_score": 92.2975244646702,
+        "mean_score_calls": 760.5555555555555
+      },
+      "2": {
+        "count": 9,
+        "mean_best_score": 90.03966111400912,
+        "median_best_score": 90.38870154142934,
+        "max_best_score": 92.68473769100156,
+        "mean_score_calls": 972.8888888888889
+      }
+    },
+    "learning_rate": {
+      "0.003": {
+        "count": 9,
+        "mean_best_score": 87.6413816428812,
+        "median_best_score": 87.73077531808265,
+        "max_best_score": 87.85925882059266,
+        "mean_score_calls": 639.1111111111111
+      },
+      "0.01": {
+        "count": 9,
+        "mean_best_score": 90.31265867873486,
+        "median_best_score": 90.38870154142934,
+        "max_best_score": 92.2975244646702,
+        "mean_score_calls": 663.4444444444445
+      },
+      "0.03": {
+        "count": 9,
+        "mean_best_score": 90.63589103526284,
+        "median_best_score": 90.7298571980808,
+        "max_best_score": 92.68473769100156,
+        "mean_score_calls": 776.5555555555555
+      }
+    },
+    "beta1": {
+      "0.5": {
+        "count": 9,
+        "mean_best_score": 89.40254363701214,
+        "median_best_score": 89.29223275891636,
+        "max_best_score": 92.19102464499123,
+        "mean_score_calls": 642.3333333333334
+      },
+      "0.7": {
+        "count": 9,
+        "mean_best_score": 89.74298465492951,
+        "median_best_score": 89.50133731326892,
+        "max_best_score": 92.68473769100156,
+        "mean_score_calls": 693.8888888888889
+      },
+      "0.9": {
+        "count": 9,
+        "mean_best_score": 89.44440306493725,
+        "median_best_score": 89.51303695697415,
+        "max_best_score": 90.82848783437517,
+        "mean_score_calls": 742.8888888888889
+      }
+    }
+  }
+}

@@ -38,56 +38,55 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-05, the scorer/optimizer contract was corrected conceptually and
-  in metadata: the native ABI-9 score is a black box, while the flow-pulled
-  fixed-geometry G3 vector is only a search direction expected to correlate
-  with the true score gradient. It must never again be used directly as the
-  score gradient. The sign and magnitude used by the optimizer come from exact
-  black-box finite differences along that reference direction and optional
-  orthogonal random directions. The user explicitly ended G4 exploration; do
-  not resume G4 unless asked again. Commit `4a552c6` implements the resulting
-  27-run matrix sweep over learning rate `0.003/0.01/0.03`, Adam beta1
-  `0.5/0.7/0.9` (beta2 remains `0.999`), and random-direction count
-  `K=0/1/2`, always with the G3 reference direction in addition. All runs use
-  the same canonical nfp4/nc3 `start_10`, seed `2026080601`, RK4-64,
-  perturbation RMS `0.0025`, and 100 steps. A common two-direction random bank
-  makes the K=1 directions a prefix of K=2 before trajectories diverge.
-  Optimizer state now preserves Adam moments and RNG state for exact in-place
-  continuation; it also records cumulative measured directions and actual
-  black-box score calls. The primary comparison must plot exact score versus
-  cumulative measured directions, with score versus actual calls as a second
-  cost view. Periodic center repeats run every 20 steps, and one-GPU jobs score
-  ordered backtrack candidates one at a time and stop at the first acceptable
-  one. Across all 27 runs the fixed budget is 5,400 measured directions and
-  10,800 plus/minus endpoint scores; the conservative total upper bound,
-  including initial/center/candidate/repeat/probe calls, is 27,162 exact score
-  calls. The six balanced upper bounds are approximately
-  `4624/4624/4424/4630/4430/4430` calls.
-- Six independent one-RTX5090 sweep jobs were submitted without dependencies:
-  P107 shards 0--3 are jobs `32525/32526/32527/32528`, and Students shards
-  4--5 are jobs `32529/32530`. They write the shared root
-  `runs/qh_reference_direction_sweep_20260806`, with one manifest and
-  pre/postflight file per shard plus one immutable run directory per matrix
-  point. Both Slurm entry points passed `sbatch --test-only`. At the user's
-  direction, unfinished old jobs were then cancelled and their partial output
-  retained: P107 `32449` stopped around step 174/200, Students `32465` around
-  18/60, and dependent P107 `32462` never started. All six new jobs started at
-  about 2026-08-05 15:18 on six distinct RTX 5090s. Their preflight rows were
-  all 2 MiB/0%, all six stderr files were empty, and each shard produced 2--4
-  consecutive valid monotone rows before handoff. K=2 correctly accumulated
-  three measured directions per step and K=1 accumulated two; actual score
-  call counters advanced consistently with ordered candidate short-circuiting.
-  Slurm logs are under `$HOME/logs/qh-ref-s{0..5}-{32525..32530}.{out,err}`
-  because these submissions used the home directory as the submit working
-  directory; numerical artifacts remain under the project run root above.
-  Initial observed step times were roughly 57--75 seconds for K=2 and 43--56
-  seconds for K=1, implying about 7--8 hours from start for the slowest shard.
-  At the 2026-08-05 21:44 progress check, Students jobs `32529/32530` and P107
-  job `32528` had completed cleanly. The sweep had finished 24/27 matrix runs;
-  remaining jobs `32525/32526/32527` were all in their final run at steps
-  52/100, 52/100, and 70/100, respectively. This is 2574/2700 optimizer steps
-  (95.3%). The best completed score observed so far was `92.6847376910` for
-  `(lr=0.03, beta1=0.7, K=2)`. Estimated remaining wall time was under one hour.
+- On 2026-08-05, the user ended black-box-gradient development as a research
+  direction and redirected the next branch toward native-score throughput and
+  score continuity. No new branch has been created and no experiment has been
+  launched yet, because this turn was explicitly planning-only. The proposed
+  work has two independent tracks: (1) replace discrete surface-level selection
+  and production 16-period candidate traces with deterministic stratified
+  short-horizon volume samples, a calibrated monotone surface confidence
+  function `p(s)`, and a continuous effective edge; retain 16-period traces
+  only as offline/full-evaluation audit labels until 1/2/4-period false-positive
+  rates are validated; (2) add an optimizer-only magnetic-axis continuation
+  API that starts all local endpoints from the same validated center-axis
+  branch token and returns `branch_lost` instead of silently switching axes.
+  Standalone/corpus score must remain history-independent and retain global axis
+  search. Before changing either algorithm, split axis and surface timing into
+  non-overlapping GPU/CPU sub-stages; current 1000-sample medians are about
+  3.28 s total, 1.62 s axis search, 1.01 s surface screening, 0.43 s for all
+  psi stages, and 0.058 s for alpha/iota plus QS. The plain-language design,
+  equations, anti-cheat rules, validation gates, and staged action plan are in
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`. Suggested future
+  branch name is `score-fast-continuation`, to be created only after approval.
+- On 2026-08-05, the 27-run G3-reference matrix sweep from commit `4a552c6`
+  completed on six RTX 5090 jobs `32525`--`32530`. The durable optimizer
+  contract is: native ABI-9 score remains a black box; flow-pulled
+  fixed-geometry G3 is only a correlated search prior and must never be used
+  directly as the score gradient; exact score secants determine direction sign
+  and magnitude, and an exact monotone score gate accepts states. Do not resume
+  G4 unless explicitly requested. All 27 configurations completed 100 steps
+  from the same nfp4/nc3 `start_10` with RK4-64 and `h=0.0025`; there were zero
+  accepted score drops, and 135 center repeats agreed within
+  `5.68e-14`. The experiment measured 5,400 directions, required 10,800
+  plus/minus endpoint scores, and actually made 18,712 black-box calls versus
+  a 27,162 conservative upper bound. It consumed 37.43 GPU-hours and 7.19 h
+  six-GPU wall time; all six stderr logs were empty and postflights were idle.
+  The matrix sweep has no active jobs. Any later historical bullet that still
+  calls pre-sweep `324xx` jobs active or queued is superseded as job-state
+  metadata; its numerical-protocol and bug-fix records remain relevant.
+  The best configuration was `(lr=0.03,beta1=0.7,K=2 random directions plus
+  G3)`, improving `85.8396799 -> 92.6847377` with best step 87. The best
+  `K=0/1/2` scores were `89.5130/92.2975/92.6847`; therefore G3 alone stalls,
+  one random direction has good cost/performance, and two random directions
+  raised the observed ceiling, but K=2 beat K=1 in only 6/9 paired cells and
+  fixed K=4 is not justified by this sweep. Learning rate `0.003` was clearly
+  too small; `0.01/0.03` were effective. Beta1 `0.7` gave the best mean and
+  maximum, while `0.9` did not improve further. This is a same-start 100-step
+  hyperparameter screen, not multi-seed confidence or convergence proof.
+  Final plain-language acceptance is section 20 of
+  `reports/qh_blackbox_gradient_exploration_report.md`; reproducible assets
+  are under `reports/assets/qh_reference_direction_sweep_20260806/`, and the
+  offline analyzer is `scripts/analyze_qh_reference_direction_sweep.py`.
 - On 2026-08-05, branch `qh-blackbox-gradient` reached local/remote source
   commit `e601fb4`. Commit `7803aa2` is the batch-1 correctness baseline; the
   two active long optimizations `32449/32451` started from that commit and are

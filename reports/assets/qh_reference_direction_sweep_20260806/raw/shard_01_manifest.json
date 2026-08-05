@@ -1,0 +1,67 @@
+{
+  "format": "qh_reference_direction_sweep_shard_v1",
+  "shard_index": 1,
+  "shard_count": 6,
+  "iterations": 100,
+  "seed": 2026080601,
+  "gpus": "0",
+  "configs": [
+    {
+      "learning_rate": 0.01,
+      "beta1": 0.5,
+      "random_directions": 2,
+      "run_name": "lr_0p01_b1_0p5_k_2",
+      "balance_weight": 12.05
+    },
+    {
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "random_directions": 2,
+      "run_name": "lr_0p01_b1_0p7_k_2",
+      "balance_weight": 12.05
+    },
+    {
+      "learning_rate": 0.01,
+      "beta1": 0.9,
+      "random_directions": 2,
+      "run_name": "lr_0p01_b1_0p9_k_2",
+      "balance_weight": 12.05
+    },
+    {
+      "learning_rate": 0.003,
+      "beta1": 0.7,
+      "random_directions": 1,
+      "run_name": "lr_0p003_b1_0p7_k_1",
+      "balance_weight": 10.05
+    }
+  ],
+  "started_unix_s": 1785914311.9032576,
+  "completed_runs": [
+    {
+      "run_name": "lr_0p01_b1_0p5_k_2",
+      "status": "completed",
+      "best_score": 92.19102464499123,
+      "score_calls": 952
+    },
+    {
+      "run_name": "lr_0p01_b1_0p7_k_2",
+      "status": "completed",
+      "best_score": 90.38870154142934,
+      "score_calls": 881
+    },
+    {
+      "run_name": "lr_0p01_b1_0p9_k_2",
+      "status": "completed",
+      "best_score": 90.82848783437517,
+      "score_calls": 963
+    },
+    {
+      "run_name": "lr_0p003_b1_0p7_k_1",
+      "status": "completed",
+      "best_score": 87.62592016083568,
+      "score_calls": 777
+    }
+  ],
+  "completed_unix_s": 1785940200.573235,
+  "status": "completed"
+}

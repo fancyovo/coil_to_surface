@@ -38,20 +38,23 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-05, P107 four-GPU optimizer smoke job `32802` completed from the
-  canonical nfp4/nc3 `start_10`, seed 20260804, using the old four-direction
-  SPSA/Adam settings but the selected continuous score and strict axis
-  continuation. It improved 85.3999 -> 85.9697 in three accepted steps, all
-  endpoints stayed ok, and mean iteration time was 9.135 s versus 26.655 s in
-  historical old-score job 31058 (2.92x faster). Postflight was 2 MiB/0% on all
-  four GPUs. The matching formal 200-step job `32804` then completed all 200
-  iterations: continuous score 85.3999 -> best 91.8749 at step 198 -> final
-  91.8716. It completed 196 Adam updates in 1862.59 s total, with mean iteration
-  time 9.058 s versus historical job 31058's 26.655 s and 5363.07 s total
-  (2.94x iteration speedup). All four GPUs ended at 2 MiB/0%. The new and old
-  score values are different definitions and must not be compared as absolute
-  restoration error; cross-scoring both best coils with the same ABI-10 binary
-  is still pending before physical acceptance.
+- On 2026-08-05, branch `score-fast-continuation` accepted the production
+  candidate documented through report/artifact commit `06f6452`: opt-in
+  p1/t128/k400 continuous surface confidence, six fixed flux bisections, and
+  strict local axis continuation; legacy global score remains the default and
+  the complete LS/Newton/DESC path remains available. Same-start four-GPU job
+  `32804` completed 200 old-configuration SPSA/Adam iterations in 1862.59 s,
+  improving continuous score 85.3999 -> best 91.8749 at step 198, with mean
+  9.058 s/step versus historical job 31058's 26.655 s/step and 5363.07 s total
+  (2.94x iteration speedup). Four endpoint branch losses safely skipped four
+  updates, all 200 centers remained ok, and two invalid full proposals recovered
+  at the fixed 0.5 backtrack. Cross-score job `32815` then showed that the old
+  best scored legacy/continuous 93.1656/91.5188 while the new best scored
+  93.3829/91.8742; legacy QH error per helicity improved 0.0023003 -> 0.0019044
+  without reducing legacy inverse aspect. Both jobs had empty stderr and idle
+  postflight. Final report sections 9--12 are in
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`; frozen assets
+  are under `reports/assets/qh_score_fast_continuation_20260805/`.
 - On 2026-08-05, P107 four-GPU holdout job `32797` completed from remote commit
   `e1b01de` on the untouched second 128-case validation block. All 69 legacy-ok
   cases remained continuous-ok. On that subset, overall/high-score>=90
@@ -61,8 +64,8 @@ once the task is accepted.
   across all statuses was 2.857/4.629 s versus legacy median 5.179 s. The new
   bounded method accepted 44 old hard failures, but their maximum/P95 scores
   were 89.46/88.49, so none entered the old score>=90 extreme tail. This
-  accepts p1/t128/k400 plus flux-weighted isotonic confidence as the production
-  candidate for the same-start optimizer test. Frozen results are under
+  accepts p1/t128/k400 plus flux-weighted isotonic confidence for the completed
+  production-candidate optimizer test above. Frozen results are under
   `reports/assets/qh_score_fast_continuation_20260805/validation_holdout_offset128/`.
 - On 2026-08-05, branch `score-fast-continuation` reached local/remote commit
   `ed6a861`. P107 single-GPU build/smoke job `32794` completed successfully,

@@ -38,6 +38,19 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-05, P107 single-GPU follow-up smoke job `32732` completed from
+  source commit `d70635a`. Smooth radius confidence moved the predicted edge
+  inward from about 0.65 to 0.568, and out-of-domain strict hints now return
+  `branch_lost` in 0.031 s, but the continuous edge still failed the cheap flux
+  calibration; this intermediate score is invalid. Commit `fdaca40` therefore
+  adds a fixed-cost continuous flux boundary search: test the predicted upper
+  edge and innermost level, then do six bisections of the passing/failing
+  interval. P107 smoke job `32736` completed successfully under
+  `runs/score_fast_continuation/smoke_32736*`. On the same score-96.185 case,
+  continuous p1/p2/p4 all reached `status=ok` with scores
+  `94.751/94.744/94.732`; p1 took 3.140 s versus 7.728 s legacy, while the
+  fixed eight-attempt continuous flux search cost only 0.039 s. This validates
+  mechanics on one case only, not ranking or production defaults.
 - On 2026-08-05, branch `score-fast-continuation` is at local/remote source
   commit `c71a5fb`. P107 single-GPU build/smoke job `32728` was submitted from
   `scripts/slurm_score_fast_build_smoke.sh`; it writes under

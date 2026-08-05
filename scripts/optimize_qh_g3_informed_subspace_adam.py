@@ -520,6 +520,9 @@ def main() -> None:
         ),
         "secant_flow_decode": "independent_batch1",
         "secant_center_score": "native_score_api_in_same_worker_pool_batch",
+        "smooth_candidate_evaluation": (
+            "independent_batch1_score_batch_then_single_selected_g3"
+        ),
         "noise_limit": float(args.noise_limit),
         "seed": int(args.seed),
         "gpu_ids": list(gpu_ids),
@@ -636,6 +639,9 @@ def main() -> None:
             quadratic_axis_rows: list[dict[str, Any]] = []
             quadratic_axis_decode_wall_s = 0.0
             quadratic_axis_score_wall_s = 0.0
+            smooth_candidate_decode_wall_s = 0.0
+            smooth_candidate_score_wall_s = 0.0
+            smooth_candidate_score_elapsed_s: list[float] = []
             projected_rms = 0.0 if projected is None else rms(projected)
             previous_noise = current.noise.copy()
             tentative_first: np.ndarray | None = None
@@ -712,12 +718,72 @@ def main() -> None:
                 candidate_fractions = (
                     (1.0, *args.backtrack_fractions) if np.any(full_update) else ()
                 )
-                for fraction in candidate_fractions:
-                    proposal = np.clip(
+                candidate_states = [
+                    np.clip(
                         current.noise.astype(np.float64) + fraction * full_update,
                         -args.noise_limit,
                         args.noise_limit,
                     ).astype(np.float32)
+                    for fraction in candidate_fractions
+                ]
+                if candidate_states:
+                    candidate_tokens, smooth_candidate_decode_wall_s = (
+                        decode_noise_rk4_independent(
+                            model,
+                            normalizer,
+                            np.stack(candidate_states),
+                            nfp=args.nfp,
+                            steps=args.rk4_steps,
+                            device=device,
+                        )
+                    )
+                    (
+                        candidate_score_results,
+                        smooth_candidate_score_elapsed_s,
+                        candidate_score_errors,
+                        smooth_candidate_score_wall_s,
+                    ) = score_tokens(
+                        pool,
+                        candidate_tokens,
+                        nfp=args.nfp,
+                        target="QH",
+                        timeout_s=args.batch_timeout_s,
+                        metadata={"phase": "smooth_candidates", "iteration": iteration},
+                    )
+                    if any(error is not None for error in candidate_score_errors):
+                        raise RuntimeError(
+                            f"smooth score worker failed at iteration {iteration}: "
+                            f"{candidate_score_errors}"
+                        )
+                else:
+                    candidate_score_results = []
+                for fraction, proposal, score_only_result in zip(
+                    candidate_fractions,
+                    candidate_states,
+                    candidate_score_results,
+                    strict=True,
+                ):
+                    score_only_accepted = bool(
+                        result_valid(score_only_result)
+                        and accept_exact_score_candidate(
+                            current.score_result,
+                            score_only_result,
+                            accept_drop=args.accept_drop,
+                        )
+                    )
+                    candidate_row = {
+                        "mode": args.proposal_mode,
+                        "fraction": float(fraction),
+                        "status": str(score_only_result.get("status")),
+                        "score": result_score(score_only_result),
+                        "score_only_accepted": score_only_accepted,
+                        "g3_evaluated": False,
+                        "valid_g3": None,
+                        "exact_score_accepted": False,
+                    }
+                    candidate_rows.append(candidate_row)
+                    if not score_only_accepted:
+                        continue
                     candidate = evaluate(
                         model,
                         normalizer,
@@ -736,16 +802,18 @@ def main() -> None:
                             accept_drop=args.accept_drop,
                         )
                     )
-                    candidate_rows.append(
-                        {
-                            "mode": args.proposal_mode,
-                            "fraction": float(fraction),
-                            "status": str(candidate.score_result.get("status")),
-                            "score": result_score(candidate.score_result),
-                            "valid_g3": bool(candidate.valid),
-                            "exact_score_accepted": exact_accepted,
-                            "wall_s": float(candidate.wall_s),
-                        }
+                    candidate_row.update(
+                        status=str(candidate.score_result.get("status")),
+                        score=result_score(candidate.score_result),
+                        score_only_score=result_score(score_only_result),
+                        score_repeat_delta=(
+                            result_score(candidate.score_result)
+                            - result_score(score_only_result)
+                        ),
+                        g3_evaluated=True,
+                        valid_g3=bool(candidate.valid),
+                        exact_score_accepted=exact_accepted,
+                        wall_s=float(candidate.wall_s),
                     )
                     if exact_accepted:
                         accepted = candidate
@@ -952,6 +1020,9 @@ def main() -> None:
                 "quadratic_axis_rows": quadratic_axis_rows,
                 "quadratic_axis_decode_wall_s": quadratic_axis_decode_wall_s,
                 "quadratic_axis_score_wall_s": quadratic_axis_score_wall_s,
+                "smooth_candidate_decode_wall_s": smooth_candidate_decode_wall_s,
+                "smooth_candidate_score_wall_s": smooth_candidate_score_wall_s,
+                "smooth_candidate_score_elapsed_s": smooth_candidate_score_elapsed_s,
                 "g3_gradient_rms": rms(g3_gradient),
                 "projected_gradient_rms": projected_rms,
                 "used_gradient_rms": rms(gradient),
@@ -967,7 +1038,6 @@ def main() -> None:
                 ),
                 "pair_decode_wall_s": pair_decode_wall_s,
                 "pair_score_wall_s": pair_score_wall_s,
-                "quadratic_axis_score_wall_s": quadratic_axis_score_wall_s,
                 "pair_score_elapsed_s": pair_elapsed_s,
                 "candidate_trials": candidate_rows,
             }
@@ -998,6 +1068,8 @@ def main() -> None:
                 "update_rms": applied_update_rms,
                 "pair_decode_wall_s": pair_decode_wall_s,
                 "pair_score_wall_s": pair_score_wall_s,
+                "smooth_candidate_decode_wall_s": smooth_candidate_decode_wall_s,
+                "smooth_candidate_score_wall_s": smooth_candidate_score_wall_s,
                 "iteration_wall_s": iteration_wall_s,
                 "total_wall_s": time.perf_counter() - started,
             }

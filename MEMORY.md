@@ -1642,8 +1642,12 @@ once the task is accepted.
 - Flow decoding and $\alpha+\nu$ initialization should use FP32 where validated.
   FP64 is not the default merely because it is a physics calculation.
 - Mathematical formulas in reports use `$...$` or `$$...$$`, not inline code.
-- Reports must be readable, clearly separate verified results from hypotheses,
-  and cite the relevant plots and raw summaries.
+- Reports must use plain language as the primary narrative, not dense internal
+  shorthand. Define every necessary technical term on first use, explain what
+  each quantity or algorithm does in the workflow, and do not require the user
+  to infer meanings from names such as G3/G4, VJP, secant, branch, or smoke.
+  Clearly separate verified results from hypotheses and cite the relevant plots
+  and raw summaries.
 - A complete evaluation of a selected coil is not optional. It includes the
   largest reasonably feasible surface, white-background colored $|B|$ contour
   lines, full-device coils plus

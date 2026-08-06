@@ -1,0 +1,136 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_nfp6_nc2_adam_continue700_20260803/adam/best.json",
+  "surface_npz": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+  "surface": {
+    "nfp": 6,
+    "order": 12,
+    "iota": 2.1331497468248783,
+    "G": -8.274333249887809,
+    "rho": 1.0,
+    "s_edge": 0.49,
+    "s_level": 0.49
+  },
+  "desc_preflight": {
+    "jax_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "gpu_available": false
+  },
+  "visualization": {
+    "surface_meta": {
+      "iota": 2.1331497468248783,
+      "G": -8.274333249887809,
+      "psi_level": null
+    },
+    "b_abs_min": 0.8087734986330902,
+    "b_abs_mean": 0.9319957819011534,
+    "b_abs_max": 1.106078156478035,
+    "poincare": {
+      "hit_counts": [
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "seed_r_min": 1.1698812904409335,
+      "seed_r_max": 1.1986070325635958,
+      "surface_r_outer_phi0": 1.2001189137279464,
+      "edge_fraction": 0.95,
+      "tmax_fl": 20000000.0,
+      "tol": 1e-11,
+      "psi_drift": null,
+      "save_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/assets/poincare.png"
+    },
+    "boozer_b_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/assets/boozer_b.png",
+    "boozer_b_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/assets/boozer_b.html",
+    "coils_surface_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/assets/coils_surface.html",
+    "coils_surface_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/assets/coils_surface.png"
+  },
+  "visualization_time_s": 90.67321202903986,
+  "desc": {
+    "toroidal_flux": -0.007292537646823959,
+    "input": {
+      "mpol": 12,
+      "ntor": 12,
+      "stellsym": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/input.check"
+    },
+    "nested_initial": true,
+    "initial_force_compute_success": true,
+    "initial_force_compute_time_s": 6.603479232639074,
+    "initial_force_mean_abs_normalized": 1.3100263107392947,
+    "initial_force_max_abs_normalized": 796.2841062087815,
+    "initial_force_p95_abs_normalized": 2.181787137209495,
+    "initial_force_vol_average_raw": 10019391.608696407,
+    "plots_initial": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/boundary_initial.png",
+        "time_s": 2.6485583782196045
+      }
+    },
+    "solve_call_success": true,
+    "solve_return": "(Equilibrium at 0xaa4c9b42810 (L=8, M=8, N=8, NFP=6, sym=True, spectral_indexing=ansi),           message: Maximum number of iterations has been exceeded.\n          success: False\n              fun: [ 2.166e-07 -2.342e-05 ... -1.701e-04 -9.117e-05]\n                x: [ 3.084e-05  2.171e-04 ... -1.973e-02 -1.585e-01]\n              nit: 50\n             cost: 3.25098997539736e-05\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 8.491213588614541e-07\n             nfev: 54\n             njev: 51\n             allx: [Array([-1.947e-06, -1.478e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([ 2.423e-05, -1.689e-04, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-7.036e-05, -2.725e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-5.182e-07, -3.047e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([ 1.520e-06, -2.650e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([ 2.571e-06, -1.985e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.020e-06, -1.335e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.148e-06, -1.041e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-7.649e-07, -1.005e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.061e-06, -1.041e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.114e-06, -1.061e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.187e-06, -1.065e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.274e-06, -1.068e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.367e-06, -1.069e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.456e-06, -1.068e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.539e-06, -1.064e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.614e-06, -1.059e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.683e-06, -1.052e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.746e-06, -1.045e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.806e-06, -1.037e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.865e-06, -1.029e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.923e-06, -1.020e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-1.981e-06, -1.012e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.042e-06, -1.003e-05, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.064e-06, -9.988e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.109e-06, -9.945e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.145e-06, -9.896e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.187e-06, -9.852e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.231e-06, -9.809e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.281e-06, -9.771e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.336e-06, -9.737e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.391e-06, -9.699e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.437e-06, -9.645e-06, ..., -1.853e-05,\n                           9.131e-07], dtype=float64), Array([-2.456e-06, -9.588e-06, ..., -1.853e-05,",
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_cost": 3.25098997539736e-05,
+    "optimizer_nit": 50.0,
+    "optimizer_nfev": 54.0,
+    "optimizer_njev": 51.0,
+    "optimizer_optimality": 8.491213588614541e-07,
+    "solve_time_s": 141.1573217008263,
+    "nested_final": true,
+    "final_force_compute_success": true,
+    "final_force_compute_time_s": 1.0179805681109428,
+    "final_force_mean_abs_normalized": 0.0006416168488889882,
+    "final_force_max_abs_normalized": 0.008268279899903176,
+    "final_force_p95_abs_normalized": 0.0015648062334219631,
+    "final_force_vol_average_raw": 1255.195786644668,
+    "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/equilibrium.h5",
+    "plots_final": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/boundary.png",
+        "time_s": 0.954390587285161
+      },
+      "boozer_modes": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/boozer_modes.png",
+        "time_s": 10.940200651064515
+      },
+      "boozer_B": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/boozer_B.png",
+        "time_s": 10.315479984506965
+      },
+      "qs_QA": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/qs_QA.png",
+        "time_s": 9.037006843835115
+      },
+      "qs_QH": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/qs_QH.png",
+        "time_s": 2.8368419632315636
+      },
+      "qs_QP": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/qs_QP.png",
+        "time_s": 2.3237072564661503
+      },
+      "iota": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-small-condition-adam/runs/qh_nfp6_nc2_adam491_full_eval_20260803/selected_s0p49_full/desc/iota.png",
+        "time_s": 4.202181929722428
+      }
+    }
+  },
+  "desc_time_s": 519.8329396545887,
+  "status": "completed",
+  "total_time_s": 650.3499137274921
+}

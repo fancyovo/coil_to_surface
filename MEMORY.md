@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-03 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-06 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,6 +38,35 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-06, the validated continuous-score latent Adam workflow was
+  promoted from branch `score-fast-continuation` (delivery commit `ff0ffb5`) to
+  the standard production entrypoints
+  `scripts/optimize_flow_prior_standard_adam.py` and
+  `scripts/slurm_flow_prior_standard_adam.sh`. The defaults are learning rate
+  `0.01`, perturbation `0.005`, Adam betas `(0.7, 0.999)`, FP32 RK4-128 with
+  cross-iteration flow pipelining, two orthogonal central-difference
+  directions, continuous-surface score, strict axis continuation, robust
+  direction filtering, invalid-center rejection, and bounded center
+  backtracking. Every setting remains explicitly overridable, and the legacy
+  score/optimizer paths remain available; this promotion does not remove or
+  replace the original LS/Newton and DESC complete-evaluation route.
+- The beta1 choice is based on three valid same-start 600-step runs with all
+  other settings fixed. Beta1 `0.5/0.7/0.9` reached best native scores
+  `92.18260/92.38264/92.36607`; therefore `0.7` is the production default,
+  while the near-tie with `0.9` must not be overstated as a universal optimum.
+  The beta1 `0.7` best input has SHA-256
+  `929835799be8f5ec0a75500bc9c52b9d9538659db4a93763d1ae0cdab98ecdd1`.
+  Its sample-specific full evaluation selected `a=0.08` and the largest
+  standard-accepted `s=0.49`, with volume `0.0658637 m^3`, iota `1.54967`,
+  dense relative L2 `1.888e-5`, normal-field P95 `3.195e-5`, and face QH error
+  `5.884e-6`. Poincare remained nested; DESC reduced normalized force
+  mean/P95/max from `1.140/1.848/4.028` to
+  `1.461e-3/2.945e-3/8.979e-3`, but hit the 50-iteration cap, so this is a
+  physically accepted refinement rather than strict optimizer convergence.
+  Evidence is in section 17 of
+  `reports/qh_score_throughput_and_continuous_surface_plan.md` and
+  `reports/assets/qh_score_fast_beta1_0p7_best923826_full_eval_20260806/`.
+  Never reuse this sample's `a` or `s` as defaults for another sample.
 - On 2026-08-03, complete physical evaluation of the corrected ABI-9
   `nfp=6`, two-base-coil Adam best case was completed on branch
   `qh-small-condition-adam`. The immutable input is

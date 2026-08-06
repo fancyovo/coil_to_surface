@@ -107,6 +107,42 @@ def main() -> None:
             t0 = time.perf_counter()
             pure_field[precision] = gpu.eval_B(xyz, precision=precision)
             timings[f"cuda_B_only_{precision}_s"] = float(time.perf_counter() - t0)
+        adjoint_rng = np.random.default_rng(2026080501)
+        adj_B = adjoint_rng.standard_normal((args.points, 3)).astype(np.float32)
+        adj_grad_B = adjoint_rng.standard_normal((args.points, 3, 3)).astype(np.float32)
+        point_direction = adjoint_rng.standard_normal((args.points, 3)).astype(np.float32)
+        point_direction /= np.sqrt(np.mean(point_direction.astype(np.float64) ** 2))
+        gpu.eval_B_grad_point_vjp(xyz, adj_B, adj_grad_B)
+        t0 = time.perf_counter()
+        point_vjp = gpu.eval_B_grad_point_vjp(xyz, adj_B, adj_grad_B)
+        timings["cuda_point_vjp_fp32_s"] = float(time.perf_counter() - t0)
+        point_prediction = float(np.sum(point_vjp.astype(np.float64) * point_direction))
+        point_vjp_scales = []
+        for step in (1.0e-3, 5.0e-4, 2.5e-4, 1.25e-4):
+            plus_B, plus_grad = gpu.eval_B_grad(
+                xyz + step * point_direction, precision="fp32"
+            )
+            minus_B, minus_grad = gpu.eval_B_grad(
+                xyz - step * point_direction, precision="fp32"
+            )
+            plus_objective = float(
+                np.sum(plus_B.astype(np.float64) * adj_B)
+                + np.sum(plus_grad.astype(np.float64) * adj_grad_B)
+            )
+            minus_objective = float(
+                np.sum(minus_B.astype(np.float64) * adj_B)
+                + np.sum(minus_grad.astype(np.float64) * adj_grad_B)
+            )
+            observed = (plus_objective - minus_objective) / (2.0 * step)
+            point_vjp_scales.append(
+                {
+                    "step_m": step,
+                    "prediction": point_prediction,
+                    "observed": observed,
+                    "relative_error": abs(point_prediction - observed)
+                    / max(abs(observed), 1.0e-30),
+                }
+            )
     finally:
         gpu.close()
 
@@ -142,6 +178,12 @@ def main() -> None:
                 "max_abs": float(np.max(np.abs(np.trace(outputs[precision][1], axis1=1, axis2=2)))),
             }
             for precision in ("fp64", "fp32")
+        },
+        "point_vjp": {
+            "direction_rms": float(
+                np.sqrt(np.mean(point_direction.astype(np.float64) ** 2))
+            ),
+            "scales": point_vjp_scales,
         },
     }
     text = json.dumps(payload, indent=2)

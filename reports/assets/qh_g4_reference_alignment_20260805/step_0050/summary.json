@@ -1,0 +1,117 @@
+{
+  "format": "qh_g4_reference_alignment_v1",
+  "center_index": 0,
+  "center_id": "nc3_step50",
+  "iteration": 50,
+  "scale": 0.0025,
+  "nfp": 4,
+  "n_coils": 3,
+  "gradient_lib": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/gpu_backend/build_g4_oracle/libstellarator_gpu.so",
+  "gradient_lib_sha256": "071f67925a8eca6cfc702ed6b8380f4677bb4c36711e6aae032b7dd227bdc88c",
+  "reference_manifest_sha256": "14191dd1cb8f234530ac2971b5699d8d2ae11d3d548d59816e3836fb4db5a198",
+  "closure_sha256": "4b80370613f1492b478a5a719151cab63f026a5561d0eda1845d3d69f0680b89",
+  "batch_wall_s": 327.60445928759873,
+  "mean_query_wall_s": 0.5450989339227932,
+  "query_count": 601,
+  "valid_direction_count": 300,
+  "endpoint_status_counts": {
+    "ok": 600
+  },
+  "center_score": 89.396962762036,
+  "fixed_branch_center_score": 89.396962762036,
+  "fixed_branch_center_delta": 0.0,
+  "gradient_alignment": {
+    "full_g2_cosine": 0.05244977226086022,
+    "full_g3_cosine": 0.23755815322925114,
+    "full_g4_cosine": -0.5359988013644437,
+    "g2_g4_cosine": 0.005910430437038098,
+    "g3_g4_cosine": -0.36382649101826575,
+    "full_slope_rms": 20.27736943988942,
+    "g2_slope_rms": 1.881412873856918,
+    "g3_slope_rms": 2.0068129255334113,
+    "g4_slope_rms": 38.80514986706149
+  },
+  "adam_projection": {
+    "full": 37.60076427997086,
+    "g2": 22.0248292973747,
+    "g3": 23.35491626392029,
+    "g4": -75.37234728447912
+  },
+  "component_alignment": {
+    "axis": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": NaN,
+      "full_on_adam": -29.683296150030912,
+      "g4_on_adam": 0.0,
+      "full_gradient_rms": 2.6903844899510925,
+      "g4_gradient_rms": 0.0
+    },
+    "psi": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": -0.031255153454310694,
+      "full_on_adam": 4.271082960029283,
+      "g4_on_adam": -7.8099028486463205,
+      "full_gradient_rms": 0.10899960147658107,
+      "g4_gradient_rms": 1.2327792996412763
+    },
+    "surface": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": -0.5553807682493541,
+      "full_on_adam": 163.80256788189382,
+      "g4_on_adam": -86.134738693635,
+      "full_gradient_rms": 6.915069561221432,
+      "g4_gradient_rms": 2.2745056162172004
+    },
+    "coordinate": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": -0.3967933007902011,
+      "full_on_adam": -6.360469375542247,
+      "g4_on_adam": -111.62945139386935,
+      "full_gradient_rms": 0.8376627464823565,
+      "g4_gradient_rms": 5.4393882265120945
+    },
+    "volume_qs": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": -0.6911237382326169,
+      "full_on_adam": 63.11622949215025,
+      "g4_on_adam": -125.48546988689826,
+      "full_gradient_rms": 0.929334747751812,
+      "g4_gradient_rms": 3.497195961992419
+    },
+    "iota": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": NaN,
+      "full_on_adam": 0.0,
+      "g4_on_adam": 0.0,
+      "full_gradient_rms": 0.0,
+      "g4_gradient_rms": 0.0
+    },
+    "coil": {
+      "valid_direction_count": 300,
+      "full_g4_cosine": 0.999999999999999,
+      "full_on_adam": -26.38800797961656,
+      "g4_on_adam": -26.38800797961656,
+      "full_gradient_rms": 0.9103343254543955,
+      "g4_gradient_rms": 0.9103343254543955
+    }
+  },
+  "reference_metadata": {
+    "scale": 0.0025,
+    "smooth_direction_count": 300,
+    "smooth_fraction": 1.0,
+    "endpoint_status_counts": {
+      "ok": 600
+    },
+    "slope_rms": 20.277369380968658,
+    "gradient_rms": 1.1707144687568685,
+    "component_gradient_rms": {
+      "axis": 2.6903844899510925,
+      "psi": 0.10899960147658107,
+      "surface": 6.915069561221432,
+      "coordinate": 0.8376627464823565,
+      "volume_qs": 0.929334747751812,
+      "iota": 0.0,
+      "coil": 0.9103343254543955
+    }
+  }
+}

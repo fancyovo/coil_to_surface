@@ -33,8 +33,30 @@ def _final_abs_volume(summary: dict) -> float | None:
 
 def load_candidate_rows(candidate_root: Path) -> list[dict]:
     rows = []
-    pattern = "*/standard_rho_1/summary.json"
-    for summary_path in sorted(candidate_root.glob(pattern)):
+    for candidate_dir in sorted(candidate_root.glob("s_*")):
+        if not candidate_dir.is_dir():
+            continue
+        summary_path = candidate_dir / "standard_rho_1" / "summary.json"
+        if not summary_path.is_file():
+            if (candidate_dir / "gpu_postflight.csv").is_file():
+                try:
+                    level = float(candidate_dir.name.removeprefix("s_").replace("p", "."))
+                except ValueError:
+                    continue
+                rows.append(
+                    {
+                        "target_s": level,
+                        "solver_accepted": False,
+                        "accepted": False,
+                        "summary": None,
+                        "surface": None,
+                        "final_abs_volume_m3": None,
+                        "acceptance_checks": {},
+                        "branch_diagnostics": {},
+                        "failure_stage": "completed_before_standard_acceptance",
+                    }
+                )
+            continue
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         level = float(summary["target_s"])
         solver_accepted = bool(summary.get("accepted_for_downstream", False))
@@ -52,7 +74,7 @@ def load_candidate_rows(candidate_root: Path) -> list[dict]:
                 "branch_diagnostics": summary.get("branch_diagnostics", {}),
             }
         )
-    return rows
+    return sorted(rows, key=lambda row: row["target_s"])
 
 
 def apply_nested_volume_check(rows: list[dict]) -> None:

@@ -1,0 +1,569 @@
+{
+  "format": "qh_flow_vjp_benchmark_center_v1",
+  "center_id": "main_nfp6_step0",
+  "center_index": 0,
+  "nfp": 6,
+  "n_coils": 2,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "gradient_library_sha256": "fdf142aad0f0e0739c61cf61fde9d7195a688079a26016a9c010571d9440f8d4",
+  "reference_dir": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_blackbox_gradient_reference_31640",
+  "reference_steps": 256,
+  "perturbation_scale": 0.00125,
+  "perturbation_position_rms_m": 0.0002613610222834486,
+  "thresholds": {
+    "max_position_error_to_perturbation": 0.01,
+    "max_score_abs_error": 0.02,
+    "max_component_abs_error": 0.02,
+    "min_vjp_cosine": 0.995,
+    "max_fixed_vjp_relative_l2": 0.02
+  },
+  "selected_steps": 256,
+  "rows": [
+    {
+      "steps": 32,
+      "network_evaluations_forward": 128,
+      "no_grad_decode_wall_s": 2.0352402720600367,
+      "native_forward_wall_s": 5.69298264,
+      "native_reverse_wall_s": 0.095039189,
+      "score": {
+        "score": 74.46094707241168,
+        "status": "ok",
+        "components": {
+          "axis": 92.49961434204795,
+          "psi": 98.17670087543782,
+          "surface": 91.08986653422559,
+          "coordinate": 81.54179850872231,
+          "volume_qs": 55.82461514854258,
+          "iota": 100.0,
+          "coil": 58.54763354975552
+        },
+        "timing": {
+          "total_s": 5.692978372,
+          "field_create_s": 0.021210265,
+          "coil_geometry_s": 0.02264668,
+          "axis_search_s": 2.117934679,
+          "axis_trace_s": 0.048665489,
+          "psi_points_s": 0.046356389,
+          "psi_fit_s": 0.613807401,
+          "psi_validate_s": 0.17305161,
+          "surface_screen_s": 2.562194611,
+          "flux_s": 0.981853937,
+          "volume_points_s": 0.002326613,
+          "field_volume_s": 0.001132281,
+          "alpha_assemble_s": 0.002317494,
+          "alpha_solve_s": 0.071995806,
+          "qs_metrics_s": 0.001072782,
+          "score_s": 5.47e-07
+        },
+        "diagnostics": {
+          "stage_completed": 8,
+          "axis_R": 1.1756025498530907,
+          "axis_Z": 1.2372900334701293e-08,
+          "axis_residual": 2.8133416386413712e-08,
+          "axis_topology_trace": -1.4043910313654053,
+          "axis_topology_det": 0.9999997733120579,
+          "axis_ellipse_aspect": 2.924342256436665,
+          "psi_angle_p95": 5.136403714941331e-05,
+          "surface_level": 0.16,
+          "surface_drift_relative_p95": 0.002358778283802546,
+          "surface_one_period_drift_relative_p95": 0.0011105561369159492,
+          "surface_inverse_aspect_ratio": 0.02530790209291307,
+          "surface_volume": 0.011968112862323358,
+          "flux_attempt_count": 1,
+          "flux_edge": -0.00019692431660416838,
+          "iota_min": 2.094508171081543,
+          "iota_max": 2.094508171081543,
+          "score_before_qh_iota_gate": 74.46094707241168,
+          "score_qh_total_iota_factor": 1.0,
+          "score_qh_helicity_advantage": 0.3976245384835912,
+          "score_qh_helicity_quality": 1.0,
+          "score_qh_total_helicity_factor": 1.0,
+          "qs_global_error": 0.2319245842922818,
+          "qs_qa_global_error": 0.2730225572852253,
+          "qs_qp_global_error": 0.02516818112823424,
+          "stable_surface_count": 8,
+          "volume_candidate_count": 125952,
+          "volume_available_count": 125952,
+          "volume_point_count": 100000,
+          "alpha_column_count": 2269,
+          "surface_long_trace_rejected_count": 0
+        },
+        "branch_fingerprint": [
+          "ok",
+          0.16,
+          8,
+          0,
+          1,
+          125952,
+          125952,
+          100000,
+          2269
+        ]
+      },
+      "status_matches_reference": true,
+      "branch_matches_reference": true,
+      "score_abs_error": 0.025113547059945063,
+      "component_abs_error_max": 0.24875783550284325,
+      "position_error_rms_m": 0.00018092813372563342,
+      "position_error_to_perturbation": 0.692253696227952,
+      "coefficient_relative_l2": 0.00019967844735229112,
+      "current_relative_l2": 5.222972504295523e-05,
+      "fixed_cotangent_vjp_cosine": 0.9999966185990822,
+      "fixed_cotangent_vjp_relative_l2": 0.0028329799314079263,
+      "end_to_end_vjp_cosine": 0.9999864782634711,
+      "end_to_end_vjp_relative_l2": 0.005992846929474288,
+      "end_to_end_vjp_norm_ratio": 1.00296488792302,
+      "checkpoint": {
+        "error": null,
+        "diagnostics": {
+          "decode_wall_s": 14.186182858422399,
+          "backward_wall_s": 1.5696552321314812,
+          "use_checkpoint": true,
+          "checkpoint_steps": 8,
+          "rk4_steps": 32,
+          "baseline_memory_allocated_bytes": 156201472,
+          "forward_peak_memory_allocated_bytes": 156274688,
+          "total_peak_memory_allocated_bytes": 205490688,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "retained": {
+        "diagnostics": {
+          "decode_wall_s": 0.4638721253722906,
+          "backward_wall_s": 0.544789545238018,
+          "use_checkpoint": false,
+          "checkpoint_steps": 8,
+          "rk4_steps": 32,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 252239360,
+          "total_peak_memory_allocated_bytes": 252329472,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "checkpoint_to_retained_physical_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_cosine": 0.9999999999999999,
+      "passed": false
+    },
+    {
+      "steps": 64,
+      "network_evaluations_forward": 256,
+      "no_grad_decode_wall_s": 0.5866913460195065,
+      "native_forward_wall_s": 5.26884339,
+      "native_reverse_wall_s": 0.093731235,
+      "score": {
+        "score": 74.43682135563719,
+        "status": "ok",
+        "components": {
+          "axis": 92.28220099305871,
+          "psi": 98.18554341175488,
+          "surface": 91.08892825006154,
+          "coordinate": 81.57624835042434,
+          "volume_qs": 55.812817316387864,
+          "iota": 100.0,
+          "coil": 58.526824777804286
+        },
+        "timing": {
+          "total_s": 5.268842537,
+          "field_create_s": 0.001630718,
+          "coil_geometry_s": 0.021499301,
+          "axis_search_s": 2.11208055,
+          "axis_trace_s": 0.048820871,
+          "psi_points_s": 0.038780684,
+          "psi_fit_s": 0.23358194,
+          "psi_validate_s": 0.178967626,
+          "surface_screen_s": 2.5597741039999997,
+          "flux_s": 0.979798333,
+          "volume_points_s": 0.002263859,
+          "field_volume_s": 0.001116691,
+          "alpha_assemble_s": 0.002267156,
+          "alpha_solve_s": 0.059559912,
+          "qs_metrics_s": 0.000848061,
+          "score_s": 4.31e-07
+        },
+        "diagnostics": {
+          "stage_completed": 8,
+          "axis_R": 1.175684802898671,
+          "axis_Z": 1.7406857713396376e-08,
+          "axis_residual": 4.0542913411764596e-08,
+          "axis_topology_trace": -1.4041568886778455,
+          "axis_topology_det": 0.9999997665506527,
+          "axis_ellipse_aspect": 2.9284497958312485,
+          "psi_angle_p95": 5.1036151446310866e-05,
+          "surface_level": 0.16,
+          "surface_drift_relative_p95": 0.0023588920214665738,
+          "surface_one_period_drift_relative_p95": 0.0011102725495477778,
+          "surface_inverse_aspect_ratio": 0.02530742140512129,
+          "surface_volume": 0.011969683120016726,
+          "flux_attempt_count": 1,
+          "flux_edge": -0.00019692695925587302,
+          "iota_min": 2.094348192214966,
+          "iota_max": 2.094348192214966,
+          "score_before_qh_iota_gate": 74.43682135563719,
+          "score_qh_total_iota_factor": 1.0,
+          "score_qh_helicity_advantage": 0.3974328898059784,
+          "score_qh_helicity_quality": 1.0,
+          "score_qh_total_helicity_factor": 1.0,
+          "qs_global_error": 0.2320640674511764,
+          "qs_qa_global_error": 0.2731201087977017,
+          "qs_qp_global_error": 0.025163173932489114,
+          "stable_surface_count": 8,
+          "volume_candidate_count": 125952,
+          "volume_available_count": 125952,
+          "volume_point_count": 100000,
+          "alpha_column_count": 2269,
+          "surface_long_trace_rejected_count": 0
+        },
+        "branch_fingerprint": [
+          "ok",
+          0.16,
+          8,
+          0,
+          1,
+          125952,
+          125952,
+          100000,
+          2269
+        ]
+      },
+      "status_matches_reference": true,
+      "branch_matches_reference": true,
+      "score_abs_error": 0.0009878302854531285,
+      "component_abs_error_max": 0.03134448651360344,
+      "position_error_rms_m": 0.00015096415012022505,
+      "position_error_to_perturbation": 0.5776077427356514,
+      "coefficient_relative_l2": 0.0001784332506990734,
+      "current_relative_l2": 9.31741623855157e-05,
+      "fixed_cotangent_vjp_cosine": 0.9999991271549235,
+      "fixed_cotangent_vjp_relative_l2": 0.0020018887557946333,
+      "end_to_end_vjp_cosine": 0.9999985437418978,
+      "end_to_end_vjp_relative_l2": 0.0036958160709779963,
+      "end_to_end_vjp_norm_ratio": 0.9967203518093646,
+      "checkpoint": {
+        "error": null,
+        "diagnostics": {
+          "decode_wall_s": 1.1197822410613298,
+          "backward_wall_s": 2.490028904750943,
+          "use_checkpoint": true,
+          "checkpoint_steps": 8,
+          "rk4_steps": 64,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 189833216,
+          "total_peak_memory_allocated_bytes": 205494784,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "retained": {
+        "diagnostics": {
+          "decode_wall_s": 0.7584175486117601,
+          "backward_wall_s": 0.8827198445796967,
+          "use_checkpoint": false,
+          "checkpoint_steps": 8,
+          "rk4_steps": 64,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 314695168,
+          "total_peak_memory_allocated_bytes": 314785280,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "checkpoint_to_retained_physical_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_cosine": 0.9999999999999999,
+      "passed": false
+    },
+    {
+      "steps": 128,
+      "network_evaluations_forward": 512,
+      "no_grad_decode_wall_s": 1.1687631476670504,
+      "native_forward_wall_s": 5.252439982,
+      "native_reverse_wall_s": 0.093869776,
+      "score": {
+        "score": 74.43505339070504,
+        "status": "ok",
+        "components": {
+          "axis": 92.32278486109206,
+          "psi": 98.17724009131892,
+          "surface": 91.06226809794786,
+          "coordinate": 81.52187162843714,
+          "volume_qs": 55.82116111536747,
+          "iota": 100.0,
+          "coil": 58.52186567963893
+        },
+        "timing": {
+          "total_s": 5.252439067,
+          "field_create_s": 0.001795657,
+          "coil_geometry_s": 0.021118305,
+          "axis_search_s": 2.1078316520000002,
+          "axis_trace_s": 0.048816884,
+          "psi_points_s": 0.033480916,
+          "psi_fit_s": 0.234063785,
+          "psi_validate_s": 0.175141861,
+          "surface_screen_s": 2.556483723,
+          "flux_s": 0.976933415,
+          "volume_points_s": 0.002235348,
+          "field_volume_s": 0.001119156,
+          "alpha_assemble_s": 0.002242952,
+          "alpha_solve_s": 0.059694021,
+          "qs_metrics_s": 0.000902411,
+          "score_s": 5.14e-07
+        },
+        "diagnostics": {
+          "stage_completed": 8,
+          "axis_R": 1.1756426796811503,
+          "axis_Z": 1.2617966256087544e-08,
+          "axis_residual": 3.800086909493505e-08,
+          "axis_topology_trace": -1.406072156938695,
+          "axis_topology_det": 0.9999997488486587,
+          "axis_ellipse_aspect": 2.929585868552622,
+          "psi_angle_p95": 5.1322672806290967e-05,
+          "surface_level": 0.16,
+          "surface_drift_relative_p95": 0.00238375158226932,
+          "surface_one_period_drift_relative_p95": 0.0011119601016295222,
+          "surface_inverse_aspect_ratio": 0.025306358048176127,
+          "surface_volume": 0.011965776993901538,
+          "flux_attempt_count": 1,
+          "flux_edge": -0.00019684812607658012,
+          "iota_min": 2.0953385829925537,
+          "iota_max": 2.0953385829925537,
+          "score_before_qh_iota_gate": 74.43505339070504,
+          "score_qh_total_iota_factor": 1.0,
+          "score_qh_helicity_advantage": 0.3974429918315303,
+          "score_qh_helicity_quality": 1.0,
+          "score_qh_total_helicity_factor": 1.0,
+          "qs_global_error": 0.23196949971299213,
+          "qs_qa_global_error": 0.2730260306142885,
+          "qs_qp_global_error": 0.025153980810024155,
+          "stable_surface_count": 8,
+          "volume_candidate_count": 125952,
+          "volume_available_count": 125952,
+          "volume_point_count": 100000,
+          "alpha_column_count": 2269,
+          "surface_long_trace_rejected_count": 0
+        },
+        "branch_fingerprint": [
+          "ok",
+          0.16,
+          8,
+          0,
+          1,
+          125952,
+          125952,
+          100000,
+          2269
+        ]
+      },
+      "status_matches_reference": true,
+      "branch_matches_reference": true,
+      "score_abs_error": 0.0007801346467033454,
+      "component_abs_error_max": 0.07192835454695512,
+      "position_error_rms_m": 4.053394076883804e-05,
+      "position_error_to_perturbation": 0.15508793321476444,
+      "coefficient_relative_l2": 4.61997391671827e-05,
+      "current_relative_l2": 3.740010126086231e-05,
+      "fixed_cotangent_vjp_cosine": 0.999999887215018,
+      "fixed_cotangent_vjp_relative_l2": 0.0005661012891827537,
+      "end_to_end_vjp_cosine": 0.9999983341361057,
+      "end_to_end_vjp_relative_l2": 0.002281634462199221,
+      "end_to_end_vjp_norm_ratio": 0.9986293451641666,
+      "checkpoint": {
+        "error": null,
+        "diagnostics": {
+          "decode_wall_s": 2.454210827127099,
+          "backward_wall_s": 4.336483268067241,
+          "use_checkpoint": true,
+          "checkpoint_steps": 8,
+          "rk4_steps": 128,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 189841408,
+          "total_peak_memory_allocated_bytes": 205502976,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "retained": {
+        "diagnostics": {
+          "decode_wall_s": 1.533843357115984,
+          "backward_wall_s": 1.7738252151757479,
+          "use_checkpoint": false,
+          "checkpoint_steps": 8,
+          "rk4_steps": 128,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 439606784,
+          "total_peak_memory_allocated_bytes": 439696896,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "checkpoint_to_retained_physical_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_cosine": 1.0000000000000002,
+      "passed": false
+    },
+    {
+      "steps": 256,
+      "network_evaluations_forward": 1024,
+      "no_grad_decode_wall_s": 2.2714099921286106,
+      "native_forward_wall_s": 5.246566565,
+      "native_reverse_wall_s": 0.093793531,
+      "score": {
+        "score": 74.43583352535174,
+        "status": "ok",
+        "components": {
+          "axis": 92.2508565065451,
+          "psi": 98.17963248164855,
+          "surface": 91.06684792338169,
+          "coordinate": 81.55342798185117,
+          "volume_qs": 55.83145914067026,
+          "iota": 100.0,
+          "coil": 58.51930246159463
+        },
+        "timing": {
+          "total_s": 5.246565698,
+          "field_create_s": 0.001589318,
+          "coil_geometry_s": 0.021028627,
+          "axis_search_s": 2.1079183,
+          "axis_trace_s": 0.048788008,
+          "psi_points_s": 0.031141943,
+          "psi_fit_s": 0.233542943,
+          "psi_validate_s": 0.172488767,
+          "surface_screen_s": 2.556194809,
+          "flux_s": 0.978301542,
+          "volume_points_s": 0.002220425,
+          "field_volume_s": 0.001116509,
+          "alpha_assemble_s": 0.002262788,
+          "alpha_solve_s": 0.059963113,
+          "qs_metrics_s": 0.000847709,
+          "score_s": 4.77e-07
+        },
+        "diagnostics": {
+          "stage_completed": 8,
+          "axis_R": 1.1756200462192676,
+          "axis_Z": 1.5818524089360902e-08,
+          "axis_residual": 4.23570246970932e-08,
+          "axis_topology_trace": -1.4055948784246606,
+          "axis_topology_det": 0.9999997530612348,
+          "axis_ellipse_aspect": 2.929686382661971,
+          "psi_angle_p95": 5.118960235620718e-05,
+          "surface_level": 0.16,
+          "surface_drift_relative_p95": 0.002378084854998627,
+          "surface_one_period_drift_relative_p95": 0.001110807582103898,
+          "surface_inverse_aspect_ratio": 0.025305730548231993,
+          "surface_volume": 0.011964496262165454,
+          "flux_attempt_count": 1,
+          "flux_edge": -0.0001968451156387415,
+          "iota_min": 2.0950822830200195,
+          "iota_max": 2.0950822830200195,
+          "score_before_qh_iota_gate": 74.43583352535174,
+          "score_qh_total_iota_factor": 1.0,
+          "score_qh_helicity_advantage": 0.39755307220668684,
+          "score_qh_helicity_quality": 1.0,
+          "score_qh_total_helicity_factor": 1.0,
+          "qs_global_error": 0.23185152826058394,
+          "qs_qa_global_error": 0.27293015768881135,
+          "qs_qp_global_error": 0.02515274690403882,
+          "stable_surface_count": 8,
+          "volume_candidate_count": 125952,
+          "volume_available_count": 125952,
+          "volume_point_count": 100000,
+          "alpha_column_count": 2269,
+          "surface_long_trace_rejected_count": 0
+        },
+        "branch_fingerprint": [
+          "ok",
+          0.16,
+          8,
+          0,
+          1,
+          125952,
+          125952,
+          100000,
+          2269
+        ]
+      },
+      "status_matches_reference": true,
+      "branch_matches_reference": true,
+      "score_abs_error": 0.0,
+      "component_abs_error_max": 0.0,
+      "position_error_rms_m": 0.0,
+      "position_error_to_perturbation": 0.0,
+      "coefficient_relative_l2": 0.0,
+      "current_relative_l2": 0.0,
+      "fixed_cotangent_vjp_cosine": 1.0,
+      "fixed_cotangent_vjp_relative_l2": 0.0,
+      "end_to_end_vjp_cosine": 1.0,
+      "end_to_end_vjp_relative_l2": 0.0,
+      "end_to_end_vjp_norm_ratio": 1.0,
+      "checkpoint": {
+        "error": null,
+        "diagnostics": {
+          "decode_wall_s": 4.854433445259929,
+          "backward_wall_s": 9.396046912297606,
+          "use_checkpoint": true,
+          "checkpoint_steps": 8,
+          "rk4_steps": 256,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 189857792,
+          "total_peak_memory_allocated_bytes": 205519360,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "retained": {
+        "diagnostics": {
+          "decode_wall_s": 3.0692203007638454,
+          "backward_wall_s": 3.6039096489548683,
+          "use_checkpoint": false,
+          "checkpoint_steps": 8,
+          "rk4_steps": 256,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 689430016,
+          "total_peak_memory_allocated_bytes": 689520128,
+          "dominant_current_index": [
+            0
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "checkpoint_to_retained_physical_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_cosine": 1.0,
+      "passed": true
+    }
+  ],
+  "profile": null
+}

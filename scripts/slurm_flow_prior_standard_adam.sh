@@ -22,17 +22,31 @@ expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3
 run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam/${SLURM_JOB_ID}}"
 iterations="${ITERATIONS:-60}"
 max_wall_s="${MAX_WALL_S:-1500}"
-learning_rate="${LEARNING_RATE:?LEARNING_RATE is required}"
-perturbation="${PERTURBATION:-0.01}"
-beta1="${BETA1:-0.9}"
+learning_rate="${LEARNING_RATE:-0.01}"
+perturbation="${PERTURBATION:-0.005}"
+directions="${DIRECTIONS:-2}"
+direction_bank_size="${DIRECTION_BANK_SIZE:-$directions}"
+gradient_estimator="${GRADIENT_ESTIMATOR:-central}"
+flow_steps="${FLOW_STEPS:-128}"
+flow_pipeline="${FLOW_PIPELINE:-1}"
+score_gpus="${SCORE_GPUS:-0,1,2,3}"
+score_gpus="${score_gpus//:/,}"
+beta1="${BETA1:-0.7}"
 beta2="${BETA2:-0.999}"
-robust_direction_filter="${ROBUST_DIRECTION_FILTER:-0}"
-reject_invalid_center="${REJECT_INVALID_CENTER:-0}"
+robust_direction_filter="${ROBUST_DIRECTION_FILTER:-1}"
+reject_invalid_center="${REJECT_INVALID_CENTER:-1}"
 invalid_center_backtracking="${INVALID_CENTER_BACKTRACKING:-0.5,0.25,0.125}"
 direction_outlier_ratio="${DIRECTION_OUTLIER_RATIO:-8.0}"
 direction_outlier_mad_factor="${DIRECTION_OUTLIER_MAD_FACTOR:-8.0}"
 seed="${SEED:-2026073004}"
 initial_case="${INITIAL_CASE:-}"
+score_surface_mode="${SCORE_SURFACE_MODE:-continuous}"
+surface_confidence_periods="${SURFACE_CONFIDENCE_PERIODS:-1}"
+surface_theta_count="${SURFACE_THETA_COUNT:-128}"
+surface_trace_steps="${SURFACE_TRACE_STEPS:-400}"
+surface_flux_bisection_iters="${SURFACE_FLUX_BISECTION_ITERS:-6}"
+axis_continuation="${AXIS_CONTINUATION:-1}"
+resume="${RESUME:-0}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 children=()
 
@@ -69,12 +83,44 @@ robust_gradient_args=(
 )
 if [[ "$robust_direction_filter" == "1" ]]; then
   robust_gradient_args+=(--robust-direction-filter)
+else
+  robust_gradient_args+=(--no-robust-direction-filter)
 fi
 if [[ "$reject_invalid_center" == "1" ]]; then
   robust_gradient_args+=(
     --reject-invalid-center
     --invalid-center-backtracking "$invalid_center_backtracking"
   )
+else
+  robust_gradient_args+=(--no-reject-invalid-center)
+fi
+score_mode_args=(
+  --score-surface-mode "$score_surface_mode"
+  --surface-confidence-periods "$surface_confidence_periods"
+  --surface-theta-count "$surface_theta_count"
+  --surface-trace-steps "$surface_trace_steps"
+  --surface-flux-bisection-iters "$surface_flux_bisection_iters"
+)
+gradient_args=(
+  --directions "$directions"
+  --direction-bank-size "$direction_bank_size"
+  --gradient-estimator "$gradient_estimator"
+  --flow-steps "$flow_steps"
+  --gpus "$score_gpus"
+)
+if [[ "$flow_pipeline" == "1" ]]; then
+  gradient_args+=(--flow-pipeline)
+else
+  gradient_args+=(--no-flow-pipeline)
+fi
+if [[ "$axis_continuation" == "1" ]]; then
+  score_mode_args+=(--axis-continuation)
+else
+  score_mode_args+=(--no-axis-continuation)
+fi
+resume_args=()
+if [[ "$resume" == "1" ]]; then
+  resume_args+=(--resume)
 fi
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 source "$HOME/coil/.venv/bin/activate"
@@ -130,7 +176,10 @@ python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --beta1 "$beta1" \
   --beta2 "$beta2" \
   --seed "$seed" \
+  "${gradient_args[@]}" \
+  "${score_mode_args[@]}" \
   "${robust_gradient_args[@]}" \
+  "${resume_args[@]}" \
   "${initial_args[@]}" &
 children+=("$!")
 wait "${children[0]}"

@@ -475,3 +475,285 @@ DESC 在 50 步后以 `xtol` 正常收敛，`optimizer_success=true`，cost 为 
 候选间使用四张 RTX 5090 并行；记录的 GPU 前后检查均为 0% 利用率、2 MiB 显存且无计算进程。下游作业 `31302` 以 `COMPLETED 0:0` 结束，总墙钟 5 分 26 秒。
 
 机器可读产物位于 [六周期资产目录](assets/qh_small_condition_adam_nfp6_nc2_20260803/)；关键文件包括 [selection.json](assets/qh_small_condition_adam_nfp6_nc2_20260803/selection.json)、[选中面](assets/qh_small_condition_adam_nfp6_nc2_20260803/s_0p36_boozer_standard.npz)、[完整评估摘要](assets/qh_small_condition_adam_nfp6_nc2_20260803/full/full_summary.json) 和 [DESC 摘要](assets/qh_small_condition_adam_nfp6_nc2_20260803/full/desc/summary.json)。选中面的 SHA-256 为 `b0239e29c3b8cd73d89b8e355811a7878dce6b908a74f3c0f4c93cb1e50e9886`；DESC `equilibrium.h5` 的 SHA-256 为 `557168e9c14dcdc204599146389cd52edec203928fccfc07dfcaa0b97091d957`。
+
+## 12. 继承动量续跑至 400 步及最终验收
+
+### 12.1 续跑是否真的继承了 Adam 状态
+
+是。job `31330` 没有把第 200 步样本当成新起点重新运行 Adam，而是从不可变副本恢复了当前潜变量、历史最佳潜变量、FP64 一阶矩和二阶矩、Adam bias-correction step 199、随机数状态、时间尺度 guard 历史，以及前 200 行轨迹。原始 200 步目录保持不变。作业以 `COMPLETED 0:0` 在 1 小时 8 分 54 秒后结束，step 400 同时是最终点和全程最佳点：
+
+$$
+S_{200}=83.4688735,
+\qquad
+S_{400}=86.1233491,
+\qquad
+\Delta S=2.6544756.
+$$
+
+续跑的 200 轮中有 184 次实际更新；全 400 轮累计 383 次更新、17 次完整跳过。第 390 步的梯度 RMS 突增至 176.743，被滚动时间尺度 guard 在写入参数和两阶动量前拒绝；第 396 步只有 87.5% 有效差分端点，因此整步跳过。两者都没有污染后续状态。
+
+![继承动量后 0--400 步的完整优化曲线](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/progress.png)
+
+曲线没有显示饱和。step 200--400 的最佳值提高 2.6545 分，最后 50、20、10 步的 running-best 仍分别提高约 0.780、0.560、0.280 分，且最佳点落在最后一步。因此，本次验证了“可精确续跑并继续提分”，但没有证明 400 步已经收敛。
+
+### 12.2 提分来自哪里
+
+| score 分量 | step 200 | step 400 | 变化 |
+|---|---:|---:|---:|
+| axis | 91.9733 | 92.1695 | +0.1962 |
+| $\psi$ | 97.8274 | 98.3943 | +0.5669 |
+| surface | 86.8690 | 88.3709 | +1.5020 |
+| coordinate | 79.0812 | 80.4714 | +1.3902 |
+| volume QS | 78.7771 | 83.6851 | +4.9080 |
+| iota | 100.0000 | 100.0000 | 0 |
+| coil | 60.0925 | 62.9373 | +2.8449 |
+
+原生体 QH error/单位螺旋度从 $1.02832\times10^{-2}$ 降到 $6.57843\times10^{-3}$，改善 36.0%；QA 基本不变，QP 略升。提分没有通过降低 $\iota$ 或单纯放大快速评分面作弊：原生评分中的 $|\iota|$ 仍约为 2，且 selected effective minor radius 反而从 0.02454 m 小幅降到 0.02389 m。主要收益来自 QH、线圈工程性质和坐标/磁面稳定性同时改善。
+
+需要记录一个真实的非光滑来源。step 297 和 step 310 附近的 current score 分别从约 84.57、84.30 突然掉到约 79.75、79.71，不是脏梯度，而是原生评分器离散选择的 `surface_level` 从 0.16 切换到 0.08；恢复到 0.16 后分数也恢复。小面上的 QH raw error 数值更小，但 surface/size 分量明显更差。这个离散分支切换解释了局部大回撤，也说明 running-best 保护仍然必要。
+
+### 12.3 重新标定 $\psi$ 与寻找最大连续面
+
+完整评估没有复用 step 200 的固定 $a$ 或 $s$。针对 step 400 样本并行拟合四个 source 尺度，均使用 1,574 个模态和约 38.9 万点的 FP32 GPU QR：
+
+| $a$ | 训练 RMS | 验证 RMS | 验证角度 P95 | 核心流程时间 |
+|---:|---:|---:|---:|---:|
+| 0.04 | $3.3092\times10^{-4}$ | $3.3580\times10^{-4}$ | $4.7858\times10^{-5}$ | 18.41 s |
+| 0.05 | $3.5285\times10^{-4}$ | $3.5898\times10^{-4}$ | $6.0686\times10^{-5}$ | 18.40 s |
+| 0.06 | $4.0451\times10^{-4}$ | $4.1625\times10^{-4}$ | $7.4374\times10^{-5}$ | 18.39 s |
+| 0.08 | $6.4798\times10^{-4}$ | $6.8323\times10^{-4}$ | $1.2609\times10^{-4}$ | 18.41 s |
+
+选择 $a=0.08$ 是为了最大物理覆盖；它的验证误差仍是小量。随后在四张 5090 上并行运行 FP32 GPU $\alpha+\nu$ 初值和标准 Simsopt LS/Newton，得到：
+
+| 目标 $s$ | 标准验收 | $|V|\,[\mathrm{m}^3]$ | 拟合后平均 $s$ | $\iota$ | 稠密相对残差 | 面 QH error |
+|---:|---|---:|---:|---:|---:|---:|
+| 0.12 | 通过 | 0.0209709 | 0.11899 | 2.09661 | $4.32\times10^{-6}$ | $3.46\times10^{-5}$ |
+| 0.20 | 通过 | 0.0352575 | 0.19732 | 2.10239 | $7.43\times10^{-6}$ | $6.57\times10^{-5}$ |
+| 0.30 | 通过 | 0.0507919 | 0.28079 | 2.10892 | $1.18\times10^{-5}$ | $1.07\times10^{-4}$ |
+| 0.36 | 通过 | 0.0588090 | 0.32397 | 2.11238 | $1.44\times10^{-5}$ | $1.31\times10^{-4}$ |
+| 0.42 | 通过 | 0.0658156 | 0.36261 | 2.11545 | $1.70\times10^{-5}$ | $1.54\times10^{-4}$ |
+| 0.49 | **通过并选中** | **0.0723990** | **0.40056** | **2.11837** | $1.96\times10^{-5}$ | $1.77\times10^{-4}$ |
+| 0.56 | 失败 | -- | -- | -- | -- | $\nu$ 映射最小 Jacobian $-0.07924$ |
+| 0.64 | 失败 | -- | -- | -- | -- | $\nu$ 映射最小 Jacobian $-0.14037$ |
+
+体积和 $\iota$ 从 $s=0.12$ 到 0.49 连续单调变化，没有 step 200 的外层错误分支跳转。`s=0.49` 是名义目标；标准面上的平均 $\psi$ 标签为 0.4006，因此报告同时给出两者，不能把 0.49 当成拟合后每一点的真实标签。`s=0.56` 是最近测试的外侧失败边界。
+
+外层初值本身仍不精确。`s=0.49` 的 $\alpha+\nu$ 初始相对残差和法向场 P95 分别为 0.1312 和 0.1339，标准 LS/Newton 才把它们降到 $1.96\times10^{-5}$ 和 $2.69\times10^{-5}$。所以本次更大的可行面证明的是“$\alpha+\nu$ 能把标准求解送到正确吸引域”，不是“外层 $\alpha+\nu$ 已单独给出高精度 Boozer 面”。
+
+### 12.4 为什么 QH 指标明显占优，但 $|B|$ 仍不够直
+
+选中面上的独立面误差为
+
+$$
+\epsilon_{\mathrm{QA}}=8.3676\times10^{-3},\qquad
+\epsilon_{\mathrm{QH}}=1.7702\times10^{-4},\qquad
+\epsilon_{\mathrm{QP}}=8.6257\times10^{-3}.
+$$
+
+这些量是面积加权的相对**平方**误差。换成更符合视觉直觉的 RMS 幅度，三者分别约为 9.15%、1.33% 和 9.29%。因此 QH 只比 QA/QP 好约 6.9--7.0 倍，而不是好几十倍；1.33% 的非 QH 幅度仍足以在极值和鞍点附近形成明显弯曲或闭合小轮廓。另一方面，QA/QP 把主导的 QH 螺旋变化本身也视为误差，所以它们自然明显更大。这就是“相对类别优势明显”和“绝对图像仍不够理想”同时成立的原因。
+
+本指标衡量的是对称性，不是 $|B|$ 调制深度。step 400 真空面上的 $|B|$ 为 0.80981--1.09930 T，均值 0.93482 T；较大的主导 QH 调制完全可以与较小的非 QH 谱误差共存。与 step 200 相比，面 QH 平方误差从 $2.3357\times10^{-4}$ 降至 $1.7702\times10^{-4}$，改善 24.2%，对应幅度 RMS 从 1.53% 降到 1.33%。这是可测但不可能让图形彻底变直的有限改善。
+
+![step 400 最大连续面上的白底彩色 Boozer $|B|$ 等高线](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/assets/boozer_b.png)
+
+![step 400 最大连续面的 Poincare 验证](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/assets/poincare.png)
+
+![step 400 全部对称线圈与最大连续面](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/assets/coils_surface.png)
+
+交互产物：[Boozer $|B|$ HTML](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/assets/boozer_b.html)，[全部线圈与磁面 HTML](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/assets/coils_surface.html)。
+
+8 条内部场线在四个截面均得到 29 个交点，全部保持在候选边界内。相较 step 200，最大连续面体积从 0.0625544 增至 $0.0723990\,\mathrm{m}^3$，提高 15.7%；因此续跑的收益不仅存在于快速 score，也体现在更大的独立可行磁面和更低的面 QH error。
+
+### 12.5 DESC 复核
+
+DESC 使用允许的 CPU 路径，初始和最终都通过嵌套检查。求解器在 27 次迭代后以 `xtol` 成功收敛，cost 为 $3.3203\times10^{-5}$，optimality 为 $1.6197\times10^{-8}$。归一化力残差为：
+
+| 归一化力残差 | 初始 | 最终 |
+|---|---:|---:|
+| mean | 1.03490 | $6.8506\times10^{-4}$ |
+| P95 | 2.33249 | $1.5589\times10^{-3}$ |
+| max | 272.860 | $8.3121\times10^{-3}$ |
+
+这比 step 200 DESC 的最终 mean/P95/max `1.0974e-3/2.6170e-3/1.0442e-2` 均进一步降低。输入环向磁通为 $-7.52764\times10^{-3}\,\mathrm{Wb}$。
+
+![DESC 初始边界](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/boundary.png)
+
+![DESC Boozer 模态随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/boozer_modes.png)
+
+![DESC Boozer $|B|$ 彩色等高线](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/boozer_B.png)
+
+![DESC QA 分量随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/qs_QA.png)
+
+![DESC QH 分量随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/qs_QH.png)
+
+![DESC QP 分量随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/qs_QP.png)
+
+![DESC $\iota$ 随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/iota.png)
+
+### 12.6 耗时、复现产物与最终判断
+
+| 阶段 | 资源与实现 | 墙钟时间 |
+|---|---|---:|
+| step 200--400 续跑 | 4 张 RTX 5090，继承完整 Adam 状态 | 1 h 08 min 54 s |
+| 单个 source $\psi$ 核心流程 | 1 张 RTX 5090，FP32 GPU QR | 18.4 s |
+| 四个 source $\psi$ Slurm 作业 | 4 张 RTX 5090 并行 | 1 min 06 s |
+| 单个 $\alpha+\nu$ 与标准面候选 | 1 张 RTX 5090 + 4 CPU | 10 min 58 s--16 min 27 s |
+| 最终固定面可视化 | 1 张 RTX 5090 + 16 CPU | 62.0 s |
+| DESC | 16 CPU | 236.9 s；核心 solve 67.1 s |
+| 最终固定面全评估 job `31382` | 1 张 RTX 5090 + 16 CPU | **5 min 51 s** |
+
+$\alpha$ 的 120k/60k 点拟合使用 FP32 GPU QR；$\nu$ 的场评估使用 FP32 C++/CUDA，只有低维正交投影和谱面拟合留在 CPU。没有启用 legacy Cartesian CPU 点云回退。所有相关 Slurm 作业都已结束；最终 GPU 前后检查均为 0% 利用率、2 MiB，用户进程列表中没有本任务遗留计算进程或僵尸进程。
+
+机器可读证据位于 [step 400 资产目录](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/)。关键文件包括 [优化摘要](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/summary.json)、[完整 401 点轨迹](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/trajectory/)、[选中标准面](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/candidates/s_0p49/standard_rho_1/boozer_standard.npz)、[完整评估摘要](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/full_summary.json) 和 [DESC 摘要](assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/full_eval/selected_s0p49_full/desc/summary.json)。选中面的 SHA-256 为 `3d9b9de26cab4f01e8bd0c3d550b87b72c59fa6a778893947c3af6515e0f451a`，DESC `equilibrium.h5` 的 SHA-256 为 `859a2a308c516c7a30b69eab602a4405770572ffbb31610ed8918250f25ffe3b`。
+
+最终结论：续跑有效且没有出现低 $\iota$、缩面或脏梯度作弊；原生体 QH、独立外层面 QH、最大连续体积和 DESC 残差四项都得到改善。但 step 400 仍未收敛，`|B|` 中也仍有清楚可见的非 QH 结构，因此它是比 step 200 更好的有效 QH 位形，而不是已经接近理想 QH 的终点。
+
+## 13. 续跑至 700 步及 step 491 最优点验收
+
+### 13.1 优化结果与实际停止机制
+
+job `31401` 从 step 400 的完整状态继续到 step 700：潜变量、FP64 Adam 一阶矩与二阶矩、bias-correction step、随机数状态和时间尺度 guard 历史均被继承，没有重置动量。作业以 `COMPLETED 0:0` 结束，耗时 1 小时 44 分 16 秒。最优值出现在 step 491，而不是末步：
+
+$$
+S_{400}=86.1233491,
+\qquad
+S_{491}=86.6414447,
+\qquad
+S_{700}=85.9452858.
+$$
+
+因此从 step 400 到新的历史最优只提高了 $0.51810$ 分。各分量变化为：
+
+| score 分量 | step 400 | step 491 | 变化 |
+|---|---:|---:|---:|
+| axis | 92.1695 | 92.0179 | -0.1516 |
+| $\psi$ | 98.3943 | 98.3527 | -0.0416 |
+| surface | 88.3709 | 88.6788 | +0.3079 |
+| coordinate | 80.4714 | 80.1924 | -0.2790 |
+| volume QS | 83.6851 | 85.4440 | +1.7589 |
+| iota | 100.0000 | 100.0000 | 0 |
+| coil | 62.9373 | 60.3849 | -2.5524 |
+
+原生体 QH 单位螺旋度误差从 $6.57843\times10^{-3}$ 降到 $5.39963\times10^{-3}$，改善 17.9%；原生评分快速面的 $|\iota|=1.97317$，没有出现低 $\iota$ 作弊。总分的小幅净增益主要来自 volume QS 和 surface，部分被 coil、coordinate 与 axis 的下降抵消。
+
+![0--700 步标准 Adam 优化曲线与有效端点诊断](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/adam/progress.png)
+
+这次不能把“运行到 700 步”解释为目标函数已平滑收敛。300 轮续跑中只有 110 轮真正应用了 Adam 更新，190 轮被跳过；有效端点比例的分布为：
+
+| 8 个有限差分端点中的有效比例 | 轮数 |
+|---:|---:|
+| 1.000 | 112 |
+| 0.875 | 14 |
+| 0.750 | 31 |
+| 0.625 | 73 |
+| 0.500 | 70 |
+
+step 491 以后再未刷新历史最优，最后一次真正更新发生在 step 633，最后 67 轮完全没有参数更新。以 step 700 为例，四个方向中三个方向的端点跨入 `no_surface` 区域，无效端点的低分使原始梯度 RMS 达到 $3.71\times10^3$；`skip_entire_step` 有效性策略把实际使用梯度和更新都置零。续跑期间没有 temporal dirty-gradient guard 拒绝事件，因此这里不是 guard 过严，而是优化点到达可行域边界后，当前整步跳过策略无法提供有效下降方向。结论是：**当前配置下摸到的最高分为 86.6414，但 491--700 的平台主要是可行域边界锁定，不是充分证明的局部最优。**
+
+机器可读的 701 个轨迹点、完整 history、最优样本和恢复事件位于 [step 700 优化资产目录](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/)。
+
+### 13.2 针对 step 491 重新拟合 $\psi$
+
+完整评估没有沿用 step 400 的固定 $a$。四个 source 尺度分别在一张 RTX 5090 上并行拟合，均使用 1,574 个模态、约 38.9 万个训练点以及 FP32 GPU QR：
+
+| $a$ | 训练 RMS | 验证 RMS | 验证角度 P95 |
+|---:|---:|---:|---:|
+| 0.04 | $3.4426\times10^{-4}$ | $3.4976\times10^{-4}$ | $4.9819\times10^{-5}$ |
+| 0.05 | $3.6031\times10^{-4}$ | $3.6550\times10^{-4}$ | $6.1995\times10^{-5}$ |
+| 0.06 | $3.9921\times10^{-4}$ | $4.0542\times10^{-4}$ | $7.6262\times10^{-5}$ |
+| 0.08 | $5.9911\times10^{-4}$ | $6.1418\times10^{-4}$ | $1.2636\times10^{-4}$ |
+
+磁轴为椭圆稳定轴，一周期闭合残差为 $6.01\times10^{-9}$。选择 $a=0.08$ 是为了取得最大测试覆盖；其误差仍是小量，且比 step 400 的同尺度验证 RMS $6.8323\times10^{-4}$ 略低。四个 source 作业均以 `COMPLETED 0:0` 在 59 秒内结束，单次核心数值流程约 9.0 秒。
+
+### 13.3 最大连续 Boozer 面
+
+在 $a=0.08$ 的 source 模型上，使用 GPU-ray 均匀采样、FP32 GPU $\alpha$ 拟合、GPU FP32 场评估的 $\nu$ 修正，以及标准 Simsopt LS/Newton。通过的连续分支为：
+
+| 目标 $s$ | $|V|\,[\mathrm{m}^3]$ | 拟合后平均 $s$ | $\iota$ | 密网格相对残差 | 法向场 P95 | 面 QH error |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0.12 | 0.0209420 | 0.11883 | 2.12156 | $1.83\times10^{-6}$ | $2.46\times10^{-6}$ | $3.5315\times10^{-5}$ |
+| 0.24 | 0.0415525 | 0.23167 | 2.12597 | $4.01\times10^{-6}$ | $5.53\times10^{-6}$ | $8.7873\times10^{-5}$ |
+| 0.36 | 0.0577582 | 0.32011 | 2.12985 | $6.36\times10^{-6}$ | $8.82\times10^{-6}$ | $1.4031\times10^{-4}$ |
+| 0.49 | **0.0706051** | **0.39511** | **2.13315** | $8.65\times10^{-6}$ | $1.20\times10^{-5}$ | $1.8822\times10^{-4}$ |
+
+体积与 $\iota$ 随目标 $s$ 连续增加，未出现错误分支跳转。最近的外侧测试 `s=0.56` 在 $\nu$ 环向修正处因最小 Jacobian 为 $-0.002586$ 而不可逆；`s=0.64` 的最小 Jacobian 已降至 $-0.410405$。这两个失败是明确、有限时的坐标可逆性拒绝，不是长尾 Newton 发散。因此选择 `s=0.49` 作为当前样本最大的已验证连续面。
+
+在所选面上，$\alpha+\nu$ 初值的密网格相对残差仍为 $0.12787$，法向场 P95 为 $0.12484$；标准 LS 将相对残差降到 $8.65\times10^{-6}$，Newton 在第 0 步即满足阈值。这里再次验证的是“$\alpha+\nu$ 稳定进入正确吸引域”，而不是“$\alpha+\nu$ 本身已经给出高精度面”。所选候选中，$\alpha$ 的 120k/60k FP32 GPU 拟合耗时 155.3 秒，$\nu$ 与曲面重参数化耗时 104.1 秒，标准 LS/Newton 分别耗时 13.72/3.11 秒；整个 Slurm 候选作业耗时 6 分 07 秒。
+
+### 13.4 直接真空场验收及与 step 400 的区别
+
+所选面的独立面 QS error 为
+
+$$
+\epsilon_{\mathrm{QA}}=8.3154\times10^{-3},\qquad
+\epsilon_{\mathrm{QH}}=1.8822\times10^{-4},\qquad
+\epsilon_{\mathrm{QP}}=8.4723\times10^{-3}.
+$$
+
+它们是相对平方误差；QH 对应约 1.37% 的 RMS 幅度误差，仍能在等高线中形成可见弯曲。真空面上的 $|B|$ 范围为 $0.80877$--$1.10608\,\mathrm T$，均值为 $0.93200\,\mathrm T$。8 条内部场线在四个截面上都得到 29 个交点，且全部位于候选边界内。
+
+![step 491 最大连续面上的白底彩色 Boozer $|B|$ 等高线](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/assets/boozer_b.png)
+
+![step 491 最大连续面的 Poincare 验证](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/assets/poincare.png)
+
+![step 491 全部对称线圈与最大连续磁面](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/assets/coils_surface.png)
+
+交互产物：[Boozer $|B|$ HTML](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/assets/boozer_b.html)，[全部线圈与磁面 HTML](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/assets/coils_surface.html)。
+
+与 step 400 的独立完整评估相比，step 491 并没有在所有物理量上继续改善：
+
+| 独立验收量 | step 400 | step 491 | 判断 |
+|---|---:|---:|---|
+| 最大已验证目标 $s$ | 0.49 | 0.49 | 相同 |
+| $|V|\,[\mathrm{m}^3]$ | 0.0723990 | 0.0706051 | 降低 2.48% |
+| 面 QH 平方误差 | $1.7702\times10^{-4}$ | $1.8822\times10^{-4}$ | 增大 6.33% |
+| 真空面 $\iota$ | 2.11837 | 2.13315 | 小幅提高 |
+| 密网格相对残差 | $1.9568\times10^{-5}$ | $8.6456\times10^{-6}$ | 数值面更精确 |
+
+所以准确结论是：step 400--491 确实把原生体 QH score 再提高了，但这个小幅收益没有转化为更大的独立外层面或更低的外层面 QH error。快速体 score 与单个最大外层面的 QS 指标定义和权重不同，相关但不等价；从完整物理验收看，step 491 是有效 QH 位形，但不能声称优于 step 400。
+
+### 13.5 DESC 复核
+
+DESC 使用允许的 16 CPU 后端；原生场、$\psi$、$\alpha$、GPU-ray 采样与 $\nu$ 场评估均没有回退到 legacy Cartesian CPU 链路。输入环向磁通为 $-7.29254\times10^{-3}\,\mathrm{Wb}$，初始与最终都通过嵌套性检查。归一化力残差为：
+
+| 归一化力残差 | 初始 | 最终 |
+|---|---:|---:|
+| mean | 1.31003 | $6.4162\times10^{-4}$ |
+| P95 | 2.18179 | $1.5648\times10^{-3}$ |
+| max | 796.284 | $8.2683\times10^{-3}$ |
+
+DESC 的 solve 调用正常完成，但 50 步达到迭代上限，故 `optimizer_success=false`，不能写成形式收敛；最终 cost 为 $3.2510\times10^{-5}$、optimality 为 $8.4912\times10^{-7}$。尽管如此，末态保持嵌套且力残差已降到 $10^{-3}$ 平均量级，说明 DESC refinement 得到了物理上可用的显著改进。与 step 400 的最终 mean/P95/max $6.8506\times10^{-4}/1.5589\times10^{-3}/8.3121\times10^{-3}$ 相比，三项基本持平，没有形成明确的整体提升。
+
+![DESC 初始边界](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/boundary.png)
+
+![DESC Boozer 模态随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/boozer_modes.png)
+
+![DESC Boozer $|B|$ 彩色等高线](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/boozer_B.png)
+
+![DESC QA 分量随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/qs_QA.png)
+
+![DESC QH 分量随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/qs_QH.png)
+
+![DESC QP 分量随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/qs_QP.png)
+
+![DESC $\iota$ 随 $\rho$ 变化](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/iota.png)
+
+### 13.6 耗时、哈希与最终判断
+
+| 阶段 | 资源与实现 | 墙钟时间 |
+|---|---|---:|
+| step 400--700 续跑 | 4 张 RTX 5090，继承完整 Adam 状态 | 1 h 44 min 16 s |
+| 四个 source $\psi$ | 4 张 RTX 5090 并行，FP32 GPU QR | 59 s |
+| 单个通过的 $\alpha+\nu+$标准面候选 | 1 张 RTX 5090 + 4 CPU | 5 min 50 s--7 min 16 s |
+| 最近外侧失败 `s=0.56` | 1 张 RTX 5090 + 4 CPU，有限时可逆性拒绝 | 10 min 26 s |
+| 固定面可视化 | 1 张 RTX 5090 + 16 CPU | 90.67 s |
+| DESC 全阶段 | 16 CPU | 519.83 s；核心 solve 141.16 s |
+| 固定面完整评估 job `31477` | 1 张 RTX 5090 + 16 CPU | **11 min 02 s** |
+
+所选标准面的 SHA-256 为 `464c1e73bdcdf1101cd57924fa2ae3dc3e9dac78ff697dc6e826d81ce24ce0f7`，DESC `equilibrium.h5` 的 SHA-256 为 `ef2f3366a73a782ac86921d876e704a9eb79e53278a21b61aad5978f829ba5b0`。机器可读证据位于 [step 700 与 step 491 验收资产目录](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/)，包括 [优化摘要](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/adam/summary.json)、[最优样本](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/adam/best.json)、[所选标准面](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/candidates/s_0p49/standard_rho_1/boozer_standard.npz)、[完整评估摘要](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/full_summary.json) 和 [DESC 摘要](assets/qh_small_condition_adam_nfp6_nc2_continue700_20260803/full_eval/selected_s0p49_full/desc/summary.json)。
+
+最终验收结论：长跑稳定完成并把 corrected ABI-9 score 的历史最高值推进到 **86.6414**；最优点有稳定磁轴、连续大磁面、明确 QH 竞争优势、完整 Poincare 和嵌套 DESC 解，不是假高分。但 step 491 相比 step 400 的独立外层体积与面 QH 略退化，DESC 最终残差大致持平，而后续优化又被 `no_surface` 边界锁住。因此本轮回答了“当前方法能摸多高”，却没有证明继续堆相同 Adam 步数还能获得相应的物理改进；下一次若继续优化，应先处理边界附近有效方向不足的问题，并保持独立完整评估作为验收标准。

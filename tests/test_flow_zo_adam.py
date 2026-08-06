@@ -11,11 +11,59 @@ from scripts.optimize_flow_prior_zo_adam import (
     prior_penalty_and_gradient,
 )
 from scripts.optimize_flow_prior_standard_adam import (
+    directional_score_deltas,
+    gradient_from_direction_deltas,
     parse_backtracking_fractions,
+    parse_arguments,
     robust_direction_deltas,
     rolling_robust_limit,
+    sample_direction_probe,
     write_trajectory_case,
 )
+
+
+def test_standard_adam_production_defaults():
+    args = parse_arguments(
+        ["--checkpoint", "checkpoint.pt", "--out-dir", "run"]
+    )
+
+    assert args.learning_rate == 0.01
+    assert args.perturbation == 0.005
+    assert args.beta1 == 0.7
+    assert args.beta2 == 0.999
+    assert args.flow_steps == 128
+    assert args.flow_pipeline
+    assert args.directions == 2
+    assert args.gradient_estimator == "central"
+    assert args.score_surface_mode == "continuous"
+    assert args.axis_continuation
+    assert args.robust_direction_filter
+    assert args.reject_invalid_center
+    assert args.invalid_center_backtracking == (0.5, 0.25, 0.125)
+
+
+def test_standard_adam_production_defaults_can_be_disabled():
+    args = parse_arguments(
+        [
+            "--checkpoint",
+            "checkpoint.pt",
+            "--out-dir",
+            "run",
+            "--no-flow-pipeline",
+            "--no-axis-continuation",
+            "--no-robust-direction-filter",
+            "--no-reject-invalid-center",
+            "--score-surface-mode",
+            "legacy",
+        ]
+    )
+
+    assert not args.flow_pipeline
+    assert not args.axis_continuation
+    assert not args.robust_direction_filter
+    assert not args.reject_invalid_center
+    assert args.invalid_center_backtracking == ()
+    assert args.score_surface_mode == "legacy"
 
 
 def test_load_initial_noise_accepts_generic_start(tmp_path):
@@ -32,14 +80,24 @@ def test_load_initial_noise_accepts_generic_start(tmp_path):
     assert "flow_prior_start" in payload
 
 
-def test_load_initial_noise_accepts_standard_adam_and_subspace_bfgs(tmp_path):
+def test_load_initial_noise_accepts_optimizer_outputs_and_raw_trajectory(tmp_path):
     noise = np.arange(300, dtype=np.float32).reshape(3, 100)
-    for key in ("flow_prior_standard_adam", "flow_prior_subspace_bfgs"):
+    for key in (
+        "flow_prior_standard_adam",
+        "flow_prior_subspace_bfgs",
+        "flow_prior_g3_informed_subspace_adam",
+    ):
         path = tmp_path / f"{key}.json"
         path.write_text(json.dumps({key: {"noise": noise.tolist()}}), encoding="utf-8")
         loaded, payload = load_initial_noise(path)
         np.testing.assert_array_equal(loaded, noise)
         assert key in payload
+
+    trajectory_path = tmp_path / "trajectory.json"
+    trajectory_path.write_text(json.dumps({"noise": noise.tolist()}), encoding="utf-8")
+    loaded, payload = load_initial_noise(trajectory_path)
+    np.testing.assert_array_equal(loaded, noise)
+    assert "noise" in payload
 
 
 def test_orthogonal_directions_have_unit_rms():
@@ -125,6 +183,95 @@ def test_robust_direction_filter_is_scale_invariant_for_valid_outlier():
     np.testing.assert_array_equal(scaled_outlier, outlier)
     np.testing.assert_allclose(scaled, 100.0 * used)
     assert np.isclose(scaled_limit, 100.0 * limit)
+
+
+def test_one_sided_probe_recovers_linear_objective_with_full_direction_bank():
+    direction_rng = np.random.default_rng(123)
+    sign_rng = np.random.default_rng(456)
+    center = np.arange(6, dtype=np.float32).reshape(2, 3) / 10.0
+    coefficients = np.asarray(
+        [[0.5, -1.0, 2.0], [1.5, -0.25, 0.75]], dtype=np.float64
+    )
+    perturbation = 0.005
+    directions, signs, states = sample_direction_probe(
+        direction_rng,
+        sign_rng,
+        center,
+        directions=6,
+        direction_bank_size=6,
+        gradient_estimator="one-sided",
+        perturbation=perturbation,
+    )
+    center_score = float(np.sum(center * coefficients))
+    endpoint_scores = np.asarray(
+        [float(np.sum(state * coefficients)) for state in states]
+    )
+    deltas = directional_score_deltas(
+        endpoint_scores,
+        center_score=center_score,
+        signs=signs,
+        gradient_estimator="one-sided",
+    )
+    gradient = gradient_from_direction_deltas(deltas, directions, perturbation)
+
+    assert len(states) == 6
+    assert set(signs.tolist()) <= {-1, 1}
+    np.testing.assert_allclose(gradient, coefficients, rtol=2.0e-5, atol=2.0e-5)
+
+
+def test_central_and_one_sided_share_leading_direction_bank():
+    center = np.zeros((2, 3), dtype=np.float32)
+    central, _, central_states = sample_direction_probe(
+        np.random.default_rng(22),
+        np.random.default_rng(33),
+        center,
+        directions=4,
+        direction_bank_size=4,
+        gradient_estimator="central",
+        perturbation=0.01,
+    )
+    one_sided, signs, one_sided_states = sample_direction_probe(
+        np.random.default_rng(22),
+        np.random.default_rng(44),
+        center,
+        directions=4,
+        direction_bank_size=4,
+        gradient_estimator="one-sided",
+        perturbation=0.01,
+    )
+    two_direction, _, _ = sample_direction_probe(
+        np.random.default_rng(22),
+        np.random.default_rng(55),
+        center,
+        directions=2,
+        direction_bank_size=4,
+        gradient_estimator="central",
+        perturbation=0.01,
+    )
+
+    np.testing.assert_array_equal(one_sided, central)
+    np.testing.assert_array_equal(two_direction, central[:2])
+    assert len(central_states) == 8
+    assert len(one_sided_states) == 4
+    np.testing.assert_allclose(
+        one_sided_states,
+        center[None] + 0.01 * signs[:, None, None] * central,
+    )
+
+
+def test_robust_direction_filter_accepts_one_sided_endpoint_statuses():
+    used, invalid, outlier, limit = robust_direction_deltas(
+        np.asarray([0.4, -0.5, 0.6, -0.2]),
+        ["ok", "no_axis", "ok", "ok"],
+        gradient_estimator="one-sided",
+        outlier_ratio=8.0,
+        mad_factor=8.0,
+    )
+
+    np.testing.assert_array_equal(invalid, [False, True, False, False])
+    np.testing.assert_array_equal(outlier, np.zeros(4, dtype=bool))
+    np.testing.assert_allclose(used, [0.4, 0.0, 0.6, -0.2])
+    assert np.isclose(limit, 3.2)
 
 
 def test_rolling_robust_limit_rejects_step_185_scale_spike():

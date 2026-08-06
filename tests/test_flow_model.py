@@ -103,6 +103,35 @@ class TimeDependentVelocity(torch.nn.Module):
         return velocity if mask is None else velocity * mask[..., None]
 
 
+class ValidatedVelocity(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.validation_calls = 0
+        self.velocity_calls = 0
+
+    def validate_nfp(self, nfp):
+        self.validation_calls += 1
+        if torch.any(nfp < 1):
+            raise ValueError("invalid nfp")
+
+    def forward(self, state, time, nfp, mask=None):
+        raise AssertionError("integrators must use the once-validated path")
+
+    def forward_unchecked(self, state, time, nfp, mask=None):
+        del time, nfp
+        self.velocity_calls += 1
+        return state if mask is None else state * mask[..., None]
+
+
+def test_integrator_validates_nfp_once_before_rk4_loop():
+    model = ValidatedVelocity()
+    initial = torch.ones(1, 2, 100)
+    result = integrate_flow(model, initial, torch.tensor([4]), steps=3, method="rk4")
+    assert model.validation_calls == 1
+    assert model.velocity_calls == 12
+    torch.testing.assert_close(result, initial * torch.exp(torch.tensor(1.0)), rtol=2e-4, atol=2e-4)
+
+
 def test_rk4_integrates_in_both_directions_and_closes():
     model = TimeDependentVelocity()
     initial = torch.randn(2, 3, 100)

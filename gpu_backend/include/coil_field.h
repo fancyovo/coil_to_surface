@@ -3,10 +3,11 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 9u
+#define SGPU_SCORE_ABI_VERSION 10u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
-#define SGPU_SCORE_TIMING_COUNT 16
+#define SGPU_SCORE_TIMING_COUNT 32
+#define SGPU_SCORE_GRADIENT_ABI_VERSION 1u
 
 enum SgpuScoreStatus {
     SGPU_SCORE_OK = 0,
@@ -15,6 +16,7 @@ enum SgpuScoreStatus {
     SGPU_SCORE_DRIFT_REJECTED = 3,
     SGPU_SCORE_FLUX_REJECTED = 4,
     SGPU_SCORE_ALPHA_FAILED = 5,
+    SGPU_SCORE_BRANCH_LOST = 6,
     SGPU_SCORE_INTERNAL_ERROR = 100,
 };
 
@@ -45,6 +47,22 @@ enum SgpuScoreTiming {
     SGPU_SCORE_TIME_ALPHA_QR = 13,
     SGPU_SCORE_TIME_QS_METRICS = 14,
     SGPU_SCORE_TIME_SCORE = 15,
+    SGPU_SCORE_TIME_AXIS_DOMAIN = 16,
+    SGPU_SCORE_TIME_AXIS_PRIMARY_GRID_TRACE = 17,
+    SGPU_SCORE_TIME_AXIS_FALLBACK_GRID_TRACE = 18,
+    SGPU_SCORE_TIME_AXIS_CANDIDATE_EXTRACT = 19,
+    SGPU_SCORE_TIME_AXIS_CANDIDATE_REFINE = 20,
+    SGPU_SCORE_TIME_AXIS_FP64_VERIFY = 21,
+    SGPU_SCORE_TIME_AXIS_TOPOLOGY = 22,
+    SGPU_SCORE_TIME_SURFACE_RAY_ROOTS = 23,
+    SGPU_SCORE_TIME_SURFACE_MIXED_TRACE = 24,
+    SGPU_SCORE_TIME_SURFACE_MIXED_REDUCE = 25,
+    SGPU_SCORE_TIME_SURFACE_FP64_TRACE = 26,
+    SGPU_SCORE_TIME_SURFACE_FP64_REDUCE = 27,
+    SGPU_SCORE_TIME_SURFACE_LONG_TRACE = 28,
+    SGPU_SCORE_TIME_SURFACE_LONG_REDUCE = 29,
+    SGPU_SCORE_TIME_FLUX_CALIBRATION = 30,
+    SGPU_SCORE_TIME_SURFACE_CONFIDENCE = 31,
 };
 
 struct SgpuScoreConfig {
@@ -138,6 +156,20 @@ struct SgpuScoreConfig {
     double score_qh_helicity_bad;
     double score_qh_helicity_good;
     double score_qh_helicity_exploration_fraction;
+
+    std::int32_t surface_selection_mode;
+    std::int32_t surface_confidence_periods;
+    std::int32_t surface_flux_bisection_iters;
+    double surface_confidence_drift_center;
+    double surface_confidence_drift_temperature;
+    double surface_confidence_smoothmax_temperature;
+    double surface_confidence_minimum;
+
+    std::int32_t axis_hint_enabled;
+    std::int32_t axis_hint_require_continuation;
+    double axis_hint_R;
+    double axis_hint_Z;
+    double axis_hint_max_distance;
 };
 
 struct SgpuScoreResult {
@@ -209,6 +241,12 @@ struct SgpuScoreResult {
     double volume_weight_effective_fraction;
     double edge_weight_effective_fraction;
 
+    double surface_confidence_mean;
+    double surface_confidence_edge;
+    double surface_effective_level;
+    double surface_confidence_risk;
+    double axis_hint_distance;
+
     double coil_length_mean;
     double coil_curvature_p95;
     double coil_curvature_max;
@@ -225,6 +263,22 @@ struct SgpuScoreResult {
     std::int32_t alpha_column_count;
     std::int32_t surface_long_trace_periods_completed;
     std::int32_t surface_long_trace_rejected_count;
+    std::int32_t axis_used_hint;
+    char error_message[256];
+};
+
+struct SgpuScoreGradientResult {
+    std::uint32_t abi_version;
+    std::uint32_t struct_size;
+    std::int32_t status;
+    std::int32_t gradient_group;
+    double forward_wall_s;
+    double gradient_wall_s;
+    double point_vjp_s;
+    double field_vjp_s;
+    double parameter_map_s;
+    double score_gradient_rms;
+    double coil_component_gradient_rms;
     char error_message[256];
 };
 
@@ -245,6 +299,169 @@ int sgpu_score_coils(
     int nfp,
     const SgpuScoreConfig* config,
     SgpuScoreResult* result
+);
+
+std::size_t sgpu_score_gradient_result_size();
+
+// Experimental opt-in G1 path. The production sgpu_score_coils ABI and path
+// remain independent and do not allocate or evaluate gradients.
+int sgpu_score_coils_g1_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+);
+
+// Experimental cumulative G1+G2 path. G2 freezes the selected axis, psi,
+// volume points, weights, fitted iota, and all discrete branch choices.
+// A valid non-OK score returns code 0 with the score preserved, zero gradient
+// arrays, and a nonzero gradient_result status so callers can backtrack.
+int sgpu_score_coils_g2_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+);
+
+// Experimental cumulative G1+G2+G3 path. G3 additionally differentiates the
+// alpha/iota ridge-QR fit while keeping axis, psi, points, and branches fixed.
+// The geometry-covariant normal-field residual is deferred until psi/surface
+// motion can be differentiated as one bundle.
+int sgpu_score_coils_g3_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* score_result,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current,
+    SgpuScoreGradientResult* gradient_result
+);
+
+// Diagnostic-only closure oracle for G2. The center forward pass supplies the
+// frozen volume points, flux geometry, weights, and fitted iota. Each query
+// recomputes only the coil component and B/grad(B)/G on that frozen front, then
+// rebuilds the exact scalar whose center derivative is returned by G1+G2.
+// Query coefficient arrays are flattened as [query][coil][coefficient].
+int sgpu_score_coils_g2_frozen_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    double* frozen_scores,
+    double* volume_components,
+    double* coil_components,
+    double* target_errors,
+    double* qa_errors,
+    double* qp_errors
+);
+
+// Diagnostic-only closure oracle for cumulative G1+G2+G3. Geometry, psi,
+// volume points, and coordinate weights stay frozen at the center, while each
+// query refits alpha/iota by the production QR path. The coordinate normal-B
+// term remains frozen because its compensating geometry derivative belongs to
+// G4. Query coefficient arrays are flattened as [query][coil][coefficient].
+int sgpu_score_coils_g3_frozen_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    double* frozen_scores,
+    double* volume_components,
+    double* coordinate_components,
+    double* iota_components,
+    double* coil_components,
+    double* target_errors,
+    double* qa_errors,
+    double* qp_errors,
+    double* iota_minima,
+    double* iota_maxima
+);
+
+// Diagnostic fixed-branch G4 oracle. The center selects the magnetic axis and
+// surface level once. Every query then refits psi, recalibrates flux, rebuilds
+// volume points/weights, refits alpha/iota, and recomputes QS without rerunning
+// axis search or surface tracing. Query results expose branch changes normally.
+int sgpu_score_coils_g4_fixed_branch_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    SgpuScoreResult* query_score_results
+);
+
+// Internal-oracle entrypoint: returns the reported 0--100 coil component and
+// its piecewise analytical gradient with active percentile/minimum indices
+// frozen at the supplied coil.
+int sgpu_coil_component_gradient(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    double* component_value,
+    double* gradient_x,
+    double* gradient_y,
+    double* gradient_z,
+    double* gradient_current
 );
 
 int sgpu_create_field(
@@ -291,6 +508,17 @@ int sgpu_eval_B_grad_f32(
     const float* xyz_host,
     float* B_host,
     float* grad_B_host,
+    int n_points
+);
+
+// Experimental point-coordinate VJP for the FP32 B/grad(B) evaluator. This
+// contracts the spatial Hessian internally and never materializes it.
+int sgpu_eval_B_grad_point_vjp_f32(
+    void* handle,
+    const float* xyz_host,
+    const float* adj_B_host,
+    const float* adj_grad_B_host,
+    float* adj_xyz_host,
     int n_points
 );
 

@@ -1,0 +1,79 @@
+{
+  "format": "qh_blackbox_gradient_reference_v1",
+  "score_definition": "corrected_abi9_g_over_2pi_per_helicity",
+  "created_unix_s": 1785820901.2513454,
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "flow_checkpoint_step": 30000,
+  "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-volume-qs-g-fix/gpu_backend/build_native_score/libstellarator_gpu.so",
+  "score_library_sha256": "40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5",
+  "rk4_steps": 256,
+  "decode_batch_size": 32,
+  "decode_wall_s": 515.9583184975199,
+  "seed": 2026080401,
+  "scales": [
+    0.01,
+    0.005,
+    0.0025,
+    0.00125
+  ],
+  "centers": [
+    {
+      "center_id": "main_nfp6_step0",
+      "source_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/reports/assets/qh_small_condition_adam_nfp6_nc2_20260803/adam/trajectory/step_0000.json",
+      "source_sha256": "29fc94285c9df029a93b2ae6a6cb677c1f1aecec09b737b9d666352c45d045c5",
+      "nfp": 6,
+      "n_coils": 2,
+      "dimension": 200,
+      "direction_count": 200,
+      "recorded_iteration": 0,
+      "recorded_score": 74.43583352535168,
+      "direction_seed": 2026080401
+    },
+    {
+      "center_id": "main_nfp6_step200",
+      "source_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/reports/assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/trajectory/step_0200.json",
+      "source_sha256": "8b8eb4e22db21c5893b745ff641215cb56f37099cadfd9275f05aed36906afe9",
+      "nfp": 6,
+      "n_coils": 2,
+      "dimension": 200,
+      "direction_count": 200,
+      "recorded_iteration": 200,
+      "recorded_score": 83.46887367524549,
+      "direction_seed": 2026081410
+    },
+    {
+      "center_id": "main_nfp6_step400",
+      "source_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/reports/assets/qh_small_condition_adam_nfp6_nc2_continue400_20260803/adam/trajectory/step_0400.json",
+      "source_sha256": "504f6f19ea362903d999869d03558a469624b80b65f47068d8eb1d735d9c39b5",
+      "nfp": 6,
+      "n_coils": 2,
+      "dimension": 200,
+      "direction_count": 200,
+      "recorded_iteration": 400,
+      "recorded_score": 86.12334912757099,
+      "direction_seed": 2026082419
+    },
+    {
+      "center_id": "cross_nfp4_step50",
+      "source_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/reports/assets/qh_small_condition_adam_nfp4_nc2_20260803/adam/trajectory/step_0050.json",
+      "source_sha256": "d92ee32ab6e1607a46c113c4d40be95ff911c5336fdcb17e90a5e33637e47373",
+      "nfp": 4,
+      "n_coils": 2,
+      "dimension": 200,
+      "direction_count": 200,
+      "recorded_iteration": 50,
+      "recorded_score": 80.61245546551469,
+      "direction_seed": 2026083428
+    }
+  ],
+  "case_count": 6404,
+  "endpoint_count": 6400,
+  "raw_shape": [
+    6404,
+    2,
+    100
+  ],
+  "state": "complete",
+  "summary": "summary.json"
+}

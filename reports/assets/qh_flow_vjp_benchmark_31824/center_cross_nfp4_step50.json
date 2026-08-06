@@ -1,0 +1,169 @@
+{
+  "format": "qh_flow_vjp_benchmark_center_v1",
+  "center_id": "cross_nfp4_step50",
+  "center_index": 3,
+  "nfp": 4,
+  "n_coils": 2,
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "gradient_library_sha256": "fdf142aad0f0e0739c61cf61fde9d7195a688079a26016a9c010571d9440f8d4",
+  "compile_model": true,
+  "reference_dir": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-blackbox-gradient/runs/qh_blackbox_gradient_reference_31640",
+  "reference_steps": 256,
+  "perturbation_scale": 0.00125,
+  "perturbation_position_rms_m": 0.0005315011706049423,
+  "rk4_reference_to_formal_center": {
+    "position_delta_rms_m": 1.4189506359363763e-08,
+    "position_delta_p95_m": 2.2764632493534223e-08,
+    "position_delta_max_m": 2.5841910034493106e-08,
+    "coefficient_relative_l2": 1.4782309983517133e-08,
+    "current_relative_l2": 0.0
+  },
+  "thresholds": {
+    "max_position_error_to_perturbation": 0.01,
+    "max_score_abs_error": 0.02,
+    "max_component_abs_error": 0.02,
+    "min_vjp_cosine": 0.995,
+    "max_fixed_vjp_relative_l2": 0.02
+  },
+  "selected_steps": 256,
+  "rows": [
+    {
+      "steps": 256,
+      "network_evaluations_forward": 1024,
+      "no_grad_decode_wall_s": 3.253322931006551,
+      "native_forward_wall_s": 4.222403035,
+      "native_reverse_wall_s": 0.055115322,
+      "score": {
+        "score": 80.6156816874148,
+        "status": "ok",
+        "components": {
+          "axis": 95.74098267076839,
+          "psi": 97.8991674697255,
+          "surface": 97.04322530791619,
+          "coordinate": 90.00764573666072,
+          "volume_qs": 63.47135388709215,
+          "iota": 100.0,
+          "coil": 73.60763670411288
+        },
+        "timing": {
+          "total_s": 4.222398496,
+          "field_create_s": 0.001932575,
+          "coil_geometry_s": 0.009615603,
+          "axis_search_s": 1.6116891999999998,
+          "axis_trace_s": 0.03707228,
+          "psi_points_s": 0.035225861,
+          "psi_fit_s": 0.247483153,
+          "psi_validate_s": 0.173176215,
+          "surface_screen_s": 2.030048682,
+          "flux_s": 0.82152633,
+          "volume_points_s": 0.002304199,
+          "field_volume_s": 0.000781936,
+          "alpha_assemble_s": 0.002387738,
+          "alpha_solve_s": 0.06297331,
+          "qs_metrics_s": 0.000983748,
+          "score_s": 1.059e-06
+        },
+        "diagnostics": {
+          "stage_completed": 8,
+          "axis_R": 0.7897599667386626,
+          "axis_Z": 6.592480843334415e-11,
+          "axis_residual": 1.5038381144892278e-09,
+          "axis_topology_trace": -1.3745863030975454,
+          "axis_topology_det": 1.000000207863529,
+          "axis_ellipse_aspect": 1.7635998103140362,
+          "psi_angle_p95": 6.20635825814017e-05,
+          "surface_level": 0.36,
+          "surface_drift_relative_p95": 0.0010882445409706237,
+          "surface_one_period_drift_relative_p95": 0.0003771064504759338,
+          "surface_inverse_aspect_ratio": 0.031003512666900115,
+          "surface_volume": 0.019732728149612116,
+          "flux_attempt_count": 1,
+          "flux_edge": -0.00025810557904554254,
+          "iota_min": 1.4811204671859741,
+          "iota_max": 1.4811204671859741,
+          "score_before_qh_iota_gate": 80.6156816874148,
+          "score_qh_total_iota_factor": 1.0,
+          "score_qh_helicity_advantage": 0.511905821939638,
+          "score_qh_helicity_quality": 1.0,
+          "score_qh_total_helicity_factor": 1.0,
+          "qs_global_error": 0.11865254541950822,
+          "qs_qa_global_error": 0.16814646346445244,
+          "qs_qp_global_error": 0.030181376299601072,
+          "stable_surface_count": 10,
+          "volume_candidate_count": 125952,
+          "volume_available_count": 125952,
+          "volume_point_count": 100000,
+          "alpha_column_count": 2269,
+          "surface_long_trace_rejected_count": 0
+        },
+        "branch_fingerprint": [
+          "ok",
+          0.36,
+          10,
+          0,
+          1,
+          125952,
+          125952,
+          100000,
+          2269
+        ]
+      },
+      "status_matches_reference": true,
+      "branch_matches_reference": true,
+      "score_abs_error": 0.0,
+      "component_abs_error_max": 0.0,
+      "position_error_rms_m": 0.0,
+      "position_error_to_perturbation": 0.0,
+      "coefficient_relative_l2": 0.0,
+      "current_relative_l2": 0.0,
+      "fixed_cotangent_vjp_cosine": 1.0,
+      "fixed_cotangent_vjp_relative_l2": 0.0,
+      "end_to_end_vjp_cosine": 1.0,
+      "end_to_end_vjp_relative_l2": 0.0,
+      "end_to_end_vjp_norm_ratio": 1.0,
+      "checkpoint": {
+        "error": null,
+        "diagnostics": {
+          "decode_wall_s": 3.6400339230895042,
+          "backward_wall_s": 5.421336615458131,
+          "use_checkpoint": true,
+          "checkpoint_steps": 8,
+          "rk4_steps": 256,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 190219264,
+          "total_peak_memory_allocated_bytes": 202664448,
+          "dominant_current_index": [
+            1
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "retained": {
+        "diagnostics": {
+          "decode_wall_s": 2.382170867174864,
+          "backward_wall_s": 1.9369438104331493,
+          "use_checkpoint": false,
+          "checkpoint_steps": 8,
+          "rk4_steps": 256,
+          "baseline_memory_allocated_bytes": 189755904,
+          "forward_peak_memory_allocated_bytes": 597161472,
+          "total_peak_memory_allocated_bytes": 597274112,
+          "dominant_current_index": [
+            1
+          ],
+          "dominant_current_sign": [
+            1
+          ]
+        }
+      },
+      "checkpoint_to_retained_physical_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_relative_l2": 0.0,
+      "checkpoint_to_retained_vjp_cosine": 1.0,
+      "passed": true
+    }
+  ],
+  "profile": null
+}

@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-05 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-06 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -40,19 +40,35 @@ once the task is accepted.
 
 - On 2026-08-06, complete physical evaluation of the frozen continuous-score
   Adam best (`best.json` SHA-256 `1b1d7892498a2e67f646c3bba62ab6e81e696e378315bdd29749c55a7c5ccef7`)
-  started through the fixed `evaluation/full_physical/` workflow on branch
-  `score-fast-continuation`. Four sample-specific source-psi jobs
-  `32934/32936/32938/32940` tested `a=0.04/0.05/0.06/0.08` in parallel under
-  remote `runs/qh_score_fast_best_full_eval_20260806/`; all completed with
-  empty stderr. All source fits screened through `s=0.49` and failed at `0.64`;
-  `a=0.08` was selected because it covers the largest physical radius while
-  retaining psi validation-angle P95 `5.7395e-5`. Four parallel one-GPU/four-CPU
-  alpha+nu plus standard-LS/Newton jobs `32942/32944/32946/32948` now test
-  `s=0.24/0.36/0.49/0.64`. The validated GPU library remains SHA-256
-  `38749535...f52`; largest-surface selection, Poincare/plots, and CPU DESC
-  remain pending. The same turn is also auditing the apparent historical/new 200-step
-  timing mismatch and must report measured flow-decode versus native-score
-  costs and whether endpoint decodes are actually batched.
+  completed through the fixed `evaluation/full_physical/` route. Sample-specific
+  `a=0.08` was selected; standard LS/Newton accepted nested `s=0.24/0.36/0.49`
+  with increasing volumes and selected `s=0.49`, while `s=0.64` failed the
+  fixed candidate-point budget and supplies the nearest outer failure. The
+  selected surface has iota `1.58013`, volume magnitude `0.06518 m^3`, dense
+  normal-field P95 `3.77e-5`, and face QH error `4.56e-6`. Poincare is nested,
+  direct and DESC colored-contour plots are valid, and the 3D HTML uses the
+  full coil/surface set. CPU DESC remained nested and reduced independent
+  normalized force mean/P95/max from `1.080/2.020/6.007` to
+  `1.789e-3/3.871e-3/1.552e-2`; it stopped at the default 50-iteration limit
+  with optimizer `success=false`, so this is a strong residual reduction, not
+  strict solver convergence. All outputs are frozen under
+  `reports/assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/`
+  and documented in sections 13--14 of
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`. Jobs
+  `32934/32936/32938/32940`, `32942/32944/32946/32948`, and `32951` are all
+  complete; no project Slurm job remains active from this evaluation.
+- The same 2026-08-06 audit resolves the 200-step timing ambiguity. Historical
+  `5363.07 s` is job 31058's four-GPU wall time (`1:29:23` internal, about
+  `1:29:37` Slurm elapsed), not a single-GPU time or summed GPU-seconds. Old/new
+  flow decode was `970.26/947.70 s`, while native-score wall was
+  `4359.38/859.45 s`; native score accelerated `5.07x`, flow only `1.02x`, and
+  total wall therefore accelerated `2.88x` to `1862.59 s`. Every SPSA step
+  already decodes all eight `(8,3,100)` FP32 endpoints in one RK4-256 batch on
+  one GPU; measured batch throughput is `3.25 samples/s` and about `7.42x` the
+  per-sample throughput of batch one. The decoded endpoints are then scored on
+  four persistent GPU workers at about `95.4%` parallel efficiency. Do not
+  describe flow as eight serial Python decodes; its remaining cost is the 256
+  serial RK4 time steps and the dependent second center decode.
 - On 2026-08-05, branch `score-fast-continuation` accepted the production
   candidate documented through report/artifact commit `06f6452`: opt-in
   p1/t128/k400 continuous surface confidence, six fixed flux bisections, and

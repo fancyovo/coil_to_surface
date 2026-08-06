@@ -596,4 +596,150 @@ $$
 
 因此，`p1/t128/k400 + 6 次磁通二分 + 加权单调置信度 + 严格轴续接` 可以作为后续局部 score 优化的生产候选。独立随机样本仍应使用全局轴入口；完整候选验收仍走保留的长追踪、LS/Newton、Poincare 和 DESC 支线。
 
-本轮没有对新最优重新运行完整 alpha+$\nu$、LS/Newton 和 DESC，因为任务要求是 score 吞吐、排序和同起点优化 A/B，而交叉旧 score 已提供固定成本的旧路径物理审计。若这个最优线圈要作为最终设计候选，再进入标准完整评估即可。当前剩余性能瓶颈是每个 score 约 0.44 s 的 $\psi$ 阶段和每步约 4.5 s 的两次 flow 解码；surface 与磁轴已不再是局部优化的主瓶颈。
+新最优随后已经补做完整 alpha+$\nu$、LS/Newton、Poincare 和 DESC 验收，结果见第 13 节。当前优化器的剩余性能瓶颈是每个 score 约 0.44 s 的 $\psi$ 阶段和每步约 4.7 s 的两批 flow 解码；surface 与磁轴已不再是局部优化的主瓶颈，精确时间分解见第 14 节。
+
+## 13. 新优化最优点的完整物理评估
+
+本节补做标准完整评估。输入被冻结为 job `32804` 在第 198 步保存的 `best.json`，文件 SHA-256 为 `1b1d7892498a2e67f646c3bba62ab6e81e696e378315bdd29749c55a7c5ccef7`。本节没有重新解码 latent，避免 flow 数值差异改变被评估对象。
+
+### 13.1 score 与完整评估不是同一个计算
+
+固定线圈在独立全局复评分中的连续 score 为 91.87425；优化器当时记录的是 91.87486，两者相差 $6.1\times10^{-4}$ 分。该差异来自局部磁轴续接与独立全局磁轴细化的浮点路径，不影响结论。独立复评分的七个分量如下。
+
+| 分量 | 分数 |
+|---|---:|
+| 磁轴 | 97.06895 |
+| $\psi$ | 98.66117 |
+| 连续磁面 | 82.24244 |
+| 坐标 | 89.73324 |
+| 体 QH | 94.90056 |
+| $\iota$ | 100.00000 |
+| 线圈工程 | 65.56791 |
+
+score 主线给出的体平均微分误差为 QH/helicity $=1.98166\times10^{-3}$，同时 QA $=1.20562\times10^{-1}$、QP/helicity $=3.01850\times10^{-2}$。下面完整评估中的面 QS 是在最终单个 Boozer 面上用另一套定义计算的，不能直接拿绝对数值和体微分误差相减。
+
+### 13.2 从样本专属 $\psi$ 到最大通过面
+
+完整评估沿用固定入口 `evaluation/full_physical/` 的旧标准路线：样本专属 $\psi$ 拟合，GPU FP32 的 $\alpha+\nu$ 初值，受保护的诊断，再进入 Simsopt 的标准 LS/Newton，最后选择最大通过面并运行 Poincare、可视化和 CPU DESC。没有启用旧 Cartesian 点云路径，也没有把可在 GPU 上批量完成的步骤回退到 CPU。
+
+首先并行拟合四个物理半径。四个拟合都在 $s=0.49$ 的便宜追踪筛选中通过，并在 $s=0.64$ 失败。选择 $a=0.08$ 不是因为它的拟合残差最小，而是因为它给出最大的实际覆盖半径，同时误差仍然很小；这里的 $a$ 是这个样本的结果，不是以后样本的固定默认值。
+
+| $a$ | $\psi$ 训练 RMS | 验证 RMS | 验证角度 P95 | $s=0.49$ 平均/最大半径 | 单作业时间 |
+|---:|---:|---:|---:|---:|---:|
+| 0.04 | $3.729\times10^{-4}$ | $3.774\times10^{-4}$ | $2.669\times10^{-5}$ | 0.02823/0.03436 m | 12.40 s |
+| 0.05 | $3.762\times10^{-4}$ | $3.809\times10^{-4}$ | $3.354\times10^{-5}$ | 0.03531/0.04297 m | 9.02 s |
+| 0.06 | $3.830\times10^{-4}$ | $3.880\times10^{-4}$ | $4.079\times10^{-5}$ | 0.04243/0.05162 m | 9.00 s |
+| 0.08 | $4.192\times10^{-4}$ | $4.288\times10^{-4}$ | $5.739\times10^{-5}$ | **0.05688/0.06920 m** | 9.01 s |
+
+随后四个候选面也并行运行。$s=0.24,0.36,0.49$ 都在同一分支上通过标准 LS/Newton，体积单调增大；$s=0.64$ 在固定采样预算下只获得 176,583 个有效点，少于规定的 180,000 个，因此在 $\alpha$ 前停止。选择器已经修正为把这种“在标准求解前正常停止”的候选记作外层失败，不能再错误地报告为“上界仍开放”。
+
+| $s$ | $|V|$ [$\mathrm{m}^3$] | $\iota$ | 稠密相对 $L_2$ | 法向误差 P95 | 面 QA | 面 QH | 面 QP |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.24 | 0.03143 | 1.56768 | $1.801\times10^{-5}$ | $2.892\times10^{-5}$ | $2.433\times10^{-3}$ | $1.617\times10^{-6}$ | $2.456\times10^{-3}$ |
+| 0.36 | 0.04786 | 1.57366 | $2.048\times10^{-5}$ | $3.315\times10^{-5}$ | $3.706\times10^{-3}$ | $2.675\times10^{-6}$ | $3.741\times10^{-3}$ |
+| **0.49** | **0.06518** | **1.58013** | **$2.348\times10^{-5}$** | **$3.767\times10^{-5}$** | **$5.051\times10^{-3}$** | **$4.555\times10^{-6}$** | **$5.099\times10^{-3}$** |
+| 0.64 | 未进入标准求解 | - | - | - | - | - | - |
+
+最大面 $s=0.49$ 的 $\alpha$ 阶段使用 `gpu-ray` 均匀采样，候选有效率为 92.11%，最终固定使用 180,000 点；场评估、通量标定以及 $\alpha$ 设计矩阵/QR 都是 GPU FP32。$\alpha$ 总耗时 113.78 s，其中体采样 68.34 s、通量标定 0.58 s、一次批量场采样 0.003 s。$\nu$ 阶段总耗时 82.32 s；$\rho=1$ 的 $\nu$ 线性拟合使用 312 个模，拟合相对误差为 $5.84\times10^{-3}$，映射 Jacobian 范围为 $[0.616,1.338]$，没有坐标不可逆点。$\alpha+\nu$ 给标准求解的外层初值相对残差为 $1.467\times10^{-2}$；标准 LS 用 5.90 s 把稠密相对残差降到 $2.348\times10^{-5}$，随后的 Newton 只用 0.18 s 且在第 0 次迭代即满足要求。
+
+### 13.3 磁面、Poincare 与直接 $|B|$
+
+最大通过面的直接 $|B|$ 范围为 $0.66590$--$0.82974\ \mathrm{T}$。图采用约定的白底彩色等高线，而不是热力图。条纹沿 QH 方向近似平直，细小弯曲仍可见，与面 QH 为小量但非零一致。
+
+![最大 Boozer 面上的彩色 $|B|$ 等高线](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/assets/boozer_b.png)
+
+[交互式 $|B|$ 图](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/assets/boozer_b.html)
+
+![完整线圈和最大通过磁面](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/assets/coils_surface.png)
+
+[完整三维线圈与磁面 HTML](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/assets/coils_surface.html)
+
+Poincare 使用八条位于候选边界内部的种子；四个截面的命中数均为 27--29，散点形成嵌套闭合层并留在黑色候选边界内，没有出现分支跳转或自交证据。
+
+![最大通过磁面的 Poincare 验证](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/assets/poincare.png)
+
+### 13.4 DESC 检查
+
+DESC 使用实际 Biot--Savart 场计算出的环向磁通 $-5.20932\times10^{-3}\ \mathrm{Wb}$，边界阶数为 `MPOL=12, NTOR=12`，显式走 CPU。初始和平衡后的坐标都通过 nested 检查，边界固定不变。
+
+| DESC 指标 | 初始 | 50 次迭代后 |
+|---|---:|---:|
+| 归一化力残差均值 | 1.08013 | $1.789\times10^{-3}$ |
+| 归一化力残差 P95 | 2.02000 | $3.871\times10^{-3}$ |
+| 归一化力残差最大值 | 6.00739 | $1.552\times10^{-2}$ |
+| nested | true | true |
+
+求解耗时 148.03 s，代价降到 $1.625\times10^{-3}$，最优性为 $1.643\times10^{-4}$。但优化器在默认 50 次迭代上限停止，返回 `success=false`；因此准确结论是“边界可保持嵌套，力残差降低约三数量级并进入小量”，不是“DESC 已按优化器判据严格收敛”。下列 8 张标准 DESC 图均生成成功。
+
+![DESC 初始边界](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/boundary.png)
+
+![DESC Boozer 模谱随 $\rho$ 的变化](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/boozer_modes.png)
+
+![DESC 中的彩色 $|B|$ 等高线](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/boozer_B.png)
+
+![DESC QA 分量随 $\rho$ 的变化](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/qs_QA.png)
+
+![DESC QH 分量随 $\rho$ 的变化](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/qs_QH.png)
+
+![DESC QP 分量随 $\rho$ 的变化](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/qs_QP.png)
+
+![DESC 旋转变换随 $\rho$ 的变化](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/iota.png)
+
+[DESC 输入](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/input.check_desc)；[DESC 平衡文件](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/desc/equilibrium.h5)；[完整评估原始摘要](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/full_evaluation/full/full_summary.json)。
+
+完整下游作业耗时 360.77 s，其中直接可视化 73.97 s、DESC 241.43 s；这是候选验收支线的成本，不属于每次优化 score。综合直接面、Poincare 和 DESC，这个 best 不是连续 surface score 的作弊点：它确实存在较大的嵌套面，面 QH 明显低于 QA/QP，并且能够给 DESC 提供可显著降低力残差的边界。
+
+## 14. 200 步时间口径复核与 flow 批处理检查
+
+### 14.1 `5363.1 s` 到底是什么时间
+
+第 12 节的 `5363.1 s` 是旧 job `31058` 从优化器启动到写完摘要的**四卡作业墙钟时间**，即 1 h 29 min 23 s。它不是单卡时间，也不是四张卡的累计 GPU 秒。Slurm 记录的作业 elapsed 为 1 h 29 min 37 s，二者相差约 14 s，来自 Python 启动、环境初始化和 Slurm 收尾。因此“原版四卡花了一个小时出头”在量级上没有矛盾；更准确的说法是接近一个半小时。新版 job `32804` 同样是四卡作业，内部墙钟为 31 min 03 s。
+
+下表从 200 条逐步日志重新求和，各项互不重叠。
+
+| 200 步墙钟分解 | 旧 score | 新连续 score | 加速比 |
+|---|---:|---:|---:|
+| 8 个扰动端点的 flow 解码 | 505.35 s | 491.71 s | 1.03 倍 |
+| 中心/提议点的 flow 解码 | 464.91 s | 455.98 s | 1.02 倍 |
+| **flow 合计** | **970.26 s** | **947.70 s** | **1.02 倍** |
+| 8 个扰动端点的原生 score | 2976.76 s | 583.26 s | 5.10 倍 |
+| 中心/提议点的原生 score | 1382.61 s | 276.19 s | 5.01 倍 |
+| **原生 score 合计** | **4359.38 s** | **859.45 s** | **5.07 倍** |
+| 日志/簿记 | 1.29 s | 4.50 s | - |
+| 启动与收尾 | 32.15 s | 50.94 s | - |
+| **总墙钟** | **5363.07 s** | **1862.59 s** | **2.88 倍** |
+
+![旧版与新版 200 步优化的墙钟组成](assets/qh_score_fast_continuation_20260805/adam_start10_200_32804/optimizer_timing_breakdown.png)
+
+这个结果可以直接写成
+
+$$
+T_{\mathrm{old}}=970.26+4359.38+33.44=5363.07\ \mathrm{s},
+$$
+
+$$
+T_{\mathrm{new}}=947.70+859.45+55.44=1862.59\ \mathrm{s}.
+$$
+
+旧版中原生 score 占逐步计算时间的 81.78%，flow 占 18.20%；新版中两者变成 47.44% 和 52.31%。所以“单次 score 快 5.07 倍、整段优化只快 2.88 倍”完全由实测时间解释，不需要用笼统的“还有固定开销”来猜。此前第 12.2 节只有定性解释而没有给 flow 占比，证据不充分，本节数据取代那段解释。
+
+### 14.2 flow 是否真的整批运行
+
+是。每一步先把 4 个正方向和 4 个负方向拼成形状为 `(8, 3, 100)` 的 FP32 数组，然后只调用一次 `decode_noise_rk4`。RK4-256 的每一个子步都让模型同时处理这 8 个样本；不存在 Python 循环逐个解码 8 次。解码完成后，8 个结果才交给四个常驻原生 score worker，每张卡处理两个 score。
+
+实测批处理证据如下。
+
+| 指标 | 旧 job | 新 job |
+|---|---:|---:|
+| batch=8 的平均 flow 墙钟 | 2.5268 s | 2.4586 s |
+| batch=8 的均摊单样本时间 | 0.3158 s | 0.3073 s |
+| batch=1 的中心解码时间 | 2.3245 s | 2.2799 s |
+| batch=8 相对 batch=1 的单样本吞吐提升 | 7.36 倍 | 7.42 倍 |
+| batch=8 吞吐 | 3.17 样本/s | 3.25 样本/s |
+| 四卡 score 并行效率 | 96.56% | 95.39% |
+
+也就是说，flow 虽然只驻留在一张 GPU 上，但 batch=8 的墙钟只比 batch=1 多约 0.18 s，已经获得接近理想的批量吞吐；把这 8 个小样本拆到四张卡会复制模型和 kernel launch，目前没有数据表明会更快。四张卡真正需要并行的原生 score 已达到约 95%--97% 的并行效率。
+
+每步还有第二次 batch=1 中心解码，不能和前面的 8 个端点提前合并，因为中心位置依赖端点 score 得到的 SPSA 梯度、Adam 更新以及可行性回退。当前剩余性能瓶颈因此不是“flow 被逐样本串行调用”，而是 RK4-256 本身的串行时间步：score 被加速后，每步两批 flow 仍稳定花约 4.74 s。以后若继续提速，应该在可验证重建误差的前提下降低 RK4 步数、编译/融合模型积分，或研究跨步流水；不应再次优化已经具有高吞吐的 batch 维度。

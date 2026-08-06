@@ -82,6 +82,12 @@ once the task is accepted.
   self-consistent forward-score optimization and RK4-128 for conservative
   inversion; RK4-32 is unacceptable. Never silently continue a saved RK4-256
   latent with RK4-64 because that changes the discrete flow mapping.
+  A separate unvalidated throughput candidate reuses each accepted center
+  score and evaluates four randomly signed one-sided orthogonal probes instead
+  of four antithetic pairs. This halves endpoint score calls while retaining
+  four sampled directions, but adds first-order curvature error; compare it
+  against two-direction central differences at equal endpoint-call budget
+  before changing the production optimizer.
 - On 2026-08-05, branch `score-fast-continuation` accepted the production
   candidate documented through report/artifact commit `06f6452`: opt-in
   p1/t128/k400 continuous surface confidence, six fixed flux bisections, and

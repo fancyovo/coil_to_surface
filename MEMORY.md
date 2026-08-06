@@ -40,6 +40,7 @@ once the task is accepted.
 
 - On 2026-08-06, the validated continuous-score latent Adam workflow was
   promoted from branch `score-fast-continuation` (delivery commit `ff0ffb5`) to
+  local `main` by non-fast-forward merge `f5675c5`, and exposed through
   the standard production entrypoints
   `scripts/optimize_flow_prior_standard_adam.py` and
   `scripts/slurm_flow_prior_standard_adam.sh`. The defaults are learning rate

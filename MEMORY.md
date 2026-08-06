@@ -38,30 +38,32 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-06, branch `score-fast-continuation` reached local/remote commit
-  `8e58bf5` and submitted the forward-only optimizer throughput matrix. The
-  implementation adds recoverable cross-iteration flow prefetch, central or
-  randomly signed one-sided score finite differences, and a shared four-vector
-  direction bank; the manifest explicitly records
-  `gradient_source=score_finite_differences_only`. It does not call flow VJP,
-  autograd/backward, G1--G4, native score gradients, or any earlier black-box
-  gradient experiment path. Local validation is `169 passed`. Students smoke
-  jobs `32991` (RK4-64 central-4 pipeline) and `32994` (RK4-64 one-sided-4
-  pipeline) completed cleanly, demonstrated batch-9/batch-5 prefetch cache
-  hits, and left their GPUs at 0% / 2 MiB.
-- The formal fixed-start 200-step matrix is active under remote
-  `runs/score_fast_optimizer_matrix_20260806/`. It holds the job-32804 start,
-  seed, perturbation, Adam settings, continuous score, strict axis
-  continuation, and robust guards fixed; all runs enable flow pipelining. Jobs
-  are: `32995/32996/32997` = RK4-256/128/64 central-4, `32998/33000/33001` =
-  RK4-256/128/64 one-sided-4, and `33002/33003/32999` = RK4-256/128/64
-  central-2. Each run owns one RTX 5090 and uses only score GPU 0. At the last
-  2026-08-06 check, jobs `32995`--`32998`, `33000`, and `33001` were running
-  cleanly at steps 3--9; the other three were normally QOS-pending. Observed
-  central-4 and one-sided-4 times were about 13--15 and 7--9 s/step,
-  respectively, giving a 60--80 minute estimated six-GPU completion time.
-  Acceptance must report per-stage and total wall time, all nine score curves,
-  and comparison against historical continuous-score 200-step job `32804`.
+- On 2026-08-06, the forward-only fixed-start optimizer throughput matrix
+  completed under remote `runs/score_fast_optimizer_matrix_20260806/`. Jobs
+  `32995`--`33003` cover RK4 256/128/64 crossed with central-4, randomly signed
+  one-sided-4, and central-2 estimators. All nine wrote 200 complete iterations;
+  every GPU postflight was 0% / 2 MiB, the queue is empty, and no optimizer or
+  score process remains. Five jobs emitted only Python multiprocessing
+  semaphore-finalizer warnings after writing valid summaries; there was no
+  CUDA, score, or optimizer exception. Treat this as a non-numerical teardown
+  cleanliness issue, not as failed or incomplete results, but do not claim all
+  stderr files were empty.
+- The same matrix accepts cross-iteration flow pipelining: for RK4-256
+  central-4 it reduced 200-step flow wall time from historical job 32804's
+  `947.70 s` to `498.12 s` (`1.90x`), with 199/200 cache hits. Its score curve
+  had Pearson `0.9933` against job 32804 and reached best `91.9572` versus
+  `91.8749`. Random one-sided-4 is rejected as a default: at equal four-endpoint
+  cost, central-2 beat it by `0.73--0.93` best-score points at every tested RK4
+  step count. Current balanced recommendation is pipelined RK4-128 central-2
+  (`27.63 min`, one GPU, best `91.7463`); RK4-64 central-2 is the fastest
+  candidate (`25.34 min`, best `91.4682`), while central-4 remains the expensive
+  single-start quality option. This is a one-start selection result, not a
+  cross-distribution final default. Manifests explicitly record
+  `gradient_source=score_finite_differences_only`; no flow VJP,
+  autograd/backward, G1--G4, or native score gradient path is present. Detailed
+  results are in section 15 of
+  `reports/qh_score_throughput_and_continuous_surface_plan.md` and raw assets in
+  `reports/assets/qh_score_fast_optimizer_matrix_20260806/`.
 - On 2026-08-06, complete physical evaluation of the frozen continuous-score
   Adam best (`best.json` SHA-256 `1b1d7892498a2e67f646c3bba62ab6e81e696e378315bdd29749c55a7c5ccef7`)
   completed through the fixed `evaluation/full_physical/` route. Sample-specific

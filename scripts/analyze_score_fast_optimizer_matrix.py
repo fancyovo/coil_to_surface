@@ -54,6 +54,12 @@ def summarize_run(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     endpoint_calls = sum(int(row["endpoint_count"]) for row in history)
     center_calls = sum(len(row["center_score_elapsed_s"]) for row in history)
     cache_hits = sum(bool(row["endpoint_decode_cache_hit"]) for row in history)
+    iteration_wall = np.asarray(
+        [float(row["iteration_wall_s"]) for row in history], dtype=np.float64
+    )
+    scores = np.asarray(
+        [float(row["current_score"]) for row in history], dtype=np.float64
+    )
     row = {
         "name": path.name,
         "rk4_steps": int(manifest["flow_steps"]),
@@ -65,14 +71,29 @@ def summarize_run(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         "best_iteration": int(summary["best_iteration"]),
         "total_wall_s": float(summary["total_wall_s"]),
         "mean_iteration_wall_s": float(summary["mean_iteration_wall_s"]),
+        "p95_iteration_wall_s": float(np.quantile(iteration_wall, 0.95)),
         "flow_wall_s": flow_wall,
         "score_wall_s": score_wall,
         "endpoint_score_calls": endpoint_calls,
         "center_score_calls": center_calls,
+        "total_score_calls": endpoint_calls + center_calls + 1,
         "pipeline_cache_hits": cache_hits,
         "pipeline_wasted_endpoints": sum(
             int(row["pipeline_prefetch_wasted_endpoints"]) for row in history
         ),
+        "accepted_center_updates": sum(
+            bool(row["center_update_accepted"]) for row in history
+        ),
+        "gradient_steps_applied": sum(
+            bool(row["gradient_step_applied"]) for row in history
+        ),
+        "non_ok_endpoints": sum(
+            status != "ok"
+            for row in history
+            for status in row["pair_statuses"]
+        ),
+        "negative_score_steps": int(np.sum(np.diff(scores) < 0.0)),
+        "best_gain": float(summary["best_score"] - summary["initial_score"]),
     }
     return row, history
 
@@ -99,8 +120,98 @@ def main() -> None:
         histories[config] = history
 
     historical = read_jsonl(args.historical / "history.jsonl")
+    historical_summary = read_json(args.historical / "summary.json")
     historical_iterations = [int(row["iteration"]) for row in historical]
     historical_scores = [float(row["current_score"]) for row in historical]
+
+    reference = histories[(256, "central", 4)]
+    reference_scores = np.asarray(
+        [float(row["current_score"]) for row in reference], dtype=np.float64
+    )
+    historical_score_array = np.asarray(historical_scores, dtype=np.float64)
+    if reference_scores.shape != historical_score_array.shape:
+        raise ValueError("historical and pipelined reference lengths differ")
+    curve_delta = reference_scores - historical_score_array
+    historical_comparison = {
+        "historical_job": 32804,
+        "historical_gpu_count": 4,
+        "matrix_run": config_name(256, "central", 4),
+        "matrix_gpu_count": 1,
+        "historical_initial_score": float(historical_summary["initial_score"]),
+        "matrix_initial_score": float(summaries[0]["initial_score"]),
+        "historical_final_score": float(historical_summary["final_score"]),
+        "matrix_final_score": float(summaries[0]["final_score"]),
+        "historical_best_score": float(historical_summary["best_score"]),
+        "matrix_best_score": float(summaries[0]["best_score"]),
+        "score_curve_pearson": float(
+            np.corrcoef(historical_score_array, reference_scores)[0, 1]
+        ),
+        "score_curve_rmse": float(np.sqrt(np.mean(curve_delta**2))),
+        "score_curve_max_abs_delta": float(np.max(np.abs(curve_delta))),
+        "historical_total_wall_s": float(historical_summary["total_wall_s"]),
+        "matrix_total_wall_s": float(summaries[0]["total_wall_s"]),
+        "historical_flow_wall_s": float(
+            sum(
+                float(row["pair_decode_wall_s"])
+                + float(row["center_decode_wall_s"])
+                for row in historical
+            )
+        ),
+        "matrix_flow_wall_s": float(summaries[0]["flow_wall_s"]),
+        "historical_score_wall_s": float(
+            sum(
+                float(row["pair_score_wall_s"])
+                + float(row["center_score_wall_s"])
+                for row in historical
+            )
+        ),
+        "matrix_score_wall_s": float(summaries[0]["score_wall_s"]),
+    }
+    curve_comparisons: list[dict[str, Any]] = []
+    summary_by_config = {
+        (int(row["rk4_steps"]), str(row["estimator"]), int(row["directions"])): row
+        for row in summaries
+    }
+    for estimator, directions in (("central", 4), ("one-sided", 4), ("central", 2)):
+        reference_array = np.asarray(
+            [
+                float(row["current_score"])
+                for row in histories[(256, estimator, directions)]
+            ],
+            dtype=np.float64,
+        )
+        for steps in (128, 64):
+            candidate_array = np.asarray(
+                [
+                    float(row["current_score"])
+                    for row in histories[(steps, estimator, directions)]
+                ],
+                dtype=np.float64,
+            )
+            delta = candidate_array - reference_array
+            candidate_summary = summary_by_config[(steps, estimator, directions)]
+            reference_summary = summary_by_config[(256, estimator, directions)]
+            curve_comparisons.append(
+                {
+                    "estimator": estimator,
+                    "directions": directions,
+                    "candidate_rk4_steps": steps,
+                    "reference_rk4_steps": 256,
+                    "score_curve_pearson": float(
+                        np.corrcoef(reference_array, candidate_array)[0, 1]
+                    ),
+                    "score_curve_rmse": float(np.sqrt(np.mean(delta**2))),
+                    "score_curve_max_abs_delta": float(np.max(np.abs(delta))),
+                    "best_score_delta": float(
+                        candidate_summary["best_score"]
+                        - reference_summary["best_score"]
+                    ),
+                    "best_gain_delta": float(
+                        candidate_summary["best_gain"]
+                        - reference_summary["best_gain"]
+                    ),
+                }
+            )
 
     fields = list(summaries[0])
     with (args.output_dir / "matrix_summary.csv").open(
@@ -111,6 +222,12 @@ def main() -> None:
         writer.writerows(summaries)
     (args.output_dir / "matrix_summary.json").write_text(
         json.dumps(summaries, indent=2) + "\n", encoding="utf-8"
+    )
+    (args.output_dir / "historical_comparison.json").write_text(
+        json.dumps(historical_comparison, indent=2) + "\n", encoding="utf-8"
+    )
+    (args.output_dir / "curve_comparisons.json").write_text(
+        json.dumps(curve_comparisons, indent=2) + "\n", encoding="utf-8"
     )
 
     figure, axes = plt.subplots(1, 3, figsize=(16, 4.8), sharex=True, sharey=True)
@@ -167,6 +284,44 @@ def main() -> None:
     axis.legend()
     figure.tight_layout()
     figure.savefig(args.output_dir / "optimizer_wall_time.png", dpi=200)
+    plt.close(figure)
+
+    figure, axis = plt.subplots(figsize=(10.5, 6.0))
+    historical_minutes = np.asarray(
+        [float(row["total_wall_s"]) for row in historical]
+    ) / 60.0
+    axis.plot(
+        historical_minutes,
+        historical_scores,
+        color="black",
+        linestyle="--",
+        linewidth=1.8,
+        label="historical RK4-256 central-4 (4 score GPUs)",
+    )
+    line_styles = {
+        ("central", 4): "-",
+        ("one-sided", 4): "--",
+        ("central", 2): ":",
+    }
+    for steps, estimator, directions in CONFIGS:
+        history = histories[(steps, estimator, directions)]
+        axis.plot(
+            np.asarray([float(row["total_wall_s"]) for row in history]) / 60.0,
+            [float(row["current_score"]) for row in history],
+            color=colors[steps],
+            linestyle=line_styles[(estimator, directions)],
+            linewidth=1.35,
+            label=f"RK4-{steps} {estimator}-{directions}",
+        )
+    axis.set(
+        xlabel="optimizer wall time [min]",
+        ylabel="continuous QH score",
+        title="Score reached versus measured wall time",
+    )
+    axis.grid(alpha=0.25)
+    axis.legend(fontsize=8, ncols=2)
+    figure.tight_layout()
+    figure.savefig(args.output_dir / "score_vs_wall_time.png", dpi=200)
     plt.close(figure)
 
 

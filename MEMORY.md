@@ -51,6 +51,11 @@ once the task is accepted.
   backtracking. Every setting remains explicitly overridable, and the legacy
   score/optimizer paths remain available; this promotion does not remove or
   replace the original LS/Newton and DESC complete-evaluation route.
+- The 2026-08-06 promotion was synchronized to the USTC remote: branch
+  `score-fast-continuation` is at `ff0ffb5` and remote `main` contains merge
+  `f5675c5` plus the subsequent memory records. The tracked remote feature
+  worktree was clean after synchronization; the project Slurm queue was empty
+  and no score/optimizer process remained.
 - The beta1 choice is based on three valid same-start 600-step runs with all
   other settings fixed. Beta1 `0.5/0.7/0.9` reached best native scores
   `92.18260/92.38264/92.36607`; therefore `0.7` is the production default,

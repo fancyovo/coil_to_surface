@@ -14,11 +14,56 @@ from scripts.optimize_flow_prior_standard_adam import (
     directional_score_deltas,
     gradient_from_direction_deltas,
     parse_backtracking_fractions,
+    parse_arguments,
     robust_direction_deltas,
     rolling_robust_limit,
     sample_direction_probe,
     write_trajectory_case,
 )
+
+
+def test_standard_adam_production_defaults():
+    args = parse_arguments(
+        ["--checkpoint", "checkpoint.pt", "--out-dir", "run"]
+    )
+
+    assert args.learning_rate == 0.01
+    assert args.perturbation == 0.005
+    assert args.beta1 == 0.7
+    assert args.beta2 == 0.999
+    assert args.flow_steps == 128
+    assert args.flow_pipeline
+    assert args.directions == 2
+    assert args.gradient_estimator == "central"
+    assert args.score_surface_mode == "continuous"
+    assert args.axis_continuation
+    assert args.robust_direction_filter
+    assert args.reject_invalid_center
+    assert args.invalid_center_backtracking == (0.5, 0.25, 0.125)
+
+
+def test_standard_adam_production_defaults_can_be_disabled():
+    args = parse_arguments(
+        [
+            "--checkpoint",
+            "checkpoint.pt",
+            "--out-dir",
+            "run",
+            "--no-flow-pipeline",
+            "--no-axis-continuation",
+            "--no-robust-direction-filter",
+            "--no-reject-invalid-center",
+            "--score-surface-mode",
+            "legacy",
+        ]
+    )
+
+    assert not args.flow_pipeline
+    assert not args.axis_continuation
+    assert not args.robust_direction_filter
+    assert not args.reject_invalid_center
+    assert args.invalid_center_backtracking == ()
+    assert args.score_surface_mode == "legacy"
 
 
 def test_load_initial_noise_accepts_generic_start(tmp_path):

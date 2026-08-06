@@ -52,11 +52,11 @@ $$
 
 flow matching 当前不被视为“一次采样即可生成优质线圈”的生成器。它的主要作用是可逆地重参数化 Fourier 参数空间：修正后的 landscape 实验中，潜空间相对随机原空间方向的下降 5 分盆地宽度中位数放大 8.63 倍，且 FP32 RK4-256 的反向--正向线圈位置闭环 RMS 为 $2.26\times10^{-8}$--$4.57\times10^{-8}\,\mathrm m$。
 
-当前标准优化器在潜空间使用四个正交反向差分方向、$\beta_1=0.5$ 的 Adam、无效端点整步跳过和跨步 median/MAD 脏梯度保护。代表性结果包括：
+当前标准优化器默认使用连续磁面 score、严格磁轴 continuation、FP32 RK4-128 流水线、两个正交中心差分方向和 $\beta_1=0.7$ 的 Adam，并启用无效端点整步跳过、中心回退和跨步 median/MAD 脏梯度保护。代表性结果包括：
 
 | 条件 | 起点 | 最佳 ABI-9 score | 独立物理验收 |
 |---|---:|---:|---|
-| $N_{\rm FP}=4$，3 个基本线圈 | 85.883 | 93.166 | 选中 $s=0.49$；面 QH error $6.52\times10^{-6}$；DESC 保持嵌套 |
+| $N_{\rm FP}=4$，3 个基本线圈 | 85.502 | 92.383 | 选中 $s=0.49$；体积 $0.06586\,\mathrm m^3$；面 QH error $5.88\times10^{-6}$；DESC 保持嵌套 |
 | $N_{\rm FP}=6$，2 个基本线圈 | 74.436 | 86.641 | 选中 $s=0.49$；体积 $0.07061\,\mathrm m^3$；面 QH error $1.88\times10^{-4}$；DESC 最终力残差均值 $6.42\times10^{-4}$ |
 
 第二个实验在第 491 步后逐渐锁在 `no_surface` 可行性边界；从第 400 步到第 700 步的 300 步续跑中，只有 110 个更新被接受。其快速分数虽高于第 400 步，独立磁面体积和面 QH 并未更好。因此当前优化仍受离散可行性分支限制，不能只按快速分数宣称物理改进。
@@ -251,19 +251,18 @@ export QH_FLOW_OUTPUT=$QH_FLOW_REPO/runs/qh_flow_<name>
 sbatch scripts/slurm_train_qh_flow.sh
 ```
 
-当前推荐的优化协议是先从 128 个 IID 潜变量中选最高分起点，再运行低动量 Adam：
+标准单起点优化入口如下；除输出目录外，下面列出的优化参数都已有生产默认值：
 
 ```bash
 export PROJECT=$HOME/local_surface_evaluator_worktrees/<branch>
-export NFP=6
-export N_BASE_COILS=2
-export CANDIDATE_COUNT=128
-export ITERATIONS=200
-export RUN_ROOT_BASE=$HOME/local_surface_evaluator/runs/qh_screen_adam_<name>
-sbatch scripts/slurm_qh_screened_start_adam.sh
+export RUN_ROOT=$PROJECT/runs/qh_flow_standard_adam/<name>
+export ITERATIONS=600
+sbatch scripts/slurm_flow_prior_standard_adam.sh
 ```
 
-当前默认实现使用 FP32 RK4-128 解码和 2 个正交中心差分方向；`--flow-steps`/`FLOW_STEPS` 与 `--directions`/`DIRECTIONS` 仍可显式覆盖。常用优化设置为学习率 0.01、扰动 0.005、$\beta_2=0.999$，并保存每一步完整线圈、潜变量、score 分量和优化器状态。精确续跑必须保持原作业的 flow 步数、方向数和 Adam 参数，并使用 `scripts/slurm_qh_standard_adam_continue.sh`；不得只从 `best.json` 重启并丢失 Adam 动量。
+默认配置为学习率 0.01、扰动 0.005、$(\beta_1,\beta_2)=(0.7,0.999)$、FP32 RK4-128 流水线、2 个正交中心差分方向、连续磁面 score 和严格磁轴 continuation。`--flow-steps`/`FLOW_STEPS`、`--directions`/`DIRECTIONS`、`--beta1`/`BETA1`、`--score-surface-mode`/`SCORE_SURFACE_MODE` 等接口仍可显式覆盖；Python CLI 的布尔默认项可用对应的 `--no-*` 关闭，Slurm 包装使用环境变量 `0` 关闭。
+
+程序保存每一步的完整线圈、潜变量、score 分量和优化器状态。精确续跑必须保持原作业的 flow 步数、方向数和 Adam 参数，指向原 `RUN_ROOT` 并设置 `RESUME=1` 后重新提交 `scripts/slurm_flow_prior_standard_adam.sh`；不得只从 `best.json` 重启并丢失 Adam 动量。需要“先从 128 个 IID 潜变量筛选起点”的批量实验时，旧的 screened-start 编排仍保留，但它不是标准优化器的默认入口。
 
 ## 旧 Python 研究路径
 

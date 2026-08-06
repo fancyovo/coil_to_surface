@@ -363,7 +363,7 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
     plt.close(figure)
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Maximize native score from a flow-prior latent with a fixed-step, "
@@ -400,24 +400,33 @@ def main() -> None:
     )
     parser.add_argument(
         "--flow-pipeline",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help=(
             "Decode each accepted center together with the next iteration's "
             "finite-difference endpoints, while keeping score evaluation staged."
         ),
     )
     parser.add_argument("--flow-steps", type=int, default=128)
-    parser.add_argument("--perturbation", type=float, default=0.01)
-    parser.add_argument("--learning-rate", type=float, required=True)
-    parser.add_argument("--beta1", type=float, default=0.9)
+    parser.add_argument("--perturbation", type=float, default=0.005)
+    parser.add_argument("--learning-rate", type=float, default=0.01)
+    parser.add_argument("--beta1", type=float, default=0.7)
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
-    parser.add_argument("--robust-direction-filter", action="store_true")
-    parser.add_argument("--reject-invalid-center", action="store_true")
+    parser.add_argument(
+        "--robust-direction-filter",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--reject-invalid-center",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     parser.add_argument(
         "--invalid-center-backtracking",
         type=parse_backtracking_fractions,
-        default=(),
+        default=None,
         help=(
             "Comma-separated decreasing update fractions tried after a full "
             "proposal is invalid; requires --reject-invalid-center."
@@ -445,19 +454,36 @@ def main() -> None:
     parser.add_argument(
         "--score-surface-mode",
         choices=("legacy", "continuous"),
-        default="legacy",
+        default="continuous",
     )
     parser.add_argument("--surface-confidence-periods", type=int, default=1)
     parser.add_argument("--surface-theta-count", type=int, default=128)
     parser.add_argument("--surface-trace-steps", type=int, default=400)
     parser.add_argument("--surface-flux-bisection-iters", type=int, default=6)
-    parser.add_argument("--axis-continuation", action="store_true")
+    parser.add_argument(
+        "--axis-continuation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     parser.add_argument(
         "--resume",
         action="store_true",
         help="Resume an interrupted run in --out-dir without resetting Adam state.",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
+    args = build_parser().parse_args(argv)
+    if args.invalid_center_backtracking is None:
+        args.invalid_center_backtracking = (
+            (0.5, 0.25, 0.125) if args.reject_invalid_center else ()
+        )
+    return args
+
+
+def main() -> None:
+    args = parse_arguments()
 
     gpu_ids = parse_ints(args.gpus)
     if not torch.cuda.is_available():

@@ -263,7 +263,7 @@ export RUN_ROOT_BASE=$HOME/local_surface_evaluator/runs/qh_screen_adam_<name>
 sbatch scripts/slurm_qh_screened_start_adam.sh
 ```
 
-固定实现使用 FP32 RK4-256 解码、4 个正交反向差分方向、学习率 0.01、扰动 0.005、$\beta_1=0.5$、$\beta_2=0.999$，并保存每一步完整线圈、潜变量、score 分量和优化器状态。精确续跑使用 `scripts/slurm_qh_standard_adam_continue.sh`，不得只从 `best.json` 重启并丢失 Adam 动量。
+当前默认实现使用 FP32 RK4-128 解码和 2 个正交中心差分方向；`--flow-steps`/`FLOW_STEPS` 与 `--directions`/`DIRECTIONS` 仍可显式覆盖。常用优化设置为学习率 0.01、扰动 0.005、$\beta_2=0.999$，并保存每一步完整线圈、潜变量、score 分量和优化器状态。精确续跑必须保持原作业的 flow 步数、方向数和 Adam 参数，并使用 `scripts/slurm_qh_standard_adam_continue.sh`；不得只从 `best.json` 重启并丢失 Adam 动量。
 
 ## 旧 Python 研究路径
 

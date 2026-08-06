@@ -382,7 +382,7 @@ def main() -> None:
     parser.add_argument("--nfp", type=int, default=4)
     parser.add_argument("--n-base-coils", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=60)
-    parser.add_argument("--directions", type=int, default=4)
+    parser.add_argument("--directions", type=int, default=2)
     parser.add_argument(
         "--direction-bank-size",
         type=int,
@@ -406,7 +406,7 @@ def main() -> None:
             "finite-difference endpoints, while keeping score evaluation staged."
         ),
     )
-    parser.add_argument("--flow-steps", type=int, default=256)
+    parser.add_argument("--flow-steps", type=int, default=128)
     parser.add_argument("--perturbation", type=float, default=0.01)
     parser.add_argument("--learning-rate", type=float, required=True)
     parser.add_argument("--beta1", type=float, default=0.9)

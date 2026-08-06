@@ -38,6 +38,30 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-06, full physical evaluation of the beta1 `0.7` long-run best
+  completed on branch `score-fast-continuation`. The frozen input is
+  `reports/assets/qh_score_fast_beta1_long_20260806/runs/beta1_0p7/best.json`,
+  native score `92.3826396812`, best iteration `574`, SHA-256
+  `929835799be8f5ec0a75500bc9c52b9d9538659db4a93763d1ae0cdab98ecdd1`.
+  The sample-specific route selected `a=0.08` and the largest standard-accepted
+  `s=0.49`; accepted `s=0.24/0.36/0.49` volumes increase monotonically as
+  `0.03165/0.04818/0.06586 m^3`, while `s=0.64` is the nearest outer failure
+  because equal-area GPU sampling found `176536 < 180000` fixed valid points.
+  The selected standard surface has iota `1.54967`, dense relative L2
+  `1.888e-5`, normal-field P95 `3.195e-5`, and face QH error `5.884e-6` versus
+  QA/QP `4.836e-3/4.903e-3`. Poincare is nested and both direct and DESC
+  white-background colored-contour plots show clear QH bands. Explicit
+  CPU-P107 DESC job `33096` remained nested and reduced normalized force
+  mean/P95/max from `1.140/1.848/4.028` to
+  `1.461e-3/2.945e-3/8.979e-3`; it reached the 50-iteration limit with
+  optimizer `success=false`, so physical acceptance passed but strict DESC
+  convergence did not. All artifacts are frozen under
+  `reports/assets/qh_score_fast_beta1_0p7_best923826_full_eval_20260806/` and
+  documented in section 17 of
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`. All jobs are
+  complete and no project Slurm job or process remains. Do not reuse this
+  sample's `a` or `s` for a different sample, and do not fall back to legacy
+  Cartesian/CPU preprocessing.
 - On 2026-08-06, commit `6582daa` accepted the three same-start 600-step,
   two-GPU beta1 runs under remote `runs/score_fast_beta1_long_20260806_v2/`.
   Valid jobs `33042/33049/33044` used beta1 `0.5/0.7/0.9`, beta2 `0.999`,

@@ -72,6 +72,66 @@ def run_summary(summary: dict, rows: list[dict]) -> dict:
     }
 
 
+def timing_breakdown(summary: dict, rows: list[dict], gpu_count: int = 4) -> dict:
+    iterations = rows[1:]
+
+    def total(field: str) -> float:
+        return float(np.sum(values(iterations, field)))
+
+    pair_decode = total("pair_decode_wall_s")
+    center_decode = total("center_decode_wall_s")
+    pair_score_wall = total("pair_score_wall_s")
+    center_score_wall = total("center_score_wall_s")
+    iteration_wall = total("iteration_wall_s")
+    accounted = pair_decode + center_decode + pair_score_wall + center_score_wall
+    pair_elapsed = np.concatenate(
+        [np.asarray(row.get("pair_score_elapsed_s", []), dtype=float) for row in iterations]
+    )
+    center_elapsed = np.concatenate(
+        [np.asarray(row.get("center_score_elapsed_s", []), dtype=float) for row in iterations]
+    )
+    pair_batch_sizes = np.asarray(
+        [len(row.get("pair_score_elapsed_s", [])) for row in iterations], dtype=int
+    )
+    center_decode_count = int(
+        np.count_nonzero(values(iterations, "center_decode_wall_s") > 0.0)
+    )
+    pair_sample_count = int(pair_elapsed.size)
+    center_sample_count = int(center_elapsed.size)
+    return {
+        "iteration_count": len(iterations),
+        "pair_decode_wall_s": pair_decode,
+        "center_decode_wall_s": center_decode,
+        "flow_decode_wall_s": pair_decode + center_decode,
+        "pair_score_wall_s": pair_score_wall,
+        "center_score_wall_s": center_score_wall,
+        "native_score_wall_s": pair_score_wall + center_score_wall,
+        "iteration_wall_s": iteration_wall,
+        "bookkeeping_wall_s": iteration_wall - accounted,
+        "setup_and_teardown_wall_s": float(summary["total_wall_s"]) - iteration_wall,
+        "flow_fraction_of_iteration": (pair_decode + center_decode) / iteration_wall,
+        "score_fraction_of_iteration": (pair_score_wall + center_score_wall) / iteration_wall,
+        "pair_sample_count": pair_sample_count,
+        "center_sample_count": center_sample_count,
+        "pair_batch_size_min": int(np.min(pair_batch_sizes)),
+        "pair_batch_size_median": float(np.median(pair_batch_sizes)),
+        "pair_batch_size_max": int(np.max(pair_batch_sizes)),
+        "pair_decode_batch_mean_s": pair_decode / len(iterations),
+        "pair_decode_per_sample_s": pair_decode / pair_sample_count,
+        "pair_decode_throughput_samples_s": pair_sample_count / pair_decode,
+        "center_decode_count": center_decode_count,
+        "center_decode_mean_s": center_decode / center_decode_count,
+        "flow_batching_per_sample_speedup": (
+            (center_decode / center_decode_count) / (pair_decode / pair_sample_count)
+        ),
+        "pair_score_gpu_elapsed_sum_s": float(np.sum(pair_elapsed)),
+        "center_score_gpu_elapsed_sum_s": float(np.sum(center_elapsed)),
+        "pair_score_parallel_efficiency": (
+            float(np.sum(pair_elapsed)) / (gpu_count * pair_score_wall)
+        ),
+    }
+
+
 def plot_score(
     old_rows: list[dict], new_rows: list[dict], output: Path
 ) -> None:
@@ -120,6 +180,36 @@ def plot_physics(old_rows: list[dict], new_rows: list[dict], output: Path) -> No
     plt.close(figure)
 
 
+def plot_timing_breakdown(result: dict, output: Path) -> None:
+    labels = ("legacy", "continuous")
+    fields = (
+        ("pair_decode_wall_s", "flow: 8 endpoints", "#4c78a8"),
+        ("center_decode_wall_s", "flow: center", "#9ecae9"),
+        ("pair_score_wall_s", "score: 8 endpoints / 4 GPUs", "#e45756"),
+        ("center_score_wall_s", "score: center", "#f4a6a6"),
+        ("bookkeeping_wall_s", "bookkeeping", "#8f8f8f"),
+    )
+    figure, axes = plt.subplots(1, 2, figsize=(12.0, 4.8), constrained_layout=True)
+    for axis, normalize in zip(axes, (False, True)):
+        bottom = np.zeros(len(labels))
+        for field, name, color in fields:
+            raw = np.asarray([result[label]["timing"][field] for label in labels])
+            values_to_plot = raw.copy()
+            if normalize:
+                totals = np.asarray(
+                    [result[label]["timing"]["iteration_wall_s"] for label in labels]
+                )
+                values_to_plot = 100.0 * raw / totals
+            axis.bar(labels, values_to_plot, bottom=bottom, label=name, color=color)
+            bottom += values_to_plot
+        axis.set_ylabel("share of iteration wall time (%)" if normalize else "wall time over 200 steps (s)")
+        axis.set_title("Measured optimizer timing share" if normalize else "Measured optimizer timing")
+        axis.grid(axis="y", alpha=0.2)
+    axes[0].legend(loc="upper right", fontsize=8)
+    figure.savefig(output, dpi=190)
+    plt.close(figure)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--legacy-dir", type=Path, required=True)
@@ -133,12 +223,22 @@ def main() -> None:
         "legacy": run_summary(old_summary, old_rows),
         "continuous": run_summary(new_summary, new_rows),
     }
+    result["legacy"]["timing"] = timing_breakdown(old_summary, old_rows)
+    result["continuous"]["timing"] = timing_breakdown(new_summary, new_rows)
     result["speedup_mean_iteration"] = (
         result["legacy"]["mean_iteration_wall_s"] /
         result["continuous"]["mean_iteration_wall_s"]
     )
     result["speedup_total_wall"] = (
         result["legacy"]["total_wall_s"] / result["continuous"]["total_wall_s"]
+    )
+    result["speedup_native_score_wall"] = (
+        result["legacy"]["timing"]["native_score_wall_s"]
+        / result["continuous"]["timing"]["native_score_wall_s"]
+    )
+    result["speedup_flow_decode_wall"] = (
+        result["legacy"]["timing"]["flow_decode_wall_s"]
+        / result["continuous"]["timing"]["flow_decode_wall_s"]
     )
     if args.cross_score:
         cross_rows = read_json(args.cross_score)
@@ -165,6 +265,7 @@ def main() -> None:
     )
     plot_score(old_rows, new_rows, args.output_dir / "score_and_timing.png")
     plot_physics(old_rows, new_rows, args.output_dir / "physics_trajectory.png")
+    plot_timing_breakdown(result, args.output_dir / "optimizer_timing_breakdown.png")
     print(json.dumps(result, allow_nan=True))
 
 

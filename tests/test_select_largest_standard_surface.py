@@ -39,3 +39,18 @@ def test_nested_volume_check_rejects_inner_branch_solver_successes(tmp_path: Pat
         "non_increasing_enclosed_volume"
     )
     assert rows[3]["branch_consistency"]["previous_largest_abs_volume_m3"] == 0.049
+
+
+def test_completed_candidate_that_failed_before_standard_is_outer_failure(
+    tmp_path: Path,
+) -> None:
+    _write_candidate(tmp_path, "s_0p49", 0.49, 0.065)
+    failed = tmp_path / "s_0p64"
+    failed.mkdir()
+    (failed / "gpu_postflight.csv").touch()
+
+    rows = load_candidate_rows(tmp_path)
+
+    assert [row["target_s"] for row in rows] == [0.49, 0.64]
+    assert rows[1]["accepted"] is False
+    assert rows[1]["failure_stage"] == "completed_before_standard_acceptance"

@@ -38,6 +38,21 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-06, complete physical evaluation of the frozen continuous-score
+  Adam best (`best.json` SHA-256 `1b1d7892498a2e67f646c3bba62ab6e81e696e378315bdd29749c55a7c5ccef7`)
+  started through the fixed `evaluation/full_physical/` workflow on branch
+  `score-fast-continuation`. Four sample-specific source-psi jobs
+  `32934/32936/32938/32940` tested `a=0.04/0.05/0.06/0.08` in parallel under
+  remote `runs/qh_score_fast_best_full_eval_20260806/`; all completed with
+  empty stderr. All source fits screened through `s=0.49` and failed at `0.64`;
+  `a=0.08` was selected because it covers the largest physical radius while
+  retaining psi validation-angle P95 `5.7395e-5`. Four parallel one-GPU/four-CPU
+  alpha+nu plus standard-LS/Newton jobs `32942/32944/32946/32948` now test
+  `s=0.24/0.36/0.49/0.64`. The validated GPU library remains SHA-256
+  `38749535...f52`; largest-surface selection, Poincare/plots, and CPU DESC
+  remain pending. The same turn is also auditing the apparent historical/new 200-step
+  timing mismatch and must report measured flow-decode versus native-score
+  costs and whether endpoint decodes are actually batched.
 - On 2026-08-05, branch `score-fast-continuation` accepted the production
   candidate documented through report/artifact commit `06f6452`: opt-in
   p1/t128/k400 continuous surface confidence, six fixed flux bisections, and

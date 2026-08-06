@@ -38,6 +38,30 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-06, branch `score-fast-continuation` reached local/remote commit
+  `8e58bf5` and submitted the forward-only optimizer throughput matrix. The
+  implementation adds recoverable cross-iteration flow prefetch, central or
+  randomly signed one-sided score finite differences, and a shared four-vector
+  direction bank; the manifest explicitly records
+  `gradient_source=score_finite_differences_only`. It does not call flow VJP,
+  autograd/backward, G1--G4, native score gradients, or any earlier black-box
+  gradient experiment path. Local validation is `169 passed`. Students smoke
+  jobs `32991` (RK4-64 central-4 pipeline) and `32994` (RK4-64 one-sided-4
+  pipeline) completed cleanly, demonstrated batch-9/batch-5 prefetch cache
+  hits, and left their GPUs at 0% / 2 MiB.
+- The formal fixed-start 200-step matrix is active under remote
+  `runs/score_fast_optimizer_matrix_20260806/`. It holds the job-32804 start,
+  seed, perturbation, Adam settings, continuous score, strict axis
+  continuation, and robust guards fixed; all runs enable flow pipelining. Jobs
+  are: `32995/32996/32997` = RK4-256/128/64 central-4, `32998/33000/33001` =
+  RK4-256/128/64 one-sided-4, and `33002/33003/32999` = RK4-256/128/64
+  central-2. Each run owns one RTX 5090 and uses only score GPU 0. At the last
+  2026-08-06 check, jobs `32995`--`32998`, `33000`, and `33001` were running
+  cleanly at steps 3--9; the other three were normally QOS-pending. Observed
+  central-4 and one-sided-4 times were about 13--15 and 7--9 s/step,
+  respectively, giving a 60--80 minute estimated six-GPU completion time.
+  Acceptance must report per-stage and total wall time, all nine score curves,
+  and comparison against historical continuous-score 200-step job `32804`.
 - On 2026-08-06, complete physical evaluation of the frozen continuous-score
   Adam best (`best.json` SHA-256 `1b1d7892498a2e67f646c3bba62ab6e81e696e378315bdd29749c55a7c5ccef7`)
   completed through the fixed `evaluation/full_physical/` route. Sample-specific

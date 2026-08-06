@@ -47,7 +47,9 @@ once the task is accepted.
   semaphore-finalizer warnings after writing valid summaries; there was no
   CUDA, score, or optimizer exception. Treat this as a non-numerical teardown
   cleanliness issue, not as failed or incomplete results, but do not claim all
-  stderr files were empty.
+  stderr files were empty. The numerical acceptance, analyzer, frozen raw
+  artifacts, and report are committed on branch `score-fast-continuation` at
+  `aa26845`.
 - The same matrix accepts cross-iteration flow pipelining: for RK4-256
   central-4 it reduced 200-step flow wall time from historical job 32804's
   `947.70 s` to `498.12 s` (`1.90x`), with 199/200 cache hits. Its score curve

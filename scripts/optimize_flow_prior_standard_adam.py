@@ -895,6 +895,26 @@ def main() -> None:
         and not row.get("temporal_step_rejected", False)
     ]
     stop_reason = "completed_iterations"
+    resume_reference_result: dict[str, Any] | None = None
+    saved_trajectory: Path | None = None
+    if args.resume:
+        saved_trajectory = trajectory_dir / f"step_{start_iteration:04d}.json"
+        if not saved_trajectory.is_file():
+            raise FileNotFoundError(
+                f"resume trajectory tail is missing: {saved_trajectory}"
+            )
+        saved_payload = json.loads(saved_trajectory.read_text(encoding="utf-8"))
+        saved_metadata = saved_payload["flow_prior_standard_adam_trajectory"]
+        if int(saved_metadata["iteration"]) != start_iteration:
+            raise ValueError("resume trajectory iteration does not match saved state")
+        resume_reference_result = saved_metadata["native_score"]
+        saved_score = result_score(resume_reference_result)
+        previous_score = float(history[-1]["current_score"])
+        if not math.isclose(saved_score, previous_score, abs_tol=1e-12):
+            raise ValueError(
+                "resume trajectory score differs from saved history: "
+                f"{saved_score} != {previous_score}"
+            )
 
     with NativeScorePool(args.lib, list(gpu_ids)) as pool:
         initial_tokens, initial_decode_wall_s = decode_noise_rk4(
@@ -912,7 +932,11 @@ def main() -> None:
             target=args.target,
             timeout_s=args.batch_timeout_s,
             metadata={"phase": "initial", "iteration": 0},
-            config_overrides=base_score_config or None,
+            config_overrides=(
+                score_config_for_center(resume_reference_result)
+                if resume_reference_result is not None
+                else base_score_config or None
+            ),
         )
         if any(error is not None for error in initial_errors) or initial_results[0] is None:
             raise RuntimeError(f"initial native-score failure: {initial_errors}")
@@ -935,11 +959,6 @@ def main() -> None:
                 device=device,
             )
             best_tokens = best_batch[0]
-            saved_trajectory = trajectory_dir / f"step_{start_iteration:04d}.json"
-            if not saved_trajectory.is_file():
-                raise FileNotFoundError(
-                    f"resume trajectory tail is missing: {saved_trajectory}"
-                )
         else:
             initial_score = resumed_center_score
             best_score = initial_score

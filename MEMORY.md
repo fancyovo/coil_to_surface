@@ -71,6 +71,17 @@ once the task is accepted.
   four persistent GPU workers at about `95.4%` parallel efficiency. Do not
   describe flow as eight serial Python decodes; its remaining cost is the 256
   serial RK4 time steps and the dependent second center decode.
+- Correction on 2026-08-06: the two forward-flow batches are dependent within
+  one iteration but can be merged by cross-iteration pipelining. After endpoint
+  scores produce proposed center `z[k+1]`, decode that center plus its next
+  eight antithetic endpoints once as batch nine. Score the center first, then
+  score the cached endpoints with the newly validated center-axis hint; discard
+  and recompute them only on rejected/backtracked centers or skipped updates.
+  This is feasible but not implemented or benchmarked. Current optimization is
+  FP32 RK4-256. Existing same-step closure evidence supports RK4-64 for a new,
+  self-consistent forward-score optimization and RK4-128 for conservative
+  inversion; RK4-32 is unacceptable. Never silently continue a saved RK4-256
+  latent with RK4-64 because that changes the discrete flow mapping.
 - On 2026-08-05, branch `score-fast-continuation` accepted the production
   candidate documented through report/artifact commit `06f6452`: opt-in
   p1/t128/k400 continuous surface confidence, six fixed flux bisections, and

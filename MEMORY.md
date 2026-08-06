@@ -38,29 +38,34 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-06, the user fixed the forward score optimizer defaults to
-  pipelined FP32 RK4-128 with two central-difference directions while retaining
-  the `--flow-steps`/`FLOW_STEPS` and `--directions`/`DIRECTIONS` override
-  interfaces. Source and README commit `5fd7fc3` implements this default.
-  Three same-start 600-step, two-GPU beta1 runs are active under remote
-  `runs/score_fast_beta1_long_20260806_v2/`: job `33042` is beta1 `0.5` on
-  P107, job `33049` is beta1 `0.7` on P107, and job `33044` is beta1 `0.9` on
-  Students. All use beta2 `0.999`, learning rate `0.01`, perturbation `0.005`,
-  seed `20260804`, strict axis continuation, continuous score, and only score
-  finite differences. Their manifests show `gpu_ids=[0,1]`; measured four-
-  endpoint score wall is about `2.7--2.9 s`, total step wall about `5.3--5.5 s`,
-  and stderr was empty after several iterations. Expected 600-step wall time is
-  about 55 minutes, with a 60--65 minute conservative completion estimate.
-- The first attempted beta1 batch `33032/33033/33034` is invalid and was
-  cancelled: a comma inside Slurm `--export` truncated `SCORE_GPUS=0,1` to
-  `SCORE_GPUS=0`, so each job allocated two GPUs but scored on only one. Commit
-  `d68905f` fixes the durable launcher interface by allowing colon-separated
-  `SCORE_GPUS=0:1` and normalizing it after Slurm export. Replacement job
-  `33043` for beta1 `0.7` then exited before optimization with code 42 because
-  its allocated GPUs did not pass the required idle preflight; job `33049`
-  supersedes it and has passed both the idle gate and the two-worker manifest/
-  timing check. Never use the non-v2 run root or jobs `33032--33034/33043` in
-  beta1 analysis.
+- On 2026-08-06, commit `6582daa` accepted the three same-start 600-step,
+  two-GPU beta1 runs under remote `runs/score_fast_beta1_long_20260806_v2/`.
+  Valid jobs `33042/33049/33044` used beta1 `0.5/0.7/0.9`, beta2 `0.999`,
+  learning rate `0.01`, perturbation `0.005`, seed `20260804`, pipelined FP32
+  RK4-128, two central-difference directions, strict axis continuation,
+  continuous score, and only score finite differences. Their best scores were
+  `92.18260/92.38264/92.36607` at steps `595/574/580`; beta1 `0.7` is the
+  preferred parameter for this fixed start and budget, with beta1 `0.9` only
+  `0.01657` lower. None is demonstrably converged: their final 100-step
+  running-best gains were `0.21062/0.14218/0.19923`. Runtime was
+  `53.9--55.6 min` per 600-step two-GPU job, mean step wall was `5.27--5.40 s`,
+  and no optimizer, score process, or GPU allocation remained afterward.
+  This was native-score acceptance only; no alpha+nu, LS/Newton, or DESC full
+  evaluation was run. Detailed evidence is section 16 of
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`, with frozen raw
+  assets in `reports/assets/qh_score_fast_beta1_long_20260806/`.
+- The forward score optimizer defaults remain pipelined FP32 RK4-128 with two
+  central-difference directions, while `--flow-steps`/`FLOW_STEPS` and
+  `--directions`/`DIRECTIONS` remain override interfaces; source/README commit
+  `5fd7fc3` introduced them. The first beta1 jobs `33032/33033/33034` are
+  invalid and were cancelled because a comma in Slurm `--export` truncated
+  `SCORE_GPUS=0,1` to one worker. Commit `d68905f` accepts colon-separated
+  `SCORE_GPUS=0:1` and normalizes it after export. Job `33043` exited before
+  optimization because its allocated GPUs failed the idle gate and was
+  superseded by valid job `33049`. Never use the non-v2 root or jobs
+  `33032--33034/33043` in beta1 analysis. Valid job `33042` emitted only a
+  post-result Python semaphore cleanup warning; jobs `33049/33044` had empty
+  stderr, and no numerical/CUDA failure occurred.
 - On 2026-08-06, the forward-only fixed-start optimizer throughput matrix
   completed under remote `runs/score_fast_optimizer_matrix_20260806/`. Jobs
   `32995`--`33003` cover RK4 256/128/64 crossed with central-4, randomly signed

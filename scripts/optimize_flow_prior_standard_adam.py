@@ -21,7 +21,6 @@ from scripts.optimize_flow_prior_zo_adam import (
     cosine_similarity,
     decode_noise_rk4,
     diagnostics_value,
-    gradient_from_pairs,
     load_flow_checkpoint,
     load_initial_noise,
     orthogonal_directions,
@@ -56,22 +55,33 @@ def parse_backtracking_fractions(value: str) -> tuple[float, ...]:
 
 def robust_direction_deltas(
     raw_delta: np.ndarray,
-    pair_statuses: list[str | None],
+    endpoint_statuses: list[str | None],
     *,
+    gradient_estimator: str = "central",
     outlier_ratio: float,
     mad_factor: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float | None]:
     raw_delta = np.asarray(raw_delta, dtype=np.float64)
     count = raw_delta.size
-    if len(pair_statuses) != 2 * count:
-        raise ValueError("pair status count does not match directional deltas")
-    valid = np.asarray(
-        [
-            pair_statuses[index] == "ok" and pair_statuses[index + count] == "ok"
-            for index in range(count)
-        ],
-        dtype=bool,
-    )
+    if gradient_estimator == "central":
+        if len(endpoint_statuses) != 2 * count:
+            raise ValueError("central endpoint status count does not match deltas")
+        valid = np.asarray(
+            [
+                endpoint_statuses[index] == "ok"
+                and endpoint_statuses[index + count] == "ok"
+                for index in range(count)
+            ],
+            dtype=bool,
+        )
+    elif gradient_estimator == "one-sided":
+        if len(endpoint_statuses) != count:
+            raise ValueError("one-sided endpoint status count does not match deltas")
+        valid = np.asarray(
+            [status == "ok" for status in endpoint_statuses], dtype=bool
+        )
+    else:
+        raise ValueError(f"unknown gradient estimator: {gradient_estimator}")
     used = raw_delta.copy()
     used[~valid] = 0.0
     outlier = np.zeros(count, dtype=bool)
@@ -88,6 +98,107 @@ def robust_direction_deltas(
         outlier = valid & (np.abs(raw_delta) > adaptive_limit)
         used[outlier] = np.sign(used[outlier]) * adaptive_limit
     return used, ~valid, outlier, adaptive_limit
+
+
+def sample_direction_probe(
+    direction_rng: np.random.Generator,
+    sign_rng: np.random.Generator,
+    center: np.ndarray,
+    *,
+    directions: int,
+    direction_bank_size: int,
+    gradient_estimator: str,
+    perturbation: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if direction_bank_size < directions:
+        raise ValueError("direction bank must contain every used direction")
+    bank = orthogonal_directions(direction_rng, center.shape, direction_bank_size)
+    selected = bank[:directions]
+    if gradient_estimator == "one-sided":
+        signs = np.where(
+            sign_rng.integers(0, 2, size=directions, dtype=np.int8) == 0,
+            -1,
+            1,
+        ).astype(np.int8)
+    elif gradient_estimator == "central":
+        signs = np.ones(directions, dtype=np.int8)
+    else:
+        raise ValueError(f"unknown gradient estimator: {gradient_estimator}")
+    states = direction_probe_states(
+        center,
+        selected,
+        signs,
+        gradient_estimator=gradient_estimator,
+        perturbation=perturbation,
+    )
+    return selected, signs, states.astype(np.float32)
+
+
+def direction_probe_states(
+    center: np.ndarray,
+    directions: np.ndarray,
+    signs: np.ndarray,
+    *,
+    gradient_estimator: str,
+    perturbation: float,
+) -> np.ndarray:
+    if gradient_estimator == "central":
+        states = np.concatenate(
+            [
+                center[None] + perturbation * directions,
+                center[None] - perturbation * directions,
+            ],
+            axis=0,
+        )
+    elif gradient_estimator == "one-sided":
+        states = center[None] + (
+            perturbation
+            * np.asarray(signs).reshape((-1,) + (1,) * center.ndim)
+            * directions
+        )
+    else:
+        raise ValueError(f"unknown gradient estimator: {gradient_estimator}")
+    return states.astype(np.float32)
+
+
+def directional_score_deltas(
+    endpoint_scores: np.ndarray,
+    *,
+    center_score: float,
+    signs: np.ndarray,
+    gradient_estimator: str,
+) -> np.ndarray:
+    values = np.asarray(endpoint_scores, dtype=np.float64)
+    signs = np.asarray(signs, dtype=np.float64)
+    count = signs.size
+    if gradient_estimator == "central":
+        if values.size != 2 * count:
+            raise ValueError("central endpoint score count does not match directions")
+        return values[:count] - values[count:]
+    if gradient_estimator == "one-sided":
+        if values.size != count:
+            raise ValueError("one-sided endpoint score count does not match directions")
+        # Store a central-span-equivalent delta so robust scale guards remain
+        # comparable between estimators.
+        return 2.0 * signs * (values - float(center_score))
+    raise ValueError(f"unknown gradient estimator: {gradient_estimator}")
+
+
+def gradient_from_direction_deltas(
+    deltas: np.ndarray,
+    directions: np.ndarray,
+    perturbation: float,
+) -> np.ndarray:
+    if perturbation <= 0.0:
+        raise ValueError("perturbation must be positive")
+    values = np.asarray(deltas, dtype=np.float64)
+    if values.shape != (len(directions),):
+        raise ValueError("directional delta count does not match directions")
+    return np.mean(
+        values.reshape((-1,) + (1,) * (directions.ndim - 1))
+        * directions.astype(np.float64),
+        axis=0,
+    ) / (2.0 * perturbation)
 
 
 def rolling_robust_limit(
@@ -176,16 +287,37 @@ def save_state(
     adam_step: int,
     iteration: int,
     rng: np.random.Generator,
+    sign_rng: np.random.Generator,
+    prefetched_probe: dict[str, Any] | None,
 ) -> None:
+    payload: dict[str, Any] = {
+        "current_noise": current_noise,
+        "best_noise": best_noise,
+        "first_moment": first_moment,
+        "second_moment": second_moment,
+        "adam_step": np.asarray(adam_step, dtype=np.int64),
+        "iteration": np.asarray(iteration, dtype=np.int64),
+        "rng_state": np.asarray(json.dumps(rng.bit_generator.state)),
+        "sign_rng_state": np.asarray(json.dumps(sign_rng.bit_generator.state)),
+        "prefetched_probe_present": np.asarray(prefetched_probe is not None),
+    }
+    if prefetched_probe is not None:
+        payload.update(
+            {
+                "prefetched_directions": prefetched_probe["directions"],
+                "prefetched_signs": prefetched_probe["signs"],
+                "prefetched_tokens": prefetched_probe["tokens"],
+                "prefetched_decode_wall_s": np.asarray(
+                    prefetched_probe["decode_wall_s"], dtype=np.float64
+                ),
+                "prefetched_source_iteration": np.asarray(
+                    prefetched_probe["source_iteration"], dtype=np.int64
+                ),
+            }
+        )
     np.savez_compressed(
         path,
-        current_noise=current_noise,
-        best_noise=best_noise,
-        first_moment=first_moment,
-        second_moment=second_moment,
-        adam_step=np.asarray(adam_step, dtype=np.int64),
-        iteration=np.asarray(iteration, dtype=np.int64),
-        rng_state=np.asarray(json.dumps(rng.bit_generator.state)),
+        **payload,
     )
 
 
@@ -251,6 +383,29 @@ def main() -> None:
     parser.add_argument("--n-base-coils", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=60)
     parser.add_argument("--directions", type=int, default=4)
+    parser.add_argument(
+        "--direction-bank-size",
+        type=int,
+        default=0,
+        help=(
+            "Number of orthogonal directions drawn before selecting --directions; "
+            "zero uses exactly --directions. A shared larger bank makes direction-"
+            "count comparisons use identical leading directions."
+        ),
+    )
+    parser.add_argument(
+        "--gradient-estimator",
+        choices=("central", "one-sided"),
+        default="central",
+    )
+    parser.add_argument(
+        "--flow-pipeline",
+        action="store_true",
+        help=(
+            "Decode each accepted center together with the next iteration's "
+            "finite-difference endpoints, while keeping score evaluation staged."
+        ),
+    )
     parser.add_argument("--flow-steps", type=int, default=256)
     parser.add_argument("--perturbation", type=float, default=0.01)
     parser.add_argument("--learning-rate", type=float, required=True)
@@ -317,6 +472,9 @@ def main() -> None:
         raise ValueError("iterations, directions, and flow-steps must be positive")
     if args.directions > args.n_base_coils * TOKEN_DIM:
         raise ValueError("directions exceed latent dimension")
+    direction_bank_size = args.direction_bank_size or args.directions
+    if not args.directions <= direction_bank_size <= args.n_base_coils * TOKEN_DIM:
+        raise ValueError("direction bank size must cover used directions and latent dimension")
     if args.learning_rate <= 0.0 or args.perturbation <= 0.0:
         raise ValueError("learning rate and perturbation must be positive")
     if not 0.0 < args.beta1 < 1.0 or not 0.0 < args.beta2 < 1.0:
@@ -379,6 +537,45 @@ def main() -> None:
             )
         return overrides or None
 
+    def draw_probe(center: np.ndarray) -> dict[str, Any]:
+        directions, signs, states = sample_direction_probe(
+            rng,
+            sign_rng,
+            center,
+            directions=args.directions,
+            direction_bank_size=direction_bank_size,
+            gradient_estimator=args.gradient_estimator,
+            perturbation=args.perturbation,
+        )
+        return {"directions": directions, "signs": signs, "states": states}
+
+    def states_for_probe(center: np.ndarray, probe: dict[str, Any]) -> np.ndarray:
+        return direction_probe_states(
+            center,
+            probe["directions"],
+            probe["signs"],
+            gradient_estimator=args.gradient_estimator,
+            perturbation=args.perturbation,
+        )
+
+    def decode_center_and_probe(
+        center: np.ndarray,
+        probe: dict[str, Any] | None,
+    ) -> tuple[np.ndarray, np.ndarray | None, float, int]:
+        states = center[None]
+        if probe is not None:
+            states = np.concatenate([states, states_for_probe(center, probe)], axis=0)
+        decoded, wall_s = decode_noise_rk4(
+            model,
+            normalizer,
+            states,
+            nfp=args.nfp,
+            steps=args.flow_steps,
+            device=device,
+        )
+        endpoint_tokens = decoded[1:] if probe is not None else None
+        return decoded[0], endpoint_tokens, wall_s, len(states)
+
     args.out_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.out_dir / "trajectory"
     run_paths = {
@@ -416,12 +613,37 @@ def main() -> None:
         )
         rng = np.random.default_rng()
         rng.bit_generator.state = json.loads(str(saved_state["rng_state"].item()))
+        sign_rng = np.random.default_rng()
+        if "sign_rng_state" in saved_state.files:
+            sign_rng.bit_generator.state = json.loads(
+                str(saved_state["sign_rng_state"].item())
+            )
+        else:
+            sign_rng = np.random.default_rng(args.seed ^ 0x6A09E667)
+        prefetched_probe = None
+        if (
+            "prefetched_probe_present" in saved_state.files
+            and bool(saved_state["prefetched_probe_present"].item())
+        ):
+            prefetched_probe = {
+                "directions": np.asarray(
+                    saved_state["prefetched_directions"], dtype=np.float32
+                ),
+                "signs": np.asarray(saved_state["prefetched_signs"], dtype=np.int8),
+                "tokens": np.asarray(
+                    saved_state["prefetched_tokens"], dtype=np.float64
+                ),
+                "decode_wall_s": float(saved_state["prefetched_decode_wall_s"]),
+                "source_iteration": int(saved_state["prefetched_source_iteration"]),
+            }
         initialization = "resumed_saved_standard_adam_state"
         initial_case_metadata = None
     else:
         if any(path.exists() for path in run_paths.values()) or trajectory_dir.exists():
             raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
         rng = np.random.default_rng(args.seed)
+        sign_rng = np.random.default_rng(args.seed ^ 0x6A09E667)
+        prefetched_probe = None
         if args.initial_case is None:
             current_noise = rng.standard_normal(
                 (args.n_base_coils, TOKEN_DIM), dtype=np.float32
@@ -472,7 +694,11 @@ def main() -> None:
         raise ValueError(f"condition {normalizer_key} is absent from normalizer")
 
     requested_manifest = {
-        "algorithm": "standard_adam_with_orthogonal_antithetic_zo_gradient",
+        "algorithm": (
+            "standard_adam_with_orthogonal_antithetic_zo_gradient"
+            if args.gradient_estimator == "central"
+            else "standard_adam_with_orthogonal_random_sign_one_sided_zo_gradient"
+        ),
         "objective": "maximize_native_qh_score",
         "initialization": initialization,
         "initial_case": initial_case_metadata,
@@ -483,6 +709,9 @@ def main() -> None:
         "seed": args.seed,
         "iterations": args.iterations,
         "directions": args.directions,
+        "direction_bank_size": direction_bank_size,
+        "gradient_estimator": args.gradient_estimator,
+        "gradient_source": "score_finite_differences_only",
         "perturbation": args.perturbation,
         "learning_rate": args.learning_rate,
         "betas": [args.beta1, args.beta2],
@@ -517,6 +746,7 @@ def main() -> None:
         "flow_dtype": "torch.float32",
         "flow_method": "rk4",
         "flow_steps": args.flow_steps,
+        "flow_pipeline": args.flow_pipeline,
         "flow_autocast": False,
         "checkpoint_step": int(checkpoint["step"]),
         "checkpoint_sha256": file_sha256(args.checkpoint),
@@ -537,6 +767,10 @@ def main() -> None:
     }
     if args.resume:
         manifest = json.loads(run_paths["manifest.json"].read_text(encoding="utf-8"))
+        manifest.setdefault("direction_bank_size", manifest.get("directions"))
+        manifest.setdefault("gradient_estimator", "central")
+        manifest.setdefault("gradient_source", "score_finite_differences_only")
+        manifest.setdefault("flow_pipeline", False)
         stable_keys = (
             "algorithm",
             "objective",
@@ -546,6 +780,9 @@ def main() -> None:
             "noise_shape",
             "seed",
             "directions",
+            "direction_bank_size",
+            "gradient_estimator",
+            "gradient_source",
             "perturbation",
             "learning_rate",
             "betas",
@@ -565,6 +802,7 @@ def main() -> None:
             "temporal_guard_policy",
             "flow_method",
             "flow_steps",
+            "flow_pipeline",
             "checkpoint_sha256",
             "native_lib_sha256",
             "gpu_ids",
@@ -724,24 +962,42 @@ def main() -> None:
                     break
 
             iteration_started = time.perf_counter()
-            directions = orthogonal_directions(
-                rng, current_noise.shape, args.directions
-            )
-            pair_states = np.concatenate(
-                [
-                    current_noise[None] + args.perturbation * directions,
-                    current_noise[None] - args.perturbation * directions,
-                ],
-                axis=0,
-            ).astype(np.float32)
-            pair_tokens, pair_decode_wall_s = decode_noise_rk4(
-                model,
-                normalizer,
-                pair_states,
-                nfp=args.nfp,
-                steps=args.flow_steps,
-                device=device,
-            )
+            baseline_score = result_score(current_result)
+            endpoint_decode_cache_hit = prefetched_probe is not None
+            prefetched_decode_wall_s = 0.0
+            if prefetched_probe is not None:
+                if int(prefetched_probe["source_iteration"]) != iteration - 1:
+                    raise RuntimeError("prefetched flow endpoints do not match iteration")
+                directions = np.asarray(
+                    prefetched_probe["directions"], dtype=np.float32
+                )
+                direction_signs = np.asarray(
+                    prefetched_probe["signs"], dtype=np.int8
+                )
+                pair_tokens = np.asarray(
+                    prefetched_probe["tokens"], dtype=np.float64
+                )
+                prefetched_decode_wall_s = float(prefetched_probe["decode_wall_s"])
+                pair_decode_wall_s = 0.0
+                prefetched_probe = None
+            else:
+                directions, direction_signs, pair_states = sample_direction_probe(
+                    rng,
+                    sign_rng,
+                    current_noise,
+                    directions=args.directions,
+                    direction_bank_size=direction_bank_size,
+                    gradient_estimator=args.gradient_estimator,
+                    perturbation=args.perturbation,
+                )
+                pair_tokens, pair_decode_wall_s = decode_noise_rk4(
+                    model,
+                    normalizer,
+                    pair_states,
+                    nfp=args.nfp,
+                    steps=args.flow_steps,
+                    device=device,
+                )
             pair_results, pair_elapsed, pair_errors, pair_score_wall_s = score_tokens(
                 pool,
                 pair_tokens,
@@ -758,12 +1014,14 @@ def main() -> None:
             pair_scores = np.asarray(
                 [result_score(result) for result in pair_results], dtype=np.float64
             )
-            raw_gradient, raw_delta = gradient_from_pairs(
-                pair_scores[: args.directions],
-                pair_scores[args.directions :],
-                directions,
-                args.perturbation,
-                delta_clip=None,
+            raw_delta = directional_score_deltas(
+                pair_scores,
+                center_score=baseline_score,
+                signs=direction_signs,
+                gradient_estimator=args.gradient_estimator,
+            )
+            raw_gradient = gradient_from_direction_deltas(
+                raw_delta, directions, args.perturbation
             )
             pair_statuses = [
                 None if result is None else result.get("status")
@@ -774,6 +1032,7 @@ def main() -> None:
                     robust_direction_deltas(
                         raw_delta,
                         pair_statuses,
+                        gradient_estimator=args.gradient_estimator,
                         outlier_ratio=args.direction_outlier_ratio,
                         mad_factor=args.direction_outlier_mad_factor,
                     )
@@ -798,12 +1057,8 @@ def main() -> None:
             temporal_update_outlier = False
             temporal_step_rejected = False
             if gradient_step_applied:
-                gradient, _ = gradient_from_pairs(
-                    0.5 * used_delta,
-                    -0.5 * used_delta,
-                    directions,
-                    args.perturbation,
-                    delta_clip=None,
+                gradient = gradient_from_direction_deltas(
+                    used_delta, directions, args.perturbation
                 )
                 gradient_rms = rms(gradient)
                 if not math.isfinite(gradient_rms):
@@ -872,6 +1127,11 @@ def main() -> None:
             center_score_wall_s = 0.0
             center_elapsed = []
             center_backtracking = []
+            pipeline_decode_batch_sizes: list[int] = []
+            pipeline_prefetch_wasted_endpoints = 0
+            next_probe: dict[str, Any] | None = None
+            next_endpoint_tokens: np.ndarray | None = None
+            next_endpoint_decode_wall_s = 0.0
             if temporal_step_rejected:
                 current_noise = previous_noise
                 current_tokens = previous_tokens
@@ -894,18 +1154,24 @@ def main() -> None:
                 current_noise = (
                     current_noise.astype(np.float64) + full_update
                 ).astype(np.float32)
-                current_batch, center_decode_wall_s = decode_noise_rk4(
-                    model,
-                    normalizer,
-                    current_noise[None],
-                    nfp=args.nfp,
-                    steps=args.flow_steps,
-                    device=device,
+                if args.flow_pipeline and iteration < args.iterations:
+                    next_probe = draw_probe(current_noise)
+                (
+                    proposed_tokens,
+                    next_endpoint_tokens,
+                    center_decode_wall_s,
+                    center_decode_batch_size,
+                ) = decode_center_and_probe(
+                    current_noise,
+                    next_probe,
                 )
+                pipeline_decode_batch_sizes.append(center_decode_batch_size)
+                if next_endpoint_tokens is not None:
+                    next_endpoint_decode_wall_s = center_decode_wall_s
                 center_results, center_elapsed, center_errors, center_score_wall_s = (
                     score_tokens(
                         pool,
-                        current_batch,
+                        proposed_tokens[None],
                         nfp=args.nfp,
                         target=args.target,
                         timeout_s=args.batch_timeout_s,
@@ -921,7 +1187,6 @@ def main() -> None:
                         "updated-center score failure at iteration "
                         f"{iteration}: {center_errors}"
                     )
-                proposed_tokens = current_batch[0]
                 proposed_result = center_results[0]
                 proposed_score = result_score(proposed_result)
                 center_update_accepted = True
@@ -934,22 +1199,28 @@ def main() -> None:
             ):
                 center_update_accepted = False
                 center_acceptance_fraction = 0.0
+                if next_endpoint_tokens is not None:
+                    pipeline_prefetch_wasted_endpoints += len(next_endpoint_tokens)
+                    next_endpoint_tokens = None
+                    next_endpoint_decode_wall_s = 0.0
                 for fraction in args.invalid_center_backtracking:
                     trial_noise = (
                         previous_noise.astype(np.float64) + fraction * full_update
                     ).astype(np.float32)
-                    trial_batch, trial_decode_wall_s = decode_noise_rk4(
-                        model,
-                        normalizer,
-                        trial_noise[None],
-                        nfp=args.nfp,
-                        steps=args.flow_steps,
-                        device=device,
+                    (
+                        trial_tokens,
+                        trial_endpoint_tokens,
+                        trial_decode_wall_s,
+                        trial_decode_batch_size,
+                    ) = decode_center_and_probe(
+                        trial_noise,
+                        next_probe,
                     )
+                    pipeline_decode_batch_sizes.append(trial_decode_batch_size)
                     trial_results, trial_elapsed, trial_errors, trial_score_wall_s = (
                         score_tokens(
                             pool,
-                            trial_batch,
+                            trial_tokens[None],
                             nfp=args.nfp,
                             target=args.target,
                             timeout_s=args.batch_timeout_s,
@@ -985,10 +1256,16 @@ def main() -> None:
                         center_acceptance_fraction = fraction
                         center_rejection_reason = "invalid_full_proposal_backtracked"
                         current_noise = trial_noise
-                        current_tokens = trial_batch[0]
+                        current_tokens = trial_tokens
                         current_result = trial_result
+                        next_endpoint_tokens = trial_endpoint_tokens
+                        next_endpoint_decode_wall_s = trial_decode_wall_s
                         update = fraction * full_update
                         break
+                    if trial_endpoint_tokens is not None:
+                        pipeline_prefetch_wasted_endpoints += len(
+                            trial_endpoint_tokens
+                        )
                 if not center_update_accepted:
                     center_rejection_reason = "invalid_updated_center"
                     current_noise = previous_noise
@@ -1001,6 +1278,32 @@ def main() -> None:
             else:
                 current_tokens = proposed_tokens
                 current_result = proposed_result
+            if args.flow_pipeline and iteration < args.iterations:
+                if next_probe is None:
+                    next_probe = draw_probe(current_noise)
+                if next_endpoint_tokens is None:
+                    refill_states = states_for_probe(current_noise, next_probe)
+                    (
+                        next_endpoint_tokens,
+                        refill_decode_wall_s,
+                    ) = decode_noise_rk4(
+                        model,
+                        normalizer,
+                        refill_states,
+                        nfp=args.nfp,
+                        steps=args.flow_steps,
+                        device=device,
+                    )
+                    center_decode_wall_s += refill_decode_wall_s
+                    pipeline_decode_batch_sizes.append(len(refill_states))
+                    next_endpoint_decode_wall_s = refill_decode_wall_s
+                prefetched_probe = {
+                    "directions": next_probe["directions"],
+                    "signs": next_probe["signs"],
+                    "tokens": next_endpoint_tokens,
+                    "decode_wall_s": next_endpoint_decode_wall_s,
+                    "source_iteration": iteration,
+                }
             update_rms = rms(update)
             current_score = result_score(current_result)
             if current_score > best_score:
@@ -1040,6 +1343,9 @@ def main() -> None:
                 ),
                 "pair_scores": pair_scores.tolist(),
                 "pair_statuses": pair_statuses,
+                "gradient_estimator": args.gradient_estimator,
+                "direction_signs": direction_signs.tolist(),
+                "endpoint_count": len(pair_results),
                 "raw_direction_deltas": raw_delta.tolist(),
                 "used_direction_deltas": used_delta.tolist(),
                 "filtered_invalid_directions": invalid_direction.tolist(),
@@ -1078,6 +1384,12 @@ def main() -> None:
                 "pair_score_elapsed_s": pair_elapsed,
                 "center_score_elapsed_s": center_elapsed,
                 "pair_decode_wall_s": pair_decode_wall_s,
+                "endpoint_decode_cache_hit": endpoint_decode_cache_hit,
+                "prefetched_endpoint_decode_wall_s": prefetched_decode_wall_s,
+                "pipeline_decode_batch_sizes": pipeline_decode_batch_sizes,
+                "pipeline_prefetch_wasted_endpoints": (
+                    pipeline_prefetch_wasted_endpoints
+                ),
                 "pair_score_wall_s": pair_score_wall_s,
                 "center_decode_wall_s": center_decode_wall_s,
                 "center_score_wall_s": center_score_wall_s,
@@ -1130,6 +1442,8 @@ def main() -> None:
                 adam_step=adam_step,
                 iteration=iteration,
                 rng=rng,
+                sign_rng=sign_rng,
+                prefetched_probe=prefetched_probe,
             )
             if iteration == 1 or iteration % args.plot_every == 0:
                 plot_progress(history, args.out_dir / "progress.png")

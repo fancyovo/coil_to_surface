@@ -24,6 +24,12 @@ iterations="${ITERATIONS:-60}"
 max_wall_s="${MAX_WALL_S:-1500}"
 learning_rate="${LEARNING_RATE:?LEARNING_RATE is required}"
 perturbation="${PERTURBATION:-0.01}"
+directions="${DIRECTIONS:-4}"
+direction_bank_size="${DIRECTION_BANK_SIZE:-$directions}"
+gradient_estimator="${GRADIENT_ESTIMATOR:-central}"
+flow_steps="${FLOW_STEPS:-256}"
+flow_pipeline="${FLOW_PIPELINE:-0}"
+score_gpus="${SCORE_GPUS:-0,1,2,3}"
 beta1="${BETA1:-0.9}"
 beta2="${BETA2:-0.999}"
 robust_direction_filter="${ROBUST_DIRECTION_FILTER:-0}"
@@ -89,6 +95,16 @@ score_mode_args=(
   --surface-trace-steps "$surface_trace_steps"
   --surface-flux-bisection-iters "$surface_flux_bisection_iters"
 )
+gradient_args=(
+  --directions "$directions"
+  --direction-bank-size "$direction_bank_size"
+  --gradient-estimator "$gradient_estimator"
+  --flow-steps "$flow_steps"
+  --gpus "$score_gpus"
+)
+if [[ "$flow_pipeline" == "1" ]]; then
+  gradient_args+=(--flow-pipeline)
+fi
 if [[ "$axis_continuation" == "1" ]]; then
   score_mode_args+=(--axis-continuation)
 fi
@@ -146,6 +162,7 @@ python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --beta1 "$beta1" \
   --beta2 "$beta2" \
   --seed "$seed" \
+  "${gradient_args[@]}" \
   "${score_mode_args[@]}" \
   "${robust_gradient_args[@]}" \
   "${initial_args[@]}" &

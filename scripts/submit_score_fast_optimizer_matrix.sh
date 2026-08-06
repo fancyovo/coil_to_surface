@@ -6,11 +6,13 @@ run_root="${RUN_ROOT:-$project/runs/score_fast_optimizer_matrix_20260806}"
 launcher="$project/scripts/slurm_flow_prior_standard_adam.sh"
 initial_case="${INITIAL_CASE:-$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json}"
 expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-387495353bd4c8a3c2984fcfdb6625937da47da0efa2e578610d666c5a8a2f52}"
+score_lib="${SCORE_LIB:-$project/gpu_backend/build_score_fast/libstellarator_gpu.so}"
 submit_mode="${SUBMIT_MODE:-submit}"
 
 test -d "$project"
 test -f "$launcher"
 test -f "$initial_case"
+test -f "$score_lib"
 mkdir -p "$run_root" "$project/logs"
 
 configs=(
@@ -46,7 +48,7 @@ for config in "${configs[@]}"; do
     --job-name="sf-${name}"
     --output="$project/logs/sf-${name}-%j.out"
     --error="$project/logs/sf-${name}-%j.err"
-    --export="ALL,PROJECT=$project,RUN_ROOT=$run_root/$name,INITIAL_CASE=$initial_case,EXPECTED_SCORE_LIB_SHA=$expected_lib_sha,ITERATIONS=200,MAX_WALL_S=6900,LEARNING_RATE=0.01,PERTURBATION=0.005,BETA1=0.5,BETA2=0.999,SEED=20260804,DIRECTIONS=$directions,DIRECTION_BANK_SIZE=4,GRADIENT_ESTIMATOR=$estimator,FLOW_STEPS=$rk4,FLOW_PIPELINE=1,SCORE_GPUS=0,ROBUST_DIRECTION_FILTER=1,REJECT_INVALID_CENTER=1,SCORE_SURFACE_MODE=continuous,SURFACE_CONFIDENCE_PERIODS=1,SURFACE_THETA_COUNT=128,SURFACE_TRACE_STEPS=400,SURFACE_FLUX_BISECTION_ITERS=6,AXIS_CONTINUATION=1"
+    --export="ALL,PROJECT=$project,RUN_ROOT=$run_root/$name,INITIAL_CASE=$initial_case,SCORE_LIB=$score_lib,EXPECTED_SCORE_LIB_SHA=$expected_lib_sha,ITERATIONS=200,MAX_WALL_S=6900,LEARNING_RATE=0.01,PERTURBATION=0.005,BETA1=0.5,BETA2=0.999,SEED=20260804,DIRECTIONS=$directions,DIRECTION_BANK_SIZE=4,GRADIENT_ESTIMATOR=$estimator,FLOW_STEPS=$rk4,FLOW_PIPELINE=1,SCORE_GPUS=0,ROBUST_DIRECTION_FILTER=1,REJECT_INVALID_CENTER=1,SCORE_SURFACE_MODE=continuous,SURFACE_CONFIDENCE_PERIODS=1,SURFACE_THETA_COUNT=128,SURFACE_TRACE_STEPS=400,SURFACE_FLUX_BISECTION_ITERS=6,AXIS_CONTINUATION=1"
   )
   if [[ "$channel" == "p107" ]]; then
     resource=(

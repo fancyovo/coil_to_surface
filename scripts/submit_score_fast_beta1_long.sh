@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project="${PROJECT:-$HOME/local_surface_evaluator_worktrees/score-fast-continuation}"
-run_root="${RUN_ROOT:-$project/runs/score_fast_beta1_long_20260806}"
+run_root="${RUN_ROOT:-$project/runs/score_fast_beta1_long_20260806_v2}"
 launcher="$project/scripts/slurm_flow_prior_standard_adam.sh"
 initial_case="${INITIAL_CASE:-$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json}"
 score_lib="${SCORE_LIB:-$project/gpu_backend/build_score_fast/libstellarator_gpu.so}"
@@ -42,7 +42,7 @@ for config in "${configs[@]}"; do
     --job-name="sf-long-${name}"
     --output="$project/logs/sf-long-${name}-%j.out"
     --error="$project/logs/sf-long-${name}-%j.err"
-    --export="ALL,PROJECT=$project,RUN_ROOT=$run_root/$name,INITIAL_CASE=$initial_case,SCORE_LIB=$score_lib,EXPECTED_SCORE_LIB_SHA=$expected_lib_sha,ITERATIONS=600,MAX_WALL_S=10200,LEARNING_RATE=0.01,PERTURBATION=0.005,BETA1=$beta1,BETA2=0.999,SEED=20260804,DIRECTIONS=2,DIRECTION_BANK_SIZE=2,GRADIENT_ESTIMATOR=central,FLOW_STEPS=128,FLOW_PIPELINE=1,SCORE_GPUS=0,1,ROBUST_DIRECTION_FILTER=1,REJECT_INVALID_CENTER=1,SCORE_SURFACE_MODE=continuous,SURFACE_CONFIDENCE_PERIODS=1,SURFACE_THETA_COUNT=128,SURFACE_TRACE_STEPS=400,SURFACE_FLUX_BISECTION_ITERS=6,AXIS_CONTINUATION=1"
+    --export="ALL,PROJECT=$project,RUN_ROOT=$run_root/$name,INITIAL_CASE=$initial_case,SCORE_LIB=$score_lib,EXPECTED_SCORE_LIB_SHA=$expected_lib_sha,ITERATIONS=600,MAX_WALL_S=10200,LEARNING_RATE=0.01,PERTURBATION=0.005,BETA1=$beta1,BETA2=0.999,SEED=20260804,DIRECTIONS=2,DIRECTION_BANK_SIZE=2,GRADIENT_ESTIMATOR=central,FLOW_STEPS=128,FLOW_PIPELINE=1,SCORE_GPUS=0:1,ROBUST_DIRECTION_FILTER=1,REJECT_INVALID_CENTER=1,SCORE_SURFACE_MODE=continuous,SURFACE_CONFIDENCE_PERIODS=1,SURFACE_THETA_COUNT=128,SURFACE_TRACE_STEPS=400,SURFACE_FLUX_BISECTION_ITERS=6,AXIS_CONTINUATION=1"
   )
   if [[ "$channel" == "p107" ]]; then
     resource=(

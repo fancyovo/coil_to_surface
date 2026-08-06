@@ -38,6 +38,22 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-06, P107 two-RTX5090 job `33166` began an exact continuation of
+  the accepted beta1 `0.7` run from iteration 600 to target iteration 2000.
+  The immutable source is
+  `runs/score_fast_beta1_long_20260806_v2/beta1_0p7`; the continuation root is
+  `runs/score_fast_beta1_0p7_continue2000_20260806`, with its old summary
+  preserved as `summary_step0600.json`. It restores both latents, both Adam
+  moments, Adam step 588, RNG states, and the prefetched endpoint batch. At
+  stability check it had reached iteration 605 with all endpoints `ok`, a
+  pipeline cache hit, and empty stderr; expected additional wall time is about
+  2 h 6 min at 5.44 s/step. Initial job `33163` is invalid and exited before
+  iteration 601 because resume validation globally re-searched the magnetic
+  axis and scored `92.35871` instead of the saved continuation score
+  `92.32032`. Feature commit `3a7a2bb` and main commit `7ba25c1` fix resume
+  validation by applying the saved trajectory's magnetic-axis hint while
+  retaining the strict consistency gate. Do not use job `33163` as an
+  optimization result.
 - On 2026-08-06, the validated continuous-score latent Adam workflow was
   promoted from branch `score-fast-continuation` (delivery commit `ff0ffb5`) to
   local `main` by non-fast-forward merge `f5675c5`, and exposed through
@@ -52,8 +68,9 @@ once the task is accepted.
   score/optimizer paths remain available; this promotion does not remove or
   replace the original LS/Newton and DESC complete-evaluation route.
 - The 2026-08-06 promotion was synchronized to the USTC remote: branch
-  `score-fast-continuation` is at `ff0ffb5` and remote `main` contains merge
-  `f5675c5` plus the subsequent memory records. The tracked remote feature
+  `score-fast-continuation` includes resume fix `3a7a2bb` and remote `main`
+  contains merge `f5675c5` plus the subsequent production fixes and memory
+  records. The tracked remote feature
   worktree was clean after synchronization; the project Slurm queue was empty
   and no score/optimizer process remained.
 - The beta1 choice is based on three valid same-start 600-step runs with all

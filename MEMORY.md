@@ -58,8 +58,9 @@ once the task is accepted.
   convergence did not. All artifacts are frozen under
   `reports/assets/qh_score_fast_beta1_0p7_best923826_full_eval_20260806/` and
   documented in section 17 of
-  `reports/qh_score_throughput_and_continuous_surface_plan.md`. All jobs are
-  complete and no project Slurm job or process remains. Do not reuse this
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`; report and
+  frozen artifacts are committed at `ab30bec`. All jobs are complete and no
+  project Slurm job or process remains. Do not reuse this
   sample's `a` or `s` for a different sample, and do not fall back to legacy
   Cartesian/CPU preprocessing.
 - On 2026-08-06, commit `6582daa` accepted the three same-start 600-step,

@@ -56,7 +56,9 @@ once the task is accepted.
   and documented in sections 13--14 of
   `reports/qh_score_throughput_and_continuous_surface_plan.md`. Jobs
   `32934/32936/32938/32940`, `32942/32944/32946/32948`, and `32951` are all
-  complete; no project Slurm job remains active from this evaluation.
+  complete; no project Slurm job remains active from this evaluation. The
+  report and frozen artifacts are synchronized locally/remotely in commit
+  `d1de539`.
 - The same 2026-08-06 audit resolves the 200-step timing ambiguity. Historical
   `5363.07 s` is job 31058's four-GPU wall time (`1:29:23` internal, about
   `1:29:37` Slurm elapsed), not a single-GPU time or summed GPU-seconds. Old/new

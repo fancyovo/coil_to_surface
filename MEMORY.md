@@ -56,11 +56,15 @@ once the task is accepted.
   evaluation used 73.3% and flow decode 21.5%, with no extreme long tail.
   Frozen evidence is under
   `reports/assets/qh_score_fast_beta1_0p7_continue2000_20260807/` and section 18
-  of `reports/qh_score_throughput_and_continuous_surface_plan.md`. This best has
-  not received full alpha+nu/LS/Newton/DESC evaluation and must not replace the
-  physically accepted iteration-574 sample yet. Initial job `33163` remains
-  invalid; feature commit `3a7a2bb` and main commit `7ba25c1` fixed its resume-
-  axis-hint bug without relaxing the strict consistency gate.
+  of `reports/qh_score_throughput_and_continuous_surface_plan.md`. Acceptance
+  artifacts and analysis were integrated by main commit `591146f` and the same
+  commit was atomically synchronized to remote `main`; 18 focused optimizer
+  tests passed, the remote queue was empty, and no score/optimizer process
+  remained. This best has not received full alpha+nu/LS/Newton/DESC evaluation
+  and must not replace the physically accepted iteration-574 sample yet.
+  Initial job `33163` remains invalid; feature commit `3a7a2bb` and main commit
+  `7ba25c1` fixed its resume-axis-hint bug without relaxing the strict
+  consistency gate.
 - On 2026-08-06, the validated continuous-score latent Adam workflow was
   promoted from branch `score-fast-continuation` (delivery commit `ff0ffb5`) to
   local `main` by non-fast-forward merge `f5675c5`, and exposed through

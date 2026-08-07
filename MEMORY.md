@@ -38,6 +38,28 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-07, full physical evaluation of the 2000-step beta1 `0.7` best
+  completed for iteration `1945`, native score `93.0409329399`, and input
+  SHA-256 `80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d`.
+  Sample-specific selection chose `a=0.08` and the largest standard-accepted
+  `s=0.49`; accepted `s=0.24/0.36/0.49` volumes increase as
+  `0.03237/0.04933/0.06723 m^3`, while `s=0.64` is the nearest outer failure
+  because GPU-ray found only `173109 < 180000` fixed-budget points. The route
+  used GPU-ray, FP32 alpha+nu, parallel candidates, and no legacy Cartesian or
+  CPU preprocessing. The selected surface has iota `1.49288`, dense relative
+  L2 `1.8465e-5`, normal-field P95 `3.1005e-5`, and face QH error
+  `4.6515e-6` versus QA/QP `5.0733e-3/5.1441e-3`. Poincare is nested and both
+  direct and DESC colored contours show clear QH bands. Explicit CPU-P107 DESC
+  remained nested and reduced normalized force mean/P95/max from
+  `1.2013/1.7850/3.5088` to `9.646e-4/2.106e-3/6.146e-3`; it hit the 50-step
+  limit with `optimizer_success=false`, so physical acceptance passed but
+  strict DESC convergence did not. Relative to iteration 574, volume rose
+  `2.07%`, face QH error fell `20.95%`, and final DESC force mean fell `33.96%`.
+  Frozen artifacts and the readable acceptance are in
+  `reports/assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/` and
+  section 19 of `reports/qh_score_throughput_and_continuous_surface_plan.md`.
+  Feature/main report commits are `6352b66/9dc9237`. All jobs are complete,
+  the queue is empty, and no project process remains.
 - On 2026-08-07, P107 two-RTX5090 job `33166` was accepted as a complete native-
   score continuation from iteration 600 through 2000. It restored both
   latents, both Adam moments, Adam step, RNG states, and the prefetched endpoint
@@ -60,8 +82,10 @@ once the task is accepted.
   artifacts and analysis were integrated by main commit `591146f` and the same
   commit was atomically synchronized to remote `main`; 18 focused optimizer
   tests passed, the remote queue was empty, and no score/optimizer process
-  remained. This best has not received full alpha+nu/LS/Newton/DESC evaluation
-  and must not replace the physically accepted iteration-574 sample yet.
+  remained. Its later full alpha+nu/LS/Newton/DESC evaluation is accepted in
+  section 19 and the first snapshot item above; it now replaces iteration 574
+  as the highest-score physically accepted sample, while the advisor deck's
+  explicitly frozen iteration-574 example remains unchanged.
   Initial job `33163` remains invalid; feature commit `3a7a2bb` and main commit
   `7ba25c1` fixed its resume-axis-hint bug without relaxing the strict
   consistency gate.

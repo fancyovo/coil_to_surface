@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-06 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-07 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,22 +38,29 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
-- On 2026-08-06, P107 two-RTX5090 job `33166` began an exact continuation of
-  the accepted beta1 `0.7` run from iteration 600 to target iteration 2000.
-  The immutable source is
-  `runs/score_fast_beta1_long_20260806_v2/beta1_0p7`; the continuation root is
-  `runs/score_fast_beta1_0p7_continue2000_20260806`, with its old summary
-  preserved as `summary_step0600.json`. It restores both latents, both Adam
-  moments, Adam step 588, RNG states, and the prefetched endpoint batch. At
-  stability check it had reached iteration 605 with all endpoints `ok`, a
-  pipeline cache hit, and empty stderr; expected additional wall time is about
-  2 h 6 min at 5.44 s/step. Initial job `33163` is invalid and exited before
-  iteration 601 because resume validation globally re-searched the magnetic
-  axis and scored `92.35871` instead of the saved continuation score
-  `92.32032`. Feature commit `3a7a2bb` and main commit `7ba25c1` fix resume
-  validation by applying the saved trajectory's magnetic-axis hint while
-  retaining the strict consistency gate. Do not use job `33163` as an
-  optimization result.
+- On 2026-08-07, P107 two-RTX5090 job `33166` was accepted as a complete native-
+  score continuation from iteration 600 through 2000. It restored both
+  latents, both Adam moments, Adam step, RNG states, and the prefetched endpoint
+  batch under beta `(0.7,0.999)`, LR `0.01`, perturbation `0.005`, pipelined
+  FP32 RK4-128, central two-direction score finite differences, continuous
+  score, and strict axis continuation. The final/best scores are
+  `92.9307316830/93.0409329399`; the best is iteration 1945 and best.json has
+  SHA-256 `80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d`.
+  Relative to the 600-step running best, the gain is `+0.658293`; the final
+  100/200/400-step running-best gains are `0.05344/0.11663/0.13671`, so the run
+  has diminishing returns but is not strictly converged. The dominant changes
+  from iteration 574 are volume-QS `+1.234` and coil `+2.051`, while surface
+  score falls `0.448`; native QH error per helicity falls 31.5% to
+  `1.1471e-3`, iota remains nonzero at `1.4612`, and native volume is nearly
+  unchanged. Additional iteration 601--2000 wall time was `7909.26 s`; score
+  evaluation used 73.3% and flow decode 21.5%, with no extreme long tail.
+  Frozen evidence is under
+  `reports/assets/qh_score_fast_beta1_0p7_continue2000_20260807/` and section 18
+  of `reports/qh_score_throughput_and_continuous_surface_plan.md`. This best has
+  not received full alpha+nu/LS/Newton/DESC evaluation and must not replace the
+  physically accepted iteration-574 sample yet. Initial job `33163` remains
+  invalid; feature commit `3a7a2bb` and main commit `7ba25c1` fixed its resume-
+  axis-hint bug without relaxing the strict consistency gate.
 - On 2026-08-06, the validated continuous-score latent Adam workflow was
   promoted from branch `score-fast-continuation` (delivery commit `ff0ffb5`) to
   local `main` by non-fast-forward merge `f5675c5`, and exposed through

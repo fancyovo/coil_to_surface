@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/scc/pb24511935/local_surface_evaluator_worktrees/score-fast-continuation/scripts/alpha_clebsch_ls_experiment.py", line 587, in <module>
+    main()
+  File "/home/scc/pb24511935/local_surface_evaluator_worktrees/score-fast-continuation/scripts/alpha_clebsch_ls_experiment.py", line 391, in main
+    points = sample_volume_points(model, volume_config, device=args.device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/scc/pb24511935/local_surface_evaluator_worktrees/score-fast-continuation/stellarator_eval/volume_qs.py", line 317, in sample_volume_points
+    raise RuntimeError(
+RuntimeError: surface-volume sampler produced 173109 valid points, fewer than the fixed-budget minimum 180000

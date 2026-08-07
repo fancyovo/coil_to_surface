@@ -1117,7 +1117,7 @@ $\iota(\rho)$：
 
 新的总分增益主要来自更低的体微分 QH 误差和更好的线圈工程性质，而不是靠缩小磁面或把 $\iota$ 推向零。快速评分器中的 QH 误差每螺旋周期从 $1.6743\times10^{-3}$ 降到 $1.1471\times10^{-3}$，下降约 31.5%；$\iota$ 从 1.5206 变为 1.4612，仍处于 QH 门控满分范围。连续磁面的逆纵横比从 0.032005 变为 0.032115，快速体积诊断从 $0.021446$ 变为 $0.021506\,\mathrm{m}^3$，基本持平。surface 分量反而下降 0.4484，说明优化并非所有物理代理量同时单调改善。
 
-这仍然只是 C++/CUDA 连续原生 score 的分解。第 1945 步尚未运行样本自适应 $\psi$、GPU $\alpha+\nu$、标准 LS/Newton 和 DESC，因此不能由上述体积诊断推断其最大标准 Boozer 面、面 QH error 或 DESC 残差一定优于第 574 步已经完整验收的样本。
+这仍然只是 C++/CUDA 连续原生 score 的分解，单靠本节不能推断最大标准 Boozer 面、面 QH error 或 DESC 残差。后续完整物理评估已经执行，独立结果见第 19 节。
 
 ### 18.4 鲁棒性和耗时
 
@@ -1125,4 +1125,160 @@ $\iota(\rho)$：
 
 新增部分墙钟为 `7909.26 s`，即 2 h 11 min 49 s，平均每个目标迭代 `5.649 s`；只统计迭代内部时，均值/P95/最大值为 `5.376/6.069/7.343 s`，没有极端长尾。新增 flow 与原生 score 墙钟分别为 `1702.63 s` 和 `5798.76 s`，约占新增总墙钟的 21.5% 和 73.3%，瓶颈仍是原生 score。作业结束后两张 RTX 5090 均为 0% 利用率、2 MiB 显存占用，验收时队列为空，也没有残留优化器或评分器进程。
 
-机器可读证据位于 [本轮验收资产目录](assets/qh_score_fast_beta1_0p7_continue2000_20260807/)，包括完整 history、manifest、summary、状态文件、关键轨迹 600/1945/2000、GPU 前后状态、原始日志、[分析摘要](assets/qh_score_fast_beta1_0p7_continue2000_20260807/analysis/acceptance_summary.json) 和 [检查点表](assets/qh_score_fast_beta1_0p7_continue2000_20260807/analysis/checkpoints.csv)。本轮接受 `93.0409329` 作为当前 native-score 最高结果；若要把它替换为新的物理基准样本，下一步必须对第 1945 步执行既定完整评估。
+机器可读证据位于 [本轮验收资产目录](assets/qh_score_fast_beta1_0p7_continue2000_20260807/)，包括完整 history、manifest、summary、状态文件、关键轨迹 600/1945/2000、GPU 前后状态、原始日志、[分析摘要](assets/qh_score_fast_beta1_0p7_continue2000_20260807/analysis/acceptance_summary.json) 和 [检查点表](assets/qh_score_fast_beta1_0p7_continue2000_20260807/analysis/checkpoints.csv)。本轮接受 `93.0409329` 作为当前 native-score 最高结果；其后续完整物理评估见第 19 节。
+
+## 19. 2000 步 best 版本的完整物理评估
+
+### 19.1 输入身份、score 分解和总判断
+
+本节评估第 18 节中第 1945 步取得的历史最佳点，而不是第 2000 步的最终当前点。冻结输入为 [input_best.json](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/input_best.json)，SHA-256 为 `80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d`。它是 $N_{\mathrm{fp}}=4$、3 根独立基线圈的 QH 位型，原生连续 score 为 `93.0409329399`。
+
+| 原生 score 分量 | 分数 |
+|---|---:|
+| 磁轴 | 96.9267 |
+| $\psi$ | 99.2485 |
+| 连续磁面 | 82.6934 |
+| $\alpha,\iota$ 坐标 | 90.8966 |
+| 体 QH | 96.7909 |
+| $\iota$ | 100.0000 |
+| 线圈工程 | 67.6532 |
+
+快速评分器中的体 QH 误差为 $1.14705\times10^{-3}$ 每个螺旋周期，快速坐标拟合给出 $\iota=1.46118$。这两个量只属于优化用的稠密体采样，不等于后文标准磁面上的 QS error。
+
+完整评估的总判断是：**该 best 版本通过了磁面和 QH 的物理验收。** 样本自适应流程找到三个体积单调增加的标准 Boozer 面，最大通过面为 $s=0.49$，体积为 $0.06723\,\mathrm{m}^3$；标准 LS/Newton 后的稠密相对残差为 $1.85\times10^{-5}$，面 QH error 为 $4.65\times10^{-6}$。Poincare 和两套 $|B|$ 等高线均支持嵌套且显著 QH。DESC 初态和终态都保持嵌套，并把独立归一化力残差均值从 `1.2013` 降到 $9.65\times10^{-4}$。限制仍然是 DESC 在 50 次迭代上限停止，故物理残差通过，但优化器没有严格收敛。
+
+### 19.2 样本独立的 $a$ 与外层磁面选择
+
+本轮没有沿用第 574 步样本的 $a$ 或 $s$。首先对当前线圈独立拟合四个源 $\psi$ 模型：
+
+| $a$ / m | 训练 RMS | 验证 RMS | 角度误差 P95 | $s=0.49$ 平均半径 / m | 单作业耗时 / s |
+|---:|---:|---:|---:|---:|---:|
+| 0.04 | $1.8473\times10^{-4}$ | $1.8528\times10^{-4}$ | $1.5440\times10^{-5}$ | 0.02838 | 10.80 |
+| 0.05 | $2.0126\times10^{-4}$ | $2.0306\times10^{-4}$ | $2.1136\times10^{-5}$ | 0.03559 | 9.55 |
+| 0.06 | $2.2464\times10^{-4}$ | $2.2828\times10^{-4}$ | $2.7896\times10^{-5}$ | 0.04290 | 9.55 |
+| 0.08 | $2.9615\times10^{-4}$ | $3.0600\times10^{-4}$ | $4.5138\times10^{-5}$ | 0.05788 | 9.56 |
+
+四个模型的 $s=0.49$ 快速拓扑筛选均通过，但只有 `a=0.08` 能覆盖到平均半径 `0.05788 m`、最大半径 `0.07192 m` 的同一层面，同时保持 $\psi$ 验证误差在 $3.1\times10^{-4}$。其 $s=0.64$ 相对漂移已增至 `0.02530`，所以选择 `a=0.08`。这里仍是“精度合格前提下优先覆盖较大磁面”，不是把 $a$ 固定成项目规则。
+
+随后四个 $s$ 候选并行走 GPU FP32 $\alpha+\nu$ 和标准 LS/Newton：
+
+| $s$ | 标准结果 | $|V|$ / $\mathrm{m}^3$ | $\iota$ | 结论 |
+|---:|---|---:|---:|---|
+| 0.24 | 通过 | 0.0323746 | 1.48230 | 内层有效面 |
+| 0.36 | 通过 | 0.0493338 | 1.48741 | 中层有效面 |
+| 0.49 | 通过 | 0.0672290 | 1.49288 | 最大通过面 |
+| 0.64 | 固定预算前停止 | - | - | 最近外层失败 |
+
+前三个面体积严格递增，支持它们位于同一嵌套分支。$s=0.64$ 的 GPU 射线采样只获得 `173109` 个有效点，低于固定的 `180000` 点预算，立即失败而没有进入长迭代；没有回退到旧 Cartesian 或 CPU 预处理。作业身份、预期失败日志和完整选择结果分别见 [作业验收表](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/accepted_jobs.tsv)、[原始日志](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/job_logs/) 和 [selection.json](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/selection.json)。
+
+### 19.3 从 $\psi$ 到标准 Boozer 面
+
+选中的 $s=0.49$ 候选采用 $L=12,M=12,N=16$ 的联合 $\alpha,\iota$ 线性最小二乘。GPU 射线采样从 `225792` 个候选点中获得 `207046` 个有效点，固定使用 `120000` 个训练点和 `60000` 个验证点。磁场、磁通和坐标采样走 C++/CUDA FP32，设计矩阵和 QR 走 PyTorch CUDA FP32 `gels`。$\alpha$ 总耗时 `111.14 s`，其中体采样 `69.44 s`，实际 QR 求解 `0.66 s`。验证相对 $L_2$ 为 `0.09207`，$1+\partial_\theta\lambda$ 的最小值为 `0.3444`，不可逆点比例为 0，拟合 $\iota=1.45805$。
+
+$\alpha$ 的磁通标定摘要仍有一个必须保留的告警：边界残差使 `quality_ok=false`。它没有造成标定多项式非单调，也没有越过坐标可逆性门；更重要的是，后续标准 LS/Newton 和独立稠密残差均通过。因此最终面不是通过忽略这个告警直接接受的，但也不能写成所有 $\alpha$ 辅助检查都通过。
+
+$\nu$ 使用 12 阶、312 个模，在三层上均未跳过近共振模：
+
+| $\rho$ | $\nu$ 拟合相对 $L_2$ | 映射 Jacobian | 修正后 Simsopt 相对 $L_2$ |
+|---:|---:|---:|---:|
+| 0.5 | $5.12\times10^{-4}$ | $[0.713,1.315]$ | $1.57\times10^{-3}$ |
+| 0.8 | $5.06\times10^{-4}$ | $[0.686,1.336]$ | $1.39\times10^{-3}$ |
+| 1.0 | $6.25\times10^{-3}$ | $[0.657,1.340]$ | $1.625\times10^{-2}$ |
+
+$\nu$ 总耗时 `82.21 s`。外层比内层困难，但映射仍可逆。进入标准求解时，外层稠密相对 $L_2$ 为 `0.0162519`，法向磁场正弦 P95 为 `0.008845`。标准 LS 在 `5.78 s` 内把内部残差范数降到 $1.92\times10^{-13}$，Newton 在第 0 次迭代即通过，耗时 `0.18 s`。最终 $97\times97$ 独立稠密验证为：
+
+| 指标 | $\alpha+\nu$ 初值 | 标准 LS/Newton 后 |
+|---|---:|---:|
+| 相对 $L_2$ | 0.0162519 | $1.8465\times10^{-5}$ |
+| 点残差 P95 | 0.03536 | $3.7941\times10^{-5}$ |
+| 法向磁场正弦 P95 | 0.008845 | $3.1005\times10^{-5}$ |
+| $\iota$ | 1.45805 | 1.49288 |
+
+最终面在源 $\psi$ 模型上的平均标号为 `0.48045`，目标为 `0.49`；线性化法向距离 P95 为 `0.765 mm`。这是当前 $\psi$ 标定与标准面之间仍可见的系统差异，但不改变标准求解和稠密物理残差通过的结论。最终面文件为 [boozer_standard.npz](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/candidates/s_0p49/standard_rho_1/boozer_standard.npz)，SHA-256 为 `4f4c4f522d8ec7b2d8d4b7de64421386b103af6afd734040e070fa6fc8fe43b6`。
+
+### 19.4 直接物理诊断和面 QS
+
+最终面上 $|B|$ 的最小值、平均值和最大值分别为 `0.67932 T`、`0.76080 T` 和 `0.84363 T`。白底彩色等高线呈现清晰的 QH 斜带，而不是只由数值指标推断 QH：
+
+![标准 Boozer 面上的彩色等高线](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/assets/boozer_b.png)
+
+[交互式 Boozer $|B|$ 等高线](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/assets/boozer_b.html)
+
+同一标准面上的三种面 QS error 为：
+
+| 对称模式 | 面 QS error |
+|---|---:|
+| QA $(1,0)$ | $5.07334\times10^{-3}$ |
+| QH $(1,1)$ | $4.65150\times10^{-6}$ |
+| QP $(0,1)$ | $5.14409\times10^{-3}$ |
+
+QH 分量分别比 QA 和 QP 小约 `1091` 倍和 `1106` 倍，与等高线直观一致。8 条 Poincare 种子轨迹各获得 29 个截面交点，点集位于所选边界内，未见自交面或明显磁岛：
+
+![Poincare 截面与选择边界](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/assets/poincare.png)
+
+三维图包含 3 根独立基线圈按 $N_{\mathrm{fp}}=4$ 和恒星器对称展开后的完整 24 根线圈，以及选中的完整磁面：
+
+![完整线圈与最大通过磁面](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/assets/coils_surface.png)
+
+[交互式完整线圈与磁面](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/assets/coils_surface.html)
+
+### 19.5 DESC 完整评估
+
+DESC 显式运行在 CPU-P107，日志中的 JAX CPU backend 告警是预期配置，不是 GPU 路径失败后的擅自回退。输入边界使用 `MPOL=12`、`NTOR=12`，平衡内部使用 $L=M=N=8$。初态和终态均通过嵌套检查。独立归一化力残差如下：
+
+| 阶段 | mean | P95 | max |
+|---|---:|---:|---:|
+| DESC 初值 | 1.20129 | 1.78499 | 3.50878 |
+| DESC 终态 | $9.6463\times10^{-4}$ | $2.1057\times10^{-3}$ | $6.1461\times10^{-3}$ |
+
+DESC 求解耗时 `146.05 s`，最终 cost 为 $3.3093\times10^{-4}$、optimality 为 $2.9783\times10^{-4}$。它在第 50 次迭代达到默认上限，`optimizer_success=false`。因此验收结论是“嵌套保持且物理残差下降约三个数量级”，不是“DESC 严格收敛”。
+
+以下逐一引用本轮 DESC 实际生成的全部 8 张图。
+
+![DESC 初始边界](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/boundary.png)
+
+![DESC Boozer 谱模](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/boozer_modes.png)
+
+![DESC 终态 Boozer 坐标下的彩色等高线](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/boozer_B.png)
+
+![DESC QA 分量随 rho 的变化](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/qs_QA.png)
+
+![DESC QH 分量随 rho 的变化](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/qs_QH.png)
+
+![DESC QP 分量随 rho 的变化](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/qs_QP.png)
+
+![DESC iota 剖面](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/iota.png)
+
+完整 DESC 摘要、输入和平衡文件分别为 [summary.json](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/summary.json)、[input.check](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/input.check) 和 [equilibrium.h5](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/full/desc/equilibrium.h5)。平衡文件 SHA-256 为 `b3c9e64d43d6db93686ff7514b331af8c634799f87c5060892fcf8c1bba3871c`。
+
+### 19.6 相对第 574 步样本的实质提分与耗时
+
+第 1945 步和第 574 步恰好都独立选择了 `a=0.08`、`s=0.49`，因此可以在相同磁面口径上比较；这不意味着以后固定使用这些参数。
+
+| 最终物理量 | 第 574 步 | 第 1945 步 | 变化 |
+|---|---:|---:|---:|
+| 原生 score | 92.3826 | 93.0409 | +0.6583 |
+| 最大通过面体积 / $\mathrm{m}^3$ | 0.0658637 | 0.0672290 | +2.07% |
+| 面 QH error | $5.8840\times10^{-6}$ | $4.6515\times10^{-6}$ | 降低 20.95% |
+| 标准面稠密相对 $L_2$ | $1.8883\times10^{-5}$ | $1.8465\times10^{-5}$ | 降低 2.21% |
+| 法向磁场正弦 P95 | $3.1950\times10^{-5}$ | $3.1005\times10^{-5}$ | 降低 2.96% |
+| DESC 终态力残差 mean | $1.461\times10^{-3}$ | $9.646\times10^{-4}$ | 降低 33.96% |
+| 标准面 $\iota$ | 1.54967 | 1.49288 | 保持健康 QH 量级 |
+
+因此新增 1400 步带来的 `0.6583` 分不是只有快速代理分数上涨：最大通过面略增大，面 QH error 下降约 21%，DESC 终态独立力残差也进一步下降。与此同时，$\iota$ 没有被推向 0，故不是早期圆线圈退化漏洞的重现。
+
+| 关键阶段 | 耗时 / s | 主要后端 |
+|---|---:|---|
+| 选中源 $\psi$ 作业 | 9.56 | C++/CUDA FP32 QR |
+| $\alpha$ | 111.14 | C++/CUDA + GPU FP32 QR |
+| $\nu$ | 82.21 | GPU 表面/磁场 + 小型谱运算 |
+| 标准 LS + Newton | 5.96 | Simsopt CPU |
+| 直接可视化 | 31.56 | CPU-P107 下游作业 |
+| DESC 阶段 | 227.54 | 显式 CPU-P107 |
+| 下游作业总计 | 284.89 | 可视化 + DESC |
+
+四个源 $\psi$ 和四个面候选均并行运行，不能把候选作业耗时相加。按选中路径的数值阶段相加，关键路径约为 `495 s`，即 `8.25 min`，不含排队和少量作业包装开销；其中 DESC 和 $\alpha+\nu$ 仍是完整评估的主要成本。所有 GPU 作业的 postflight 均为 0% 利用率、2 MiB 显存占用。验收时 Slurm 队列为空，未发现遗留优化器、评分器或求解进程。
+
+本轮完整冻结资产位于 [交付目录](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/)，其中 [机器可读验收摘要](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/analysis/acceptance_summary.json)、[哈希清单](assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/hashes.sha256)、作业日志、NPZ、H5、PNG 和 HTML 均已保留。第 1945 步 best 现在可以替代第 574 步，作为当前已完成全链路物理验收的最高分样本；advisor presentation 的冻结示例仍按既定要求保持第 574 步不变。

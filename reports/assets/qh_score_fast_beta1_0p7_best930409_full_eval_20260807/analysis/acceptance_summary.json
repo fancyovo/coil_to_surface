@@ -1,0 +1,110 @@
+{
+  "status": "physically_accepted_desc_iteration_limited",
+  "date": "2026-08-07",
+  "input": {
+    "iteration": 1945,
+    "native_score": 93.04093293994109,
+    "sha256": "80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d",
+    "nfp": 4,
+    "n_base_coils": 3
+  },
+  "native_score_components": {
+    "axis": 96.92667577359924,
+    "psi": 99.24854212543399,
+    "surface": 82.69339342877757,
+    "coordinate": 90.89656138751826,
+    "volume_qs": 96.7908623938392,
+    "iota": 100.0,
+    "coil": 67.65316828744656
+  },
+  "selection": {
+    "source_a_m": 0.08,
+    "accepted_s": [0.24, 0.36, 0.49],
+    "selected_s": 0.49,
+    "nearest_outer_failure_s": 0.64,
+    "outer_failure": "gpu-ray produced 173109 valid points below the fixed 180000-point budget",
+    "accepted_volumes_m3": [0.03237458513903025, 0.04933375665578185, 0.06722896253803319],
+    "accepted_iota": [1.48230438, 1.48740911, 1.4928846643264115]
+  },
+  "alpha": {
+    "backend": "C++/CUDA fp32 field and flux; PyTorch CUDA fp32 QR",
+    "orders": [12, 12, 16],
+    "candidate_points": 225792,
+    "available_points": 207046,
+    "train_points": 120000,
+    "validation_points": 60000,
+    "validation_relative_l2": 0.09207021983058082,
+    "one_plus_lambda_theta_min": 0.34442021768321296,
+    "noninvertible_fraction": 0.0,
+    "iota": 1.4580518007278442,
+    "time_s": 111.14267754741013
+  },
+  "nu": {
+    "selected_order": 12,
+    "mode_count": 312,
+    "skipped_resonances": 0,
+    "outer_fit_relative_l2": 0.00625098261204758,
+    "outer_corrected_relative_l2": 0.016251898942450053,
+    "outer_mapping_jacobian": [0.6573141154866583, 1.339743231592885],
+    "time_s": 82.21487326547503
+  },
+  "standard_surface": {
+    "ls_success": true,
+    "newton_success": true,
+    "newton_iteration": 0,
+    "iota": 1.4928846643264115,
+    "G": -6.943556724092815,
+    "abs_volume_m3": 0.06722896253803319,
+    "dense_relative_l2": 1.8464881140271927e-05,
+    "dense_point_relative_p95": 3.794070990251864e-05,
+    "dense_normal_B_sine_p95": 3.1004948664650636e-05,
+    "surface_qs": {
+      "QA": 0.0050733382171198075,
+      "QH": 4.651504826981273e-06,
+      "QP": 0.005144085142950782
+    },
+    "sha256": "4f4c4f522d8ec7b2d8d4b7de64421386b103af6afd734040e070fa6fc8fe43b6"
+  },
+  "visualization": {
+    "B_tesla_min_mean_max": [0.6793219186583791, 0.7607967506566707, 0.8436321490792403],
+    "poincare_hit_counts": [29, 29, 29, 29, 29, 29, 29, 29],
+    "nested_visual_check": true
+  },
+  "desc": {
+    "backend": "explicit CPU-P107",
+    "nested_initial": true,
+    "nested_final": true,
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_iterations": 50,
+    "optimizer_cost": 0.00033092961555318784,
+    "optimizer_optimality": 0.0002978331500519363,
+    "initial_force_mean_p95_max": [1.2012876577460356, 1.78499394794689, 3.508779319459592],
+    "final_force_mean_p95_max": [0.0009646337797971499, 0.002105745681340875, 0.006146137003286478],
+    "solve_time_s": 146.05093816295266,
+    "stage_time_s": 227.5448911320418,
+    "equilibrium_sha256": "b3c9e64d43d6db93686ff7514b331af8c634799f87c5060892fcf8c1bba3871c"
+  },
+  "timing_s": {
+    "source_psi_selected_job": 9.557725012302399,
+    "alpha": 111.14267754741013,
+    "nu": 82.21487326547503,
+    "standard_ls": 5.77704862691462,
+    "standard_newton": 0.17872514016926289,
+    "downstream_total": 284.88581250049174,
+    "visualization": 31.560419976711273,
+    "desc": 227.5448911320418
+  },
+  "comparison_to_iteration_574": {
+    "native_score_gain": 0.6582932587295574,
+    "volume_increase_percent": 2.0728423356004585,
+    "surface_QH_reduction_percent": 20.945925713338177,
+    "dense_relative_l2_reduction_percent": 2.21242232665122,
+    "normal_B_p95_reduction_percent": 2.9588532775932652,
+    "desc_final_force_mean_reduction_percent": 33.96497951108942
+  },
+  "warnings": [
+    "Alpha flux-calibration quality_ok is false because of its boundary residual; the independent standard LS/Newton surface nevertheless passes all downstream acceptance checks.",
+    "DESC achieved a large physical residual reduction but did not satisfy its strict optimizer stopping condition before the 50-iteration cap."
+  ]
+}

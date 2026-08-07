@@ -58,8 +58,9 @@ once the task is accepted.
   Frozen artifacts and the readable acceptance are in
   `reports/assets/qh_score_fast_beta1_0p7_best930409_full_eval_20260807/` and
   section 19 of `reports/qh_score_throughput_and_continuous_surface_plan.md`.
-  Feature/main report commits are `6352b66/9dc9237`. All jobs are complete,
-  the queue is empty, and no project process remains.
+  Feature/main report commits are `6352b66/9dc9237`; local and USTC remote
+  `main` were atomically synchronized through memory commit `4051ef5`. All
+  jobs are complete, the queue is empty, and no project process remains.
 - On 2026-08-07, P107 two-RTX5090 job `33166` was accepted as a complete native-
   score continuation from iteration 600 through 2000. It restored both
   latents, both Adam moments, Adam step, RNG states, and the prefetched endpoint

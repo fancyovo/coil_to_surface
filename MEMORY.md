@@ -63,7 +63,18 @@ once the task is accepted.
   `reports/assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/` and
   sections 20--21 of `reports/qh_score_throughput_and_continuous_surface_plan.md`.
   Initial job `33691` remains invalid because its idle-GPU gate rejected a busy
-  allocated GPU; never relax that gate.
+ allocated GPU; never relax that gate.
+- Active P107 job `33799` started on idle `anode03` at 2026-08-08 10:31
+  China time to resume the complete iteration-5000 state through cumulative
+  iteration `10000`. It uses two RTX5090s, 8 CPUs, LR `0.01`, beta
+  `(0.7,0.999)`, two central directions, pipelined FP32 RK4-128, continuous
+  score, and the same score library SHA `387495...`. Resume audit records
+  `saved_iteration=5000` and `requested_iterations=10000`; iterations
+  5001--5005 were produced at 4.8--6.9 s each with empty stderr and idle-GPU
+  preflight. Output is
+  `~/local_surface_evaluator_worktrees/score-fast-continuation/runs/score_fast_beta1_0p7_continue10000_20260808/`.
+  Expected completion is about 18:25 China time; the 10-hour allocation ends
+  at 20:31.
 - On 2026-08-07, full physical evaluation of the 2000-step beta1 `0.7` best
   completed for iteration `1945`, native score `93.0409329399`, and input
   SHA-256 `80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d`.

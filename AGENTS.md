@@ -14,3 +14,9 @@
    authentication tokens, private keys, or one-time codes in repository files.
 5. Before the final response, verify that any important work completed in the
    turn is reflected in `MEMORY.md`.
+6. `MEMORY_archive_20260808.md` is the immutable full history from before the
+   2026-08-08 compaction. Do not update it or read it by default; consult it only
+   when `MEMORY.md` or a current report points to historical detail.
+7. Keep `MEMORY.md` below a soft limit of 500 lines. Active work may be detailed,
+   but completed jobs must be collapsed to outcomes and report pointers. Do not
+   recreate a full dated change log in the living memory.

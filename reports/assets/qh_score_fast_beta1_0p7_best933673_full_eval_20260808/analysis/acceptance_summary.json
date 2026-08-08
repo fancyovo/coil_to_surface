@@ -1,0 +1,87 @@
+{
+  "status": "physically_accepted_desc_iteration_limited",
+  "date": "2026-08-08",
+  "input": {
+    "iteration": 4341,
+    "native_score": 93.36726533369695,
+    "sha256": "d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29",
+    "nfp": 4,
+    "n_base_coils": 3
+  },
+  "native_score_components": {
+    "axis": 96.4238201114711,
+    "psi": 99.39496499785514,
+    "surface": 83.56582785152312,
+    "coordinate": 91.39778644245405,
+    "volume_qs": 97.40686021844303,
+    "iota": 100.0,
+    "coil": 67.22680127025666
+  },
+  "selection": {
+    "sample_adaptive": true,
+    "source_a_m": 0.08,
+    "accepted_s": [0.24, 0.36, 0.49],
+    "selected_s": 0.49,
+    "nearest_outer_failure_s": 0.64,
+    "outer_failure": "gpu-ray produced 174967 valid points below the fixed 180000-point budget"
+  },
+  "standard_surface": {
+    "ls_success": true,
+    "newton_success": true,
+    "newton_iteration": 0,
+    "iota": 1.537582838346622,
+    "G": -6.9435564085366295,
+    "abs_volume_m3": 0.06587874593548317,
+    "dense_relative_l2": 8.737133755658257e-06,
+    "dense_normal_B_sine_p95": 1.1583489336259358e-05,
+    "surface_qs": {
+      "QA": 0.00490958749963951,
+      "QH": 2.99653776168282e-06,
+      "QP": 0.00497149942944853
+    },
+    "sha256": "8d529cb871f8c6c6a468f0df4f2517996e8d2e0b05ac18e6a83187dea33a46bf"
+  },
+  "visualization": {
+    "B_tesla_min_mean_max": [0.6693001316357386, 0.7473339684083674, 0.8287804643815819],
+    "poincare_hit_counts": [29, 29, 29, 28, 28, 28, 27, 27],
+    "nested_visual_check": true
+  },
+  "desc": {
+    "backend": "explicit CPU-P107",
+    "nested_initial": true,
+    "nested_final": true,
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_iterations": 50,
+    "optimizer_cost": 0.000269536614833782,
+    "optimizer_optimality": 0.0003350348710651306,
+    "initial_force_mean_p95_max": [1.2561858613162953, 1.7427493706970327, 2.754039771820627],
+    "final_force_mean_p95_max": [0.0007670003898791107, 0.0017054331067947086, 0.004822113169491674],
+    "solve_time_s": 139.31162901595235,
+    "stage_time_s": 220.15722018107772,
+    "equilibrium_sha256": "a0aed0d88f7dea3a36616e9d145c0b2e07d9deb997d1fb411ff8ce2b23adb09e"
+  },
+  "timing_s": {
+    "source_psi_selected_job": 8.034696158021688,
+    "alpha": 104.63035767897964,
+    "nu": 76.8875190615654,
+    "standard_ls": 5.45509447902441,
+    "standard_newton": 0.1743934601545334,
+    "downstream_total": 273.49196227639914,
+    "visualization": 30.8169027864933,
+    "desc": 220.15722018107772,
+    "critical_numeric_sum": 468.674023114145
+  },
+  "comparison_to_iteration_1945": {
+    "native_score_gain": 0.32633239375586,
+    "volume_change_percent": -2.0083853023705,
+    "surface_QH_reduction_percent": 35.5791754895908,
+    "dense_relative_l2_reduction_percent": 52.6824262269278,
+    "normal_B_p95_reduction_percent": 62.639869326841,
+    "desc_final_force_mean_reduction_percent": 20.4879192556992
+  },
+  "warnings": [
+    "Alpha flux calibration quality_ok is false at the outer boundary; the independent standard LS/Newton surface passes every downstream acceptance check.",
+    "DESC reduced the physical residual strongly and remained nested, but hit the 50-iteration cap before its strict optimizer stopping condition."
+  ]
+}

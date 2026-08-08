@@ -1308,7 +1308,9 @@ DESC 求解耗时 `146.05 s`，最终 cost 为 $3.3093\times10^{-4}$、optimalit
 | 4500 | 93.04811 | 93.36727 | $1.3080\times10^{-3}$ | 1.48505 |
 | 5000 | 93.07247 | 93.36727 | $1.0960\times10^{-3}$ | 1.57029 |
 
-新增区间一共刷新 running best 37 次。最后 1000 步仍取得 `0.12234` 的 best 增益，但第 4341 步之后连续 659 步没有再刷新；最后 100、200、400、500 和 659 步的 running-best 增益均为 0。与此同时，最后 200 步当前 score 的均值和标准差为 `92.71098 +/- 0.27074`，更新尺度也没有衰减到 0。这说明当前固定学习率 `0.01` 下已经进入明显的平台和随机游走区：可以说“5000 步预算内的边际收益已经很低”，但不能说梯度或参数在数学意义上严格收敛。继续原样增加步数仍可能偶然刷新 best，不过预期单位算力收益已经明显低于 2000 到 4341 步这一段。
+新增区间一共刷新 running best 37 次。最后 1000 步仍取得 `0.12234` 的 best 增益，但第 4341 步之后连续 659 步没有再刷新；最后 100、200、400、500 和 659 步的 running-best 增益均为 0。与此同时，最后 200 步当前 score 的均值和标准差为 `92.71098 +/- 0.27074`，更新尺度也没有衰减到 0。
+
+这些数据只能说明轨迹末端暂时处在平台，**不能作为已经收敛或边际收益很低的证据**。这条轨迹此前已经出现过更长的平台，随后又发生一段阶跃式提升；当前 best 后的 659 步平台反而比前一段长平台短。固定学习率下的当前 score 仍在 best 周围波动，也不能用“梯度趋于零”的收敛判据解释。因此合理结论是：优化呈现“长平台后偶尔跃升”的稀疏刷新模式，5000 步尚不足以判断极限；继续保持相同状态和超参数跑到 10000 步，是检验当前平台能否再次被突破的直接实验。
 
 ### 20.3 新 best 的提分来源
 
@@ -1343,4 +1345,100 @@ DESC 求解耗时 `146.05 s`，最终 cost 为 $3.3093\times10^{-4}$、optimalit
 
 原生 score 仍占新增墙钟约 72.2%，flow 约占 19.9%；最大单步只比内部均值高约 43%，没有极端长尾。验收时 Slurm 队列为空，stderr 为 0 字节，未遗留优化器或评分器进程。
 
-机器可读证据位于 [本轮冻结资产目录](assets/qh_score_fast_beta1_0p7_continue5000_20260808/)，包括完整 history、manifest、summary、恢复事件、最终优化状态、关键轨迹 1945/2000/4341/5000、GPU 前后状态、原始日志、[验收摘要](assets/qh_score_fast_beta1_0p7_continue5000_20260808/analysis/acceptance_summary.json) 和 [检查点表](assets/qh_score_fast_beta1_0p7_continue5000_20260808/analysis/checkpoints.csv)。本轮接受 `93.3672653` 作为新的 native-score 最高结果；它尚未进行第 19 节标准的完整物理评估。
+机器可读证据位于 [本轮冻结资产目录](assets/qh_score_fast_beta1_0p7_continue5000_20260808/)，包括完整 history、manifest、summary、恢复事件、最终优化状态、关键轨迹 1945/2000/4341/5000、GPU 前后状态、原始日志、[验收摘要](assets/qh_score_fast_beta1_0p7_continue5000_20260808/analysis/acceptance_summary.json) 和 [检查点表](assets/qh_score_fast_beta1_0p7_continue5000_20260808/analysis/checkpoints.csv)。本轮接受 `93.3672653` 作为新的 native-score 最高结果；其完整物理评估见第 21 节。
+
+## 21. 第 4341 步 best 的完整物理评估
+
+### 21.1 输入、score 与样本自适应选面
+
+本节评估第 4341 步取得的历史最佳点，而不是第 5000 步的当前点。冻结输入为 [input_best.json](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/input_best.json)，SHA-256 为 `d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29`。它是 $N_{\mathrm{FP}}=4$、3 根独立基线圈的 QH 位型，原生 score 为 `93.3672653`。
+
+| 原生 score 分量 | 分数 |
+|---|---:|
+| axis | 96.4238 |
+| $\psi$ | 99.3950 |
+| surface | 83.5658 |
+| coordinate | 91.3978 |
+| volume QS | 97.4069 |
+| $\iota$ | 100.0000 |
+| coil | 67.2268 |
+
+完整评估没有沿用其他样本的固定半径。先并行测试 `a=0.04/0.05/0.06/0.08`，四组磁轴闭合残差均为 $1.88\times10^{-9}$；随着覆盖半径增大，$\psi$ 验证 RMS 从 $1.40\times10^{-4}$ 增至 $2.11\times10^{-4}$，仍处于可用量级，因此选择覆盖最大的 `a=0.08`。这里的 `a=0.08` 仅是本样本的结果，不是以后样本的固定规则。
+
+随后在该 $\psi$ 上并行测试 `s=0.24/0.36/0.49/0.64`。前三个面的体积严格递增且全部通过标准 LS/Newton；`s=0.64` 的 GPU 射线采样只得到 174,967 个有效点，低于固定的 180,000 点预算，因而立即拒绝。最终选择最大的通过面 `s=0.49`。
+
+| $s$ | 体积 / $\mathrm{m}^3$ | $\iota$ | 稠密相对 $L_2$ | 法向误差 P95 | 面 QH error |
+|---:|---:|---:|---:|---:|---:|
+| 0.24 | 0.0319077 | 1.52609 | $6.01\times10^{-6}$ | $8.40\times10^{-6}$ | $9.67\times10^{-7}$ |
+| 0.36 | 0.0484086 | 1.53162 | $7.27\times10^{-6}$ | $9.94\times10^{-6}$ | $1.81\times10^{-6}$ |
+| **0.49** | **0.0658787** | **1.53758** | **$8.74\times10^{-6}$** | **$1.16\times10^{-5}$** | **$3.00\times10^{-6}$** |
+
+选中面的三种面 QS error 为：QA `0.0049096`、QH `0.0000029965`、QP `0.0049715`。QH 比 QA 和 QP 低约三个数量级，且标准求解在 LS 后已达到要求，Newton 第 0 次检查即通过。最终面文件为 [boozer_standard.npz](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/candidates/s_0p49/standard_rho_1/boozer_standard.npz)，SHA-256 为 `8d529cb871f8c6c6a468f0df4f2517996e8d2e0b05ac18e6a83187dea33a46bf`。
+
+### 21.2 磁面、庞加莱截面与 $|B|$
+
+![最大通过面上的彩色 B 等高线](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/assets/boozer_b.png)
+
+[交互式最大通过面 $|B|$ 等高线](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/assets/boozer_b.html)
+
+直接 Boozer 图中的等高线接近沿 QH 螺旋方向的直线，没有出现此前错误路径中的自交或不连续拼接。面上 $|B|$ 的 min/mean/max 为 `0.66930 / 0.74733 / 0.82878 T`。
+
+![庞加莱截面与选择边界](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/assets/poincare.png)
+
+8 条磁力线在四个截面分别留下 27 到 29 个点；点列位于选择边界内部并形成连续的嵌套截面，没有看到越界、分支跳转或磁岛链。黑线是各环向截面的选择边界，因此四个子图形状和位置不同是预期现象。
+
+![完整线圈与最大通过磁面](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/assets/coils_surface.png)
+
+[交互式完整线圈与磁面](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/assets/coils_surface.html)
+
+### 21.3 DESC 验收
+
+DESC 使用 `M=N=8` 的内部平衡表示、`mpol=ntor=12` 的边界输入和 50 次迭代上限。初态和终态都通过嵌套性检查。求解器因为达到 50 次上限而返回 `success=false`，但不是发散：代价从约 `2379` 降到 `2.6954e-4`，归一化力残差 mean/P95/max 从 `1.2562 / 1.7427 / 2.7540` 降到 `7.6700e-4 / 1.7054e-3 / 4.8221e-3`。
+
+![DESC 初始边界](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/boundary.png)
+
+![DESC Boozer 谱模](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/boozer_modes.png)
+
+![DESC 终态 Boozer 坐标下的彩色等高线](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/boozer_B.png)
+
+![DESC QA 分量随 rho 的变化](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/qs_QA.png)
+
+![DESC QH 分量随 rho 的变化](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/qs_QH.png)
+
+![DESC QP 分量随 rho 的变化](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/qs_QP.png)
+
+![DESC iota 剖面](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/iota.png)
+
+DESC 终态 $|B|$ 等高线保持清晰的 QH 斜直结构；$\iota(\rho)$ 约从 1.5245 平滑增至 1.5348，没有向零退化。完整 [DESC 摘要](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/summary.json)、[输入](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/input.check) 和 [平衡文件](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/full/desc/equilibrium.h5) 均已冻结；平衡文件 SHA-256 为 `a0aed0d88f7dea3a36616e9d145c0b2e07d9deb997d1fb411ff8ce2b23adb09e`。
+
+### 21.4 相对第 1945 步的变化与耗时
+
+第 1945 步和第 4341 步恰好都独立选择 `a=0.08`、`s=0.49`，因此可以在相同标号上比较；这仍不意味着参数应对别的样本固定。
+
+| 最终物理量 | 第 1945 步 | 第 4341 步 | 变化 |
+|---|---:|---:|---:|
+| 原生 score | 93.0409 | 93.3673 | +0.3263 |
+| 最大通过面体积 / $\mathrm{m}^3$ | 0.0672290 | 0.0658787 | -2.01% |
+| 面 QH error | $4.6515\times10^{-6}$ | $2.9965\times10^{-6}$ | 降低 35.58% |
+| 标准面稠密相对 $L_2$ | $1.8465\times10^{-5}$ | $8.7371\times10^{-6}$ | 降低 52.68% |
+| 法向误差 P95 | $3.1005\times10^{-5}$ | $1.1583\times10^{-5}$ | 降低 62.64% |
+| DESC 终态力残差 mean | $9.6463\times10^{-4}$ | $7.6700\times10^{-4}$ | 降低 20.49% |
+| 标准面 $\iota$ | 1.49288 | 1.53758 | 保持健康 QH 量级 |
+
+新的 best 牺牲约 2.0% 最大通过面体积，换来了明显更低的面 QH、标准面残差和 DESC 终态力残差。结合 $\iota$、庞加莱图和完整 $|B|$ 图，这不是缩小到无价值磁面或向圆线圈、$\iota\approx0$ 退化的假提分。
+
+| 关键阶段 | 耗时 / s | 主要后端 |
+|---|---:|---|
+| 选中源 $\psi$ 作业 | 8.03 | C++/CUDA FP32 QR |
+| $\alpha$ | 104.63 | GPU 射线采样、场评估与 FP32 QR |
+| $\nu$ | 76.89 | GPU 表面/场评估 + 312 模 CPU 谱投影 |
+| 标准 LS + Newton | 5.63 | Simsopt CPU |
+| 直接可视化 | 30.82 | CPU-P107 |
+| DESC 阶段 | 220.16 | 显式 CPU-P107 |
+| 下游作业总计 | 273.49 | 可视化 + DESC |
+
+四个源 $\psi$ 和四个面候选分别并行，不能把候选墙钟相加。按选中路径的数值阶段相加，关键路径约 `468.67 s`，即 `7.81 min`，不含排队和少量 Slurm 包装；下游作业实际墙钟为 4 min 38 s。密集体点、磁场和 $\alpha$ QR 没有回退到 legacy Cartesian/CPU 路径；$\nu$ 中只保留了小型谱投影和 Simsopt 表面拟合的 CPU 工作。
+
+完整冻结资产位于 [交付目录](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/)，其中 [机器可读验收摘要](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/analysis/acceptance_summary.json)、[选面记录](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/selection.json)、作业日志、NPZ、H5、PNG 和 HTML 均已保留。结论是：第 4341 步 best 已通过当前标准的完整物理验收，并成为目前已完整验收的最高 native-score 样本；但第 20.2 节所述末端平台仍不足以证明优化已收敛。

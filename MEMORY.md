@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-07 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-08 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,6 +38,26 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- On 2026-08-08, P107 job `33694` completed an exact two-RTX5090 continuation
+  of the beta1 `0.7` optimizer from iteration `2000` to `5000`. It restored the
+  full Adam/RNG/prefetch state and retained LR `0.01`, beta `(0.7,0.999)`, two
+  central score-difference directions, pipelined FP32 RK4-128, continuous
+  score, and strict axis continuation. The new native-score best is
+  `93.3672653337` at iteration `4341`, up `0.326332394` from the 2000-step best;
+  the final current score is `93.0724656421`. Target QH error per helicity at
+  the best fell from `1.14705e-3` to `9.01409e-4`, iota is `1.50557`, and the
+  quick surface volume rose slightly, so this is not the old small-surface or
+  zero-iota loophole. The final 659 steps did not refresh the best: treat this
+  as a practical fixed-LR plateau, not mathematical convergence. The 3000 new
+  steps took `17051.62 s` (5.684 s/target step), with no long tail, empty
+  stderr, idle GPU pre/postflight, and no remaining job. Frozen evidence and
+  the readable acceptance are in
+  `reports/assets/qh_score_fast_beta1_0p7_continue5000_20260808/` and section 20
+  of `reports/qh_score_throughput_and_continuous_surface_plan.md`. This new best
+  has not yet had a full physical evaluation; iteration 1945 / score
+  `93.0409329` remains the highest fully evaluated sample. Initial job `33691`
+  did no optimization and is invalid because its idle-GPU gate rejected an
+  allocated GPU already at 100% utilization. Do not relax that gate.
 - On 2026-08-07, full physical evaluation of the 2000-step beta1 `0.7` best
   completed for iteration `1945`, native score `93.0409329399`, and input
   SHA-256 `80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d`.

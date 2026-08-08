@@ -1442,3 +1442,15 @@ DESC 终态 $|B|$ 等高线保持清晰的 QH 斜直结构；$\iota(\rho)$ 约�
 四个源 $\psi$ 和四个面候选分别并行，不能把候选墙钟相加。按选中路径的数值阶段相加，关键路径约 `468.67 s`，即 `7.81 min`，不含排队和少量 Slurm 包装；下游作业实际墙钟为 4 min 38 s。密集体点、磁场和 $\alpha$ QR 没有回退到 legacy Cartesian/CPU 路径；$\nu$ 中只保留了小型谱投影和 Simsopt 表面拟合的 CPU 工作。
 
 完整冻结资产位于 [交付目录](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/)，其中 [机器可读验收摘要](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/analysis/acceptance_summary.json)、[选面记录](assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/selection.json)、作业日志、NPZ、H5、PNG 和 HTML 均已保留。结论是：第 4341 步 best 已通过当前标准的完整物理验收，并成为目前已完整验收的最高 native-score 样本；但第 20.2 节所述末端平台仍不足以证明优化已收敛。
+
+## 22. 从 5000 步继续到 10000 步
+
+完整物理评估结束后，P107 作业 `33799` 于 2026-08-08 10:31 启动。它不是从第 4341 步 best 重新开始，而是复制第 5000 步的完整目录，并校验 `state_latest.npz` SHA-256 为 `be53d07c570804a4612de4483911b63d348213dbe75752a508d419ab7c625938` 后恢复。恢复事件明确记录 `saved_iteration=5000`、`requested_iterations=10000`，因此当前点、历史 best、Adam 一二阶动量、Adam 步数、随机数状态和 flow 预取状态都保持连续。
+
+作业继续使用两张空闲 RTX 5090、8 核 CPU、学习率 `0.01`、$\beta=(0.7,0.999)$、2 方向中心差分、FP32 RK4-128、跨迭代 flow 流水线和连续磁面 score。启动前两张卡均为 0% 利用率、2 MiB 显存；截至第 5025 步，单步约 5.0 到 5.5 s，stderr 为空。按上一段实测均速估计新增 5000 步约需 7 h 53 min，预计约在当天 18:25 完成；10 h Slurm 上限到 20:31。
+
+远端结果目录为 `~/local_surface_evaluator_worktrees/score-fast-continuation/runs/score_fast_beta1_0p7_continue10000_20260808/`。下次验收可直接使用：
+
+```bash
+squeue -j 33799 -o '%.18i %.2t %.10M %R'; tail -n 5 ~/local_surface_evaluator_worktrees/score-fast-continuation/logs/sf-b07-10000-33799.out
+```

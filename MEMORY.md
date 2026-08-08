@@ -63,7 +63,7 @@ once the task is accepted.
   `reports/assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/` and
   sections 20--21 of `reports/qh_score_throughput_and_continuous_surface_plan.md`.
   Initial job `33691` remains invalid because its idle-GPU gate rejected a busy
- allocated GPU; never relax that gate.
+  allocated GPU; never relax that gate.
 - Active P107 job `33799` started on idle `anode03` at 2026-08-08 10:31
   China time to resume the complete iteration-5000 state through cumulative
   iteration `10000`. It uses two RTX5090s, 8 CPUs, LR `0.01`, beta

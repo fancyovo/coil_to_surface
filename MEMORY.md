@@ -39,25 +39,31 @@ once the task is accepted.
 ## 2. Current Snapshot
 
 - On 2026-08-08, P107 job `33694` completed an exact two-RTX5090 continuation
-  of the beta1 `0.7` optimizer from iteration `2000` to `5000`. It restored the
-  full Adam/RNG/prefetch state and retained LR `0.01`, beta `(0.7,0.999)`, two
-  central score-difference directions, pipelined FP32 RK4-128, continuous
-  score, and strict axis continuation. The new native-score best is
-  `93.3672653337` at iteration `4341`, up `0.326332394` from the 2000-step best;
-  the final current score is `93.0724656421`. Target QH error per helicity at
-  the best fell from `1.14705e-3` to `9.01409e-4`, iota is `1.50557`, and the
-  quick surface volume rose slightly, so this is not the old small-surface or
-  zero-iota loophole. The final 659 steps did not refresh the best: treat this
-  as a practical fixed-LR plateau, not mathematical convergence. The 3000 new
-  steps took `17051.62 s` (5.684 s/target step), with no long tail, empty
-  stderr, idle GPU pre/postflight, and no remaining job. Frozen evidence and
-  the readable acceptance are in
-  `reports/assets/qh_score_fast_beta1_0p7_continue5000_20260808/` and section 20
-  of `reports/qh_score_throughput_and_continuous_surface_plan.md`. This new best
-  has not yet had a full physical evaluation; iteration 1945 / score
-  `93.0409329` remains the highest fully evaluated sample. Initial job `33691`
-  did no optimization and is invalid because its idle-GPU gate rejected an
-  allocated GPU already at 100% utilization. Do not relax that gate.
+  of the beta1 `0.7` optimizer from iteration `2000` to `5000`, restoring the
+  full Adam/RNG/prefetch state under LR `0.01`, beta `(0.7,0.999)`, two central
+  directions, pipelined FP32 RK4-128, continuous score, and strict axis
+  continuation. The new native-score best is `93.3672653337` at iteration
+  `4341`; final current score is `93.0724656421`. The final 659 steps did not
+  refresh the best, but this is shorter than a prior plateau that was followed
+  by a step-like gain. Therefore it is evidence only of a temporary plateau,
+  not convergence or low remaining value; the next run must resume the complete
+  iteration-5000 state rather than restart from the best.
+- Full physical evaluation jobs `33785--33796` accepted iteration 4341 as the
+  highest fully evaluated native-score sample. Sample-adaptive search chose
+  `a=0.08`, accepted `s=0.24/0.36/0.49` with increasing volume, selected
+  `s=0.49` at `0.0658787 m^3`, and rejected `s=0.64` because GPU-ray found
+  `174967 < 180000` points. The selected standard surface has iota `1.53758`,
+  dense relative L2 `8.7371e-6`, normal-field P95 `1.1583e-5`, and face
+  QA/QH/QP errors `4.9096e-3/2.9965e-6/4.9715e-3`. Poincare is nested and
+  direct/DESC colored contours show clear QH bands. CPU-P107 DESC remained
+  nested and reduced normalized force mean/P95/max from
+  `1.2562/1.7427/2.7540` to `7.6700e-4/1.7054e-3/4.8221e-3`; it hit the
+  50-step cap, so physical acceptance passed while strict DESC convergence did
+  not. Frozen evidence and readable results are under
+  `reports/assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/` and
+  sections 20--21 of `reports/qh_score_throughput_and_continuous_surface_plan.md`.
+  Initial job `33691` remains invalid because its idle-GPU gate rejected a busy
+  allocated GPU; never relax that gate.
 - On 2026-08-07, full physical evaluation of the 2000-step beta1 `0.7` best
   completed for iteration `1945`, native score `93.0409329399`, and input
   SHA-256 `80209737ed1dba9280b26893120d55a845c60d3d5da2a0855eff0794806c068d`.

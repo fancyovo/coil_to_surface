@@ -1099,6 +1099,128 @@ private:
     DeviceBuffer<int> info_;
 };
 
+class PreconditionedCglsSolver {
+public:
+    PreconditionedCglsSolver(Context& context, float shift, int iterations)
+        : context_(context), shift_(shift), iterations_(iterations),
+          gram_(static_cast<std::size_t>(context.n) * context.n), residual_(context.n),
+          preconditioned_(context.n), direction_(context.n), normal_product_(context.n),
+          image_(context.m), solution_(context.n), info_(1) {
+        if (!(shift_ > 0.0f) || iterations_ <= 0) throw std::runtime_error("invalid PCGLS configuration");
+        check_solver(cusolverDnCreate(&solver_), "PCGLS cusolver create");
+        check_cublas(cublasSetMathMode(context_.blas, CUBLAS_PEDANTIC_MATH), "set PCGLS math mode");
+        int work = 0;
+        check_solver(cusolverDnSpotrf_bufferSize(
+            solver_, CUBLAS_FILL_MODE_UPPER, context_.n, gram_.data(), context_.n, &work),
+            "PCGLS potrf buffer");
+        work_.allocate(static_cast<std::size_t>(work));
+    }
+
+    ~PreconditionedCglsSolver() {
+        cublasSetMathMode(context_.blas, CUBLAS_DEFAULT_MATH);
+        cusolverDnDestroy(solver_);
+    }
+
+    void run_once(Timings* timings) {
+        const float one = 1.0f;
+        const float zero = 0.0f;
+        const double factor = wall_ms([&] {
+            check_cublas(cublasSsyrk(
+                context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, context_.n, context_.m,
+                &one, context_.matrix.data(), context_.m, &zero, gram_.data(), context_.n),
+                "PCGLS SYRK");
+            add_diagonal_shift_kernel<<<(context_.n + 255) / 256, 256>>>(gram_.data(), context_.n, shift_);
+            check_cuda(cudaGetLastError(), "PCGLS diagonal shift");
+            check_solver(cusolverDnSpotrf(
+                solver_, CUBLAS_FILL_MODE_UPPER, context_.n, gram_.data(), context_.n,
+                work_.data(), static_cast<int>(work_.size()), info_.data()), "PCGLS potrf");
+        });
+        verify_info(info_, "PCGLS potrf info");
+
+        const double iterations_ms = wall_ms([&] {
+            check_cuda(cudaMemset(solution_.data(), 0, static_cast<std::size_t>(context_.n) * sizeof(float)),
+                       "PCGLS zero solution");
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one, context_.matrix.data(),
+                context_.m, context_.rhs.data(), 1, &zero, residual_.data(), 1), "PCGLS initial A^T b");
+            apply_preconditioner(residual_.data(), preconditioned_.data());
+            check_cublas(cublasScopy(context_.blas, context_.n, preconditioned_.data(), 1,
+                                     direction_.data(), 1), "PCGLS initialize direction");
+            float gamma = 0.0f;
+            check_cublas(cublasSdot(context_.blas, context_.n, residual_.data(), 1,
+                                    preconditioned_.data(), 1, &gamma), "PCGLS initial gamma");
+            for (int iteration = 0; iteration < iterations_; ++iteration) {
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_N, context_.m, context_.n, &one, context_.matrix.data(),
+                    context_.m, direction_.data(), 1, &zero, image_.data(), 1), "PCGLS A p");
+                float delta = 0.0f;
+                check_cublas(cublasSdot(context_.blas, context_.m, image_.data(), 1,
+                                        image_.data(), 1, &delta), "PCGLS delta");
+                if (!(delta > 0.0f) || !std::isfinite(delta)) throw std::runtime_error("PCGLS invalid delta");
+                const float alpha = gamma / delta;
+                check_cublas(cublasSaxpy(context_.blas, context_.n, &alpha, direction_.data(), 1,
+                                         solution_.data(), 1), "PCGLS solution update");
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one, context_.matrix.data(),
+                    context_.m, image_.data(), 1, &zero, normal_product_.data(), 1), "PCGLS A^T A p");
+                const float minus_alpha = -alpha;
+                check_cublas(cublasSaxpy(context_.blas, context_.n, &minus_alpha,
+                                         normal_product_.data(), 1, residual_.data(), 1),
+                             "PCGLS residual update");
+                apply_preconditioner(residual_.data(), preconditioned_.data());
+                float gamma_new = 0.0f;
+                check_cublas(cublasSdot(context_.blas, context_.n, residual_.data(), 1,
+                                        preconditioned_.data(), 1, &gamma_new), "PCGLS gamma");
+                if (!(gamma_new >= 0.0f) || !std::isfinite(gamma_new)) {
+                    throw std::runtime_error("PCGLS invalid preconditioned residual");
+                }
+                const float beta = gamma_new / gamma;
+                check_cublas(cublasSscal(context_.blas, context_.n, &beta, direction_.data(), 1),
+                             "PCGLS direction scale");
+                check_cublas(cublasSaxpy(context_.blas, context_.n, &one, preconditioned_.data(), 1,
+                                         direction_.data(), 1), "PCGLS direction update");
+                gamma = gamma_new;
+            }
+        });
+        if (timings) {
+            timings->restore_ms.push_back(0.0);
+            timings->factor_ms.push_back(factor);
+            timings->apply_ms.push_back(iterations_ms);
+            timings->triangular_ms.push_back(0.0);
+            timings->solve_ms.push_back(factor + iterations_ms);
+            timings->refinement_iterations.push_back(iterations_);
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    void apply_preconditioner(const float* input, float* output) {
+        check_cuda(cudaMemcpy(output, input, static_cast<std::size_t>(context_.n) * sizeof(float),
+                              cudaMemcpyDeviceToDevice), "PCGLS copy preconditioner rhs");
+        check_cublas(cublasStrsv(
+            context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, CUBLAS_DIAG_NON_UNIT,
+            context_.n, gram_.data(), context_.n, output, 1), "PCGLS preconditioner R^T solve");
+        check_cublas(cublasStrsv(
+            context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
+            context_.n, gram_.data(), context_.n, output, 1), "PCGLS preconditioner R solve");
+    }
+
+    Context& context_;
+    float shift_ = 0.0f;
+    int iterations_ = 0;
+    cusolverDnHandle_t solver_ = nullptr;
+    DeviceBuffer<float> gram_;
+    DeviceBuffer<float> residual_;
+    DeviceBuffer<float> preconditioned_;
+    DeviceBuffer<float> direction_;
+    DeviceBuffer<float> normal_product_;
+    DeviceBuffer<float> image_;
+    DeviceBuffer<float> solution_;
+    DeviceBuffer<float> work_;
+    DeviceBuffer<int> info_;
+};
+
 ErrorMetrics measure_error(Context& context, const float* solution) {
     check_cublas(cublasSetMathMode(context.blas, CUBLAS_PEDANTIC_MATH), "set error metric math mode");
     ErrorMetrics metrics;
@@ -1331,6 +1453,10 @@ int main(int argc, char** argv) {
             const bool tf32 = arguments.method.find("tf32") != std::string::npos;
             const float shift = std::stof(arguments.method.substr(underscore + 1));
             ShiftedNormalSolver solver(context, shift, tf32);
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method.rfind("pcgls", 0) == 0) {
+            const int iterations = std::stoi(arguments.method.substr(5));
+            PreconditionedCglsSolver solver(context, 1.0e-3f, iterations);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else {
             throw std::runtime_error("unknown method: " + arguments.method);

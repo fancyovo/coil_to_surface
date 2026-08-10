@@ -56,11 +56,19 @@
   alter standalone global-axis search. The user currently wants analysis first;
   do not implement complex precision, QR, sampling, or default changes without
   a decision after reading the report.
+- The established 69-case strict-continuation holdout remains the production
+  timing reference at P50/P95 `0.990/1.254 s`. A new 8-case high-score profile
+  measured `1.323 s`, but it does not supersede that reference: fixed-size
+  FP32 QR was anomalously about `0.44 s` versus historical raw records near
+  `0.23 s`. Source/defaults/CUDA target match; node/build/NVTX effects remain
+  unisolated and require a same-input, same-idle-GPU A/B before any absolute
+  performance conclusion.
 - Two exact loop-invariant removals are accepted: cache toroidal trigonometry
   per psi-evaluation point and cache axis interpolation per phi grid point.
-  Across 8 high-quality QUASR QH cases x 3 repeats, strict-hint P50/P95/max
-  improved from `1.323/1.463/1.496 s` to `1.117/1.262/1.264 s`. Maximum score
-  and component differences were `1.42e-14` and `2.84e-14`; no status changed.
+  Within the new run, strict-hint P50/P95/max improved from
+  `1.323/1.463/1.496 s` to `1.117/1.262/1.264 s`. Maximum score and component
+  differences were `1.42e-14` and `2.84e-14`; no status changed. The `1.117 s`
+  result is an internal paired benchmark, not a replacement production median.
 - The steady representative precision split is CPU FP64 `107 ms`, GPU FP64
   `190 ms`, GPU mixed FP32-field/FP64-state `220 ms`, and GPU FP32-dominant
   `542 ms`. Psi FP32 QR is the largest range at `414 ms`; its algorithmic

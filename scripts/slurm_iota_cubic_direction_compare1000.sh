@@ -19,7 +19,8 @@ variant="${DIRECTION_VARIANT:?DIRECTION_VARIANT is required}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_iota_cubic_cuda13/libstellarator_gpu.so}"
 expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:?EXPECTED_SCORE_LIB_SHA is required}"
 initial_case="$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json"
-expected_initial_case_sha="cd440577bc67ecce1a6c83a0da172bda4d7f86cab7b290aeed3a2d90fb61246f"
+# The remote Git worktree stores this JSON with LF line endings.
+expected_initial_case_sha="33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9"
 
 case "$variant" in
   random)

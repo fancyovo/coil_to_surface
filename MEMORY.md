@@ -89,6 +89,11 @@
   was best. Implementation commit `c8b185f`; accepted evidence commit `233f57e`.
   Evidence is section 16 and assets
   `qh_iota_degree_calibration_35856` / `qh_iota_cubic_adam200_35864`.
+- 2026-08-10 commit `8b27035` launched matched 1000-step P107 jobs `35902`
+  (two fresh random directions) and `35903` (same through step 300, then previous
+  accepted update plus one orthogonal random direction). Both use the current
+  cubic-iota score, pinned `start_10`, two GPUs, and otherwise identical defaults.
+  Run roots end in `_random_35902` / `_previous_update_after300_35903`; ETA 65--75 min.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
   QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
@@ -489,11 +494,6 @@ linked reports.
 - Differential-QS audit: `reports/qh_differential_qs_metric_investigation.md`.
 - Abandoned gradient direction: `reports/qh_blackbox_gradient_exploration_report.md`.
 
-## 10. Next Actions
+## 10. Active Next Action
 
-1. Re-profile exact-hint mode 2: psi validation, the low-parallelism axis trace,
-   and continuous surface tracing are now comparable next bottlenecks.
-2. If another QR gain matters, test augmented-RHS Householder behind an explicit
-   mode. Never substitute the rejected FP32 normal-equation path.
-3. Do not restart manifold-flow, score collection, proxy, black-box-gradient,
-   or paused DESC-method work without a new explicit user request.
+- Await jobs `35902/35903`; compare them only after the user resumes this task.

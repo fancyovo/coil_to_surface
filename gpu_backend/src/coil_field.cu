@@ -1,4 +1,5 @@
 #include "coil_field.h"
+#include "nvtx_profile.h"
 #include "coil_field_internal.h"
 
 #include <cublas_v2.h>
@@ -1926,6 +1927,7 @@ int sgpu_eval_B(void* handle, const double* xyz_host, double* B_host, int n_poin
 }
 
 int sgpu_eval_B_f32(void* handle, const float* xyz_host, float* B_host, int n_points) {
+    SGPU_NVTX_RANGE("field.eval_B.fp32");
     CoilField* f = reinterpret_cast<CoilField*>(handle);
     if (!f || !xyz_host || !B_host || n_points < 0) {
         set_error("invalid eval_B_f32 arguments");
@@ -2287,6 +2289,7 @@ int sgpu_fit_psi_fullgpu(
     double* stats_out,
     int stats_len
 ) {
+    SGPU_NVTX_RANGE("psi.fullgpu.total");
     using clock = std::chrono::steady_clock;
 
     CoilField* f = reinterpret_cast<CoilField*>(handle);
@@ -2337,6 +2340,7 @@ int sgpu_fit_psi_fullgpu(
     float* d_coeff_src_f = nullptr;
 
     auto cleanup = [&]() {
+        SGPU_NVTX_RANGE("psi.fullgpu.cleanup");
         cudaFree(d_R); cudaFree(d_Z); cudaFree(d_phi);
         cudaFree(d_axis_R); cudaFree(d_axis_Z); cudaFree(d_axis_R_phi); cudaFree(d_axis_Z_phi);
         cudaFree(d_mode_a); cudaFree(d_mode_b); cudaFree(d_mode_m); cudaFree(d_mode_kind);
@@ -2359,30 +2363,33 @@ int sgpu_fit_psi_fullgpu(
     size_t axis_bytes = static_cast<size_t>(n_axis) * sizeof(double);
     size_t mode_bytes = static_cast<size_t>(n_coeff) * sizeof(int);
     auto t = clock::now();
-    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R), point_bytes), "fit d_R") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z), point_bytes), "fit d_Z") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_phi), point_bytes), "fit d_phi") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_R), axis_bytes), "fit d_axis_R") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_Z), axis_bytes), "fit d_axis_Z") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_R_phi), axis_bytes), "fit d_axis_R_phi") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_Z_phi), axis_bytes), "fit d_axis_Z_phi") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_a), mode_bytes), "fit d_mode_a") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_b), mode_bytes), "fit d_mode_b") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_m), mode_bytes), "fit d_mode_m") ||
-        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_kind), mode_bytes), "fit d_mode_kind") ||
-        cuda_check(cudaMemcpy(d_R, R_host, point_bytes, cudaMemcpyHostToDevice), "fit copy R") ||
-        cuda_check(cudaMemcpy(d_Z, Z_host, point_bytes, cudaMemcpyHostToDevice), "fit copy Z") ||
-        cuda_check(cudaMemcpy(d_phi, phi_host, point_bytes, cudaMemcpyHostToDevice), "fit copy phi") ||
-        cuda_check(cudaMemcpy(d_axis_R, axis_R_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_R") ||
-        cuda_check(cudaMemcpy(d_axis_Z, axis_Z_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_Z") ||
-        cuda_check(cudaMemcpy(d_axis_R_phi, axis_R_phi_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_R_phi") ||
-        cuda_check(cudaMemcpy(d_axis_Z_phi, axis_Z_phi_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_Z_phi") ||
-        cuda_check(cudaMemcpy(d_mode_a, mode_a_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_a") ||
-        cuda_check(cudaMemcpy(d_mode_b, mode_b_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_b") ||
-        cuda_check(cudaMemcpy(d_mode_m, mode_m_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_m") ||
-        cuda_check(cudaMemcpy(d_mode_kind, mode_kind_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_kind")) {
-        cleanup();
-        return 1;
+    {
+        SGPU_NVTX_RANGE("psi.fullgpu.copy_in");
+        if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R), point_bytes), "fit d_R") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z), point_bytes), "fit d_Z") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_phi), point_bytes), "fit d_phi") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_R), axis_bytes), "fit d_axis_R") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_Z), axis_bytes), "fit d_axis_Z") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_R_phi), axis_bytes), "fit d_axis_R_phi") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_axis_Z_phi), axis_bytes), "fit d_axis_Z_phi") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_a), mode_bytes), "fit d_mode_a") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_b), mode_bytes), "fit d_mode_b") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_m), mode_bytes), "fit d_mode_m") ||
+            cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mode_kind), mode_bytes), "fit d_mode_kind") ||
+            cuda_check(cudaMemcpy(d_R, R_host, point_bytes, cudaMemcpyHostToDevice), "fit copy R") ||
+            cuda_check(cudaMemcpy(d_Z, Z_host, point_bytes, cudaMemcpyHostToDevice), "fit copy Z") ||
+            cuda_check(cudaMemcpy(d_phi, phi_host, point_bytes, cudaMemcpyHostToDevice), "fit copy phi") ||
+            cuda_check(cudaMemcpy(d_axis_R, axis_R_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_R") ||
+            cuda_check(cudaMemcpy(d_axis_Z, axis_Z_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_Z") ||
+            cuda_check(cudaMemcpy(d_axis_R_phi, axis_R_phi_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_R_phi") ||
+            cuda_check(cudaMemcpy(d_axis_Z_phi, axis_Z_phi_host, axis_bytes, cudaMemcpyHostToDevice), "fit copy axis_Z_phi") ||
+            cuda_check(cudaMemcpy(d_mode_a, mode_a_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_a") ||
+            cuda_check(cudaMemcpy(d_mode_b, mode_b_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_b") ||
+            cuda_check(cudaMemcpy(d_mode_m, mode_m_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_m") ||
+            cuda_check(cudaMemcpy(d_mode_kind, mode_kind_host, mode_bytes, cudaMemcpyHostToDevice), "fit copy mode_kind")) {
+            cleanup();
+            return 1;
+        }
     }
     stats.copy_in_s = std::chrono::duration<double>(clock::now() - t).count();
 
@@ -2397,6 +2404,8 @@ int sgpu_fit_psi_fullgpu(
     int shared_f = static_cast<int>((SEG_TILE * 6 + threads * 3 + 2 * (MAX_PSI_DEGREE + 1) + 2 * (MAX_PSI_MTOR + 1) + 4) * sizeof(float));
 
     t = clock::now();
+    {
+    SGPU_NVTX_RANGE("psi.fullgpu.assemble");
     if (precision_mode == 1) {
         if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_mat_d), mat_bytes_d), "fit d_mat_d") ||
             cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_rhs_d), point_bytes), "fit d_rhs_d")) {
@@ -2449,8 +2458,11 @@ int sgpu_fit_psi_fullgpu(
         rhs_norm2 = static_cast<double>(rhs_norm2_f);
     }
     stats.assemble_s = std::chrono::duration<double>(clock::now() - t).count();
+    }
 
     if (solver_mode == 1) {
+        SgpuNvtxRange solver_range(precision_mode == 1
+            ? "psi.fullgpu.normal_eq.fp64" : "psi.fullgpu.normal_eq.fp32");
         t = clock::now();
         if (precision_mode == 1) {
             size_t ata_bytes = static_cast<size_t>(n_coeff) * static_cast<size_t>(n_coeff) * sizeof(double);
@@ -2540,6 +2552,8 @@ int sgpu_fit_psi_fullgpu(
         stats.solve_s = std::chrono::duration<double>(clock::now() - t).count();
         d_coeff_src_d = d_atb_d;
     } else {
+        SgpuNvtxRange solver_range(precision_mode == 1
+            ? "psi.fullgpu.qr.fp64" : "psi.fullgpu.qr.fp32");
         if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_scale), static_cast<size_t>(n_coeff) * sizeof(double)), "fit qr d_scale") ||
             cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_info), sizeof(int)), "fit qr d_info")) {
             cleanup();
@@ -2722,6 +2736,8 @@ int sgpu_fit_psi_fullgpu(
     }
 
     t = clock::now();
+    {
+    SGPU_NVTX_RANGE("psi.fullgpu.residual");
     if (precision_mode == 1) {
         if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_pred_d), point_bytes), "fit d_pred_d")) {
             cleanup();
@@ -2770,8 +2786,11 @@ int sgpu_fit_psi_fullgpu(
         train_rms = sqrt(fmax(static_cast<double>(resid2_f), 0.0) / static_cast<double>(n_points));
     }
     stats.residual_s = std::chrono::duration<double>(clock::now() - t).count();
+    }
 
     t = clock::now();
+    {
+    SGPU_NVTX_RANGE("psi.fullgpu.copy_out");
     if (precision_mode == 1) {
         if (cuda_check(cudaMemcpy(coeff_host, d_coeff_src_d, static_cast<size_t>(n_coeff) * sizeof(double), cudaMemcpyDeviceToHost), "fit copy coeff d64")) {
             cleanup();
@@ -2787,6 +2806,7 @@ int sgpu_fit_psi_fullgpu(
     }
     *train_rms_out = train_rms;
     stats.copy_out_s = std::chrono::duration<double>(clock::now() - t).count();
+    }
     stats.total_s = std::chrono::duration<double>(clock::now() - t_total).count();
     if (stats_out && stats_len >= 12) {
         stats_out[0] = stats.copy_in_s;
@@ -2983,6 +3003,7 @@ int sgpu_trace_period(void* handle, const double* R0_host, const double* Z0_host
 }
 
 int sgpu_trace_period_blockline(void* handle, const double* R0_host, const double* Z0_host, double* R1_host, double* Z1_host, int n_lines, int nfp, int steps, int threads_per_line) {
+    SGPU_NVTX_RANGE("trace.period.fp64");
     CoilField* f = reinterpret_cast<CoilField*>(handle);
     if (!f || !R0_host || !Z0_host || !R1_host || !Z1_host || n_lines < 0 || nfp <= 0 || steps <= 0) {
         set_error("invalid trace_period_blockline arguments");
@@ -3022,6 +3043,11 @@ int sgpu_trace_period_blockline(void* handle, const double* R0_host, const doubl
 }
 
 int sgpu_trace_period_blockline_mixed(void* handle, const double* R0_host, const double* Z0_host, double* R1_host, double* Z1_host, int n_lines, int nfp, int steps, int threads_per_line, int mode) {
+    SgpuNvtxRange trace_range(mode == 1
+        ? "trace.period.Bfp32_statefp64"
+        : mode == 2
+            ? "trace.period.fp32"
+            : "trace.period.Bfp32_statefp16");
     CoilField* f = reinterpret_cast<CoilField*>(handle);
     if (!f || !R0_host || !Z0_host || !R1_host || !Z1_host || n_lines < 0 || nfp <= 0 || steps <= 0) {
         set_error("invalid trace_period_blockline_mixed arguments");
@@ -3088,6 +3114,7 @@ int sgpu_trace_axis_samples(
     double* R_phi_host,
     double* Z_phi_host
 ) {
+    SGPU_NVTX_RANGE("trace.axis_samples.mixed");
     CoilField* f = reinterpret_cast<CoilField*>(handle);
     if (!f || !R_host || !Z_host || !R_phi_host || !Z_phi_host ||
         nfp <= 0 || integration_steps <= 0 || n_samples <= 1) {

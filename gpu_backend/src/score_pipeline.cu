@@ -1,5 +1,6 @@
 #include "coil_field.h"
 #include "coil_field_internal.h"
+#include "nvtx_profile.h"
 
 #include <cublas_v2.h>
 #include <cub/cub.cuh>
@@ -801,11 +802,15 @@ bool find_axis_native(
     double& trace_time,
     double* timings
 ) {
+    SGPU_NVTX_RANGE("axis.total");
     trace_time = 0.0;
     auto substage_started = Clock::now();
-    const AxisDomain domain = build_axis_domain(
-        coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff, config
-    );
+    const AxisDomain domain = [&] {
+        SGPU_NVTX_RANGE("axis.domain.cpu");
+        return build_axis_domain(
+            coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff, config
+        );
+    }();
     timings[SGPU_SCORE_TIME_AXIS_DOMAIN] += seconds_since(substage_started);
     std::vector<AxisCandidate> candidates;
     if (config.axis_hint_enabled) {
@@ -824,9 +829,12 @@ bool find_axis_native(
     }
     if (config.axis_hint_enabled && !candidates.empty()) {
         substage_started = Clock::now();
-        if (!refine_axis_candidates(
-                field, candidates, domain, nfp, config, config.axis_newton_iters)) {
-            return false;
+        {
+            SGPU_NVTX_RANGE("axis.hint.refine");
+            if (!refine_axis_candidates(
+                    field, candidates, domain, nfp, config, config.axis_newton_iters)) {
+                return false;
+            }
         }
         timings[SGPU_SCORE_TIME_AXIS_CANDIDATE_REFINE] += seconds_since(substage_started);
         if (!candidates.empty()) {
@@ -850,22 +858,28 @@ bool find_axis_native(
             };
             std::vector<double> end_R, end_Z;
             substage_started = Clock::now();
-            if (!trace_map(
-                    field, verify_R, verify_Z, nfp, config.axis_trace_steps,
-                    true, end_R, end_Z)) {
-                return false;
+            {
+                SGPU_NVTX_RANGE("axis.hint.fp64_verify");
+                if (!trace_map(
+                        field, verify_R, verify_Z, nfp, config.axis_trace_steps,
+                        true, end_R, end_Z)) {
+                    return false;
+                }
             }
             timings[SGPU_SCORE_TIME_AXIS_FP64_VERIFY] += seconds_since(substage_started);
             candidates[0].residual = std::hypot(
                 end_R[0] - verify_R[0], end_Z[0] - verify_Z[0]
             );
             substage_started = Clock::now();
-            assign_axis_topology(
-                candidates[0],
-                verify_R[1], verify_R[2], verify_Z[3], verify_Z[4],
-                end_R[1], end_R[2], end_Z[1], end_Z[2],
-                end_R[3], end_R[4], end_Z[3], end_Z[4]
-            );
+            {
+                SGPU_NVTX_RANGE("axis.hint.topology.cpu");
+                assign_axis_topology(
+                    candidates[0],
+                    verify_R[1], verify_R[2], verify_Z[3], verify_Z[4],
+                    end_R[1], end_R[2], end_Z[1], end_Z[2],
+                    end_R[3], end_R[4], end_Z[3], end_Z[4]
+                );
+            }
             timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
             axis.hint_distance = std::hypot(
                 candidates[0].R - config.axis_hint_R,
@@ -931,10 +945,14 @@ bool find_axis_native(
     axis.R_phi.resize(config.axis_sample_count);
     axis.Z_phi.resize(config.axis_sample_count);
     const auto trace_started = Clock::now();
-    const int trace_code = sgpu_trace_axis_samples(
-            field, axis.selected.R, axis.selected.Z, nfp,
-            config.axis_trace_steps, config.axis_sample_count,
-            axis.R.data(), axis.Z.data(), axis.R_phi.data(), axis.Z_phi.data());
+    int trace_code = 0;
+    {
+        SGPU_NVTX_RANGE("axis.samples");
+        trace_code = sgpu_trace_axis_samples(
+                field, axis.selected.R, axis.selected.Z, nfp,
+                config.axis_trace_steps, config.axis_sample_count,
+                axis.R.data(), axis.Z.data(), axis.R_phi.data(), axis.Z_phi.data());
+    }
     trace_time = seconds_since(trace_started);
     if (trace_code) {
         return false;
@@ -1069,26 +1087,30 @@ bool fit_psi_native(
     double& point_generation_time,
     double& fit_time
 ) {
+    SGPU_NVTX_RANGE("psi.fit.total");
     auto started = Clock::now();
     std::vector<double> R, Z, phi;
     const size_t reserve = static_cast<size_t>(config.psi_n_r) * config.psi_n_z * config.psi_n_phi;
     R.reserve(reserve);
     Z.reserve(reserve);
     phi.reserve(reserve);
-    for (int ir = 0; ir < config.psi_n_r; ++ir) {
-        const double dR = -config.psi_a + 2.0 * config.psi_a * ir / std::max(config.psi_n_r - 1, 1);
-        for (int iz = 0; iz < config.psi_n_z; ++iz) {
-            const double dZ = -config.psi_a + 2.0 * config.psi_a * iz / std::max(config.psi_n_z - 1, 1);
-            const double radius = std::hypot(dR, dZ);
-            if (radius < config.psi_rho_min || radius > config.psi_a) continue;
-            for (int iphi = 0; iphi < config.psi_n_phi; ++iphi) {
-                const double angle = TWOPI * iphi / static_cast<double>(nfp * config.psi_n_phi);
-                double axis_R, axis_R_phi, axis_Z, axis_Z_phi;
-                periodic_hermite_host(angle, axis.R, axis.R_phi, nfp, axis_R, axis_R_phi);
-                periodic_hermite_host(angle, axis.Z, axis.Z_phi, nfp, axis_Z, axis_Z_phi);
-                R.push_back(axis_R + dR);
-                Z.push_back(axis_Z + dZ);
-                phi.push_back(angle);
+    {
+        SGPU_NVTX_RANGE("psi.points.cpu");
+        for (int ir = 0; ir < config.psi_n_r; ++ir) {
+            const double dR = -config.psi_a + 2.0 * config.psi_a * ir / std::max(config.psi_n_r - 1, 1);
+            for (int iz = 0; iz < config.psi_n_z; ++iz) {
+                const double dZ = -config.psi_a + 2.0 * config.psi_a * iz / std::max(config.psi_n_z - 1, 1);
+                const double radius = std::hypot(dR, dZ);
+                if (radius < config.psi_rho_min || radius > config.psi_a) continue;
+                for (int iphi = 0; iphi < config.psi_n_phi; ++iphi) {
+                    const double angle = TWOPI * iphi / static_cast<double>(nfp * config.psi_n_phi);
+                    double axis_R, axis_R_phi, axis_Z, axis_Z_phi;
+                    periodic_hermite_host(angle, axis.R, axis.R_phi, nfp, axis_R, axis_R_phi);
+                    periodic_hermite_host(angle, axis.Z, axis.Z_phi, nfp, axis_Z, axis_Z_phi);
+                    R.push_back(axis_R + dR);
+                    Z.push_back(axis_Z + dZ);
+                    phi.push_back(angle);
+                }
             }
         }
     }
@@ -1097,16 +1119,20 @@ bool fit_psi_native(
     psi.coeffs.resize(psi.modes.a.size());
     std::array<double, 16> stats{};
     started = Clock::now();
-    const int code = sgpu_fit_psi_fullgpu(
-        field, R.data(), Z.data(), phi.data(), static_cast<int>(R.size()),
-        axis.R.data(), axis.Z.data(), axis.R_phi.data(), axis.Z_phi.data(),
-        static_cast<int>(axis.R.size()),
-        psi.modes.a.data(), psi.modes.b.data(), psi.modes.m.data(), psi.modes.kind.data(),
-        static_cast<int>(psi.modes.a.size()), nfp, config.psi_a,
-        config.psi_poly_degree, config.psi_m_tor, config.psi_ridge,
-        config.psi_solver_mode, config.psi_precision_mode,
-        psi.coeffs.data(), &psi.train_rms, stats.data(), static_cast<int>(stats.size())
-    );
+    int code = 0;
+    {
+        SGPU_NVTX_RANGE("psi.fit.fullgpu");
+        code = sgpu_fit_psi_fullgpu(
+            field, R.data(), Z.data(), phi.data(), static_cast<int>(R.size()),
+            axis.R.data(), axis.Z.data(), axis.R_phi.data(), axis.Z_phi.data(),
+            static_cast<int>(axis.R.size()),
+            psi.modes.a.data(), psi.modes.b.data(), psi.modes.m.data(), psi.modes.kind.data(),
+            static_cast<int>(psi.modes.a.size()), nfp, config.psi_a,
+            config.psi_poly_degree, config.psi_m_tor, config.psi_ridge,
+            config.psi_solver_mode, config.psi_precision_mode,
+            psi.coeffs.data(), &psi.train_rms, stats.data(), static_cast<int>(stats.size())
+        );
+    }
     fit_time = seconds_since(started);
     return code == 0;
 }
@@ -1118,6 +1144,7 @@ bool validate_psi_native(
     const SgpuScoreConfig& config,
     PsiData& psi
 ) {
+    SGPU_NVTX_RANGE("psi.validate.total");
     const int count = config.psi_validation_points;
     std::vector<float> xyz(static_cast<size_t>(count) * 3), B(xyz.size());
     std::vector<double> R(count), Z(count), phi(count), grad_norm(count), residual(count), angle(count);
@@ -1127,23 +1154,30 @@ bool validate_psi_native(
         return static_cast<double>(state >> 11) * (1.0 / 9007199254740992.0);
     };
     const double u_min = std::pow(config.psi_rho_min / config.psi_a, 2.0);
-    for (int index = 0; index < count; ++index) {
-        phi[index] = uniform() * TWOPI / nfp;
-        const double theta = uniform() * TWOPI;
-        const double radius = config.psi_a * std::sqrt(u_min + (1.0 - u_min) * uniform());
-        double axis_R, axis_R_phi, axis_Z, axis_Z_phi;
-        periodic_hermite_host(phi[index], axis.R, axis.R_phi, nfp, axis_R, axis_R_phi);
-        periodic_hermite_host(phi[index], axis.Z, axis.Z_phi, nfp, axis_Z, axis_Z_phi);
-        R[index] = axis_R + radius * std::cos(theta);
-        Z[index] = axis_Z + radius * std::sin(theta);
-        xyz[3 * index] = static_cast<float>(R[index] * std::cos(phi[index]));
-        xyz[3 * index + 1] = static_cast<float>(R[index] * std::sin(phi[index]));
-        xyz[3 * index + 2] = static_cast<float>(Z[index]);
+    {
+        SGPU_NVTX_RANGE("psi.validate.points.cpu");
+        for (int index = 0; index < count; ++index) {
+            phi[index] = uniform() * TWOPI / nfp;
+            const double theta = uniform() * TWOPI;
+            const double radius = config.psi_a * std::sqrt(u_min + (1.0 - u_min) * uniform());
+            double axis_R, axis_R_phi, axis_Z, axis_Z_phi;
+            periodic_hermite_host(phi[index], axis.R, axis.R_phi, nfp, axis_R, axis_R_phi);
+            periodic_hermite_host(phi[index], axis.Z, axis.Z_phi, nfp, axis_Z, axis_Z_phi);
+            R[index] = axis_R + radius * std::cos(theta);
+            Z[index] = axis_Z + radius * std::sin(theta);
+            xyz[3 * index] = static_cast<float>(R[index] * std::cos(phi[index]));
+            xyz[3 * index + 1] = static_cast<float>(R[index] * std::sin(phi[index]));
+            xyz[3 * index + 2] = static_cast<float>(Z[index]);
+        }
     }
-    if (sgpu_eval_B_f32(field, xyz.data(), B.data(), count)) return false;
+    {
+        SGPU_NVTX_RANGE("psi.validate.field.fp32");
+        if (sgpu_eval_B_f32(field, xyz.data(), B.data(), count)) return false;
+    }
     double residual_norm2 = 0.0;
     double scale_norm2 = 0.0;
     double angle_sum = 0.0;
+    SGPU_NVTX_RANGE("psi.validate.reduce.cpu");
     for (int index = 0; index < count; ++index) {
         double value, gR, gZ, gPhi;
         evaluate_psi_host(psi, axis, config, nfp, R[index], Z[index], phi[index], value, gR, gZ, gPhi);
@@ -1426,25 +1460,29 @@ bool screen_surface_confidence_native(
     std::vector<SurfaceScreen>& screens,
     SgpuScoreResult& result
 ) {
+    SGPU_NVTX_RANGE("surface.total");
     const int levels = config.surface_level_count;
     const int theta_count = config.surface_theta_count;
     const size_t count = static_cast<size_t>(levels) * theta_count;
     std::vector<double> R(count), Z(count), radii(count), radius_mean(levels, 0.0);
     std::vector<double> radius_max(levels, 0.0), R_end, Z_end;
     auto substage_started = Clock::now();
-    for (int level_index = 0; level_index < levels; ++level_index) {
-        for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
-            const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
-            const double theta = TWOPI * theta_index / theta_count;
-            std::array<double, 25> polynomial;
-            ray_polynomial_phi0(psi, config, theta, polynomial);
-            radii[index] = solve_ray_radius(
-                polynomial, config.surface_levels[level_index], config
-            );
-            radius_mean[level_index] += radii[index] / theta_count;
-            radius_max[level_index] = std::max(radius_max[level_index], radii[index]);
-            R[index] = axis.R[0] + radii[index] * std::cos(theta);
-            Z[index] = axis.Z[0] + radii[index] * std::sin(theta);
+    {
+        SGPU_NVTX_RANGE("surface.ray_roots.cpu");
+        for (int level_index = 0; level_index < levels; ++level_index) {
+            for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+                const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
+                const double theta = TWOPI * theta_index / theta_count;
+                std::array<double, 25> polynomial;
+                ray_polynomial_phi0(psi, config, theta, polynomial);
+                radii[index] = solve_ray_radius(
+                    polynomial, config.surface_levels[level_index], config
+                );
+                radius_mean[level_index] += radii[index] / theta_count;
+                radius_max[level_index] = std::max(radius_max[level_index], radii[index]);
+                R[index] = axis.R[0] + radii[index] * std::cos(theta);
+                Z[index] = axis.Z[0] + radii[index] * std::sin(theta);
+            }
         }
     }
     result.timings[SGPU_SCORE_TIME_SURFACE_RAY_ROOTS] += seconds_since(substage_started);
@@ -1452,29 +1490,35 @@ bool screen_surface_confidence_native(
     std::vector<double> maximum_relative_drift(count, 0.0);
     for (int period = 0; period < config.surface_confidence_periods; ++period) {
         substage_started = Clock::now();
-        if (!trace_map(field, R, Z, nfp, config.surface_trace_steps, false, R_end, Z_end)) {
-            return false;
+        {
+            SGPU_NVTX_RANGE("surface.trace.mixed");
+            if (!trace_map(field, R, Z, nfp, config.surface_trace_steps, false, R_end, Z_end)) {
+                return false;
+            }
         }
         result.timings[SGPU_SCORE_TIME_SURFACE_MIXED_TRACE] += seconds_since(substage_started);
         substage_started = Clock::now();
-        for (int level_index = 0; level_index < levels; ++level_index) {
-            for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
-                const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
-                double value, gR, gZ, gPhi;
-                evaluate_psi_host(
-                    psi, axis, config, nfp, R_end[index], Z_end[index], TWOPI / nfp,
-                    value, gR, gZ, gPhi
-                );
-                const double gradient_norm = std::sqrt(
-                    gR * gR + gZ * gZ + std::pow(gPhi / R_end[index], 2.0)
-                );
-                const double distance = std::abs(value - config.surface_levels[level_index]) /
-                    std::max(gradient_norm, 1.0e-14);
-                const double relative = distance / std::max(radius_mean[level_index], 1.0e-14);
-                maximum_relative_drift[index] = std::max(
-                    maximum_relative_drift[index],
-                    std::isfinite(relative) ? relative : std::numeric_limits<double>::infinity()
-                );
+        {
+            SGPU_NVTX_RANGE("surface.reduce.cpu");
+            for (int level_index = 0; level_index < levels; ++level_index) {
+                for (int theta_index = 0; theta_index < theta_count; ++theta_index) {
+                    const size_t index = static_cast<size_t>(level_index) * theta_count + theta_index;
+                    double value, gR, gZ, gPhi;
+                    evaluate_psi_host(
+                        psi, axis, config, nfp, R_end[index], Z_end[index], TWOPI / nfp,
+                        value, gR, gZ, gPhi
+                    );
+                    const double gradient_norm = std::sqrt(
+                        gR * gR + gZ * gZ + std::pow(gPhi / R_end[index], 2.0)
+                    );
+                    const double distance = std::abs(value - config.surface_levels[level_index]) /
+                        std::max(gradient_norm, 1.0e-14);
+                    const double relative = distance / std::max(radius_mean[level_index], 1.0e-14);
+                    maximum_relative_drift[index] = std::max(
+                        maximum_relative_drift[index],
+                        std::isfinite(relative) ? relative : std::numeric_limits<double>::infinity()
+                    );
+                }
             }
         }
         R.swap(R_end);
@@ -1483,6 +1527,7 @@ bool screen_surface_confidence_native(
     }
 
     substage_started = Clock::now();
+    SGPU_NVTX_RANGE("surface.confidence.cpu");
     std::vector<double> risk(levels), confidence(levels);
     for (int level_index = 0; level_index < levels; ++level_index) {
         const size_t offset = static_cast<size_t>(level_index) * theta_count;
@@ -5746,6 +5791,7 @@ int sgpu_score_coils(
     }
     const int device_id = config ? config->device_id : -1;
     initialize_result(result, device_id);
+    SGPU_NVTX_RANGE("score.total");
     auto total_started = Clock::now();
     if (!coeffs_x || !coeffs_y || !coeffs_z || !currents_a || !config ||
         n_base_coils <= 0 || n_coeff < 3 || (n_coeff % 2) == 0 || nfp <= 0) {
@@ -5756,9 +5802,12 @@ int sgpu_score_coils(
     if (cudaSetDevice(config->device_id) != cudaSuccess) return fail_result(result, "cudaSetDevice failed");
 
     auto stage_started = Clock::now();
-    const CoilMetrics coil = compute_coil_metrics(
-        coeffs_x, coeffs_y, coeffs_z, currents_a, n_base_coils, n_coeff, nfp
-    );
+    const CoilMetrics coil = [&] {
+        SGPU_NVTX_RANGE("score.coil_geometry.cpu");
+        return compute_coil_metrics(
+            coeffs_x, coeffs_y, coeffs_z, currents_a, n_base_coils, n_coeff, nfp
+        );
+    }();
     result->timings[SGPU_SCORE_TIME_COIL_GEOMETRY] = seconds_since(stage_started);
     result->coil_length_mean = coil.length_mean;
     result->coil_curvature_p95 = coil.curvature_p95;
@@ -5770,10 +5819,13 @@ int sgpu_score_coils(
 
     void* field = nullptr;
     stage_started = Clock::now();
-    if (sgpu_create_field(
-            coeffs_x, coeffs_y, coeffs_z, currents_a, n_base_coils, n_coeff,
-            nfp, config->segments_per_coil, config->device_id, &field)) {
-        return fail_from_backend(result, "field creation");
+    {
+        SGPU_NVTX_RANGE("score.field_create");
+        if (sgpu_create_field(
+                coeffs_x, coeffs_y, coeffs_z, currents_a, n_base_coils, n_coeff,
+                nfp, config->segments_per_coil, config->device_id, &field)) {
+            return fail_from_backend(result, "field creation");
+        }
     }
     result->timings[SGPU_SCORE_TIME_FIELD_CREATE] = seconds_since(stage_started);
     result->stage_completed = SCORE_STAGE_FIELD;
@@ -5783,11 +5835,14 @@ int sgpu_score_coils(
         AxisData axis;
         stage_started = Clock::now();
         double axis_trace_time = 0.0;
-        if (!find_axis_native(
-                field, coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff,
-                nfp, *config, axis, axis_trace_time, result->timings)) {
-            return_code = fail_from_backend(result, "axis search");
-            break;
+        {
+            SGPU_NVTX_RANGE("score.axis");
+            if (!find_axis_native(
+                    field, coeffs_x, coeffs_y, coeffs_z, n_base_coils, n_coeff,
+                    nfp, *config, axis, axis_trace_time, result->timings)) {
+                return_code = fail_from_backend(result, "axis search");
+                break;
+            }
         }
         result->timings[SGPU_SCORE_TIME_AXIS_TRACE] = axis_trace_time;
         result->timings[SGPU_SCORE_TIME_AXIS_SEARCH] =
@@ -5810,17 +5865,23 @@ int sgpu_score_coils(
         result->stage_completed = SCORE_STAGE_AXIS;
 
         PsiData psi;
-        if (!fit_psi_native(
-                field, axis, nfp, *config, psi,
-                result->timings[SGPU_SCORE_TIME_PSI_POINTS],
-                result->timings[SGPU_SCORE_TIME_PSI_FIT])) {
-            return_code = fail_from_backend(result, "psi fit");
-            break;
+        {
+            SGPU_NVTX_RANGE("score.psi_fit");
+            if (!fit_psi_native(
+                    field, axis, nfp, *config, psi,
+                    result->timings[SGPU_SCORE_TIME_PSI_POINTS],
+                    result->timings[SGPU_SCORE_TIME_PSI_FIT])) {
+                return_code = fail_from_backend(result, "psi fit");
+                break;
+            }
         }
         stage_started = Clock::now();
-        if (!validate_psi_native(field, axis, nfp, *config, psi)) {
-            return_code = fail_from_backend(result, "psi validation");
-            break;
+        {
+            SGPU_NVTX_RANGE("score.psi_validate");
+            if (!validate_psi_native(field, axis, nfp, *config, psi)) {
+                return_code = fail_from_backend(result, "psi validation");
+                break;
+            }
         }
         result->timings[SGPU_SCORE_TIME_PSI_VALIDATE] = seconds_since(stage_started);
         result->psi_train_rms = psi.train_rms;
@@ -5831,11 +5892,15 @@ int sgpu_score_coils(
 
         std::vector<SurfaceScreen> screens;
         stage_started = Clock::now();
-        const bool screen_ok = config->surface_selection_mode == 1
-            ? screen_surface_confidence_native(
-                field, axis, psi, nfp, *config, screens, *result)
-            : screen_surfaces_native(
-                field, axis, psi, nfp, *config, screens, result->timings);
+        bool screen_ok = false;
+        {
+            SGPU_NVTX_RANGE("score.surface_screen");
+            screen_ok = config->surface_selection_mode == 1
+                ? screen_surface_confidence_native(
+                    field, axis, psi, nfp, *config, screens, *result)
+                : screen_surfaces_native(
+                    field, axis, psi, nfp, *config, screens, result->timings);
+        }
         if (!screen_ok) {
             return_code = fail_from_backend(result, "surface screen");
             break;
@@ -5859,9 +5924,13 @@ int sgpu_score_coils(
             fill_early_components(*config, coil, axis, psi, screens, *result);
             break;
         }
-        const bool downstream_ok = run_downstream_gpu(
-                field, currents_a, n_base_coils, nfp, axis, psi,
-                screens, *config, *result, config->surface_selection_mode == 0);
+        bool downstream_ok = false;
+        {
+            SGPU_NVTX_RANGE("score.downstream");
+            downstream_ok = run_downstream_gpu(
+                    field, currents_a, n_base_coils, nfp, axis, psi,
+                    screens, *config, *result, config->surface_selection_mode == 0);
+        }
         fill_early_components(*config, coil, axis, psi, screens, *result);
         if (!downstream_ok) {
             if (result->status == SGPU_SCORE_INTERNAL_ERROR) return_code = 1;
@@ -5878,7 +5947,10 @@ int sgpu_score_coils(
     }
     if (field) sgpu_destroy_field(field);
     stage_started = Clock::now();
-    finalize_score(*config, *result);
+    {
+        SGPU_NVTX_RANGE("score.finalize.cpu");
+        finalize_score(*config, *result);
+    }
     result->timings[SGPU_SCORE_TIME_SCORE] = seconds_since(stage_started);
     result->timings[SGPU_SCORE_TIME_TOTAL] = seconds_since(total_started);
     return return_code;

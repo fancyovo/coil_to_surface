@@ -842,45 +842,77 @@ bool find_axis_native(
                 domain.r_max - domain.r_min, domain.z_max - domain.z_min
             );
             const double h = std::max(config.axis_fd_absolute, config.axis_fd_relative * span);
-            std::vector<double> verify_R{
-                candidates[0].R,
-                std::min(domain.r_max, candidates[0].R + h),
-                std::max(domain.r_min, candidates[0].R - h),
-                candidates[0].R,
-                candidates[0].R,
-            };
-            std::vector<double> verify_Z{
-                candidates[0].Z,
-                candidates[0].Z,
-                candidates[0].Z,
-                std::min(domain.z_max, candidates[0].Z + h),
-                std::max(domain.z_min, candidates[0].Z - h),
-            };
-            std::vector<double> end_R, end_Z;
-            substage_started = Clock::now();
-            {
-                SGPU_NVTX_RANGE("axis.hint.fp64_verify");
-                if (!trace_map(
-                        field, verify_R, verify_Z, nfp, config.axis_trace_steps,
-                        true, end_R, end_Z)) {
-                    return false;
+            if (config.axis_hint_require_continuation == 2) {
+                std::vector<double> verify_R{
+                    std::min(domain.r_max, candidates[0].R + h),
+                    std::max(domain.r_min, candidates[0].R - h),
+                    candidates[0].R,
+                    candidates[0].R,
+                };
+                std::vector<double> verify_Z{
+                    candidates[0].Z,
+                    candidates[0].Z,
+                    std::min(domain.z_max, candidates[0].Z + h),
+                    std::max(domain.z_min, candidates[0].Z - h),
+                };
+                std::vector<double> end_R, end_Z;
+                substage_started = Clock::now();
+                {
+                    SGPU_NVTX_RANGE("axis.hint.mixed_topology");
+                    if (!trace_map(
+                            field, verify_R, verify_Z, nfp, config.axis_trace_steps,
+                            false, end_R, end_Z)) {
+                        return false;
+                    }
                 }
-            }
-            timings[SGPU_SCORE_TIME_AXIS_FP64_VERIFY] += seconds_since(substage_started);
-            candidates[0].residual = std::hypot(
-                end_R[0] - verify_R[0], end_Z[0] - verify_Z[0]
-            );
-            substage_started = Clock::now();
-            {
-                SGPU_NVTX_RANGE("axis.hint.topology.cpu");
+                timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
                 assign_axis_topology(
                     candidates[0],
-                    verify_R[1], verify_R[2], verify_Z[3], verify_Z[4],
-                    end_R[1], end_R[2], end_Z[1], end_Z[2],
-                    end_R[3], end_R[4], end_Z[3], end_Z[4]
+                    verify_R[0], verify_R[1], verify_Z[2], verify_Z[3],
+                    end_R[0], end_R[1], end_Z[0], end_Z[1],
+                    end_R[2], end_R[3], end_Z[2], end_Z[3]
                 );
+            } else {
+                std::vector<double> verify_R{
+                    candidates[0].R,
+                    std::min(domain.r_max, candidates[0].R + h),
+                    std::max(domain.r_min, candidates[0].R - h),
+                    candidates[0].R,
+                    candidates[0].R,
+                };
+                std::vector<double> verify_Z{
+                    candidates[0].Z,
+                    candidates[0].Z,
+                    candidates[0].Z,
+                    std::min(domain.z_max, candidates[0].Z + h),
+                    std::max(domain.z_min, candidates[0].Z - h),
+                };
+                std::vector<double> end_R, end_Z;
+                substage_started = Clock::now();
+                {
+                    SGPU_NVTX_RANGE("axis.hint.fp64_verify");
+                    if (!trace_map(
+                            field, verify_R, verify_Z, nfp, config.axis_trace_steps,
+                            true, end_R, end_Z)) {
+                        return false;
+                    }
+                }
+                timings[SGPU_SCORE_TIME_AXIS_FP64_VERIFY] += seconds_since(substage_started);
+                candidates[0].residual = std::hypot(
+                    end_R[0] - verify_R[0], end_Z[0] - verify_Z[0]
+                );
+                substage_started = Clock::now();
+                {
+                    SGPU_NVTX_RANGE("axis.hint.topology.cpu");
+                    assign_axis_topology(
+                        candidates[0],
+                        verify_R[1], verify_R[2], verify_Z[3], verify_Z[4],
+                        end_R[1], end_R[2], end_Z[1], end_Z[2],
+                        end_R[3], end_R[4], end_Z[3], end_Z[4]
+                    );
+                }
+                timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
             }
-            timings[SGPU_SCORE_TIME_AXIS_TOPOLOGY] += seconds_since(substage_started);
             axis.hint_distance = std::hypot(
                 candidates[0].R - config.axis_hint_R,
                 candidates[0].Z - config.axis_hint_Z
@@ -1737,7 +1769,8 @@ bool validate_config(const SgpuScoreConfig& config, std::string& reason) {
         !(config.surface_confidence_smoothmax_temperature > 0.0) ||
         config.surface_confidence_minimum < 0.0 || config.surface_confidence_minimum > 1.0 ||
         config.axis_hint_enabled < 0 || config.axis_hint_enabled > 1 ||
-        config.axis_hint_require_continuation < 0 || config.axis_hint_require_continuation > 1 ||
+        config.axis_hint_require_continuation < 0 || config.axis_hint_require_continuation > 2 ||
+        (config.axis_hint_require_continuation == 2 && !config.axis_hint_enabled) ||
         !(config.axis_hint_max_distance > 0.0)) {
         reason = "invalid score configuration dimensions";
         return false;

@@ -166,6 +166,7 @@ struct SgpuScoreConfig {
     double surface_confidence_minimum;
 
     std::int32_t axis_hint_enabled;
+    // 0: allow grid fallback, 1: strict FP64 verification, 2: strict mixed verification.
     std::int32_t axis_hint_require_continuation;
     double axis_hint_R;
     double axis_hint_Z;

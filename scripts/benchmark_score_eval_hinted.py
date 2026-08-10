@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 import time
@@ -23,6 +24,9 @@ VARIANTS = {
     "psi_grid64": {"psi_n_r": 64, "psi_n_z": 64, "psi_n_phi": 64},
     "psi_grid56": {"psi_n_r": 56, "psi_n_z": 56, "psi_n_phi": 56},
     "psi_grid48": {"psi_n_r": 48, "psi_n_z": 48, "psi_n_phi": 48},
+    "axis_hint_no_fp64": {"axis_hint_require_continuation": 2},
+    "axis_hint_fp64_offset1e3": {},
+    "axis_hint_no_fp64_offset1e3": {"axis_hint_require_continuation": 2},
     "psi_normal_eq_fp32": {"psi_solver_mode": 1, "psi_precision_mode": 2},
     "axis720": {"axis_trace_steps": 720, "axis_sample_count": 180},
     "surface96": {"surface_theta_count": 96},
@@ -46,16 +50,25 @@ VARIANTS = {
     },
 }
 
+HINT_OFFSET_RADIUS = {
+    "axis_hint_fp64_offset1e3": 1.0e-3,
+    "axis_hint_no_fp64_offset1e3": 1.0e-3,
+}
+
 
 def evaluate(lib: Path, case: dict, device: int, variant: str) -> dict:
     x, y, z, currents, nfp = load_case(Path(case["case_path"]))
+    offset_radius = HINT_OFFSET_RADIUS.get(variant, 0.0)
+    offset_angle = 2.0 * math.pi * ((int(case["case_id"]) * 2654435761) % 10000) / 10000.0
+    hint_R = float(case["axis_R"]) + offset_radius * math.cos(offset_angle)
+    hint_Z = float(case["axis_Z"]) + offset_radius * math.sin(offset_angle)
     overrides = {
         **PRODUCTION_SCORE,
-        **VARIANTS[variant],
         "axis_hint_enabled": 1,
         "axis_hint_require_continuation": 1,
-        "axis_hint_R": float(case["axis_R"]),
-        "axis_hint_Z": float(case["axis_Z"]),
+        "axis_hint_R": hint_R,
+        "axis_hint_Z": hint_Z,
+        **VARIANTS[variant],
     }
     started = time.perf_counter()
     result = score_coils_native(
@@ -71,7 +84,7 @@ def evaluate(lib: Path, case: dict, device: int, variant: str) -> dict:
     )
     wall_s = time.perf_counter() - started
     diagnostics = result["diagnostics"]
-    if int(diagnostics["axis_used_hint"]) != 1:
+    if result["status"] == "ok" and int(diagnostics["axis_used_hint"]) != 1:
         raise RuntimeError(
             f"case {case['case_id']} variant {variant} did not use the supplied axis hint: "
             f"status={result['status']}"
@@ -83,6 +96,7 @@ def evaluate(lib: Path, case: dict, device: int, variant: str) -> dict:
         "metadata_qs_error": float(case["metadata_qs_error"]),
         "selection_score": float(case["selection_score"]),
         "variant": variant,
+        "hint_offset_radius": offset_radius,
         "caller_wall_s": wall_s,
         "config_overrides": overrides,
         "result": result,

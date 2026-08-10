@@ -192,13 +192,24 @@ void verify_info(const DeviceBuffer<int>& info, const char* where) {
 
 class HouseholderSolver {
 public:
-    HouseholderSolver(Context& context, bool generic, int lda_alignment = 1, int emulation = 0)
+    HouseholderSolver(
+        Context& context,
+        bool generic,
+        int lda_alignment = 1,
+        int emulation = 0,
+        bool allow_nondeterministic = false
+    )
         : context_(context), generic_(generic),
           lda_(((context.m + lda_alignment - 1) / lda_alignment) * lda_alignment),
           matrix_(static_cast<std::size_t>(lda_) * context.n), rhs_(context.m),
           tau_(context.n), info_(1) {
         if (lda_alignment <= 0) throw std::runtime_error("invalid Householder lda alignment");
         check_solver(cusolverDnCreate(&solver_), "cusolverDnCreate");
+        if (allow_nondeterministic) {
+            check_solver(cusolverDnSetDeterministicMode(
+                             solver_, CUSOLVER_ALLOW_NON_DETERMINISTIC_RESULTS),
+                         "allow non-deterministic cuSOLVER results");
+        }
         if (emulation != 0) {
             check_solver(cusolverDnSetMathMode(solver_, CUSOLVER_FP32_EMULATED_BF16X9_MATH),
                          "enable cuSOLVER BF16x9 math");
@@ -1455,6 +1466,7 @@ int main(int argc, char** argv) {
         Timings timings;
         ErrorMetrics error;
         if (arguments.method == "legacy" || arguments.method == "generic" ||
+            arguments.method == "legacy_nondeterministic" ||
             arguments.method.rfind("legacy_pad", 0) == 0 ||
             arguments.method.rfind("legacy_bf16x9_", 0) == 0) {
             int alignment = 1;
@@ -1464,7 +1476,9 @@ int main(int argc, char** argv) {
             }
             if (arguments.method == "legacy_bf16x9_performant") emulation = 1;
             else if (arguments.method == "legacy_bf16x9_eager") emulation = 2;
-            HouseholderSolver solver(context, arguments.method == "generic", alignment, emulation);
+            HouseholderSolver solver(
+                context, arguments.method == "generic", alignment, emulation,
+                arguments.method == "legacy_nondeterministic");
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else if (arguments.method == "ir_ss" || arguments.method == "ir_sh" ||
                    arguments.method == "ir_sb" || arguments.method == "ir_sx") {

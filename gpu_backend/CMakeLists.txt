@@ -30,6 +30,7 @@ target_compile_definitions(stellarator_gpu PRIVATE
 
 if(SGPU_ENABLE_NVTX)
     target_compile_definitions(stellarator_gpu PRIVATE SGPU_ENABLE_NVTX=1)
+    target_link_libraries(stellarator_gpu PRIVATE CUDA::nvtx3)
 endif()
 
 set_target_properties(stellarator_gpu PROPERTIES

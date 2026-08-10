@@ -3,6 +3,7 @@ project(stellarator_gpu_backend LANGUAGES CXX CUDA)
 find_package(CUDAToolkit REQUIRED)
 
 option(SGPU_ENABLE_NVTX "Enable profiling-only NVTX ranges" OFF)
+option(SGPU_BUILD_QR_BENCHMARK "Build the standalone psi QR benchmark" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
@@ -36,3 +37,13 @@ endif()
 set_target_properties(stellarator_gpu PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
+
+if(SGPU_BUILD_QR_BENCHMARK)
+    add_executable(psi_qr_benchmark tools/psi_qr_benchmark.cu)
+    target_include_directories(psi_qr_benchmark PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(psi_qr_benchmark PRIVATE CUDA::cublas CUDA::cusolver)
+    target_link_options(psi_qr_benchmark PRIVATE -static-libstdc++ -static-libgcc)
+    set_target_properties(psi_qr_benchmark PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+endif()

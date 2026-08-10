@@ -1,16 +1,21 @@
 #include "coil_field.h"
 #include "nvtx_profile.h"
 #include "coil_field_internal.h"
+#include "psi_qr_snapshot.h"
 
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 
+#include <algorithm>
 #include <cmath>
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
 #include <cstdio>
 #include <exception>
+#include <fstream>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -993,6 +998,76 @@ __global__ void eval_B_grad_kernel(
             grad_B[9 * point + component] = accum[3 + component];
         }
     }
+}
+
+bool write_device_bytes(std::ofstream& stream, const void* device_data, std::size_t bytes) {
+    constexpr std::size_t chunk_bytes = 64ULL * 1024ULL * 1024ULL;
+    std::vector<unsigned char> host_buffer(std::min(bytes, chunk_bytes));
+    const auto* source = static_cast<const unsigned char*>(device_data);
+    for (std::size_t offset = 0; offset < bytes; offset += host_buffer.size()) {
+        const std::size_t count = std::min(host_buffer.size(), bytes - offset);
+        if (cuda_check(cudaMemcpy(host_buffer.data(), source + offset, count, cudaMemcpyDeviceToHost),
+                       "psi QR snapshot copy to host")) {
+            return false;
+        }
+        stream.write(reinterpret_cast<const char*>(host_buffer.data()), static_cast<std::streamsize>(count));
+        if (!stream) {
+            set_error("failed to write psi QR snapshot payload");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool maybe_write_psi_qr_snapshot(
+    const float* matrix,
+    const float* rhs,
+    const double* scale,
+    int rows,
+    int cols,
+    int data_rows,
+    double ridge
+) {
+    const char* path = std::getenv("SGPU_PSI_QR_SNAPSHOT");
+    if (!path || path[0] == '\0') return true;
+
+    sgpu::PsiQrSnapshotHeader header{};
+    std::memcpy(header.magic, sgpu::kPsiQrSnapshotMagic, sizeof(header.magic));
+    header.version = sgpu::kPsiQrSnapshotVersion;
+    header.scalar_type = sgpu::kPsiQrScalarFloat32;
+    header.layout = sgpu::kPsiQrLayoutColumnMajor;
+    header.rows = static_cast<std::uint64_t>(rows);
+    header.cols = static_cast<std::uint64_t>(cols);
+    header.data_rows = static_cast<std::uint64_t>(data_rows);
+    header.ridge = ridge;
+    header.matrix_bytes = static_cast<std::uint64_t>(rows) * cols * sizeof(float);
+    header.rhs_bytes = static_cast<std::uint64_t>(rows) * sizeof(float);
+    header.scale_bytes = static_cast<std::uint64_t>(cols) * sizeof(double);
+
+    const std::uint64_t expected_bytes = sizeof(header) + header.matrix_bytes +
+        header.rhs_bytes + header.scale_bytes;
+    std::ifstream existing(path, std::ios::binary | std::ios::ate);
+    if (existing.good() && static_cast<std::uint64_t>(existing.tellg()) == expected_bytes) return true;
+    existing.close();
+
+    std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+    if (!stream) {
+        set_error(std::string("failed to open psi QR snapshot: ") + path);
+        return false;
+    }
+    stream.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    if (!stream ||
+        !write_device_bytes(stream, matrix, static_cast<std::size_t>(header.matrix_bytes)) ||
+        !write_device_bytes(stream, rhs, static_cast<std::size_t>(header.rhs_bytes)) ||
+        !write_device_bytes(stream, scale, static_cast<std::size_t>(header.scale_bytes))) {
+        return false;
+    }
+    stream.close();
+    if (!stream) {
+        set_error("failed to finalize psi QR snapshot");
+        return false;
+    }
+    return true;
 }
 
 __global__ void B_grad_segment_vjp_kernel(
@@ -2619,6 +2694,14 @@ int sgpu_fit_psi_fullgpu(
         }
         stats.qr_scale_s = std::chrono::duration<double>(clock::now() - t_qr).count();
         stats.linear_prep_s = stats.qr_transpose_s + stats.qr_scale_s;
+
+        if (precision_mode == 2 &&
+            !maybe_write_psi_qr_snapshot(
+                d_qr_mat_f, d_qr_rhs_f, d_scale, qr_rows, n_coeff, n_points, ridge
+            )) {
+            cleanup();
+            return 1;
+        }
 
         t_qr = clock::now();
         if (precision_mode == 1) {

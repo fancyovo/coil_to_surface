@@ -5708,9 +5708,9 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->axis_topology_margin = 2.0e-2;
     config->psi_poly_degree = 10;
     config->psi_m_tor = 12;
-    config->psi_n_r = 80;
-    config->psi_n_z = 80;
-    config->psi_n_phi = 80;
+    config->psi_n_r = 48;
+    config->psi_n_z = 48;
+    config->psi_n_phi = 48;
     config->psi_validation_points = 4000;
     config->psi_solver_mode = 2;
     config->psi_precision_mode = 2;

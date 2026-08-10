@@ -1,0 +1,333 @@
+{
+  "variant": "psi_grid48",
+  "calls": 138,
+  "case_count": 69,
+  "native_total": {
+    "p50_ms": 664.8541674999999,
+    "p95_ms": 913.02368515,
+    "max_ms": 1063.184914,
+    "median_call_share_percent": 100.0
+  },
+  "caller_wall": {
+    "p50_ms": 665.1626462116838,
+    "p95_ms": 913.3487670682371,
+    "max_ms": 1063.510773703456,
+    "median_call_share_percent": 100.0
+  },
+  "top_level_accounted": {
+    "p50_ms": 661.6989035,
+    "p95_ms": 909.8506959,
+    "max_ms": 1059.9137110000001,
+    "median_call_share_percent": 99.52101860968872
+  },
+  "categories": [
+    {
+      "label": "Magnetic axis",
+      "keys": [
+        "axis_search_s",
+        "axis_trace_s"
+      ],
+      "p50_ms": 251.96219649999995,
+      "p95_ms": 388.78613644999996,
+      "max_ms": 474.29001700000003,
+      "median_call_share_percent": 37.56824291442588
+    },
+    {
+      "label": "Psi fit and validation",
+      "keys": [
+        "psi_points_s",
+        "psi_fit_s",
+        "psi_validate_s"
+      ],
+      "p50_ms": 142.5280745,
+      "p95_ms": 143.905908,
+      "max_ms": 161.820839,
+      "median_call_share_percent": 21.45798387308072
+    },
+    {
+      "label": "Continuous surface screen",
+      "keys": [
+        "surface_screen_s"
+      ],
+      "p50_ms": 119.06388100000001,
+      "p95_ms": 159.90568355000002,
+      "max_ms": 181.594782,
+      "median_call_share_percent": 17.81083086334383
+    },
+    {
+      "label": "Alpha/iota fit",
+      "keys": [
+        "volume_points_s",
+        "field_volume_s",
+        "alpha_assemble_s",
+        "alpha_solve_s"
+      ],
+      "p50_ms": 85.4073935,
+      "p95_ms": 87.99015065,
+      "max_ms": 89.82710499999999,
+      "median_call_share_percent": 12.86184148096315
+    },
+    {
+      "label": "Flux calibration",
+      "keys": [
+        "flux_s"
+      ],
+      "p50_ms": 38.263135000000005,
+      "p95_ms": 67.32959435,
+      "max_ms": 85.73102300000001,
+      "median_call_share_percent": 6.135071783016198
+    },
+    {
+      "label": "Coil and field setup",
+      "keys": [
+        "field_create_s",
+        "coil_geometry_s"
+      ],
+      "p50_ms": 23.464495499999998,
+      "p95_ms": 61.4590729,
+      "max_ms": 128.23236,
+      "median_call_share_percent": 3.5058472879510214
+    },
+    {
+      "label": "QS metrics and final score",
+      "keys": [
+        "qs_metrics_s",
+        "score_s"
+      ],
+      "p50_ms": 0.6285995000000001,
+      "p95_ms": 0.6492535999999999,
+      "max_ms": 0.848359,
+      "median_call_share_percent": 0.09487893898545247
+    }
+  ],
+  "top_level_stages": [
+    {
+      "key": "field_create_s",
+      "label": "Field object",
+      "p50_ms": 2.1697699999999998,
+      "p95_ms": 2.6858436,
+      "max_ms": 10.215184,
+      "median_call_share_percent": 0.3111939300672876
+    },
+    {
+      "key": "coil_geometry_s",
+      "label": "Coil geometry",
+      "p50_ms": 21.28829,
+      "p95_ms": 58.7648078,
+      "max_ms": 125.83665699999999,
+      "median_call_share_percent": 3.1787877659293216
+    },
+    {
+      "key": "axis_search_s",
+      "label": "Axis continuation",
+      "p50_ms": 203.550237,
+      "p95_ms": 317.9713589,
+      "max_ms": 389.811623,
+      "median_call_share_percent": 30.28814460691204
+    },
+    {
+      "key": "axis_trace_s",
+      "label": "Axis curve sampling",
+      "p50_ms": 48.4087005,
+      "p95_ms": 70.77660075,
+      "max_ms": 97.991405,
+      "median_call_share_percent": 7.21715135075374
+    },
+    {
+      "key": "psi_points_s",
+      "label": "Psi point generation",
+      "p50_ms": 0.531291,
+      "p95_ms": 0.7388487,
+      "max_ms": 0.895741,
+      "median_call_share_percent": 0.08778039366556295
+    },
+    {
+      "key": "psi_fit_s",
+      "label": "Psi least squares",
+      "p50_ms": 98.343314,
+      "p95_ms": 99.6733516,
+      "max_ms": 117.493677,
+      "median_call_share_percent": 14.808217871918231
+    },
+    {
+      "key": "psi_validate_s",
+      "label": "Psi validation",
+      "p50_ms": 43.548586,
+      "p95_ms": 43.858073399999995,
+      "max_ms": 45.336832,
+      "median_call_share_percent": 6.552681430631326
+    },
+    {
+      "key": "surface_screen_s",
+      "label": "Continuous surface screen",
+      "p50_ms": 119.06388100000001,
+      "p95_ms": 159.90568355000002,
+      "max_ms": 181.594782,
+      "median_call_share_percent": 17.81083086334383
+    },
+    {
+      "key": "flux_s",
+      "label": "Flux calibration",
+      "p50_ms": 38.263135000000005,
+      "p95_ms": 67.32959435,
+      "max_ms": 85.73102300000001,
+      "median_call_share_percent": 6.135071783016198
+    },
+    {
+      "key": "volume_points_s",
+      "label": "Volume point generation",
+      "p50_ms": 2.2331155,
+      "p95_ms": 2.4577317499999998,
+      "max_ms": 5.875878,
+      "median_call_share_percent": 0.3371240890167232
+    },
+    {
+      "key": "field_volume_s",
+      "label": "Volume magnetic field",
+      "p50_ms": 1.140452,
+      "p95_ms": 1.9405990499999999,
+      "max_ms": 2.463281,
+      "median_call_share_percent": 0.17058355434752243
+    },
+    {
+      "key": "alpha_assemble_s",
+      "label": "Alpha/iota assembly",
+      "p50_ms": 2.157023,
+      "p95_ms": 2.20986195,
+      "max_ms": 2.2418,
+      "median_call_share_percent": 0.32449095710271236
+    },
+    {
+      "key": "alpha_solve_s",
+      "label": "Alpha/iota least squares",
+      "p50_ms": 79.922438,
+      "p95_ms": 81.41118480000002,
+      "max_ms": 82.63200499999999,
+      "median_call_share_percent": 12.030276525699755
+    },
+    {
+      "key": "qs_metrics_s",
+      "label": "Volume QS metrics",
+      "p50_ms": 0.628269,
+      "p95_ms": 0.64889275,
+      "max_ms": 0.8479639999999999,
+      "median_call_share_percent": 0.09481943169452221
+    },
+    {
+      "key": "score_s",
+      "label": "Final score formula",
+      "p50_ms": 0.00035800000000000003,
+      "p95_ms": 0.0004837000000000001,
+      "max_ms": 0.000563,
+      "median_call_share_percent": 5.629652906954694e-05
+    }
+  ],
+  "axis_stages": [
+    {
+      "key": "axis_domain_s",
+      "label": "Axis domain setup",
+      "p50_ms": 0.6764335,
+      "p95_ms": 0.9120596,
+      "max_ms": 1.1415060000000001,
+      "median_call_share_percent": 0.08983580478568412
+    },
+    {
+      "key": "axis_candidate_refine_s",
+      "label": "Mixed-precision Newton refinement",
+      "p50_ms": 46.521843,
+      "p95_ms": 67.6508982,
+      "max_ms": 80.87578300000001,
+      "median_call_share_percent": 6.94895706974857
+    },
+    {
+      "key": "axis_fp64_verify_s",
+      "label": "Five-line FP64 verification",
+      "p50_ms": 156.3395715,
+      "p95_ms": 249.40848674999998,
+      "max_ms": 307.789451,
+      "median_call_share_percent": 23.13686529211561
+    },
+    {
+      "key": "axis_topology_s",
+      "label": "Topology reduction",
+      "p50_ms": 0.00021799999999999999,
+      "p95_ms": 0.00026160000000000007,
+      "max_ms": 0.000366,
+      "median_call_share_percent": 3.3486752621169845e-05
+    },
+    {
+      "key": "axis_trace_s",
+      "label": "Axis curve sampling",
+      "p50_ms": 48.4087005,
+      "p95_ms": 70.77660075,
+      "max_ms": 97.991405,
+      "median_call_share_percent": 7.21715135075374
+    }
+  ],
+  "surface_stages": [
+    {
+      "key": "surface_ray_roots_s",
+      "label": "Ray/root setup",
+      "p50_ms": 5.574389,
+      "p95_ms": 5.688845850000001,
+      "max_ms": 5.7861780000000005,
+      "median_call_share_percent": 0.8395256473553264
+    },
+    {
+      "key": "surface_mixed_trace_s",
+      "label": "One-period mixed-precision trace",
+      "p50_ms": 95.5943355,
+      "p95_ms": 136.40950075,
+      "max_ms": 157.974666,
+      "median_call_share_percent": 14.331146717813876
+    },
+    {
+      "key": "surface_mixed_reduce_s",
+      "label": "Drift reduction",
+      "p50_ms": 17.465976,
+      "p95_ms": 17.6278389,
+      "max_ms": 18.525638,
+      "median_call_share_percent": 2.630673486205077
+    },
+    {
+      "key": "surface_fp64_trace_s",
+      "label": "Optional FP64 trace",
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "max_ms": 0.0,
+      "median_call_share_percent": 0.0
+    },
+    {
+      "key": "surface_fp64_reduce_s",
+      "label": "Optional FP64 reduction",
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "max_ms": 0.0,
+      "median_call_share_percent": 0.0
+    },
+    {
+      "key": "surface_long_trace_s",
+      "label": "Optional long trace",
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "max_ms": 0.0,
+      "median_call_share_percent": 0.0
+    },
+    {
+      "key": "surface_long_reduce_s",
+      "label": "Optional long-trace reduction",
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "max_ms": 0.0,
+      "median_call_share_percent": 0.0
+    },
+    {
+      "key": "surface_confidence_s",
+      "label": "Confidence aggregation",
+      "p50_ms": 0.44616049999999996,
+      "p95_ms": 0.46241449999999995,
+      "max_ms": 0.5130399999999999,
+      "median_call_share_percent": 0.06784839392848682
+    }
+  ]
+}

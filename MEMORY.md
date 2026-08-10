@@ -54,9 +54,9 @@
 - 2026-08-10: branch `codex/score-eval-compression` profiles only ABI-10 calls
   with a supplied axis hint and strict branch continuation. It does not time or
   alter standalone global-axis search. Exact loop-invariant removals are active;
-  the fixed-matrix QR and psi-grid experiments did not change production
-  defaults.
-- The established 69-case strict-continuation holdout remains the production
+  fixed-matrix QR alternatives remain experimental, while psi grid 48 is now
+  the production default.
+- The established 69-case strict-continuation grid-80 result is the former
   timing reference at P50/P95 `0.990/1.254 s`. A new 8-case high-score profile
   measured `1.323 s`, but it does not supersede that reference: fixed-size
   FP32 QR was anomalously about `0.44 s` versus historical raw records near
@@ -82,8 +82,17 @@
   389440 to 82176, psi-fit P50 from `0.4402` to `0.0983 s`, and score-call
   P50/P95 from `1.013/1.266` to `0.665/0.913 s`. All 138 calls were `ok`;
   independent angle-P95 median/P95 ratios were `0.9991/1.0137`, score Spearman
-  was `0.999927`, and top-decile overlap was 100%. Grid 48 is the next
-  optimization-neighborhood candidate, not yet the production default.
+  was `0.999927`, and top-decile overlap was 100%. On 2026-08-10 the user
+  accepted grid 48 as the production default; core ABI defaults and the
+  `eval_quasr.py` / `score_noise_experiment.py` CLI defaults are now all 48.
+  Do not extrapolate this acceptance to grids below 48 without new validation.
+- With grid 48, 138-call native timing shows the magnetic-axis path is now the
+  first bottleneck: P50 `251.96 ms` / median call share `37.57%`. Its FP64
+  five-line verification is `156.34 ms`, mixed Newton refinement `46.52 ms`,
+  and repeated 240-point axis-curve trace `48.41 ms`. Psi fit plus independent
+  validation is `142.53 ms`, continuous surface screening `119.06 ms`, and
+  alpha/iota work `85.41 ms`. Details and plots are in section 14 of
+  `reports/qh_score_evaluation_compression_20260810.md`.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
   QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
@@ -481,11 +490,10 @@ linked reports.
 
 ## 10. Next Actions
 
-1. Validate grid 48 on saved Adam trajectory neighborhoods and gate-boundary
-   perturbations, focusing on local ranking, score smoothness, and accept/reject
-   decisions before changing the production default.
-2. If another small gain matters after grid-48 acceptance, connect augmented-RHS
-   Householder QR behind an explicit mode and run the same end-to-end physical
-   and ranking checks. Never substitute the rejected FP32 normal-equation path.
+1. For score compression, first test eliminating the duplicate center-axis
+   period trace by emitting 240 axis samples during FP64 verification, then
+   calibrate axis trace steps 960/720/480 with strict branch/topology checks.
+2. If another QR gain matters, test augmented-RHS Householder behind an explicit
+   mode. Never substitute the rejected FP32 normal-equation path.
 3. Do not restart manifold-flow, score collection, proxy, black-box-gradient,
    or paused DESC-method work without a new explicit user request.

@@ -86,7 +86,8 @@
   alpha/iota residual (P50 ratio `0.9452`), added no measurable time, and kept
   the top decile exactly. A 200-step rerun from historical `start_10` rose from
   `85.5157` to `91.5263` at `4.117 s/step`; all updates were valid and step 200
-  was best. Evidence is section 16 and assets
+  was best. Implementation commit `c8b185f`; accepted evidence commit `233f57e`.
+  Evidence is section 16 and assets
   `qh_iota_degree_calibration_35856` / `qh_iota_cubic_adam200_35864`.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen

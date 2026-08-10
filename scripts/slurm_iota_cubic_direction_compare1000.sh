@@ -19,6 +19,7 @@ variant="${DIRECTION_VARIANT:?DIRECTION_VARIANT is required}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_iota_cubic_cuda13/libstellarator_gpu.so}"
 expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:?EXPECTED_SCORE_LIB_SHA is required}"
 initial_case="$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json"
+expected_initial_case_sha="cd440577bc67ecce1a6c83a0da172bda4d7f86cab7b290aeed3a2d90fb61246f"
 
 case "$variant" in
   random)
@@ -42,6 +43,7 @@ test ! -e "$run_root"
 test -f "$lib"
 test -f "$initial_case"
 test "$(sha256sum "$lib" | awk '{print $1}')" = "$expected_lib_sha"
+test "$(sha256sum "$initial_case" | awk '{print $1}')" = "$expected_initial_case_sha"
 
 export PROJECT="$project"
 export SCORE_LIB="$lib"

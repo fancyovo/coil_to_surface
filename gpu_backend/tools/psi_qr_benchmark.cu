@@ -284,6 +284,41 @@ __global__ void gather_upper_kernel(
         ? input[row + static_cast<std::size_t>(col) * input_lda] : 0.0f;
 }
 
+__global__ void store_bcgs_projection_kernel(
+    const float* first,
+    const float* second,
+    float* r,
+    int n,
+    int previous_cols,
+    int first_col,
+    int block_cols,
+    int passes
+) {
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < previous_cols && col < block_cols) {
+        float value = first[row + static_cast<std::size_t>(col) * n];
+        if (passes == 2) value += second[row + static_cast<std::size_t>(col) * n];
+        r[row + static_cast<std::size_t>(first_col + col) * n] = value;
+    }
+}
+
+__global__ void store_bcgs_diagonal_kernel(
+    const float* panel,
+    int panel_lda,
+    float* r,
+    int n,
+    int first_col,
+    int block_cols
+) {
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < block_cols && col < block_cols && row <= col) {
+        r[(first_col + row) + static_cast<std::size_t>(first_col + col) * n] =
+            panel[row + static_cast<std::size_t>(col) * panel_lda];
+    }
+}
+
 class TsqrSolver {
 public:
     TsqrSolver(Context& context, int blocks)
@@ -437,6 +472,140 @@ private:
     cusolverDnHandle_t upper_solver_ = nullptr;
 };
 
+class BlockCgsSolver {
+public:
+    BlockCgsSolver(Context& context, int block_cols, int passes, bool tf32)
+        : context_(context), block_cols_(block_cols), passes_(passes), tf32_(tf32),
+          matrix_(context.matrix.size()), r_(static_cast<std::size_t>(context.n) * context.n),
+          solution_(context.n), tau_(block_cols),
+          first_projection_(static_cast<std::size_t>(context.n) * block_cols),
+          second_projection_(passes == 2 ? static_cast<std::size_t>(context.n) * block_cols : 0),
+          info_((context.n + block_cols - 1) / block_cols) {
+        if (block_cols_ <= 0 || block_cols_ > context_.n || (passes_ != 1 && passes_ != 2)) {
+            throw std::runtime_error("invalid block CGS configuration");
+        }
+        check_solver(cusolverDnCreate(&solver_), "BCGS cusolver create");
+        check_cublas(cublasSetMathMode(
+            context_.blas, tf32_ ? CUBLAS_TF32_TENSOR_OP_MATH : CUBLAS_PEDANTIC_MATH),
+            "set BCGS math mode");
+        int geqrf_work = 0;
+        int orgqr_work = 0;
+        check_solver(cusolverDnSgeqrf_bufferSize(
+            solver_, context_.m, block_cols_, matrix_.data(), context_.m, &geqrf_work),
+            "BCGS geqrf buffer");
+        check_solver(cusolverDnSorgqr_bufferSize(
+            solver_, context_.m, block_cols_, block_cols_, matrix_.data(), context_.m,
+            tau_.data(), &orgqr_work), "BCGS orgqr buffer");
+        work_.allocate(static_cast<std::size_t>(std::max(geqrf_work, orgqr_work)));
+    }
+
+    ~BlockCgsSolver() {
+        cublasSetMathMode(context_.blas, CUBLAS_DEFAULT_MATH);
+        cusolverDnDestroy(solver_);
+    }
+
+    void run_once(Timings* timings) {
+        const double restore = wall_ms([&] {
+            check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), matrix_.size() * sizeof(float),
+                                  cudaMemcpyDeviceToDevice), "restore BCGS matrix");
+        });
+        const float one = 1.0f;
+        const float zero = 0.0f;
+        const float minus_one = -1.0f;
+        const int panel_count = (context_.n + block_cols_ - 1) / block_cols_;
+        const double factor = wall_ms([&] {
+            check_cuda(cudaMemset(r_.data(), 0, r_.size() * sizeof(float)), "zero BCGS R");
+            check_cuda(cudaMemset(info_.data(), 0, info_.size() * sizeof(int)), "zero BCGS info");
+            for (int panel_index = 0; panel_index < panel_count; ++panel_index) {
+                const int first_col = panel_index * block_cols_;
+                const int width = std::min(block_cols_, context_.n - first_col);
+                float* panel = matrix_.data() + static_cast<std::size_t>(first_col) * context_.m;
+                if (first_col > 0) {
+                    check_cublas(cublasSgemm(
+                        context_.blas, CUBLAS_OP_T, CUBLAS_OP_N, first_col, width, context_.m,
+                        &one, matrix_.data(), context_.m, panel, context_.m, &zero,
+                        first_projection_.data(), context_.n), "BCGS first projection");
+                    check_cublas(cublasSgemm(
+                        context_.blas, CUBLAS_OP_N, CUBLAS_OP_N, context_.m, width, first_col,
+                        &minus_one, matrix_.data(), context_.m, first_projection_.data(), context_.n,
+                        &one, panel, context_.m), "BCGS first update");
+                    if (passes_ == 2) {
+                        check_cublas(cublasSgemm(
+                            context_.blas, CUBLAS_OP_T, CUBLAS_OP_N, first_col, width, context_.m,
+                            &one, matrix_.data(), context_.m, panel, context_.m, &zero,
+                            second_projection_.data(), context_.n), "BCGS second projection");
+                        check_cublas(cublasSgemm(
+                            context_.blas, CUBLAS_OP_N, CUBLAS_OP_N, context_.m, width, first_col,
+                            &minus_one, matrix_.data(), context_.m, second_projection_.data(), context_.n,
+                            &one, panel, context_.m), "BCGS second update");
+                    }
+                    const dim3 block(16, 16);
+                    const dim3 grid((width + block.x - 1) / block.x,
+                                    (first_col + block.y - 1) / block.y);
+                    store_bcgs_projection_kernel<<<grid, block>>>(
+                        first_projection_.data(), second_projection_.data(), r_.data(), context_.n,
+                        first_col, first_col, width, passes_);
+                }
+                check_solver(cusolverDnSgeqrf(
+                    solver_, context_.m, width, panel, context_.m, tau_.data(), work_.data(),
+                    static_cast<int>(work_.size()), info_.data() + panel_index), "BCGS panel geqrf");
+                const dim3 diag_block(16, 16);
+                const dim3 diag_grid((width + diag_block.x - 1) / diag_block.x,
+                                     (width + diag_block.y - 1) / diag_block.y);
+                store_bcgs_diagonal_kernel<<<diag_grid, diag_block>>>(
+                    panel, context_.m, r_.data(), context_.n, first_col, width);
+                check_solver(cusolverDnSorgqr(
+                    solver_, context_.m, width, width, panel, context_.m, tau_.data(), work_.data(),
+                    static_cast<int>(work_.size()), info_.data() + panel_index), "BCGS panel orgqr");
+            }
+            check_cuda(cudaGetLastError(), "BCGS factor kernels");
+        });
+        std::vector<int> host_info(static_cast<std::size_t>(panel_count));
+        check_cuda(cudaMemcpy(host_info.data(), info_.data(), host_info.size() * sizeof(int),
+                              cudaMemcpyDeviceToHost), "copy BCGS info");
+        for (int panel_index = 0; panel_index < panel_count; ++panel_index) {
+            if (host_info[panel_index] != 0) {
+                throw std::runtime_error("BCGS panel failed at " + std::to_string(panel_index) +
+                                         " with info=" + std::to_string(host_info[panel_index]));
+            }
+        }
+        const double apply = wall_ms([&] {
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one, matrix_.data(), context_.m,
+                context_.rhs.data(), 1, &zero, solution_.data(), 1), "BCGS apply Q^T b");
+        });
+        const double triangular = wall_ms([&] {
+            check_cublas(cublasStrsv(
+                context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
+                context_.n, r_.data(), context_.n, solution_.data(), 1), "BCGS triangular solve");
+        });
+        if (timings) {
+            timings->restore_ms.push_back(restore);
+            timings->factor_ms.push_back(factor);
+            timings->apply_ms.push_back(apply);
+            timings->triangular_ms.push_back(triangular);
+            timings->solve_ms.push_back(factor + apply + triangular);
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    Context& context_;
+    int block_cols_ = 0;
+    int passes_ = 2;
+    bool tf32_ = false;
+    cusolverDnHandle_t solver_ = nullptr;
+    DeviceBuffer<float> matrix_;
+    DeviceBuffer<float> r_;
+    DeviceBuffer<float> solution_;
+    DeviceBuffer<float> tau_;
+    DeviceBuffer<float> first_projection_;
+    DeviceBuffer<float> second_projection_;
+    DeviceBuffer<float> work_;
+    DeviceBuffer<int> info_;
+};
+
 class NormalEquationSolver {
 public:
     NormalEquationSolver(Context& context, bool cholesky_qr2, bool tf32)
@@ -475,7 +644,7 @@ public:
                                       cudaMemcpyDeviceToDevice), "restore CholeskyQR2 matrix");
             });
         }
-        const double factor = wall_ms([&] {
+        double factor = wall_ms([&] {
             check_cublas(cublasSgemm(
                 context_.blas, CUBLAS_OP_T, CUBLAS_OP_N, context_.n, context_.n, context_.m,
                 &one, context_.matrix.data(), context_.m, context_.matrix.data(), context_.m,
@@ -483,7 +652,10 @@ public:
             check_solver(cusolverDnSpotrf(
                 solver_, CUBLAS_FILL_MODE_UPPER, context_.n, gram1_.data(), context_.n,
                 work_.data(), static_cast<int>(work_.size()), info_.data()), "first potrf");
-            if (cholesky_qr2_) {
+        });
+        verify_info(info_, "first normal-equation potrf info");
+        if (cholesky_qr2_) {
+            factor += wall_ms([&] {
                 check_cublas(cublasStrsm(
                     context_.blas, CUBLAS_SIDE_RIGHT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,
                     CUBLAS_DIAG_NON_UNIT, context_.m, context_.n, &one, gram1_.data(), context_.n,
@@ -495,13 +667,15 @@ public:
                 check_solver(cusolverDnSpotrf(
                     solver_, CUBLAS_FILL_MODE_UPPER, context_.n, gram2_.data(), context_.n,
                     work_.data(), static_cast<int>(work_.size()), info_.data()), "second potrf");
+            });
+            verify_info(info_, "second CholeskyQR potrf info");
+            factor += wall_ms([&] {
                 check_cublas(cublasStrsm(
                     context_.blas, CUBLAS_SIDE_RIGHT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,
                     CUBLAS_DIAG_NON_UNIT, context_.m, context_.n, &one, gram2_.data(), context_.n,
                     matrix_.data(), context_.m), "second CholeskyQR right solve");
-            }
-        });
-        verify_info(info_, "normal equation potrf info");
+            });
+        }
         const double apply = wall_ms([&] {
             const float* basis = cholesky_qr2_ ? matrix_.data() : context_.matrix.data();
             check_cublas(cublasSgemv(
@@ -735,6 +909,14 @@ int main(int argc, char** argv) {
         } else if (arguments.method.rfind("tsqr", 0) == 0) {
             const int blocks = std::stoi(arguments.method.substr(4));
             TsqrSolver solver(context, blocks);
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method.rfind("bcgs", 0) == 0) {
+            const std::size_t underscore = arguments.method.find('_');
+            if (underscore == std::string::npos) throw std::runtime_error("BCGS method needs a block size");
+            const bool tf32 = arguments.method.find("tf32") != std::string::npos;
+            const int passes = arguments.method[4] == '1' ? 1 : 2;
+            const int block_cols = std::stoi(arguments.method.substr(underscore + 1));
+            BlockCgsSolver solver(context, block_cols, passes, tf32);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else if (arguments.method == "normal_fp32" || arguments.method == "normal_tf32" ||
                    arguments.method == "choleskyqr2") {

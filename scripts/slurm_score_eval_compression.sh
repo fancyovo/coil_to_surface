@@ -83,7 +83,7 @@ python scripts/analyze_score_eval_compression.py \
         --variants baseline --case-limit 1 --repeats 2 --warmups 1
 
 for report in nvtx_sum nvtx_gpu_proj_sum cuda_gpu_kern_sum cuda_api_sum; do
-    "$nsys_bin" stats --report "$report" --format csv "$output_dir/profile.nsys-rep" \
+    "$nsys_bin" stats --force-export=true --report "$report" --format csv "$output_dir/profile.nsys-rep" \
         > "$output_dir/${report}.csv"
 done
 

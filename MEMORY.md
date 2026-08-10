@@ -53,9 +53,9 @@
 
 - 2026-08-10: branch `codex/score-eval-compression` profiles only ABI-10 calls
   with a supplied axis hint and strict branch continuation. It does not time or
-  alter standalone global-axis search. The user currently wants analysis first;
-  do not implement complex precision, QR, sampling, or default changes without
-  a decision after reading the report.
+  alter standalone global-axis search. Exact loop-invariant removals are active;
+  the fixed-matrix QR research is complete and did not change the production
+  solver.
 - The established 69-case strict-continuation holdout remains the production
   timing reference at P50/P95 `0.990/1.254 s`. A new 8-case high-score profile
   measured `1.323 s`, but it does not supersede that reference: fixed-size
@@ -81,14 +81,27 @@
   FP32 normal equations damaged ranking and introduced a slow tail; do not use.
   Full evidence and recommendations are in
   `reports/qh_score_evaluation_compression_20260810.md`.
-- QR research for the fixed `391334 x 1574` FP32 problem sets a strict
-  Householder target of `64.55 ms` for `30 TFLOP/s`. Test mature libraries in
-  this order: cuSOLVER generic API, MAGMA 2.10, then 1/2/4-GPU cuSOLVERMp.
-  BF16x9 is not an RTX 5090 shortcut because NVIDIA's current support table
-  excludes `sm_120`. If mature libraries miss the target, prefer row-blocked
-  concurrent Householder TSQR using library kernels; CholeskyQR2/SVQB2 remain
-  conditional experiments because the existing FP32 Gram path failed score
-  accuracy and tail-latency acceptance.
+- 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
+  `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
+  QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
+  `e8878c17a3d6b7c64f5459391c8d98cbc9eccb9b52410acc5c7d2ca90f3dd6b2`;
+  it remains under `~/local_surface_evaluator_data/qr_bench_20260810/`.
+- Standalone single-RTX5090 cuSOLVER Householder least squares is stable at
+  P50 `181.933 ms` (`10.635` Householder-equivalent TFLOP/s). LDA-256 padding
+  is exactly equivalent at `179.639 ms`, only `1.26%` faster. Generic API,
+  nondeterministic mode, BF16x9 mode, stable TSQR/block-GS, and mixed-precision
+  iterative refinement do not improve latency. MAGMA 2.10 Householder is
+  accurate but about 14.5x slower (`2.632 s`) because of its hybrid panel path.
+- Shifted Gram and short PCGLS reach actual estimated `35--45 TFLOP/s`, proving
+  the GEMM throughput is available, but their physical residuals are 6--24x
+  the Householder baseline and their coefficient errors are order one. FP32
+  unshifted Gram/CholeskyQR2 loses positive definiteness at pivot 579; TF32
+  fails earlier. LSQR does not converge before losing its speed advantage.
+- No tested method is both at least 1.5x faster and reference-accurate, so no
+  alternative was connected to the score path and no misleading end-to-end
+  timing was run. Full methods, raw JSON, figures, and acceptance definitions
+  are in section 12 of `reports/qh_score_evaluation_compression_20260810.md`
+  and `reports/assets/qh_psi_qr_benchmark_20260810/`.
 
 ### Completed 10000-step optimization continuation
 

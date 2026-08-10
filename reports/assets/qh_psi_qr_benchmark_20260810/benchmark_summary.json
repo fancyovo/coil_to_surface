@@ -1,0 +1,2790 @@
+{
+  "records": [
+    {
+      "method": "lsqr10",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 31.673485,
+      "solve_ms_p95": 31.6904113,
+      "equivalent_tflops_p50": 61.0875596158,
+      "factor_ms_p50": 31.673485,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.958607006166,
+      "augmented_residual_relative": 0.179181200307,
+      "physical_residual_relative": 0.179179714037,
+      "backward_error": 0.00597313432583,
+      "normal_residual_relative": 0.0153138145163,
+      "restore_ms": [
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        31.692292,
+        31.670103,
+        31.673485
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        31.692292,
+        31.670103,
+        31.673485
+      ],
+      "refinement_iterations": [
+        10,
+        10,
+        10
+      ],
+      "source_file": "lsqr10.json",
+      "family": "LSQR",
+      "speedup_vs_legacy": 5.744009760845704,
+      "physical_residual_ratio": 192.6329805486588,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 24618241440.0,
+      "estimated_algorithm_tflops": 0.7772507963680031
+    },
+    {
+      "method": "shifted_9e-4",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 41.451026,
+      "solve_ms_p95": 42.7528283,
+      "equivalent_tflops_p50": 46.6781184904,
+      "factor_ms_p50": 39.832207,
+      "apply_ms_p50": 1.467846,
+      "triangular_ms_p50": 0.149129,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.796183732745,
+      "augmented_residual_relative": 0.0267568224561,
+      "physical_residual_relative": 0.0266670223928,
+      "backward_error": 0.000304408037199,
+      "normal_residual_relative": 0.00120163205306,
+      "restore_ms": [
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        39.399705,
+        39.832207,
+        41.280823
+      ],
+      "apply_ms": [
+        1.467541,
+        1.46969,
+        1.467846
+      ],
+      "triangular_ms": [
+        0.149542,
+        0.149129,
+        0.148804
+      ],
+      "solve_ms": [
+        41.016788,
+        41.451026,
+        42.897473
+      ],
+      "source_file": "shifted_9e-4.json",
+      "family": "Gram/Cholesky",
+      "speedup_vs_legacy": 4.3891026243837725,
+      "physical_residual_ratio": 28.669249939879514,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1939986362474.6667,
+      "estimated_algorithm_tflops": 46.801890078056616
+    },
+    {
+      "method": "shifted_1e-2",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 42.235146,
+      "solve_ms_p95": 44.351847,
+      "equivalent_tflops_p50": 45.8115121273,
+      "factor_ms_p50": 40.621995,
+      "apply_ms_p50": 1.464841,
+      "triangular_ms_p50": 0.147346,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.88744496105,
+      "augmented_residual_relative": 0.0729021051968,
+      "physical_residual_relative": 0.072894600451,
+      "backward_error": 0.00171469480116,
+      "normal_residual_relative": 0.00349241145002,
+      "restore_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        40.621995,
+        42.882314,
+        39.306039,
+        42.182842,
+        40.547766
+      ],
+      "apply_ms": [
+        1.465393,
+        1.461659,
+        1.467156,
+        1.463322,
+        1.464841
+      ],
+      "triangular_ms": [
+        0.147758,
+        0.147346,
+        0.147149,
+        0.147795,
+        0.147323
+      ],
+      "solve_ms": [
+        42.235146,
+        44.491319,
+        40.920344,
+        43.793959,
+        42.15993
+      ],
+      "source_file": "shifted_1e-2.json",
+      "family": "Gram/Cholesky",
+      "speedup_vs_legacy": 4.307616386598971,
+      "physical_residual_ratio": 78.36771158078828,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1939986362474.6667,
+      "estimated_algorithm_tflops": 45.9329858235761
+    },
+    {
+      "method": "shifted_8e-4",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 42.978053,
+      "solve_ms_p95": 44.0541299,
+      "equivalent_tflops_p50": 45.0196267192,
+      "factor_ms_p50": 41.354585,
+      "apply_ms_p50": 1.468502,
+      "triangular_ms_p50": 0.150863,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 1.11328141445,
+      "augmented_residual_relative": 0.0224720162892,
+      "physical_residual_relative": 0.0221830078867,
+      "backward_error": 0.000156571376212,
+      "normal_residual_relative": 0.00174998404966,
+      "restore_ms": [
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        41.354585,
+        42.555176,
+        40.256105
+      ],
+      "apply_ms": [
+        1.470533,
+        1.467665,
+        1.468502
+      ],
+      "triangular_ms": [
+        0.152935,
+        0.150853,
+        0.150863
+      ],
+      "solve_ms": [
+        42.978053,
+        44.173694,
+        41.87547
+      ],
+      "source_file": "shifted_8e-4.json",
+      "family": "Gram/Cholesky",
+      "speedup_vs_legacy": 4.233156094809599,
+      "physical_residual_ratio": 23.84856427367123,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1939986362474.6667,
+      "estimated_algorithm_tflops": 45.13900065400047
+    },
+    {
+      "method": "shifted_1e-3",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 43.941898,
+      "solve_ms_p95": 44.2153832,
+      "equivalent_tflops_p50": 44.0321422433,
+      "factor_ms_p50": 42.330198,
+      "apply_ms_p50": 1.465392,
+      "triangular_ms_p50": 0.147386,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.755270321771,
+      "augmented_residual_relative": 0.0293570471435,
+      "physical_residual_relative": 0.0292991881223,
+      "backward_error": 0.000396248486914,
+      "normal_residual_relative": 0.00114911765463,
+      "restore_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        42.330198,
+        42.228037,
+        41.017571,
+        42.360018,
+        42.663153
+      ],
+      "apply_ms": [
+        1.463033,
+        1.464483,
+        1.466525,
+        1.465392,
+        1.465594
+      ],
+      "triangular_ms": [
+        0.148667,
+        0.147543,
+        0.147118,
+        0.147386,
+        0.147283
+      ],
+      "solve_ms": [
+        43.941898,
+        43.840063,
+        42.631214,
+        43.972796,
+        44.27603
+      ],
+      "source_file": "shifted_1e-3.json",
+      "family": "Gram/Cholesky",
+      "speedup_vs_legacy": 4.1403037938871,
+      "physical_residual_ratio": 31.499045335506263,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1939986362474.6667,
+      "estimated_algorithm_tflops": 44.14889776665238
+    },
+    {
+      "method": "pcgls2",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 49.729862,
+      "solve_ms_p95": 50.4408054,
+      "equivalent_tflops_p50": 38.9073250028,
+      "factor_ms_p50": 41.81277,
+      "apply_ms_p50": 7.919649,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.685353110154,
+      "augmented_residual_relative": 0.0149613552382,
+      "physical_residual_relative": 0.0147439515602,
+      "backward_error": 0.000146937476745,
+      "normal_residual_relative": 0.00365034743404,
+      "restore_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        41.81277,
+        36.266345,
+        41.105503,
+        42.414418,
+        42.541949
+      ],
+      "apply_ms": [
+        7.917092,
+        7.925346,
+        7.919402,
+        7.919649,
+        7.925541
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        49.729862,
+        44.191691,
+        49.024905,
+        50.334067,
+        50.46749
+      ],
+      "refinement_iterations": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "source_file": "pcgls2.json",
+      "family": "PCGLS",
+      "speedup_vs_legacy": 3.658421714502244,
+      "physical_residual_ratio": 15.850964766691659,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1944919920666.6667,
+      "estimated_algorithm_tflops": 39.109698729239724
+    },
+    {
+      "method": "pcgls5",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 55.102779,
+      "solve_ms_p95": 59.1563118,
+      "equivalent_tflops_p50": 35.1135811713,
+      "factor_ms_p50": 37.773888,
+      "apply_ms_p50": 17.309551,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.621310189791,
+      "augmented_residual_relative": 0.00647322914514,
+      "physical_residual_relative": 0.00567973645516,
+      "backward_error": 5.21188901686e-05,
+      "normal_residual_relative": 0.00223568279647,
+      "restore_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        36.060767,
+        37.773888,
+        36.372614,
+        42.013096,
+        41.185616
+      ],
+      "apply_ms": [
+        17.332228,
+        17.328891,
+        17.308447,
+        17.308502,
+        17.309551
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        53.392995,
+        55.102779,
+        53.681061,
+        59.321598,
+        58.495167
+      ],
+      "refinement_iterations": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "source_file": "pcgls5.json",
+      "family": "PCGLS",
+      "speedup_vs_legacy": 3.3016993026794528,
+      "physical_residual_ratio": 6.106185446095844,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1952320257954.6667,
+      "estimated_algorithm_tflops": 35.430522623090695
+    },
+    {
+      "method": "lsqr20",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 61.664722,
+      "solve_ms_p95": 62.1007945,
+      "equivalent_tflops_p50": 31.3770311521,
+      "factor_ms_p50": 61.664722,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.932584983861,
+      "augmented_residual_relative": 0.11567393131,
+      "physical_residual_relative": 0.11567020646,
+      "backward_error": 0.00306304007415,
+      "normal_residual_relative": 0.0159628059487,
+      "restore_ms": [
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        62.149247,
+        61.664722,
+        61.626954
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        62.149247,
+        61.664722,
+        61.626954
+      ],
+      "refinement_iterations": [
+        20,
+        20,
+        20
+      ],
+      "source_file": "lsqr20.json",
+      "family": "LSQR",
+      "speedup_vs_legacy": 2.9503547749716605,
+      "physical_residual_ratio": 124.35501837260098,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 49236482880.0,
+      "estimated_algorithm_tflops": 0.7984546314828112
+    },
+    {
+      "method": "pcgls10",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 73.568906,
+      "solve_ms_p95": 75.4368626,
+      "equivalent_tflops_p50": 26.2999140313,
+      "factor_ms_p50": 40.563216,
+      "apply_ms_p50": 33.012986,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.541373556265,
+      "augmented_residual_relative": 0.00427098248022,
+      "physical_residual_relative": 0.00264585151185,
+      "backward_error": 3.18694696679e-05,
+      "normal_residual_relative": 0.000780382359175,
+      "restore_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        40.161656,
+        41.977769,
+        36.339702,
+        42.529098,
+        40.563216
+      ],
+      "apply_ms": [
+        33.012986,
+        33.023604,
+        33.006266,
+        33.016637,
+        33.00569
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        73.174642,
+        75.001373,
+        69.345968,
+        75.545735,
+        73.568906
+      ],
+      "refinement_iterations": [
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "source_file": "pcgls10.json",
+      "family": "PCGLS",
+      "speedup_vs_legacy": 2.4729578960981153,
+      "physical_residual_ratio": 2.8445087411602503,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1964654153434.6667,
+      "estimated_algorithm_tflops": 26.70495267980017
+    },
+    {
+      "method": "lsqr30",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 91.759945,
+      "solve_ms_p95": 91.7754286,
+      "equivalent_tflops_p50": 21.0860621503,
+      "factor_ms_p50": 91.759945,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.913498304556,
+      "augmented_residual_relative": 0.0837517152656,
+      "physical_residual_relative": 0.0837446967686,
+      "backward_error": 0.00190466047422,
+      "normal_residual_relative": 0.00742912765634,
+      "restore_ms": [
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        91.759945,
+        91.747209,
+        91.777149
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        91.759945,
+        91.747209,
+        91.777149
+      ],
+      "refinement_iterations": [
+        30,
+        30,
+        30
+      ],
+      "source_file": "lsqr30.json",
+      "family": "LSQR",
+      "speedup_vs_legacy": 1.9827039674010265,
+      "physical_residual_ratio": 90.03246059622492,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 73854724320.0,
+      "estimated_algorithm_tflops": 0.8048688817326558
+    },
+    {
+      "method": "pcgls20",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 105.873815,
+      "solve_ms_p95": 106.8782542,
+      "equivalent_tflops_p50": 18.2751127196,
+      "factor_ms_p50": 41.345426,
+      "apply_ms_p50": 64.509996,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.248215889116,
+      "augmented_residual_relative": 0.00351618728253,
+      "physical_residual_relative": 0.00140344824353,
+      "backward_error": 2.72770852966e-05,
+      "normal_residual_relative": 0.000306929783166,
+      "restore_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        41.345426,
+        42.013658,
+        41.013778,
+        39.726611,
+        42.458252
+      ],
+      "apply_ms": [
+        64.528389,
+        64.504621,
+        64.5318,
+        64.500317,
+        64.509996
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        105.873815,
+        106.518279,
+        105.545578,
+        104.226928,
+        106.968248
+      ],
+      "refinement_iterations": [
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "source_file": "pcgls20.json",
+      "family": "PCGLS",
+      "speedup_vs_legacy": 1.7183928528503485,
+      "physical_residual_ratio": 1.5088226903919346,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1989321944394.6667,
+      "estimated_algorithm_tflops": 18.789555702650997
+    },
+    {
+      "method": "lsqr50",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 152.149053,
+      "solve_ms_p95": 152.173983,
+      "equivalent_tflops_p50": 12.7168448638,
+      "factor_ms_p50": 152.149053,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 0,
+      "coefficient_relative_error": 0.871527618805,
+      "augmented_residual_relative": 0.058480259069,
+      "physical_residual_relative": 0.0584660523466,
+      "backward_error": 0.00112142826961,
+      "normal_residual_relative": 0.00738888681156,
+      "restore_ms": [
+        0,
+        0,
+        0
+      ],
+      "factor_ms": [
+        152.176753,
+        152.149053,
+        152.127903
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        152.176753,
+        152.149053,
+        152.127903
+      ],
+      "refinement_iterations": [
+        50,
+        50,
+        50
+      ],
+      "source_file": "lsqr50.json",
+      "family": "LSQR",
+      "speedup_vs_legacy": 1.1957537915139043,
+      "physical_residual_ratio": 62.855831559781365,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 123091207200.0,
+      "estimated_algorithm_tflops": 0.8090172417964376
+    },
+    {
+      "method": "choleskyqr2",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 162.697327,
+      "solve_ms_p95": 162.9155034,
+      "equivalent_tflops_p50": 11.8923644221,
+      "factor_ms_p50": 161.103466,
+      "apply_ms_p50": 1.450292,
+      "triangular_ms_p50": 0.14395,
+      "restore_ms_p50": 3.215178,
+      "coefficient_relative_error": NaN,
+      "augmented_residual_relative": NaN,
+      "physical_residual_relative": NaN,
+      "backward_error": NaN,
+      "normal_residual_relative": NaN,
+      "restore_ms": [
+        3.220992,
+        3.215178,
+        3.217318,
+        3.20897,
+        3.212493
+      ],
+      "factor_ms": [
+        159.722261,
+        160.572898,
+        161.350155,
+        161.207055,
+        161.103466
+      ],
+      "apply_ms": [
+        1.450974,
+        1.449397,
+        1.450764,
+        1.450292,
+        1.449911
+      ],
+      "triangular_ms": [
+        0.145493,
+        0.144106,
+        0.143203,
+        0.143682,
+        0.14395
+      ],
+      "solve_ms": [
+        161.318728,
+        162.166401,
+        162.944122,
+        162.801029,
+        162.697327
+      ],
+      "source_file": "choleskyqr2.json",
+      "family": "Gram/Cholesky",
+      "speedup_vs_legacy": 1.1182286172408966,
+      "physical_residual_ratio": NaN,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "legacy_pad256",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 179.638648,
+      "solve_ms_p95": 179.6658016,
+      "equivalent_tflops_p50": 10.770822007,
+      "factor_ms_p50": 159.685893,
+      "apply_ms_p50": 19.882201,
+      "triangular_ms_p50": 0.075402,
+      "restore_ms_p50": 3.217754,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.227724,
+        3.214849,
+        3.220045,
+        3.215461,
+        3.217754
+      ],
+      "factor_ms": [
+        159.591881,
+        159.62481,
+        159.685893,
+        159.688512,
+        159.710287
+      ],
+      "apply_ms": [
+        19.877218,
+        19.888894,
+        19.882201,
+        19.874785,
+        19.884717
+      ],
+      "triangular_ms": [
+        0.076297,
+        0.075362,
+        0.075402,
+        0.075351,
+        0.076374
+      ],
+      "solve_ms": [
+        179.545396,
+        179.589066,
+        179.643496,
+        179.638648,
+        179.671378
+      ],
+      "source_file": "legacy_pad256.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.012770965633186,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.770822006958474
+    },
+    {
+      "method": "legacy_pad512",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 180.242859,
+      "solve_ms_p95": 180.2867978,
+      "equivalent_tflops_p50": 10.7347160044,
+      "factor_ms_p50": 160.246119,
+      "apply_ms_p50": 19.927097,
+      "triangular_ms_p50": 0.075693,
+      "restore_ms_p50": 3.219738,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.220052,
+        3.221564,
+        3.216357,
+        3.219738,
+        3.218864
+      ],
+      "factor_ms": [
+        160.268252,
+        160.305773,
+        160.166349,
+        160.232172,
+        160.246119
+      ],
+      "apply_ms": [
+        19.894131,
+        19.912026,
+        19.927097,
+        19.936172,
+        19.930595
+      ],
+      "triangular_ms": [
+        0.077795,
+        0.075693,
+        0.075106,
+        0.074515,
+        0.083307
+      ],
+      "solve_ms": [
+        180.240178,
+        180.293492,
+        180.168552,
+        180.242859,
+        180.260021
+      ],
+      "source_file": "legacy_pad512.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.0093759498122474,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.73471600435869
+    },
+    {
+      "method": "legacy_pad64",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 180.36395,
+      "solve_ms_p95": 180.4098362,
+      "equivalent_tflops_p50": 10.7275090348,
+      "factor_ms_p50": 160.345346,
+      "apply_ms_p50": 19.935745,
+      "triangular_ms_p50": 0.076069,
+      "restore_ms_p50": 3.218084,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.220646,
+        3.217085,
+        3.214707,
+        3.218084,
+        3.22323
+      ],
+      "factor_ms": [
+        160.322052,
+        160.299209,
+        160.408328,
+        160.365172,
+        160.345346
+      ],
+      "apply_ms": [
+        19.924655,
+        19.93589,
+        19.935745,
+        19.925868,
+        19.936597
+      ],
+      "triangular_ms": [
+        0.07587,
+        0.075876,
+        0.076445,
+        0.076069,
+        0.082007
+      ],
+      "solve_ms": [
+        180.322577,
+        180.310975,
+        180.420518,
+        180.367109,
+        180.36395
+      ],
+      "source_file": "legacy_pad64.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.008698284773648,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.727509034808046
+    },
+    {
+      "method": "legacy_pad1024",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 180.485302,
+      "solve_ms_p95": 180.5824564,
+      "equivalent_tflops_p50": 10.7202962332,
+      "factor_ms_p50": 160.43811,
+      "apply_ms_p50": 19.963441,
+      "triangular_ms_p50": 0.078321,
+      "restore_ms_p50": 3.22297,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.223257,
+        3.223697,
+        3.22022,
+        3.22297,
+        3.217935
+      ],
+      "factor_ms": [
+        160.358167,
+        160.317635,
+        160.43811,
+        160.447251,
+        160.558159
+      ],
+      "apply_ms": [
+        19.958392,
+        19.963441,
+        19.988241,
+        19.956406,
+        19.964749
+      ],
+      "triangular_ms": [
+        0.078321,
+        0.07765,
+        0.077331,
+        0.081645,
+        0.079242
+      ],
+      "solve_ms": [
+        180.39488,
+        180.358726,
+        180.503682,
+        180.485302,
+        180.60215
+      ],
+      "source_file": "legacy_pad1024.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.008020071351849,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.720296233200568
+    },
+    {
+      "method": "legacy_pad128",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 180.914744,
+      "solve_ms_p95": 181.0165436,
+      "equivalent_tflops_p50": 10.6948491892,
+      "factor_ms_p50": 160.901997,
+      "apply_ms_p50": 19.951346,
+      "triangular_ms_p50": 0.076154,
+      "restore_ms_p50": 3.217116,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.231665,
+        3.216756,
+        3.217116,
+        3.219502,
+        3.216913
+      ],
+      "factor_ms": [
+        160.853648,
+        160.925462,
+        160.901997,
+        161.009476,
+        160.870996
+      ],
+      "apply_ms": [
+        19.958195,
+        19.954712,
+        19.937295,
+        19.946079,
+        19.951346
+      ],
+      "triangular_ms": [
+        0.076752,
+        0.075708,
+        0.075452,
+        0.076154,
+        0.076629
+      ],
+      "solve_ms": [
+        180.888595,
+        180.955882,
+        180.914744,
+        181.031709,
+        180.898971
+      ],
+      "source_file": "legacy_pad128.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.0056273080761178,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.694849189177566
+    },
+    {
+      "method": "legacy_pad32",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 181.230484,
+      "solve_ms_p95": 181.2612724,
+      "equivalent_tflops_p50": 10.6762166081,
+      "factor_ms_p50": 161.142384,
+      "apply_ms_p50": 20.013042,
+      "triangular_ms_p50": 0.078313,
+      "restore_ms_p50": 3.223916,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.227688,
+        3.229101,
+        3.219894,
+        3.216035,
+        3.223916
+      ],
+      "factor_ms": [
+        161.11275,
+        161.104198,
+        161.142384,
+        161.147991,
+        161.165186
+      ],
+      "apply_ms": [
+        20.009886,
+        20.02266,
+        20.010077,
+        20.013042,
+        20.023766
+      ],
+      "triangular_ms": [
+        0.079043,
+        0.078376,
+        0.078023,
+        0.078313,
+        0.077802
+      ],
+      "solve_ms": [
+        181.201679,
+        181.205234,
+        181.230484,
+        181.239346,
+        181.266754
+      ],
+      "source_file": "legacy_pad32.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.0038753027884646,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.67621660812133
+    },
+    {
+      "method": "legacy",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 181.932807,
+      "solve_ms_p95": 181.9834488,
+      "equivalent_tflops_p50": 10.6350027523,
+      "factor_ms_p50": 161.915484,
+      "apply_ms_p50": 19.928114,
+      "triangular_ms_p50": 0.079713,
+      "restore_ms_p50": 3.233831,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.237889,
+        3.233831,
+        3.232373,
+        3.234296,
+        3.232568
+      ],
+      "factor_ms": [
+        161.913306,
+        161.915484,
+        161.93232,
+        161.910702,
+        161.940393
+      ],
+      "apply_ms": [
+        19.915605,
+        19.948003,
+        19.920673,
+        19.928114,
+        19.973526
+      ],
+      "triangular_ms": [
+        0.078206,
+        0.078805,
+        0.079814,
+        0.079713,
+        0.079819
+      ],
+      "solve_ms": [
+        181.907117,
+        181.942292,
+        181.932807,
+        181.918529,
+        181.993738
+      ],
+      "source_file": "legacy.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.0,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.63500275230001
+    },
+    {
+      "method": "legacy_bf16x9_eager",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 182.537371,
+      "solve_ms_p95": 182.634734,
+      "equivalent_tflops_p50": 10.5997796099,
+      "factor_ms_p50": 162.530049,
+      "apply_ms_p50": 19.930026,
+      "triangular_ms_p50": 0.077136,
+      "restore_ms_p50": 3.231971,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.236052,
+        3.223219,
+        3.231971,
+        3.234076,
+        3.23193
+      ],
+      "factor_ms": [
+        162.48973,
+        162.530049,
+        162.525333,
+        162.589423,
+        162.570437
+      ],
+      "apply_ms": [
+        19.92473,
+        19.930026,
+        19.92967,
+        19.942533,
+        19.988336
+      ],
+      "triangular_ms": [
+        0.077136,
+        0.077296,
+        0.075159,
+        0.074658,
+        0.082991
+      ],
+      "solve_ms": [
+        182.491596,
+        182.537371,
+        182.530162,
+        182.606614,
+        182.641764
+      ],
+      "source_file": "legacy_bf16x9_eager.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 0.9966879987550603,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.599779609944457
+    },
+    {
+      "method": "legacy_bf16x9_performant",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 183.41777,
+      "solve_ms_p95": 183.4516692,
+      "equivalent_tflops_p50": 10.5489010317,
+      "factor_ms_p50": 163.305357,
+      "apply_ms_p50": 20.016534,
+      "triangular_ms_p50": 0.077879,
+      "restore_ms_p50": 3.232739,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.23526,
+        3.233783,
+        3.232739,
+        3.232305,
+        3.230057
+      ],
+      "factor_ms": [
+        163.349013,
+        163.272513,
+        163.305357,
+        163.293848,
+        163.360954
+      ],
+      "apply_ms": [
+        20.006361,
+        20.016653,
+        20.011656,
+        20.046043,
+        20.016534
+      ],
+      "triangular_ms": [
+        0.080488,
+        0.076658,
+        0.07759,
+        0.077879,
+        0.078133
+      ],
+      "solve_ms": [
+        183.435862,
+        183.365824,
+        183.394603,
+        183.41777,
+        183.455621
+      ],
+      "source_file": "legacy_bf16x9_performant.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 0.9919039305733572,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.548901031664853
+    },
+    {
+      "method": "legacy_nondeterministic",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 183.421814,
+      "solve_ms_p95": 183.463739,
+      "equivalent_tflops_p50": 10.5486684543,
+      "factor_ms_p50": 163.314059,
+      "apply_ms_p50": 20.020874,
+      "triangular_ms_p50": 0.077563,
+      "restore_ms_p50": 3.232368,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.23217,
+        3.228047,
+        3.232681,
+        3.232368,
+        3.233767
+      ],
+      "factor_ms": [
+        163.307017,
+        163.33204,
+        163.314059,
+        163.261904,
+        163.382794
+      ],
+      "apply_ms": [
+        20.035278,
+        20.012273,
+        20.021829,
+        20.020874,
+        20.013632
+      ],
+      "triangular_ms": [
+        0.079519,
+        0.078426,
+        0.077372,
+        0.076969,
+        0.077563
+      ],
+      "solve_ms": [
+        183.421814,
+        183.422739,
+        183.41326,
+        183.359747,
+        183.473989
+      ],
+      "source_file": "legacy_nondeterministic.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 0.9918820615305876,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "generic",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 183.551663,
+      "solve_ms_p95": 183.5709008,
+      "equivalent_tflops_p50": 10.5412060646,
+      "factor_ms_p50": 163.450014,
+      "apply_ms_p50": 20.024989,
+      "triangular_ms_p50": 0.078048,
+      "restore_ms_p50": 3.230887,
+      "coefficient_relative_error": 0,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093016114648,
+      "backward_error": 2.6051245717e-05,
+      "normal_residual_relative": 2.45469358405e-05,
+      "restore_ms": [
+        3.235425,
+        3.228538,
+        3.231684,
+        3.230887,
+        3.223446
+      ],
+      "factor_ms": [
+        163.440561,
+        163.450014,
+        163.438648,
+        163.458456,
+        163.46652
+      ],
+      "apply_ms": [
+        20.015255,
+        20.011608,
+        20.034896,
+        20.024989,
+        20.028814
+      ],
+      "triangular_ms": [
+        0.079105,
+        0.077634,
+        0.078119,
+        0.077531,
+        0.078048
+      ],
+      "solve_ms": [
+        183.534921,
+        183.539256,
+        183.551663,
+        183.560976,
+        183.573382
+      ],
+      "source_file": "generic.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 0.9911803795534122,
+      "physical_residual_ratio": 1.0,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": true,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 10.541206064576308
+    },
+    {
+      "method": "bcgs2tf32_128",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 192.895482,
+      "solve_ms_p95": 192.9671085,
+      "equivalent_tflops_p50": 10.0305921275,
+      "factor_ms_p50": 191.318001,
+      "apply_ms_p50": 1.485924,
+      "triangular_ms_p50": 0.080524,
+      "restore_ms_p50": 3.225353,
+      "coefficient_relative_error": 0.00571403746621,
+      "augmented_residual_relative": 0.00332282769078,
+      "physical_residual_relative": 0.000938561625078,
+      "backward_error": 2.60694469574e-05,
+      "normal_residual_relative": 0.00221237803131,
+      "restore_ms": [
+        3.236313,
+        3.225242,
+        3.225353
+      ],
+      "factor_ms": [
+        191.30769,
+        191.318001,
+        191.412325
+      ],
+      "apply_ms": [
+        1.485924,
+        1.496807,
+        1.484687
+      ],
+      "triangular_ms": [
+        0.080524,
+        0.080674,
+        0.078055
+      ],
+      "solve_ms": [
+        192.874138,
+        192.895482,
+        192.975067
+      ],
+      "source_file": "bcgs2tf32_128.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.9431677979891723,
+      "physical_residual_ratio": 1.0090312077964017,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "tsqrp2",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 195.164355,
+      "solve_ms_p95": 195.494941,
+      "equivalent_tflops_p50": 9.91398200342,
+      "factor_ms_p50": 177.890764,
+      "apply_ms_p50": 17.15224,
+      "triangular_ms_p50": 0.076455,
+      "restore_ms_p50": 3.230472,
+      "coefficient_relative_error": 3.49128053217e-05,
+      "augmented_residual_relative": 0.00331990159682,
+      "physical_residual_relative": 0.000930140002111,
+      "backward_error": 2.6051198308e-05,
+      "normal_residual_relative": 2.13633258813e-05,
+      "restore_ms": [
+        3.23339,
+        3.229678,
+        3.225213,
+        3.230472,
+        3.232194
+      ],
+      "factor_ms": [
+        177.830838,
+        178.293233,
+        177.934004,
+        177.84641,
+        177.890764
+      ],
+      "apply_ms": [
+        17.321983,
+        17.191645,
+        17.15224,
+        17.067783,
+        16.172557
+      ],
+      "triangular_ms": [
+        0.078024,
+        0.076087,
+        0.078111,
+        0.076455,
+        0.076385
+      ],
+      "solve_ms": [
+        195.230845,
+        195.560965,
+        195.164355,
+        194.990648,
+        194.139706
+      ],
+      "source_file": "tsqrp2.json",
+      "family": "TSQR",
+      "speedup_vs_legacy": 0.9322030500907812,
+      "physical_residual_ratio": 0.9999772680582499,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1945254695776.0,
+      "estimated_algorithm_tflops": 9.967264236217725
+    },
+    {
+      "method": "tsqr2",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 196.694026,
+      "solve_ms_p95": 196.7254766,
+      "equivalent_tflops_p50": 9.83688189482,
+      "factor_ms_p50": 179.719384,
+      "apply_ms_p50": 16.900005,
+      "triangular_ms_p50": 0.074637,
+      "restore_ms_p50": 3.235206,
+      "coefficient_relative_error": 3.49128053217e-05,
+      "augmented_residual_relative": 0.00331990159682,
+      "physical_residual_relative": 0.000930140002111,
+      "backward_error": 2.6051198308e-05,
+      "normal_residual_relative": 2.13633258813e-05,
+      "restore_ms": [
+        3.236281,
+        3.237822,
+        3.231598,
+        3.235206,
+        3.233967
+      ],
+      "factor_ms": [
+        179.897406,
+        179.719384,
+        180.164145,
+        179.57692,
+        179.596917
+      ],
+      "apply_ms": [
+        16.753003,
+        16.900005,
+        16.418355,
+        16.939802,
+        17.052606
+      ],
+      "triangular_ms": [
+        0.075654,
+        0.074637,
+        0.073263,
+        0.078295,
+        0.073608
+      ],
+      "solve_ms": [
+        196.726063,
+        196.694026,
+        196.655763,
+        196.595017,
+        196.723131
+      ],
+      "source_file": "tsqr2.json",
+      "family": "TSQR",
+      "speedup_vs_legacy": 0.9249533943649106,
+      "physical_residual_ratio": 0.9999772680582499,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1945254695776.0,
+      "estimated_algorithm_tflops": 9.889749756690629
+    },
+    {
+      "method": "bcgs2tf32_256",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 202.158482,
+      "solve_ms_p95": 202.1706626,
+      "equivalent_tflops_p50": 9.5709855161,
+      "factor_ms_p50": 200.599392,
+      "apply_ms_p50": 1.481197,
+      "triangular_ms_p50": 0.075518,
+      "restore_ms_p50": 3.227988,
+      "coefficient_relative_error": 0.0147205125171,
+      "augmented_residual_relative": 0.00332458948261,
+      "physical_residual_relative": 0.000925080118781,
+      "backward_error": 2.60364863085e-05,
+      "normal_residual_relative": 0.00197291919536,
+      "restore_ms": [
+        3.231883,
+        3.227988,
+        3.225302
+      ],
+      "factor_ms": [
+        200.599392,
+        200.612104,
+        200.593779
+      ],
+      "apply_ms": [
+        1.481116,
+        1.484394,
+        1.481197
+      ],
+      "triangular_ms": [
+        0.077974,
+        0.075518,
+        0.075396
+      ],
+      "solve_ms": [
+        202.158482,
+        202.172016,
+        202.150372
+      ],
+      "source_file": "bcgs2tf32_256.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.8999513906124404,
+      "physical_residual_ratio": 0.9945374758790688,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "tsqrp4",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 215.050894,
+      "solve_ms_p95": 215.3391582,
+      "equivalent_tflops_p50": 8.99719999852,
+      "factor_ms_p50": 199.45828,
+      "apply_ms_p50": 15.428447,
+      "triangular_ms_p50": 0.076831,
+      "restore_ms_p50": 3.232511,
+      "coefficient_relative_error": 4.4015683995e-05,
+      "augmented_residual_relative": 0.00331990188352,
+      "physical_residual_relative": 0.000930166378815,
+      "backward_error": 2.60512581727e-05,
+      "normal_residual_relative": 1.4492055154e-05,
+      "restore_ms": [
+        3.237282,
+        3.229133,
+        3.23228,
+        3.232511,
+        3.236511
+      ],
+      "factor_ms": [
+        199.976679,
+        199.342879,
+        199.565589,
+        199.45828,
+        199.299254
+      ],
+      "apply_ms": [
+        15.311098,
+        15.817964,
+        15.406503,
+        15.428447,
+        15.579397
+      ],
+      "triangular_ms": [
+        0.076831,
+        0.076516,
+        0.078802,
+        0.075047,
+        0.083571
+      ],
+      "solve_ms": [
+        215.364608,
+        215.237359,
+        215.050894,
+        214.961774,
+        214.962222
+      ],
+      "source_file": "tsqrp4.json",
+      "family": "TSQR",
+      "speedup_vs_legacy": 0.8459988406279306,
+      "physical_residual_ratio": 1.0000056251919571,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1955653488373.3333,
+      "estimated_algorithm_tflops": 9.09391006006854
+    },
+    {
+      "method": "tsqr4",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 223.372013,
+      "solve_ms_p95": 223.8047598,
+      "equivalent_tflops_p50": 8.66203369524,
+      "factor_ms_p50": 207.854218,
+      "apply_ms_p50": 15.703727,
+      "triangular_ms_p50": 0.075468,
+      "restore_ms_p50": 3.234473,
+      "coefficient_relative_error": 4.4015683995e-05,
+      "augmented_residual_relative": 0.00331990188352,
+      "physical_residual_relative": 0.000930166378815,
+      "backward_error": 2.60512581727e-05,
+      "normal_residual_relative": 1.4492055154e-05,
+      "restore_ms": [
+        3.234486,
+        3.233821,
+        3.236081,
+        3.231862,
+        3.234473
+      ],
+      "factor_ms": [
+        207.575711,
+        207.961064,
+        207.084396,
+        207.854218,
+        208.165215
+      ],
+      "apply_ms": [
+        15.72006,
+        15.703727,
+        15.81573,
+        15.427669,
+        15.575064
+      ],
+      "triangular_ms": [
+        0.076242,
+        0.075468,
+        0.075031,
+        0.074568,
+        0.080606
+      ],
+      "solve_ms": [
+        223.372013,
+        223.740259,
+        222.975157,
+        223.356455,
+        223.820885
+      ],
+      "source_file": "tsqr4.json",
+      "family": "TSQR",
+      "speedup_vs_legacy": 0.8144834465005246,
+      "physical_residual_ratio": 1.0000056251919571,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1955653488373.3333,
+      "estimated_algorithm_tflops": 8.755141085527725
+    },
+    {
+      "method": "bcgs2_128",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 224.604948,
+      "solve_ms_p95": 224.6072925,
+      "equivalent_tflops_p50": 8.61448476718,
+      "factor_ms_p50": 223.043069,
+      "apply_ms_p50": 1.484214,
+      "triangular_ms_p50": 0.077833,
+      "restore_ms_p50": 3.230123,
+      "coefficient_relative_error": 0.00025013113306,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.00093018329431,
+      "backward_error": 2.60512937296e-05,
+      "normal_residual_relative": 1.1270956299e-05,
+      "restore_ms": [
+        3.230123,
+        3.23173,
+        3.224114
+      ],
+      "factor_ms": [
+        223.045343,
+        222.994547,
+        223.043069
+      ],
+      "apply_ms": [
+        1.484214,
+        1.486432,
+        1.484046
+      ],
+      "triangular_ms": [
+        0.077996,
+        0.076492,
+        0.077833
+      ],
+      "solve_ms": [
+        224.607553,
+        224.557471,
+        224.604948
+      ],
+      "source_file": "bcgs2_128.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.8100124624146748,
+      "physical_residual_ratio": 1.0000238107451422,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "bcgs2_256",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 233.098162,
+      "solve_ms_p95": 233.1317491,
+      "equivalent_tflops_p50": 8.30060557568,
+      "factor_ms_p50": 231.540657,
+      "apply_ms_p50": 1.480336,
+      "triangular_ms_p50": 0.077002,
+      "restore_ms_p50": 3.223418,
+      "coefficient_relative_error": 0.00281641722286,
+      "augmented_residual_relative": 0.00331994144858,
+      "physical_residual_relative": 0.000928407740724,
+      "backward_error": 2.60470715464e-05,
+      "normal_residual_relative": 1.90324567867e-05,
+      "restore_ms": [
+        3.230583,
+        3.223418,
+        3.222325
+      ],
+      "factor_ms": [
+        231.487872,
+        231.578101,
+        231.540657
+      ],
+      "apply_ms": [
+        1.479166,
+        1.480336,
+        1.481234
+      ],
+      "triangular_ms": [
+        0.077002,
+        0.077044,
+        0.076271
+      ],
+      "solve_ms": [
+        233.04404,
+        233.135481,
+        233.098162
+      ],
+      "source_file": "bcgs2_256.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.7804986767763531,
+      "physical_residual_ratio": 0.9981149441012072,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "bcgs2_192",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 256.583106,
+      "solve_ms_p95": 256.6081197,
+      "equivalent_tflops_p50": 7.54085463124,
+      "factor_ms_p50": 255.025373,
+      "apply_ms_p50": 1.481889,
+      "triangular_ms_p50": 0.075638,
+      "restore_ms_p50": 3.225727,
+      "coefficient_relative_error": 0.000557763199839,
+      "augmented_residual_relative": 0.00331991191814,
+      "physical_residual_relative": 0.000929846202896,
+      "backward_error": 2.60504976794e-05,
+      "normal_residual_relative": 2.08671822001e-05,
+      "restore_ms": [
+        3.234546,
+        3.225727,
+        3.224668
+      ],
+      "factor_ms": [
+        255.02388,
+        255.053341,
+        255.025373
+      ],
+      "apply_ms": [
+        1.481889,
+        1.48192,
+        1.480829
+      ],
+      "triangular_ms": [
+        0.077337,
+        0.075638,
+        0.074834
+      ],
+      "solve_ms": [
+        256.583106,
+        256.610899,
+        256.581036
+      ],
+      "source_file": "bcgs2_192.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.7090599604792375,
+      "physical_residual_ratio": 0.9996614096544542,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "bcgs1_64",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 273.946547,
+      "solve_ms_p95": 274.0469798,
+      "equivalent_tflops_p50": 7.06289575236,
+      "factor_ms_p50": 272.36042,
+      "apply_ms_p50": 1.502293,
+      "triangular_ms_p50": 0.083834,
+      "restore_ms_p50": 3.228159,
+      "coefficient_relative_error": 0.363701003393,
+      "augmented_residual_relative": 0.00368504750321,
+      "physical_residual_relative": 0.00148476633281,
+      "backward_error": 2.73357203786e-05,
+      "normal_residual_relative": 0.000358808824869,
+      "restore_ms": [
+        3.233463,
+        3.228159,
+        3.225625
+      ],
+      "factor_ms": [
+        272.36042,
+        272.179838,
+        272.413733
+      ],
+      "apply_ms": [
+        1.502293,
+        1.490728,
+        1.557241
+      ],
+      "triangular_ms": [
+        0.083834,
+        0.079329,
+        0.087165
+      ],
+      "solve_ms": [
+        273.946547,
+        273.749895,
+        274.058139
+      ],
+      "source_file": "bcgs1_64.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.6641179054540154,
+      "physical_residual_ratio": 1.596246347666517,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "tsqr8",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 288.36625,
+      "solve_ms_p95": 288.4117298,
+      "equivalent_tflops_p50": 6.7097169075,
+      "factor_ms_p50": 272.657051,
+      "apply_ms_p50": 15.526795,
+      "triangular_ms_p50": 0.081294,
+      "restore_ms_p50": 3.230971,
+      "coefficient_relative_error": 5.46808752367e-05,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.000930183079283,
+      "backward_error": 2.60512994911e-05,
+      "normal_residual_relative": 8.55430055066e-06,
+      "restore_ms": [
+        3.235627,
+        3.229714,
+        3.230971,
+        3.229841,
+        3.233604
+      ],
+      "factor_ms": [
+        272.657051,
+        272.514755,
+        272.811131,
+        272.443911,
+        272.710619
+      ],
+      "apply_ms": [
+        15.646745,
+        15.398605,
+        15.526795,
+        15.243397,
+        15.574237
+      ],
+      "triangular_ms": [
+        0.080681,
+        0.081294,
+        0.080617,
+        0.081305,
+        0.081394
+      ],
+      "solve_ms": [
+        288.384477,
+        287.994654,
+        288.418543,
+        287.768613,
+        288.36625
+      ],
+      "source_file": "tsqr8.json",
+      "family": "TSQR",
+      "speedup_vs_legacy": 0.6309088078095131,
+      "physical_residual_ratio": 1.0000235795733707,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1976451073568.0,
+      "estimated_algorithm_tflops": 6.853961146867915
+    },
+    {
+      "method": "bcgs2tf32_64",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 300.449207,
+      "solve_ms_p95": 300.4989662,
+      "equivalent_tflops_p50": 6.43987688468,
+      "factor_ms_p50": 298.858235,
+      "apply_ms_p50": 1.488204,
+      "triangular_ms_p50": 0.093099,
+      "restore_ms_p50": 3.228694,
+      "coefficient_relative_error": 0.00309648719949,
+      "augmented_residual_relative": 0.00332348968872,
+      "physical_residual_relative": 0.00094018214385,
+      "backward_error": 2.60729168953e-05,
+      "normal_residual_relative": 0.00288009648598,
+      "restore_ms": [
+        3.234169,
+        3.228694,
+        3.227291
+      ],
+      "factor_ms": [
+        298.785942,
+        298.869537,
+        298.858235
+      ],
+      "apply_ms": [
+        1.488204,
+        1.486571,
+        1.547334
+      ],
+      "triangular_ms": [
+        0.082282,
+        0.093099,
+        0.098926
+      ],
+      "solve_ms": [
+        300.356428,
+        300.449207,
+        300.504495
+      ],
+      "source_file": "bcgs2tf32_64.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.6055359866534779,
+      "physical_residual_ratio": 1.010773399220041,
+      "reference_equivalent": false,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "bcgs2_64",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 343.015745,
+      "solve_ms_p95": 343.0560317,
+      "equivalent_tflops_p50": 5.64072037911,
+      "factor_ms_p50": 341.442415,
+      "apply_ms_p50": 1.491885,
+      "triangular_ms_p50": 0.081445,
+      "restore_ms_p50": 3.230826,
+      "coefficient_relative_error": 0.000163317289497,
+      "augmented_residual_relative": 0.00331990274363,
+      "physical_residual_relative": 0.000930204510355,
+      "backward_error": 2.60513475039e-05,
+      "normal_residual_relative": 2.15213610969e-05,
+      "restore_ms": [
+        3.240701,
+        3.230826,
+        3.224978
+      ],
+      "factor_ms": [
+        341.40555,
+        341.492982,
+        341.442415
+      ],
+      "apply_ms": [
+        1.493569,
+        1.487473,
+        1.491885
+      ],
+      "triangular_ms": [
+        0.083683,
+        0.080053,
+        0.081445
+      ],
+      "solve_ms": [
+        342.982802,
+        343.060508,
+        343.015745
+      ],
+      "source_file": "bcgs2_64.json",
+      "family": "block GS",
+      "speedup_vs_legacy": 0.5303919999357464,
+      "physical_residual_ratio": 1.000046619744508,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "tsqr16",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 374.842809,
+      "solve_ms_p95": 376.2815322,
+      "equivalent_tflops_p50": 5.16177943587,
+      "factor_ms_p50": 358.653282,
+      "apply_ms_p50": 16.087714,
+      "triangular_ms_p50": 0.081748,
+      "restore_ms_p50": 3.235438,
+      "coefficient_relative_error": 3.18040528709e-05,
+      "augmented_residual_relative": 0.00331990188352,
+      "physical_residual_relative": 0.000930154982359,
+      "backward_error": 2.60512332062e-05,
+      "normal_residual_relative": 1.8418134866e-05,
+      "restore_ms": [
+        3.235002,
+        3.235438,
+        3.235569,
+        3.239551,
+        3.234656
+      ],
+      "factor_ms": [
+        356.679375,
+        358.707331,
+        358.232262,
+        360.69788,
+        358.653282
+      ],
+      "apply_ms": [
+        16.075153,
+        16.087714,
+        16.306522,
+        15.853499,
+        16.099141
+      ],
+      "triangular_ms": [
+        0.080475,
+        0.080108,
+        0.099575,
+        0.081748,
+        0.090386
+      ],
+      "solve_ms": [
+        372.835003,
+        374.875153,
+        374.638359,
+        376.633127,
+        374.842809
+      ],
+      "source_file": "tsqr16.json",
+      "family": "TSQR",
+      "speedup_vs_legacy": 0.4853576022582842,
+      "physical_residual_ratio": 0.9999933730611913,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 2018046243957.3333,
+      "estimated_algorithm_tflops": 5.383713373990144
+    },
+    {
+      "method": "ir_sh",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 1906.111348,
+      "solve_ms_p95": 1909.1463966,
+      "equivalent_tflops_p50": 1.01508020778,
+      "factor_ms_p50": 1906.111348,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 3.214483,
+      "coefficient_relative_error": 1.17745151714e-05,
+      "augmented_residual_relative": 0.00331990245693,
+      "physical_residual_relative": 0.000930153190463,
+      "backward_error": 2.60512261828e-05,
+      "normal_residual_relative": 2.39648189706e-05,
+      "restore_ms": [
+        3.207894,
+        3.216755,
+        3.214483,
+        3.215477,
+        3.212606
+      ],
+      "factor_ms": [
+        1905.886282,
+        1909.416733,
+        1905.723842,
+        1908.065051,
+        1906.111348
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        1905.886282,
+        1909.416733,
+        1905.723842,
+        1908.065051,
+        1906.111348
+      ],
+      "refinement_iterations": [
+        -50,
+        -50,
+        -50,
+        -50,
+        -50
+      ],
+      "source_file": "ir_sh.json",
+      "family": "iterative refinement",
+      "speedup_vs_legacy": 0.09544710343962551,
+      "physical_residual_ratio": 0.9999914466251035,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "ir_sx",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 1908.552046,
+      "solve_ms_p95": 1911.2362654,
+      "equivalent_tflops_p50": 1.01378210106,
+      "factor_ms_p50": 1908.552046,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 3.211586,
+      "coefficient_relative_error": 1.17745151714e-05,
+      "augmented_residual_relative": 0.00331990245693,
+      "physical_residual_relative": 0.000930153190463,
+      "backward_error": 2.60512261828e-05,
+      "normal_residual_relative": 2.39648189706e-05,
+      "restore_ms": [
+        3.211586,
+        3.211449,
+        3.215368,
+        3.211756,
+        3.208443
+      ],
+      "factor_ms": [
+        1911.883023,
+        1908.125713,
+        1905.994034,
+        1908.649235,
+        1908.552046
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        1911.883023,
+        1908.125713,
+        1905.994034,
+        1908.649235,
+        1908.552046
+      ],
+      "refinement_iterations": [
+        -50,
+        -50,
+        -50,
+        -50,
+        -50
+      ],
+      "source_file": "ir_sx.json",
+      "family": "iterative refinement",
+      "speedup_vs_legacy": 0.09532504360114265,
+      "physical_residual_ratio": 0.9999914466251035,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "ir_sb",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 1911.684511,
+      "solve_ms_p95": 1912.0645284,
+      "equivalent_tflops_p50": 1.01212092897,
+      "factor_ms_p50": 1911.684511,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 3.212666,
+      "coefficient_relative_error": 1.17745151714e-05,
+      "augmented_residual_relative": 0.00331990245693,
+      "physical_residual_relative": 0.000930153190463,
+      "backward_error": 2.60512261828e-05,
+      "normal_residual_relative": 2.39648189706e-05,
+      "restore_ms": [
+        3.217985,
+        3.212217,
+        3.212802,
+        3.212666,
+        3.210833
+      ],
+      "factor_ms": [
+        1911.684511,
+        1911.737158,
+        1907.826302,
+        1909.558119,
+        1912.146371
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        1911.684511,
+        1911.737158,
+        1907.826302,
+        1909.558119,
+        1912.146371
+      ],
+      "refinement_iterations": [
+        -50,
+        -50,
+        -50,
+        -50,
+        -50
+      ],
+      "source_file": "ir_sb.json",
+      "family": "iterative refinement",
+      "speedup_vs_legacy": 0.0951688450438044,
+      "physical_residual_ratio": 0.9999914466251035,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "ir_ss",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 1925.733264,
+      "solve_ms_p95": 1927.5395376,
+      "equivalent_tflops_p50": 1.00473722885,
+      "factor_ms_p50": 1925.733264,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 3.215009,
+      "coefficient_relative_error": 1.17745151714e-05,
+      "augmented_residual_relative": 0.00331990245693,
+      "physical_residual_relative": 0.000930153190463,
+      "backward_error": 2.60512261828e-05,
+      "normal_residual_relative": 2.39648189706e-05,
+      "restore_ms": [
+        3.213446,
+        3.215009,
+        3.217102,
+        3.210271,
+        3.215622
+      ],
+      "factor_ms": [
+        1925.16904,
+        1925.733264,
+        1927.721339,
+        1925.118888,
+        1926.812332
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        1925.16904,
+        1925.733264,
+        1927.721339,
+        1925.118888,
+        1926.812332
+      ],
+      "refinement_iterations": [
+        -50,
+        -50,
+        -50,
+        -50,
+        -50
+      ],
+      "source_file": "ir_ss.json",
+      "family": "iterative refinement",
+      "speedup_vs_legacy": 0.09447456218422574,
+      "physical_residual_ratio": 0.9999914466251035,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": null,
+      "estimated_algorithm_tflops": null
+    },
+    {
+      "method": "magma",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 2632.073406,
+      "solve_ms_p95": 2637.7442446,
+      "equivalent_tflops_p50": 0.735107120785,
+      "factor_ms_p50": 2620.987869,
+      "apply_ms_p50": 10.312639,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 3.219318,
+      "coefficient_relative_error": 3.94934781204e-05,
+      "augmented_residual_relative": 0.00331990217023,
+      "physical_residual_relative": 0.000930160214694,
+      "backward_error": 2.6051243138e-05,
+      "normal_residual_relative": 3.91415970199e-05,
+      "restore_ms": [
+        3.217757,
+        3.219318,
+        3.220755,
+        3.226228,
+        3.217784
+      ],
+      "factor_ms": [
+        2621.863453,
+        2620.69469,
+        2620.987869,
+        2626.690884,
+        2612.684569
+      ],
+      "apply_ms": [
+        10.209953,
+        10.118625,
+        16.941556,
+        10.312639,
+        13.018576
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        2632.073406,
+        2630.813315,
+        2637.929425,
+        2637.003523,
+        2625.703145
+      ],
+      "source_file": "magma.json",
+      "family": "MAGMA",
+      "speedup_vs_legacy": 0.06912147912944644,
+      "physical_residual_ratio": 0.9999989982531483,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 0.7351071207847106
+    },
+    {
+      "method": "magma3",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 2634.854142,
+      "solve_ms_p95": 2643.0854744,
+      "equivalent_tflops_p50": 0.734331313577,
+      "factor_ms_p50": 2621.847579,
+      "apply_ms_p50": 12.297418,
+      "triangular_ms_p50": 0,
+      "restore_ms_p50": 3.228644,
+      "coefficient_relative_error": 3.94968376422e-05,
+      "augmented_residual_relative": 0.00331990131012,
+      "physical_residual_relative": 0.000930156630903,
+      "backward_error": 2.60512344682e-05,
+      "normal_residual_relative": 3.65149601588e-05,
+      "restore_ms": [
+        3.228897,
+        3.226059,
+        3.228644,
+        3.228742,
+        3.221429
+      ],
+      "factor_ms": [
+        2631.329028,
+        2621.847579,
+        2619.280603,
+        2628.564834,
+        2620.871326
+      ],
+      "apply_ms": [
+        12.845367,
+        13.006563,
+        12.297418,
+        10.164958,
+        12.074216
+      ],
+      "triangular_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "solve_ms": [
+        2644.174395,
+        2634.854142,
+        2631.578021,
+        2638.729792,
+        2632.945542
+      ],
+      "source_file": "magma3.json",
+      "family": "MAGMA",
+      "speedup_vs_legacy": 0.06904853065676832,
+      "physical_residual_ratio": 0.9999951453820479,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 0.7343313135770029
+    }
+  ],
+  "load_errors": [
+    {
+      "source_file": "normal_fp32.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "normal_tf32.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "shifted_1e-4.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "shifted_1e-5.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "shifted_2e-4.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "shifted_3e-4.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "shifted_5e-4.json",
+      "error": "empty result file"
+    },
+    {
+      "source_file": "shifted_7e-4.json",
+      "error": "empty result file"
+    }
+  ]
+}

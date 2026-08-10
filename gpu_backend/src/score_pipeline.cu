@@ -5779,7 +5779,8 @@ int sgpu_default_score_config(SgpuScoreConfig* config) {
     config->alpha_radial_order = 12;
     config->alpha_poloidal_order = 12;
     config->alpha_toroidal_order = 12;
-    config->iota_degree = 0;
+    // iota is a flux function; rho^2 is the normalized radial surface label.
+    config->iota_degree = 3;
     config->radial_bin_count = 10;
     config->alpha_solver_mode = 2;
     config->volume_rho_min = 0.08;

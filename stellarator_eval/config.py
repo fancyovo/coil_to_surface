@@ -138,7 +138,7 @@ class VolumeQSConfig:
     alpha_radial_order: int = 12
     alpha_poloidal_order: int = 12
     alpha_toroidal_order: int = 12
-    iota_degree: int = 0
+    iota_degree: int = 3
     alpha_ridge: float = 1e-7
     flux_level_count: int = 11
     flux_phi_count: int = 8

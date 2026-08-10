@@ -40,12 +40,16 @@ direction_outlier_ratio="${DIRECTION_OUTLIER_RATIO:-8.0}"
 direction_outlier_mad_factor="${DIRECTION_OUTLIER_MAD_FACTOR:-8.0}"
 seed="${SEED:-2026073004}"
 initial_case="${INITIAL_CASE:-}"
+nfp="${NFP:-4}"
+n_base_coils="${N_BASE_COILS:-3}"
 score_surface_mode="${SCORE_SURFACE_MODE:-continuous}"
 surface_confidence_periods="${SURFACE_CONFIDENCE_PERIODS:-1}"
 surface_theta_count="${SURFACE_THETA_COUNT:-128}"
 surface_trace_steps="${SURFACE_TRACE_STEPS:-400}"
 surface_flux_bisection_iters="${SURFACE_FLUX_BISECTION_ITERS:-6}"
+iota_degree="${IOTA_DEGREE:-3}"
 axis_continuation="${AXIS_CONTINUATION:-1}"
+axis_hint_verification="${AXIS_HINT_VERIFICATION:-mixed}"
 resume="${RESUME:-0}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 children=()
@@ -100,6 +104,8 @@ score_mode_args=(
   --surface-theta-count "$surface_theta_count"
   --surface-trace-steps "$surface_trace_steps"
   --surface-flux-bisection-iters "$surface_flux_bisection_iters"
+  --iota-degree "$iota_degree"
+  --axis-hint-verification "$axis_hint_verification"
 )
 gradient_args=(
   --directions "$directions"
@@ -169,6 +175,8 @@ python "$project/scripts/optimize_flow_prior_standard_adam.py" \
   --checkpoint "$checkpoint" \
   --lib "$lib" \
   --out-dir "$run_root" \
+  --nfp "$nfp" \
+  --n-base-coils "$n_base_coils" \
   --iterations "$iterations" \
   --max-wall-s "$max_wall_s" \
   --learning-rate "$learning_rate" \

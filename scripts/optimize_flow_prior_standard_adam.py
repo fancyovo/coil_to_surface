@@ -461,6 +461,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--surface-trace-steps", type=int, default=400)
     parser.add_argument("--surface-flux-bisection-iters", type=int, default=6)
     parser.add_argument(
+        "--iota-degree",
+        type=int,
+        default=3,
+        help="Degree of iota as a polynomial in rho^2 in the joint alpha/iota fit.",
+    )
+    parser.add_argument(
         "--axis-continuation",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -544,16 +550,18 @@ def main() -> None:
         or args.surface_flux_bisection_iters < 0
     ):
         raise ValueError("continuous surface controls must be non-negative and bounded")
+    if args.iota_degree < 0:
+        raise ValueError("iota-degree must be non-negative")
 
-    base_score_config: dict[str, Any] = {}
+    base_score_config: dict[str, Any] = {"iota_degree": args.iota_degree}
     if args.score_surface_mode == "continuous":
-        base_score_config = {
+        base_score_config.update({
             "surface_selection_mode": 1,
             "surface_confidence_periods": args.surface_confidence_periods,
             "surface_theta_count": args.surface_theta_count,
             "surface_trace_steps": args.surface_trace_steps,
             "surface_flux_bisection_iters": args.surface_flux_bisection_iters,
-        }
+        })
 
     def score_config_for_center(result: dict[str, Any]) -> dict[str, Any] | None:
         overrides = dict(base_score_config)
@@ -796,7 +804,9 @@ def main() -> None:
         "surface_theta_count": args.surface_theta_count,
         "surface_trace_steps": args.surface_trace_steps,
         "surface_flux_bisection_iters": args.surface_flux_bisection_iters,
+        "iota_degree": args.iota_degree,
         "axis_continuation": args.axis_continuation,
+        "axis_hint_verification": args.axis_hint_verification,
         "trajectory_artifact": (
             "one atomic JSON case for step 0 and every completed iteration; "
             "each case stores latent noise, decoded coil coefficients/current, "
@@ -809,6 +819,8 @@ def main() -> None:
         manifest.setdefault("gradient_estimator", "central")
         manifest.setdefault("gradient_source", "score_finite_differences_only")
         manifest.setdefault("flow_pipeline", False)
+        manifest.setdefault("iota_degree", 0)
+        manifest.setdefault("axis_hint_verification", "fp64")
         stable_keys = (
             "algorithm",
             "objective",
@@ -849,7 +861,9 @@ def main() -> None:
             "surface_theta_count",
             "surface_trace_steps",
             "surface_flux_bisection_iters",
+            "iota_degree",
             "axis_continuation",
+            "axis_hint_verification",
         )
         mismatches = {
             key: {"saved": manifest.get(key), "requested": requested_manifest.get(key)}

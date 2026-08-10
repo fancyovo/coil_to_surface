@@ -27,6 +27,8 @@ VARIANTS = {
     "axis_hint_no_fp64": {"axis_hint_require_continuation": 2},
     "axis_hint_fp64_offset1e3": {},
     "axis_hint_no_fp64_offset1e3": {"axis_hint_require_continuation": 2},
+    "iota_constant": {"iota_degree": 0},
+    "iota_cubic": {"iota_degree": 3},
     "psi_normal_eq_fp32": {"psi_solver_mode": 1, "psi_precision_mode": 2},
     "axis720": {"axis_trace_steps": 720, "axis_sample_count": 180},
     "surface96": {"surface_theta_count": 96},

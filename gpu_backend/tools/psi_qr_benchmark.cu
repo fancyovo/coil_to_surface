@@ -382,6 +382,115 @@ private:
     DeviceBuffer<int> info_;
 };
 
+class LsqrSolver {
+public:
+    LsqrSolver(Context& context, int iterations)
+        : context_(context), iterations_(iterations), u_(context.m), u_next_(context.m),
+          v_(context.n), v_next_(context.n), w_(context.n), solution_(context.n) {
+        if (iterations_ <= 0) throw std::runtime_error("LSQR iterations must be positive");
+        check_cublas(cublasSetMathMode(context_.blas, CUBLAS_PEDANTIC_MATH), "set LSQR math mode");
+        check_cublas(cublasSetPointerMode(context_.blas, CUBLAS_POINTER_MODE_HOST), "set LSQR pointer mode");
+    }
+
+    ~LsqrSolver() { cublasSetMathMode(context_.blas, CUBLAS_DEFAULT_MATH); }
+
+    void run_once(Timings* timings) {
+        const float one = 1.0f;
+        const float zero = 0.0f;
+        const double solve = wall_ms([&] {
+            check_cuda(cudaMemcpy(u_.data(), context_.rhs.data(), static_cast<std::size_t>(context_.m) * sizeof(float),
+                                  cudaMemcpyDeviceToDevice), "LSQR copy rhs");
+            check_cuda(cudaMemset(solution_.data(), 0, static_cast<std::size_t>(context_.n) * sizeof(float)),
+                       "LSQR zero solution");
+            float beta = 0.0f;
+            check_cublas(cublasSnrm2(context_.blas, context_.m, u_.data(), 1, &beta), "LSQR initial beta");
+            if (!(beta > 0.0f)) throw std::runtime_error("LSQR zero initial beta");
+            float inverse_beta = 1.0f / beta;
+            check_cublas(cublasSscal(context_.blas, context_.m, &inverse_beta, u_.data(), 1),
+                         "LSQR normalize initial u");
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one, context_.matrix.data(),
+                context_.m, u_.data(), 1, &zero, v_.data(), 1), "LSQR initial A^T u");
+            float alpha = 0.0f;
+            check_cublas(cublasSnrm2(context_.blas, context_.n, v_.data(), 1, &alpha), "LSQR initial alpha");
+            if (!(alpha > 0.0f)) throw std::runtime_error("LSQR zero initial alpha");
+            float inverse_alpha = 1.0f / alpha;
+            check_cublas(cublasSscal(context_.blas, context_.n, &inverse_alpha, v_.data(), 1),
+                         "LSQR normalize initial v");
+            check_cublas(cublasScopy(context_.blas, context_.n, v_.data(), 1, w_.data(), 1),
+                         "LSQR initialize w");
+
+            double rho_bar = alpha;
+            double phi_bar = beta;
+            for (int iteration = 0; iteration < iterations_; ++iteration) {
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_N, context_.m, context_.n, &one, context_.matrix.data(),
+                    context_.m, v_.data(), 1, &zero, u_next_.data(), 1), "LSQR A v");
+                const float minus_alpha = -alpha;
+                check_cublas(cublasSaxpy(context_.blas, context_.m, &minus_alpha, u_.data(), 1,
+                                         u_next_.data(), 1), "LSQR subtract alpha u");
+                check_cublas(cublasSnrm2(context_.blas, context_.m, u_next_.data(), 1, &beta),
+                             "LSQR beta");
+                if (!(beta > 0.0f)) throw std::runtime_error("LSQR breakdown in beta");
+                inverse_beta = 1.0f / beta;
+                check_cublas(cublasSscal(context_.blas, context_.m, &inverse_beta, u_next_.data(), 1),
+                             "LSQR normalize u");
+                std::swap(u_, u_next_);
+
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one, context_.matrix.data(),
+                    context_.m, u_.data(), 1, &zero, v_next_.data(), 1), "LSQR A^T u");
+                const float minus_beta = -beta;
+                check_cublas(cublasSaxpy(context_.blas, context_.n, &minus_beta, v_.data(), 1,
+                                         v_next_.data(), 1), "LSQR subtract beta v");
+                check_cublas(cublasSnrm2(context_.blas, context_.n, v_next_.data(), 1, &alpha),
+                             "LSQR alpha");
+                if (!(alpha > 0.0f)) throw std::runtime_error("LSQR breakdown in alpha");
+                inverse_alpha = 1.0f / alpha;
+                check_cublas(cublasSscal(context_.blas, context_.n, &inverse_alpha, v_next_.data(), 1),
+                             "LSQR normalize v");
+                std::swap(v_, v_next_);
+
+                const double rho = std::hypot(rho_bar, static_cast<double>(beta));
+                const double cosine = rho_bar / rho;
+                const double sine = beta / rho;
+                const double theta = sine * alpha;
+                rho_bar = -cosine * alpha;
+                const double phi = cosine * phi_bar;
+                phi_bar = sine * phi_bar;
+                const float x_step = static_cast<float>(phi / rho);
+                check_cublas(cublasSaxpy(context_.blas, context_.n, &x_step, w_.data(), 1,
+                                         solution_.data(), 1), "LSQR solution update");
+                const float w_scale = static_cast<float>(-theta / rho);
+                check_cublas(cublasSscal(context_.blas, context_.n, &w_scale, w_.data(), 1),
+                             "LSQR w scale");
+                check_cublas(cublasSaxpy(context_.blas, context_.n, &one, v_.data(), 1, w_.data(), 1),
+                             "LSQR w update");
+            }
+        });
+        if (timings) {
+            timings->restore_ms.push_back(0.0);
+            timings->factor_ms.push_back(solve);
+            timings->apply_ms.push_back(0.0);
+            timings->triangular_ms.push_back(0.0);
+            timings->solve_ms.push_back(solve);
+            timings->refinement_iterations.push_back(iterations_);
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    Context& context_;
+    int iterations_ = 0;
+    DeviceBuffer<float> u_;
+    DeviceBuffer<float> u_next_;
+    DeviceBuffer<float> v_;
+    DeviceBuffer<float> v_next_;
+    DeviceBuffer<float> w_;
+    DeviceBuffer<float> solution_;
+};
+
 #ifdef SGPU_HAVE_MAGMA
 class MagmaSolver {
 public:
@@ -1109,6 +1218,10 @@ int main(int argc, char** argv) {
             else if (arguments.method == "ir_sb") kind = GelsIrKind::kSB;
             else if (arguments.method == "ir_sx") kind = GelsIrKind::kSX;
             GelsIrSolver solver(context, kind);
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method.rfind("lsqr", 0) == 0) {
+            const int iterations = std::stoi(arguments.method.substr(4));
+            LsqrSolver solver(context, iterations);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         }
 #ifdef SGPU_HAVE_MAGMA

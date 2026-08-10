@@ -18,7 +18,7 @@ project="${PROJECT:?PROJECT must point to the plain score-eval-compression check
 case_dir="${CASE_DIR:-$HOME/local_surface_evaluator_data/volume_score_2000/cases}"
 metadata="${METADATA:-$HOME/local_surface_evaluator_data/volume_score_2000/metadata_selected.json}"
 output_dir="${OUTPUT_DIR:-$HOME/local_surface_evaluator_runs/score_eval_compression_${SLURM_JOB_ID}}"
-build_dir="$project/gpu_backend/build_score_eval_profile"
+build_dir="$project/gpu_backend/build_score_eval_profile_cuda13"
 nsys_bin="${NSYS_BIN:-/public/app/cuda/13.0/bin/nsys}"
 
 cleanup() {
@@ -46,10 +46,15 @@ module load cuda/13.0 2>/dev/null || true
 export CUDA_HOME=/public/app/cuda/13.0
 export PATH="$CUDA_HOME/bin:$PATH"
 export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
+export CUDACXX="$CUDA_HOME/bin/nvcc"
 source "$HOME/coil/.venv/bin/activate"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 
-cmake -S gpu_backend -B "$build_dir" -DSGPU_ENABLE_NVTX=ON -DCMAKE_BUILD_TYPE=Release
+cmake -S gpu_backend -B "$build_dir" \
+    -DSGPU_ENABLE_NVTX=ON \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CUDA_COMPILER="$CUDACXX" \
+    -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build "$build_dir" -j4
 lib="$build_dir/libstellarator_gpu.so"
 sha256sum "$lib" > "$output_dir/library.sha256"

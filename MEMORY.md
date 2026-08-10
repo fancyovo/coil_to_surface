@@ -86,13 +86,13 @@
   accepted grid 48 as production default in core ABI and both direct CLIs.
   CUDA13 smoke job `35813` built commit `34cdf2a`, read back `48/48/48`, and
   scored one no-override case `ok` with no zombies. Do not extrapolate below 48.
-- With grid 48, 138-call native timing shows the magnetic-axis path is now the
-  first bottleneck: P50 `251.96 ms` / median call share `37.57%`. Its FP64
-  five-line verification is `156.34 ms`, mixed Newton refinement `46.52 ms`,
-  and repeated 240-point axis-curve trace `48.41 ms`. Psi fit plus independent
-  validation is `142.53 ms`, continuous surface screening `119.06 ms`, and
-  alpha/iota work `85.41 ms`. Details and plots are in section 14 of
-  `reports/qh_score_evaluation_compression_20260810.md`.
+- 2026-08-10 strict-hint mode 2 deletes the five-line FP64 replay but retains
+  four mixed-precision topology traces and all branch/residual rejection gates.
+  Across 69 cases x two repeats, exact-hint P50/P95 fell from `660/905` to
+  `551/730 ms` (1.198x); all calls stayed `ok`, rank and downstream physics were
+  unchanged. A `1e-3` hint offset gave 1.107x because Newton then dominates.
+  Optimizers default to mode 2; mode 1 retains formal FP64 verification.
+  Evidence is section 15 of `reports/qh_score_evaluation_compression_20260810.md`.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
   QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
@@ -232,7 +232,7 @@ $$
   useful size, strongly weights QH quality, penalizes low $|\iota|$, and blocks
   circular-coil, tiny-surface, wrong-helicity, and low-valid-point shortcuts.
 - Current branch-specific score library SHA-256:
-  `387495353bd4c8a3c2984fcfdb6625937da47da0efa2e578610d666c5a8a2f52`.
+  `15e04674527130c1e121e1db16f1c478b5e449d2b973e92d3986822a6e8d5183`.
   Production launchers must verify this hash. An intentional rebuild requires
   fresh numerical validation and an update here before use.
 - Current score conventions include
@@ -297,8 +297,9 @@ $$
 - Current default is score-only zeroth-order Adam in flow latent space: two
   fresh orthogonal directions, four centered score endpoints, perturbation
   `0.005`, LR `0.01`, beta `(0.7,0.999)`, FP32 RK4-128, continuous score, and
-  strict axis continuation. No flow VJP, native-score gradient, G1--G4 path,
-  or black-box-gradient experiment may leak into this production route.
+  strict axis continuation with mixed topology and no FP64 replay (mode 2).
+  `--axis-hint-verification fp64` restores mode 1. No gradient experiment may
+  leak into this production route.
 - Cross-iteration pipelining decodes the accepted center together with the next
   endpoints. On the validated two-GPU setup, 600-step jobs averaged
   `5.27--5.40 s/step`; native score consumed about 75--77% of wall time and
@@ -490,9 +491,8 @@ linked reports.
 
 ## 10. Next Actions
 
-1. For score compression, first test eliminating the duplicate center-axis
-   period trace by emitting 240 axis samples during FP64 verification, then
-   calibrate axis trace steps 960/720/480 with strict branch/topology checks.
+1. Re-profile exact-hint mode 2: psi validation, the low-parallelism axis trace,
+   and continuous surface tracing are now comparable next bottlenecks.
 2. If another QR gain matters, test augmented-RHS Householder behind an explicit
    mode. Never substitute the rejected FP32 normal-equation path.
 3. Do not restart manifold-flow, score collection, proxy, black-box-gradient,

@@ -466,6 +466,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
     )
     parser.add_argument(
+        "--axis-hint-verification",
+        choices=("mixed", "fp64"),
+        default="mixed",
+        help=(
+            "Verification used after strict axis-hint continuation. "
+            "'mixed' skips the five-line FP64 replay but retains mixed-precision "
+            "topology traces; 'fp64' keeps the formal five-line verification."
+        ),
+    )
+    parser.add_argument(
         "--resume",
         action="store_true",
         help="Resume an interrupted run in --out-dir without resetting Adam state.",
@@ -556,7 +566,9 @@ def main() -> None:
             overrides.update(
                 {
                     "axis_hint_enabled": 1,
-                    "axis_hint_require_continuation": 1,
+                    "axis_hint_require_continuation": (
+                        2 if args.axis_hint_verification == "mixed" else 1
+                    ),
                     "axis_hint_R": axis_r,
                     "axis_hint_Z": axis_z,
                 }

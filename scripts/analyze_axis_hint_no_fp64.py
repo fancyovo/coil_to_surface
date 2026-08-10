@@ -138,12 +138,27 @@ def main() -> None:
     summary = {"variants": {}, "pairs": {}}
     for variant in VARIANT_ORDER:
         variant_rows = grouped[variant]
+        successful_rows = [row for row in variant_rows if row["result"]["status"] == "ok"]
         summary["variants"][variant] = {
             "calls": len(variant_rows),
             "status_counts": dict(Counter(row["result"]["status"] for row in variant_rows)),
             "timing": {
                 "caller_wall_s": timing_summary(variant_rows, "caller_wall_s"),
                 **{key: timing_summary(variant_rows, key) for key in TIMING_KEYS},
+            },
+            "diagnostics": {
+                key: {
+                    "p50": percentile(
+                        [finite(row["result"]["diagnostics"][key]) for row in successful_rows], 50
+                    ),
+                    "p95": percentile(
+                        [finite(row["result"]["diagnostics"][key]) for row in successful_rows], 95
+                    ),
+                    "max": max(
+                        finite(row["result"]["diagnostics"][key]) for row in successful_rows
+                    ),
+                }
+                for key in DIAGNOSTIC_KEYS
             },
         }
 

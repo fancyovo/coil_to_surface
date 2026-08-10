@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-08 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-10 (Asia/Shanghai).**
 >
 > Every new conversation and every post-compaction continuation must read this
 > file first. Important changes must be written here in the same turn. Do not
@@ -38,6 +38,24 @@ once the task is accepted.
 
 ## 2. Current Snapshot
 
+- Active local branch is `codex/score-eval-compression`, created on 2026-08-10
+  directly from production `main` commit `81a06e3` in the repository root
+  worktree. Do not create a secondary worktree for this experiment. The prior
+  reduced-latent branch was archived at `a95a8d9`; its proposed manifold-flow
+  follow-up was explicitly rejected by the user and must not be implemented.
+- Current experiment scope: determine whether the validated native ABI-10 score
+  can be evaluated faster without a fundamental change in high-score ranking,
+  status/gate semantics, strict axis-branch continuation, bounded runtime, or
+  the all-native C++/CUDA production path. The existing continuous-surface and
+  axis-continuation implementation is the baseline, not the obsolete legacy
+  score.
+- Recorded holdout baseline for a local optimization call with a valid axis
+  hint is total P50/P95 `0.990/1.254 s`; non-overlapping P50 stages are psi
+  `0.437 s`, axis `0.249 s`, continuous surface `0.161 s`, alpha+QS `0.066 s`,
+  and all other work about `0.076 s`. An independent global-axis call remains
+  `2.836 s` median. The next profiling pass should subdivide psi, axis, and
+  surface before changing algorithms, then validate ranking especially in the
+  extreme high-score tail and verify that no new runtime long tail appears.
 - On 2026-08-08, P107 job `33694` completed an exact two-RTX5090 continuation
   of the beta1 `0.7` optimizer from iteration `2000` to `5000`, restoring the
   full Adam/RNG/prefetch state under LR `0.01`, beta `(0.7,0.999)`, two central

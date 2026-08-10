@@ -71,9 +71,11 @@
   result is an internal paired benchmark, not a replacement production median.
 - The steady representative precision split is CPU FP64 `107 ms`, GPU FP64
   `190 ms`, GPU mixed FP32-field/FP64-state `220 ms`, and GPU FP32-dominant
-  `542 ms`. Psi FP32 QR is the largest range at `414 ms`; its algorithmic
-  throughput is about `4.68 TFLOP/s`. NCU counters are unavailable on the
-  cluster (`ERR_NVGPUCTRPERM`), so no counter-derived trace TFLOPS is claimed.
+  `542 ms`. Inside the `444 ms` full-GPU psi fit, design-matrix assembly is
+  only about `13 ms`; the FP32 QR branch is `414 ms` and is the actual
+  bottleneck. Its algorithmic throughput in this anomalously slow run is about
+  `4.68 TFLOP/s`. NCU counters are unavailable on the cluster
+  (`ERR_NVGPUCTRPERM`), so no counter-derived trace TFLOPS is claimed.
 - Reduced psi grids/trace counts showed `0.64--0.79 s` potential on only eight
   high-score cases; they are unvalidated candidates, not production defaults.
   FP32 normal equations damaged ranking and introduced a slow tail; do not use.

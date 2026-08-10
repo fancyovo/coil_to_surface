@@ -56,26 +56,13 @@
   alter standalone global-axis search. Exact loop-invariant removals are active;
   fixed-matrix QR alternatives remain experimental, while psi grid 48 is now
   the production default.
-- The established 69-case strict-continuation grid-80 result is the former
-  timing reference at P50/P95 `0.990/1.254 s`. A new 8-case high-score profile
-  measured `1.323 s`, but it does not supersede that reference: fixed-size
-  FP32 QR was anomalously about `0.44 s` versus historical raw records near
-  `0.23 s`. Source/defaults/CUDA target match; node/build/NVTX effects remain
-  unisolated and require a same-input, same-idle-GPU A/B before any absolute
-  performance conclusion.
-- Two exact loop-invariant removals are accepted: cache toroidal trigonometry
-  per psi-evaluation point and cache axis interpolation per phi grid point.
-  Within the new run, strict-hint P50/P95/max improved from
-  `1.323/1.463/1.496 s` to `1.117/1.262/1.264 s`. Maximum score and component
-  differences were `1.42e-14` and `2.84e-14`; no status changed. The `1.117 s`
-  result is an internal paired benchmark, not a replacement production median.
-- The steady representative precision split is CPU FP64 `107 ms`, GPU FP64
-  `190 ms`, GPU mixed FP32-field/FP64-state `220 ms`, and GPU FP32-dominant
-  `542 ms`. Inside the `444 ms` full-GPU psi fit, design-matrix assembly is
-  only about `13 ms`; the FP32 QR branch is `414 ms` and is the actual
-  bottleneck. Its algorithmic throughput in this anomalously slow run is about
-  `4.68 TFLOP/s`. NCU counters are unavailable on the cluster
-  (`ERR_NVGPUCTRPERM`), so no counter-derived trace TFLOPS is claimed.
+- The established 69-case strict-continuation grid-80 timing reference was
+  P50/P95 `0.990/1.254 s`. A later 8-case run was anomalously slower, so its
+  absolute times are not a new baseline. Within that run, exact caching of
+  toroidal trigonometry and axis interpolation improved P50 from `1.323` to
+  `1.117 s` with score differences below `3e-14`. Its FP32 QR, not matrix
+  assembly, was the bottleneck; NCU counters were unavailable. See report
+  sections 5--11 rather than reusing these node-sensitive raw timings.
 - 2026-08-10 psi-grid acceptance used all 69 historical strict-continuation
   `legacy-ok` holdout cases, five grids, two repeats, and fixed 4000-point
   independent physical validation. Grid 48 reduced physical fit rows from
@@ -93,6 +80,14 @@
   unchanged. A `1e-3` hint offset gave 1.107x because Newton then dominates.
   Optimizers default to mode 2; mode 1 retains formal FP64 verification.
   Evidence is section 15 of `reports/qh_score_evaluation_compression_20260810.md`.
+- 2026-08-10 corrected the production joint fit from constant iota to
+  `iota(u)=c0+c1*u+c2*u^2+c3*u^3`, where `u=rho^2=psi/psi_edge`. Across 69
+  cases, all 138+138 calls were `ok`, every cubic fit reduced the joint
+  alpha/iota residual (P50 ratio `0.9452`), added no measurable time, and kept
+  the top decile exactly. A 200-step rerun from historical `start_10` rose from
+  `85.5157` to `91.5263` at `4.117 s/step`; all updates were valid and step 200
+  was best. Evidence is section 16 and assets
+  `qh_iota_degree_calibration_35856` / `qh_iota_cubic_adam200_35864`.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
   QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
@@ -156,10 +151,12 @@
   `reports/qh_score_throughput_and_continuous_surface_plan.md` and
   `reports/assets/qh_score_fast_beta1_0p7_continue10000_20260808/`.
 
-### Current accepted best
+### Current physically accepted best (historical score definition)
 
-- Highest fully evaluated native-score sample: QH, $N_{\mathrm{FP}}=4$, three
-  base coils, score `93.3672653337` at iteration 4341. Input SHA-256:
+- Highest fully evaluated sample remains QH, $N_{\mathrm{FP}}=4$, three base
+  coils. Its historical constant-iota score was `93.3672653337` at iteration
+  4341; the physical evaluation remains valid, but that score is not directly
+  comparable with the current cubic-iota objective. Input SHA-256:
   `d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29`.
 - Its sample-adaptive complete evaluation selected `a=0.08`; standard
   LS/Newton accepted `s=0.24/0.36/0.49` with increasing enclosed volume and
@@ -211,9 +208,10 @@ $$
   genuinely unavailable.
 - **Straight-field-line coordinate:** on dense, approximately uniform volume
   samples, solve one linear least-squares system for the Zernike-Fourier
-  expansion of $\alpha$ and iota using
+  expansion of $\alpha$ and $\iota$ using
   $\boldsymbol B\cdot\nabla\alpha=0$. This yields a volume straight-field-line
-  coordinate, not merely one fitted surface.
+  coordinate, not merely one fitted surface. Current default is cubic in
+  $u=\rho^2=\psi/\psi_{\rm edge}$; artifacts with `iota_degree=0` are historical.
 
 ### Fast native score branch
 
@@ -232,7 +230,7 @@ $$
   useful size, strongly weights QH quality, penalizes low $|\iota|$, and blocks
   circular-coil, tiny-surface, wrong-helicity, and low-valid-point shortcuts.
 - Current branch-specific score library SHA-256:
-  `15e04674527130c1e121e1db16f1c478b5e449d2b973e92d3986822a6e8d5183`.
+  `565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729`.
   Production launchers must verify this hash. An intentional rebuild requires
   fresh numerical validation and an update here before use.
 - Current score conventions include
@@ -297,7 +295,8 @@ $$
 - Current default is score-only zeroth-order Adam in flow latent space: two
   fresh orthogonal directions, four centered score endpoints, perturbation
   `0.005`, LR `0.01`, beta `(0.7,0.999)`, FP32 RK4-128, continuous score, and
-  strict axis continuation with mixed topology and no FP64 replay (mode 2).
+  cubic `iota(psi/psi_edge)`, with strict axis continuation using mixed topology
+  and no FP64 replay (mode 2).
   `--axis-hint-verification fp64` restores mode 1. No gradient experiment may
   leak into this production route.
 - Cross-iteration pipelining decodes the accepted center together with the next

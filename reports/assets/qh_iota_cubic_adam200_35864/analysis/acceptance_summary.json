@@ -1,0 +1,97 @@
+{
+  "manifest": {
+    "nfp": 4,
+    "n_base_coils": 3,
+    "seed": 20260804,
+    "directions": 2,
+    "gradient_estimator": "central",
+    "perturbation": 0.005,
+    "learning_rate": 0.01,
+    "betas": [
+      0.7,
+      0.999
+    ],
+    "flow_steps": 128,
+    "flow_pipeline": true,
+    "iota_degree": 3,
+    "axis_hint_verification": "mixed",
+    "native_lib_sha256": "565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729"
+  },
+  "summary": {
+    "status": "ok",
+    "stop_reason": "completed_iterations",
+    "initial_score": 85.51571966473027,
+    "final_score": 91.52632898747693,
+    "best_score": 91.52632898747693,
+    "best_iteration": 200,
+    "completed_iterations": 200,
+    "completed_adam_steps": 200,
+    "total_wall_s": 848.4054195433855,
+    "mean_iteration_wall_s": 4.116713375058025,
+    "initial_decode_wall_s": 3.0026798397302628,
+    "initial_score_wall_s": 2.9909054543823004,
+    "initial_score_elapsed_s": [
+      2.9891121946275234
+    ],
+    "resumed_from_iteration": null,
+    "resume_center_score": null,
+    "final_noise_rms": 0.9610515274368051,
+    "final_noise_abs_max": 3.0803825855255127,
+    "best_case": "/home/scc/pb24511935/local_surface_evaluator_runs/iota_cubic_adam200_35864/best.json"
+  },
+  "checkpoints": [
+    {
+      "iteration": 0,
+      "current_score": 85.51571966473027
+    },
+    {
+      "iteration": 25,
+      "current_score": 87.80370142577195,
+      "best_score": 87.80370142577195,
+      "qh_error": 0.0289385748142625,
+      "iota_min": 1.5610431377576983
+    },
+    {
+      "iteration": 50,
+      "current_score": 89.0546358989449,
+      "best_score": 89.0546358989449,
+      "qh_error": 0.024629683174675995,
+      "iota_min": 1.6154237733190353
+    },
+    {
+      "iteration": 100,
+      "current_score": 90.15290087446495,
+      "best_score": 90.1588819560846,
+      "qh_error": 0.01865985980485824,
+      "iota_min": 1.5696029504830291
+    },
+    {
+      "iteration": 150,
+      "current_score": 90.86513069435318,
+      "best_score": 91.03473336466031,
+      "qh_error": 0.01355725749771211,
+      "iota_min": 1.5281598884606094
+    },
+    {
+      "iteration": 200,
+      "current_score": 91.52632898747693,
+      "best_score": 91.52632898747693,
+      "qh_error": 0.010923685479158772,
+      "iota_min": 1.5125993948909335
+    }
+  ],
+  "iteration_timing_s": {
+    "mean_all": 4.116713375058025,
+    "p50_all": 4.228417217731476,
+    "p95_all": 4.276206756010652,
+    "mean_steady_after_first": 4.108922305371818,
+    "score_mean": 2.9934335797280074,
+    "flow_mean": 2.222078807000071
+  },
+  "step_counts": {
+    "gradient_applied": 200,
+    "center_accepted": 200,
+    "temporal_rejected": 0,
+    "non_ok_centers": 0
+  }
+}

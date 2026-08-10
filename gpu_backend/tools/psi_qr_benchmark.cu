@@ -581,6 +581,11 @@ __global__ void gather_upper_kernel(
         ? input[row + static_cast<std::size_t>(col) * input_lda] : 0.0f;
 }
 
+__global__ void add_diagonal_shift_kernel(float* matrix, int n, float shift) {
+    const int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < n) matrix[index + static_cast<std::size_t>(index) * n] += shift;
+}
+
 __global__ void store_bcgs_projection_kernel(
     const float* first,
     const float* second,
@@ -1021,6 +1026,79 @@ private:
     DeviceBuffer<int> info_;
 };
 
+class ShiftedNormalSolver {
+public:
+    ShiftedNormalSolver(Context& context, float shift, bool tf32)
+        : context_(context), shift_(shift), tf32_(tf32),
+          gram_(static_cast<std::size_t>(context.n) * context.n), solution_(context.n), info_(1) {
+        if (!(shift_ > 0.0f)) throw std::runtime_error("normal-equation shift must be positive");
+        check_solver(cusolverDnCreate(&solver_), "shifted normal cusolver create");
+        check_cublas(cublasSetMathMode(
+            context_.blas, tf32_ ? CUBLAS_TF32_TENSOR_OP_MATH : CUBLAS_PEDANTIC_MATH),
+            "set shifted normal math mode");
+        int work = 0;
+        check_solver(cusolverDnSpotrf_bufferSize(
+            solver_, CUBLAS_FILL_MODE_UPPER, context_.n, gram_.data(), context_.n, &work),
+            "shifted normal potrf buffer");
+        work_.allocate(static_cast<std::size_t>(work));
+    }
+
+    ~ShiftedNormalSolver() {
+        cublasSetMathMode(context_.blas, CUBLAS_DEFAULT_MATH);
+        cusolverDnDestroy(solver_);
+    }
+
+    void run_once(Timings* timings) {
+        const float one = 1.0f;
+        const float zero = 0.0f;
+        const double factor = wall_ms([&] {
+            check_cublas(cublasSsyrk(
+                context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, context_.n, context_.m,
+                &one, context_.matrix.data(), context_.m, &zero, gram_.data(), context_.n),
+                "shifted normal SYRK");
+            add_diagonal_shift_kernel<<<(context_.n + 255) / 256, 256>>>(gram_.data(), context_.n, shift_);
+            check_cuda(cudaGetLastError(), "shifted normal diagonal kernel");
+            check_solver(cusolverDnSpotrf(
+                solver_, CUBLAS_FILL_MODE_UPPER, context_.n, gram_.data(), context_.n,
+                work_.data(), static_cast<int>(work_.size()), info_.data()), "shifted normal potrf");
+        });
+        verify_info(info_, "shifted normal potrf info");
+        const double apply = wall_ms([&] {
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one, context_.matrix.data(),
+                context_.m, context_.rhs.data(), 1, &zero, solution_.data(), 1),
+                "shifted normal A^T b");
+        });
+        const double triangular = wall_ms([&] {
+            check_cublas(cublasStrsv(
+                context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, CUBLAS_DIAG_NON_UNIT,
+                context_.n, gram_.data(), context_.n, solution_.data(), 1), "shifted normal R^T solve");
+            check_cublas(cublasStrsv(
+                context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
+                context_.n, gram_.data(), context_.n, solution_.data(), 1), "shifted normal R solve");
+        });
+        if (timings) {
+            timings->restore_ms.push_back(0.0);
+            timings->factor_ms.push_back(factor);
+            timings->apply_ms.push_back(apply);
+            timings->triangular_ms.push_back(triangular);
+            timings->solve_ms.push_back(factor + apply + triangular);
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    Context& context_;
+    float shift_ = 0.0f;
+    bool tf32_ = false;
+    cusolverDnHandle_t solver_ = nullptr;
+    DeviceBuffer<float> gram_;
+    DeviceBuffer<float> solution_;
+    DeviceBuffer<float> work_;
+    DeviceBuffer<int> info_;
+};
+
 ErrorMetrics measure_error(Context& context, const float* solution) {
     check_cublas(cublasSetMathMode(context.blas, CUBLAS_PEDANTIC_MATH), "set error metric math mode");
     ErrorMetrics metrics;
@@ -1246,6 +1324,13 @@ int main(int argc, char** argv) {
                    arguments.method == "choleskyqr2") {
             NormalEquationSolver solver(
                 context, arguments.method == "choleskyqr2", arguments.method == "normal_tf32");
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method.rfind("shifted", 0) == 0) {
+            const std::size_t underscore = arguments.method.find('_');
+            if (underscore == std::string::npos) throw std::runtime_error("shifted method needs a shift");
+            const bool tf32 = arguments.method.find("tf32") != std::string::npos;
+            const float shift = std::stof(arguments.method.substr(underscore + 1));
+            ShiftedNormalSolver solver(context, shift, tf32);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else {
             throw std::runtime_error("unknown method: " + arguments.method);

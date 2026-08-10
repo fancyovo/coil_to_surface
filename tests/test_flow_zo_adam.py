@@ -259,6 +259,33 @@ def test_central_and_one_sided_share_leading_direction_bank():
     )
 
 
+def test_update_anchored_probe_uses_anchor_and_orthogonal_random_direction():
+    center = np.zeros((2, 3), dtype=np.float32)
+    anchor = np.asarray([[1.0, 2.0, 3.0], [-1.0, 0.5, 4.0]], dtype=np.float32)
+    directions, signs, states = sample_direction_probe(
+        np.random.default_rng(71),
+        np.random.default_rng(72),
+        center,
+        directions=2,
+        direction_bank_size=2,
+        gradient_estimator="central",
+        perturbation=0.005,
+        anchor_direction=anchor,
+    )
+
+    expected_anchor = anchor / np.sqrt(np.mean(anchor.astype(np.float64) ** 2))
+    np.testing.assert_allclose(directions[0], expected_anchor, rtol=2.0e-7, atol=2.0e-7)
+    gram = np.mean(
+        directions[:, None].astype(np.float64)
+        * directions[None, :].astype(np.float64),
+        axis=(2, 3),
+    )
+    np.testing.assert_allclose(gram, np.eye(2), rtol=2.0e-7, atol=2.0e-7)
+    np.testing.assert_array_equal(signs, np.ones(2, dtype=np.int8))
+    np.testing.assert_allclose(states[:2], 0.005 * directions)
+    np.testing.assert_allclose(states[2:], -0.005 * directions)
+
+
 def test_robust_direction_filter_accepts_one_sided_endpoint_statuses():
     used, invalid, outlier, limit = robust_direction_deltas(
         np.asarray([0.4, -0.5, 0.6, -0.2]),

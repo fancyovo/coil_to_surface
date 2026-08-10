@@ -109,11 +109,33 @@ def sample_direction_probe(
     direction_bank_size: int,
     gradient_estimator: str,
     perturbation: float,
+    anchor_direction: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     if direction_bank_size < directions:
         raise ValueError("direction bank must contain every used direction")
     bank = orthogonal_directions(direction_rng, center.shape, direction_bank_size)
-    selected = bank[:directions]
+    if anchor_direction is None:
+        selected = bank[:directions]
+    else:
+        anchor = np.asarray(anchor_direction, dtype=np.float64)
+        if anchor.shape != center.shape:
+            raise ValueError("anchor direction shape does not match center")
+        anchor_scale = rms(anchor)
+        if not math.isfinite(anchor_scale) or anchor_scale <= np.finfo(np.float64).eps:
+            raise ValueError("anchor direction must have finite nonzero RMS")
+        selected_list = [anchor / anchor_scale]
+        for candidate in bank:
+            residual = np.asarray(candidate, dtype=np.float64).copy()
+            for basis in selected_list:
+                residual -= float(np.mean(residual * basis)) * basis
+            residual_scale = rms(residual)
+            if residual_scale > 1.0e-10:
+                selected_list.append(residual / residual_scale)
+            if len(selected_list) == directions:
+                break
+        if len(selected_list) != directions:
+            raise RuntimeError("random bank did not span the anchor complement")
+        selected = np.asarray(selected_list, dtype=np.float32)
     if gradient_estimator == "one-sided":
         signs = np.where(
             sign_rng.integers(0, 2, size=directions, dtype=np.int8) == 0,
@@ -288,6 +310,7 @@ def save_state(
     iteration: int,
     rng: np.random.Generator,
     sign_rng: np.random.Generator,
+    last_update_direction: np.ndarray | None,
     prefetched_probe: dict[str, Any] | None,
 ) -> None:
     payload: dict[str, Any] = {
@@ -299,13 +322,19 @@ def save_state(
         "iteration": np.asarray(iteration, dtype=np.int64),
         "rng_state": np.asarray(json.dumps(rng.bit_generator.state)),
         "sign_rng_state": np.asarray(json.dumps(sign_rng.bit_generator.state)),
+        "last_update_direction_present": np.asarray(last_update_direction is not None),
         "prefetched_probe_present": np.asarray(prefetched_probe is not None),
     }
+    if last_update_direction is not None:
+        payload["last_update_direction"] = last_update_direction
     if prefetched_probe is not None:
         payload.update(
             {
                 "prefetched_directions": prefetched_probe["directions"],
                 "prefetched_signs": prefetched_probe["signs"],
+                "prefetched_direction_sources": np.asarray(
+                    prefetched_probe["sources"], dtype="U32"
+                ),
                 "prefetched_tokens": prefetched_probe["tokens"],
                 "prefetched_decode_wall_s": np.asarray(
                     prefetched_probe["decode_wall_s"], dtype=np.float64
@@ -383,6 +412,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-base-coils", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=60)
     parser.add_argument("--directions", type=int, default=2)
+    parser.add_argument(
+        "--reuse-update-direction-after",
+        type=int,
+        default=0,
+        help=(
+            "After this many completed iterations, use the previous accepted "
+            "Adam update as the first finite-difference direction; zero disables."
+        ),
+    )
     parser.add_argument(
         "--direction-bank-size",
         type=int,
@@ -512,6 +550,10 @@ def main() -> None:
         raise ValueError("nfp and n-base-coils must be positive")
     if args.iterations < 1 or args.directions < 1 or args.flow_steps < 1:
         raise ValueError("iterations, directions, and flow-steps must be positive")
+    if args.reuse_update_direction_after < 0:
+        raise ValueError("reuse-update-direction-after must be non-negative")
+    if args.reuse_update_direction_after > 0 and args.directions < 2:
+        raise ValueError("update-direction reuse requires at least two directions")
     if args.directions > args.n_base_coils * TOKEN_DIM:
         raise ValueError("directions exceed latent dimension")
     direction_bank_size = args.direction_bank_size or args.directions
@@ -583,7 +625,17 @@ def main() -> None:
             )
         return overrides or None
 
-    def draw_probe(center: np.ndarray) -> dict[str, Any]:
+    def draw_probe(
+        center: np.ndarray,
+        *,
+        probe_iteration: int,
+        update_direction: np.ndarray | None,
+    ) -> dict[str, Any]:
+        use_update_direction = (
+            args.reuse_update_direction_after > 0
+            and probe_iteration > args.reuse_update_direction_after
+            and update_direction is not None
+        )
         directions, signs, states = sample_direction_probe(
             rng,
             sign_rng,
@@ -592,8 +644,17 @@ def main() -> None:
             direction_bank_size=direction_bank_size,
             gradient_estimator=args.gradient_estimator,
             perturbation=args.perturbation,
+            anchor_direction=update_direction if use_update_direction else None,
         )
-        return {"directions": directions, "signs": signs, "states": states}
+        sources = ["random"] * args.directions
+        if use_update_direction:
+            sources[0] = "previous_update"
+        return {
+            "directions": directions,
+            "signs": signs,
+            "states": states,
+            "sources": sources,
+        }
 
     def states_for_probe(center: np.ndarray, probe: dict[str, Any]) -> np.ndarray:
         return direction_probe_states(
@@ -667,6 +728,14 @@ def main() -> None:
         else:
             sign_rng = np.random.default_rng(args.seed ^ 0x6A09E667)
         prefetched_probe = None
+        last_update_direction = None
+        if (
+            "last_update_direction_present" in saved_state.files
+            and bool(saved_state["last_update_direction_present"].item())
+        ):
+            last_update_direction = np.asarray(
+                saved_state["last_update_direction"], dtype=np.float32
+            )
         if (
             "prefetched_probe_present" in saved_state.files
             and bool(saved_state["prefetched_probe_present"].item())
@@ -676,6 +745,11 @@ def main() -> None:
                     saved_state["prefetched_directions"], dtype=np.float32
                 ),
                 "signs": np.asarray(saved_state["prefetched_signs"], dtype=np.int8),
+                "sources": (
+                    np.asarray(saved_state["prefetched_direction_sources"]).tolist()
+                    if "prefetched_direction_sources" in saved_state.files
+                    else ["random"] * args.directions
+                ),
                 "tokens": np.asarray(
                     saved_state["prefetched_tokens"], dtype=np.float64
                 ),
@@ -690,6 +764,7 @@ def main() -> None:
         rng = np.random.default_rng(args.seed)
         sign_rng = np.random.default_rng(args.seed ^ 0x6A09E667)
         prefetched_probe = None
+        last_update_direction = None
         if args.initial_case is None:
             current_noise = rng.standard_normal(
                 (args.n_base_coils, TOKEN_DIM), dtype=np.float32
@@ -756,6 +831,12 @@ def main() -> None:
         "iterations": args.iterations,
         "directions": args.directions,
         "direction_bank_size": direction_bank_size,
+        "reuse_update_direction_after": args.reuse_update_direction_after,
+        "direction_policy": (
+            "previous_accepted_update_plus_orthogonal_random"
+            if args.reuse_update_direction_after > 0
+            else "fresh_orthogonal_random"
+        ),
         "gradient_estimator": args.gradient_estimator,
         "gradient_source": "score_finite_differences_only",
         "perturbation": args.perturbation,
@@ -816,6 +897,8 @@ def main() -> None:
     if args.resume:
         manifest = json.loads(run_paths["manifest.json"].read_text(encoding="utf-8"))
         manifest.setdefault("direction_bank_size", manifest.get("directions"))
+        manifest.setdefault("reuse_update_direction_after", 0)
+        manifest.setdefault("direction_policy", "fresh_orthogonal_random")
         manifest.setdefault("gradient_estimator", "central")
         manifest.setdefault("gradient_source", "score_finite_differences_only")
         manifest.setdefault("flow_pipeline", False)
@@ -831,6 +914,8 @@ def main() -> None:
             "seed",
             "directions",
             "direction_bank_size",
+            "reuse_update_direction_after",
+            "direction_policy",
             "gradient_estimator",
             "gradient_source",
             "perturbation",
@@ -1045,6 +1130,7 @@ def main() -> None:
                 direction_signs = np.asarray(
                     prefetched_probe["signs"], dtype=np.int8
                 )
+                direction_sources = list(prefetched_probe["sources"])
                 pair_tokens = np.asarray(
                     prefetched_probe["tokens"], dtype=np.float64
                 )
@@ -1052,15 +1138,15 @@ def main() -> None:
                 pair_decode_wall_s = 0.0
                 prefetched_probe = None
             else:
-                directions, direction_signs, pair_states = sample_direction_probe(
-                    rng,
-                    sign_rng,
+                probe = draw_probe(
                     current_noise,
-                    directions=args.directions,
-                    direction_bank_size=direction_bank_size,
-                    gradient_estimator=args.gradient_estimator,
-                    perturbation=args.perturbation,
+                    probe_iteration=iteration,
+                    update_direction=last_update_direction,
                 )
+                directions = probe["directions"]
+                direction_signs = probe["signs"]
+                direction_sources = list(probe["sources"])
+                pair_states = probe["states"]
                 pair_tokens, pair_decode_wall_s = decode_noise_rk4(
                     model,
                     normalizer,
@@ -1194,6 +1280,11 @@ def main() -> None:
                 update = np.zeros_like(raw_gradient)
                 proposed_update_rms = 0.0
             full_update = update.copy()
+            full_update_direction = None
+            if rms(full_update) > np.finfo(np.float64).eps:
+                full_update_direction = (
+                    full_update.astype(np.float64) / rms(full_update)
+                ).astype(np.float32)
             center_decode_wall_s = 0.0
             center_score_wall_s = 0.0
             center_elapsed = []
@@ -1226,7 +1317,15 @@ def main() -> None:
                     current_noise.astype(np.float64) + full_update
                 ).astype(np.float32)
                 if args.flow_pipeline and iteration < args.iterations:
-                    next_probe = draw_probe(current_noise)
+                    next_probe = draw_probe(
+                        current_noise,
+                        probe_iteration=iteration + 1,
+                        update_direction=(
+                            full_update_direction
+                            if full_update_direction is not None
+                            else last_update_direction
+                        ),
+                    )
                 (
                     proposed_tokens,
                     next_endpoint_tokens,
@@ -1346,12 +1445,26 @@ def main() -> None:
                     second_moment = previous_second_moment
                     adam_step = previous_adam_step
                     update = np.zeros_like(full_update)
+                    if (
+                        args.reuse_update_direction_after > 0
+                        and iteration + 1 > args.reuse_update_direction_after
+                    ):
+                        next_probe = None
             else:
                 current_tokens = proposed_tokens
                 current_result = proposed_result
+            actual_update_scale = rms(update)
+            if center_update_accepted and actual_update_scale > np.finfo(np.float64).eps:
+                last_update_direction = (
+                    update.astype(np.float64) / actual_update_scale
+                ).astype(np.float32)
             if args.flow_pipeline and iteration < args.iterations:
                 if next_probe is None:
-                    next_probe = draw_probe(current_noise)
+                    next_probe = draw_probe(
+                        current_noise,
+                        probe_iteration=iteration + 1,
+                        update_direction=last_update_direction,
+                    )
                 if next_endpoint_tokens is None:
                     refill_states = states_for_probe(current_noise, next_probe)
                     (
@@ -1371,6 +1484,7 @@ def main() -> None:
                 prefetched_probe = {
                     "directions": next_probe["directions"],
                     "signs": next_probe["signs"],
+                    "sources": next_probe["sources"],
                     "tokens": next_endpoint_tokens,
                     "decode_wall_s": next_endpoint_decode_wall_s,
                     "source_iteration": iteration,
@@ -1415,6 +1529,7 @@ def main() -> None:
                 "pair_scores": pair_scores.tolist(),
                 "pair_statuses": pair_statuses,
                 "gradient_estimator": args.gradient_estimator,
+                "direction_sources": direction_sources,
                 "direction_signs": direction_signs.tolist(),
                 "endpoint_count": len(pair_results),
                 "raw_direction_deltas": raw_delta.tolist(),
@@ -1484,6 +1599,7 @@ def main() -> None:
                     "temporal_step_rejected": temporal_step_rejected,
                     "center_update_accepted": center_update_accepted,
                     "center_acceptance_fraction": center_acceptance_fraction,
+                    "direction_sources": direction_sources,
                 },
             )
             row["trajectory_case"] = str(
@@ -1514,6 +1630,7 @@ def main() -> None:
                 iteration=iteration,
                 rng=rng,
                 sign_rng=sign_rng,
+                last_update_direction=last_update_direction,
                 prefetched_probe=prefetched_probe,
             )
             if iteration == 1 or iteration % args.plot_every == 0:

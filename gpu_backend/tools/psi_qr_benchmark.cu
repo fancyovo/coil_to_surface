@@ -192,23 +192,26 @@ void verify_info(const DeviceBuffer<int>& info, const char* where) {
 
 class HouseholderSolver {
 public:
-    HouseholderSolver(Context& context, bool generic)
-        : context_(context), generic_(generic), matrix_(context.matrix.size()), rhs_(context.m),
+    HouseholderSolver(Context& context, bool generic, int lda_alignment = 1)
+        : context_(context), generic_(generic),
+          lda_(((context.m + lda_alignment - 1) / lda_alignment) * lda_alignment),
+          matrix_(static_cast<std::size_t>(lda_) * context.n), rhs_(context.m),
           tau_(context.n), info_(1) {
+        if (lda_alignment <= 0) throw std::runtime_error("invalid Householder lda alignment");
         check_solver(cusolverDnCreate(&solver_), "cusolverDnCreate");
         int legacy_geqrf = 0;
         int legacy_ormqr = 0;
-        check_solver(cusolverDnSgeqrf_bufferSize(solver_, context_.m, context_.n, matrix_.data(), context_.m,
+        check_solver(cusolverDnSgeqrf_bufferSize(solver_, context_.m, context_.n, matrix_.data(), lda_,
                                                  &legacy_geqrf), "Sgeqrf_bufferSize");
         check_solver(cusolverDnSormqr_bufferSize(
             solver_, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, context_.m, 1, context_.n,
-            matrix_.data(), context_.m, tau_.data(), rhs_.data(), context_.m, &legacy_ormqr),
+            matrix_.data(), lda_, tau_.data(), rhs_.data(), context_.m, &legacy_ormqr),
             "Sormqr_bufferSize");
         legacy_work_.allocate(static_cast<std::size_t>(std::max(legacy_geqrf, legacy_ormqr)));
         if (generic_) {
             check_solver(cusolverDnCreateParams(&params_), "cusolverDnCreateParams");
             check_solver(cusolverDnXgeqrf_bufferSize(
-                solver_, params_, context_.m, context_.n, CUDA_R_32F, matrix_.data(), context_.m,
+                solver_, params_, context_.m, context_.n, CUDA_R_32F, matrix_.data(), lda_,
                 CUDA_R_32F, tau_.data(), CUDA_R_32F, &generic_device_bytes_, &generic_host_bytes_),
                 "Xgeqrf_bufferSize");
             generic_device_.allocate(generic_device_bytes_);
@@ -223,20 +226,28 @@ public:
 
     void run_once(Timings* timings) {
         const double restore = wall_ms([&] {
-            check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), matrix_.size() * sizeof(float), cudaMemcpyDeviceToDevice),
-                       "restore matrix");
+            if (lda_ == context_.m) {
+                check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), context_.matrix.size() * sizeof(float),
+                                      cudaMemcpyDeviceToDevice), "restore matrix");
+            } else {
+                check_cuda(cudaMemcpy2D(
+                    matrix_.data(), static_cast<std::size_t>(lda_) * sizeof(float),
+                    context_.matrix.data(), static_cast<std::size_t>(context_.m) * sizeof(float),
+                    static_cast<std::size_t>(context_.m) * sizeof(float), context_.n,
+                    cudaMemcpyDeviceToDevice), "restore padded matrix");
+            }
             check_cuda(cudaMemcpy(rhs_.data(), context_.rhs.data(), rhs_.size() * sizeof(float), cudaMemcpyDeviceToDevice),
                        "restore rhs");
         });
         const double factor = wall_ms([&] {
             if (generic_) {
                 check_solver(cusolverDnXgeqrf(
-                    solver_, params_, context_.m, context_.n, CUDA_R_32F, matrix_.data(), context_.m,
+                    solver_, params_, context_.m, context_.n, CUDA_R_32F, matrix_.data(), lda_,
                     CUDA_R_32F, tau_.data(), CUDA_R_32F, generic_device_.data(), generic_device_bytes_,
                     generic_host_.data(), generic_host_bytes_, info_.data()), "Xgeqrf");
             } else {
                 check_solver(cusolverDnSgeqrf(
-                    solver_, context_.m, context_.n, matrix_.data(), context_.m, tau_.data(),
+                    solver_, context_.m, context_.n, matrix_.data(), lda_, tau_.data(),
                     legacy_work_.data(), static_cast<int>(legacy_work_.size()), info_.data()), "Sgeqrf");
             }
         });
@@ -244,13 +255,13 @@ public:
         const double apply = wall_ms([&] {
             check_solver(cusolverDnSormqr(
                 solver_, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, context_.m, 1, context_.n,
-                matrix_.data(), context_.m, tau_.data(), rhs_.data(), context_.m,
+                matrix_.data(), lda_, tau_.data(), rhs_.data(), context_.m,
                 legacy_work_.data(), static_cast<int>(legacy_work_.size()), info_.data()), "Sormqr");
         });
         verify_info(info_, "ormqr info");
         const double triangular = wall_ms([&] {
             check_cublas(cublasStrsv(context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,
-                                     CUBLAS_DIAG_NON_UNIT, context_.n, matrix_.data(), context_.m,
+                                     CUBLAS_DIAG_NON_UNIT, context_.n, matrix_.data(), lda_,
                                      rhs_.data(), 1), "Strsv");
         });
         if (timings) {
@@ -267,6 +278,7 @@ public:
 private:
     Context& context_;
     bool generic_ = false;
+    int lda_ = 0;
     cusolverDnHandle_t solver_ = nullptr;
     cusolverDnParams_t params_ = nullptr;
     DeviceBuffer<float> matrix_;
@@ -1408,8 +1420,13 @@ int main(int argc, char** argv) {
 
         Timings timings;
         ErrorMetrics error;
-        if (arguments.method == "legacy" || arguments.method == "generic") {
-            HouseholderSolver solver(context, arguments.method == "generic");
+        if (arguments.method == "legacy" || arguments.method == "generic" ||
+            arguments.method.rfind("legacy_pad", 0) == 0) {
+            int alignment = 1;
+            if (arguments.method.rfind("legacy_pad", 0) == 0) {
+                alignment = std::stoi(arguments.method.substr(10));
+            }
+            HouseholderSolver solver(context, arguments.method == "generic", alignment);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else if (arguments.method == "ir_ss" || arguments.method == "ir_sh" ||
                    arguments.method == "ir_sb" || arguments.method == "ir_sx") {

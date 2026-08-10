@@ -18,6 +18,7 @@ project="${PROJECT:?PROJECT must point to the plain score-eval-compression check
 case_dir="${CASE_DIR:-$HOME/local_surface_evaluator_data/volume_score_2000/cases}"
 metadata="${METADATA:-$HOME/local_surface_evaluator_data/volume_score_2000/metadata_selected.json}"
 output_dir="${OUTPUT_DIR:-$HOME/local_surface_evaluator_runs/score_eval_compression_${SLURM_JOB_ID}}"
+profile_manifest="${PROFILE_MANIFEST:-}"
 build_dir="$project/gpu_backend/build_score_eval_profile_cuda13"
 nsys_bin="${NSYS_BIN:-/public/app/cuda/13.0/bin/nsys}"
 
@@ -61,10 +62,14 @@ sha256sum "$lib" > "$output_dir/library.sha256"
 git rev-parse HEAD > "$output_dir/git_head.txt"
 git diff --stat > "$output_dir/git_diff_stat.txt"
 
-python scripts/prepare_score_eval_profile_cases.py \
-    --case-dir "$case_dir" --metadata "$metadata" --lib "$lib" \
-    --output "$output_dir/cases.json" --device 0 \
-    --candidate-limit 48 --selected-count 8
+if [[ -n "$profile_manifest" ]]; then
+    cp "$profile_manifest" "$output_dir/cases.json"
+else
+    python scripts/prepare_score_eval_profile_cases.py \
+        --case-dir "$case_dir" --metadata "$metadata" --lib "$lib" \
+        --output "$output_dir/cases.json" --device 0 \
+        --candidate-limit 48 --selected-count 8
+fi
 
 python scripts/benchmark_score_eval_hinted.py \
     --manifest "$output_dir/cases.json" --lib "$lib" \

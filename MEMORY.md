@@ -81,6 +81,14 @@
   FP32 normal equations damaged ranking and introduced a slow tail; do not use.
   Full evidence and recommendations are in
   `reports/qh_score_evaluation_compression_20260810.md`.
+- QR research for the fixed `391334 x 1574` FP32 problem sets a strict
+  Householder target of `64.55 ms` for `30 TFLOP/s`. Test mature libraries in
+  this order: cuSOLVER generic API, MAGMA 2.10, then 1/2/4-GPU cuSOLVERMp.
+  BF16x9 is not an RTX 5090 shortcut because NVIDIA's current support table
+  excludes `sm_120`. If mature libraries miss the target, prefer row-blocked
+  concurrent Householder TSQR using library kernels; CholeskyQR2/SVQB2 remain
+  conditional experiments because the existing FP32 Gram path failed score
+  accuracy and tail-latency acceptance.
 
 ### Completed 10000-step optimization continuation
 

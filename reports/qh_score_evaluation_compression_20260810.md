@@ -237,3 +237,124 @@ FP32 法方程不应采用：它虽然快，但会平方条件数，已经造成
 - 远端 Slurm 作业：数值与 profile `35664`、去重后复测 `35673`、统计导出 `35672`；
 - NCU 作业 `35677` 因集群性能计数器权限被拒，未产生有效硬件计数器数据；
 - 作业结束后 GPU 利用率为零，未遗留评分进程或僵尸进程。
+
+## 11. 大规模高瘦 QR 的高性能路线调研
+
+### 11.1 问题规模和 $30\ \mathrm{TFLOP/s}$ 的准确含义
+
+当前增广后的 FP32 矩阵规模为
+
+$$
+m=391334,\qquad n=1574,\qquad \frac{m}{n}=248.6.
+$$
+
+矩阵本身约占 $2.29\ \mathrm{GiB}$。标准 Householder QR 的主导运算量为
+
+$$
+F_{\mathrm{HHQR}}
+=2mn^2-\frac{2}{3}n^3
+=1.936\times10^{12}\ \mathrm{FLOP}.
+$$
+
+所以 $30\ \mathrm{TFLOP/s}$ 对应的分解时间上限是
+
+$$
+t_{30}=\frac{F_{\mathrm{HHQR}}}{30\times10^{12}}
+=64.55\ \mathrm{ms}.
+$$
+
+RTX 5090 的非 Tensor FP32 峰值为 $104.8\ \mathrm{TFLOP/s}$，因此目标相当于约 $28.6\%$ 的理论峰值。从硬件算力和该矩阵的计算强度看，这不是物理上不可能的目标；但它比本轮 $414\ \mathrm{ms}$ 快 $6.4$ 倍，也比历史完整 `psi_fit_s` 中位数 $229.6\ \mathrm{ms}$ 快至少 $3.6$ 倍，不能指望仅更换一个同后端 API 就自然达到。
+
+不同算法的 FLOP 数不同。后续比较必须同时报告：
+
+1. 墙钟时间；
+2. 算法自身的实际 FLOP/s；
+3. 统一采用 $F_{\mathrm{HHQR}}/t$ 的“Householder 等效吞吐”。
+
+否则法方程或 CholeskyQR 可能因为少做或多做运算而得到误导性的 TFLOPS 数字。
+
+### 11.2 成熟外部库逐项判断
+
+| 路线 | 数值方法 | 接入成本 | 达到单卡 $30\ \mathrm{TFLOP/s}$ 的判断 | 主要问题 |
+|---|---|---:|---|---|
+| `cusolverDnXgeqrf` | 单卡 Householder QR | 很低 | 不乐观，但应先测 | 泛型 API 仍只支持 FP32 输入配 FP32 计算，没有官方证据表明它使用不同的高性能 QR 后端 |
+| MAGMA 2.10 `magma_sgeqrf_gpu/3_gpu` | 块 Householder QR | 中 | 有测试价值，但不能预期必过 | 最新 MAGMA 支持 CUDA 13 和 `sm_120`，但当前 expert QR 仍只支持 CPU/GPU hybrid 模式，CPU panel 和 PCIe 传输可能限制上限 |
+| NVIDIA `cuSOLVERMp Gels/Geqrf` | 多 GPU 分布式 Householder QR | 中高 | **最可能达到聚合 $30\ \mathrm{TFLOP/s}$** | 一进程一卡、NCCL 和二维块循环布局；占用多卡后可能降低优化器的单位 GPU 样本吞吐 |
+| SLATE | 多 GPU CAQR/最小二乘 | 高 | 聚合性能可能好 | MPI/OpenMP、tile 数据布局和 CPU panel 调度都比 cuSOLVERMp 更重，不适合作为第一原型 |
+| cuSolverDx | thread-block 内 QR/GELS | 不适用整矩阵 | 不能直接使用 | 面向批量小矩阵；本问题的 $n=1574$ 无法作为一个共享内存 QR 问题处理，只能用于自定义 TSQR 的小块 |
+
+依据如下：
+
+- NVIDIA 的 `cusolverDnXgeqrf` 文档列出的 FP32 组合仍是 `CUDA_R_32F` 输入和 `CUDA_R_32F` 计算，没有 TF32 或混合精度 QR 选项：[cuSOLVER 泛型 GEQRF](https://docs.nvidia.com/cuda/archive/11.0/cusolver/index.html#cusolverdn-t-geqrf)。
+- MAGMA 2.10 明确支持 Blackwell `sm_120` 和 CUDA 13；其 QR 文档同时说明 `magma_sgeqrf_expert_gpu_work` 当前仅支持 `MagmaHybrid`：[MAGMA 2.10](https://icl.utk.edu/magma/)、[MAGMA SGEQRF](https://icl.utk.edu/projectsfiles/magma/doxygen/group__magma__geqrf.html)。
+- cuSOLVERMp 提供直接的 FP32 `cusolverMpGels` 和 `cusolverMpGeqrf`，使用一进程一卡、NCCL 和二维块循环分布：[cuSOLVERMp 功能](https://docs.nvidia.com/cuda/cusolvermp/)、[cuSOLVERMp GELS API](https://docs.nvidia.com/cuda/cusolvermp/usage/functions.html#cusolvermpgels)。
+- cuSolverDx 的 QR/GELS 是可嵌入 kernel 的批量小矩阵接口，而不是这类 $391334\times1574$ 全矩阵求解器：[cuSolverDx 功能](https://docs.nvidia.com/cuda/cusolverdx/get_started/functionality.html)。
+
+### 11.3 Tensor Core 是否提供现成捷径
+
+CUDA 13 的确增加了 BF16x9 模拟 FP32：一个 FP32 数被精确拆为三个 BF16 数，再用九项 BF16 Tensor Core 乘积模拟 FP32 乘法。NVIDIA 对计算密集型 GEMM 报告过最高约三倍加速；它与直接使用低精度 TF32 不同。[NVIDIA BF16x9 文档](https://docs.nvidia.com/cuda/cublas/index.html#bf16x9)
+
+但是当前官方支持表只列计算能力 10.0 和 10.3，RTX 5090 使用的是 `sm_120`。因此不能把 BF16x9 当作本服务器上的可用方案，也不能据此承诺 cuSOLVER QR 自动获得 Tensor Core 加速。
+
+直接在自定义 QR 更新中使用 TF32 Tensor Core 技术上可行，但这会改变舍入精度。当前 FP32 法方程已经造成最大约 $0.52$ 的 score 偏移和慢尾，所以 TF32 只能作为后续受控实验，不能成为第一替代方案。
+
+### 11.4 为什么普通“小列数 TSQR”不能原样使用
+
+近期针对 GPU 高瘦 QR 的研究表明，Q-less TSQR 在 $n\le64$ 时可把小 $R$ 块保存在共享内存中并显著超过 cuSOLVER；但同一研究也明确指出，列数超过 64 后共享内存方案不再可行，需要转向非 Q-less 的块 Gram-Schmidt、SVQB2 或其它分块算法。[Thies 与 Roehrig-Zoellner, 2026](https://arxiv.org/abs/2603.20889)
+
+我们的 $n=1574$ 比该范围大约 $25$ 倍。这里不是“把一个小 TSQR kernel 的模板参数改大”就能解决，而是需要第二层列分块或完整 CAQR。
+
+不过，可以构造一个仍然保持 Householder 稳定性的**行分块 TSQR 最小二乘**：
+
+1. 把 $A$ 和 $b$ 按行分成 $k$ 块；
+2. 每块独立调用成熟的 cuSOLVER/MAGMA QR，并同时计算 $Q_i^Tb_i$；
+3. 只保留每块的 $R_i$ 和变换后的前 $n$ 个右端项；
+4. 对堆叠的 $R_i$ 再做一次 QR；
+5. 三角回代得到最终系数。
+
+这不会形成 $A^TA$，不平方条件数，数值性质接近标准 Householder QR。取 $k=8$ 时，第二层 QR 的额外主导工作量约为原问题的 $kn/m\approx3.2\%$，代价不大；八个局部 QR 可以放入独立 stream，用并发覆盖当前 cuSOLVER 的 panel 串行和小 kernel 空洞。
+
+它不是一个现成的单函数调用，但核心数值核仍全部来自成熟库。若 MAGMA 和 cuSOLVERMp 未达到目标，这是最值得实现的后备路线。
+
+### 11.5 CholeskyQR2/SVQB2 为什么不是首选
+
+CholeskyQR2 和 SVQB2 的主体是 GEMM，最容易得到超过 $30\ \mathrm{TFLOP/s}$ 的算力利用率。问题是它们先形成
+
+$$
+C=A^TA,
+$$
+
+会平方条件数。通常的 CholeskyQR2 只适合中等条件数矩阵，典型限制与 $\kappa(A)\lesssim\epsilon^{-1/2}$ 同量级。当前实现虽然做了列缩放和岭正则，但最坏条件数上界仍可能达到约 $4\times10^4$，而 FP32 的 $\epsilon^{-1/2}$ 只有约 $2.9\times10^3$。
+
+更直接的项目证据是：现有 FP32 法方程已经改变 score 排序、最大偏移约 $0.52$，还引入了慢调用。CholeskyQR2、shifted CholeskyQR3 或 SVQB2 可能改善这一点，但必须先按实际矩阵条件数分层验证，不能作为“成熟且等价”的替换。
+
+因此这类路线可作为性能上限实验，但不应排在 Householder 外部库和稳定 TSQR 前面。
+
+### 11.6 推荐的实测顺序
+
+第一阶段只冻结一份真实的 $A,b$，避免混入磁场和矩阵装配时间：
+
+1. 当前 `cusolverDnSgeqrf`，同时复现历史约 $0.23\ \mathrm{s}$ 和本轮约 $0.44\ \mathrm{s}$ 的环境差异；
+2. `cusolverDnXgeqrf`；
+3. MAGMA 2.10 的 `sgeqrf_gpu`、`sgeqrf3_gpu + sgeqrs3_gpu`，扫描官方块大小附近的少量 $nb$；
+4. cuSOLVERMp `Gels` 的 1、2、4 GPU 和少量块大小；
+5. 若仍未达标，实现 $k=2,4,8,16$ 的行分块 Householder TSQR，局部 QR 继续调用 cuSOLVER。
+
+每项必须分别记录：预热后 P50/P95、分解时间、完整最小二乘时间、GPU 数、每 GPU 吞吐、聚合吞吐、工作区大小和是否存在慢尾。
+
+数值验收不能只比较一个系数向量，应包含：
+
+- $\|Ax-b\|_2/\|b\|_2$；
+- $\|A^T(Ax-b)\|_2$；
+- 与当前 Householder 解的系数差异；
+- 独立点上的 $\psi$、$\nabla\psi$ 和角度残差；
+- 至少 $128$--$1024$ 个真实样本的 score 差异、排序和状态翻转；
+- 代表优化轨迹邻域是否出现新毛刺。
+
+### 11.7 可行性结论
+
+1. **单卡 Householder QR 超过 $30\ \mathrm{TFLOP/s}$ 在硬件上可行，但成熟单卡库能否在本矩阵形状上达到，现阶段没有证据可以保证。** MAGMA 是最值得先试的成熟单卡替代；泛型 cuSOLVER API 更像低成本排除项。
+2. **多卡聚合超过 $30\ \mathrm{TFLOP/s}$ 的可行性较高。** cuSOLVERMp 是最成熟的路线，但必须同时比较“每秒完成多少个 score”。若两张卡协作一次 QR 只比两张卡各算一个 score 略快，它不适合优化主线。
+3. **在保持 Householder 级稳定性的前提下，最有希望的单卡技术路线是行分块并发 TSQR/CAQR。** 它需要中等程度的编排代码，但不需要手写底层 QR kernel。
+4. **CholeskyQR2/SVQB2 最容易突破算力目标，却最可能违反当前数值可靠性要求。** 只有实际条件数和大样本 score 验收通过后才能考虑。
+5. 若新 QR 分支达到 $64.5\ \mathrm{ms}$，本轮去重后 score 的粗略中位数可从 $1.117\ \mathrm{s}$ 降到约 $0.77\ \mathrm{s}$；按历史 $0.990\ \mathrm{s}$ 口径估算约为 $0.85\ \mathrm{s}$。这只是由阶段耗时相减得到的投影，最终必须用同机端到端基准确认。

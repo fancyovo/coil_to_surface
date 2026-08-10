@@ -33,29 +33,26 @@
 
 ### Repository and publication
 
-- Active local branch: `codex/score-eval-compression`, created on 2026-08-10
-  directly from production `main` commit `81a06e3` in the repository root
-  worktree. Do not create a secondary worktree for this experiment. The
-  compact memory/archive history was carried forward from the validated
-  compaction lineage; the prior reduced-latent branch is archived at
-  `a95a8d9`.
-- Clean integration worktree: `.worktrees/main-integration`; local `main` was
-  `81a06e3` when this file was compacted. Do not assume the dirty root worktree
-  can be used for integration without inspecting it first.
+- 2026-08-10 production `main` in `.worktrees/main-integration` fast-forwarded
+  through score-compression commit `f9b5ebc`; current documented content commit
+  is `e6fc9a2`. The dirty root worktree remains on
+  `codex/score-eval-compression` at `f9b5ebc` and is not the integration target.
 - The private research repository contains personal/infrastructure paths and
   must not be published directly. The sanitized public project is maintained
   separately at `../opensource_staging` and published as
-  `https://github.com/fancyovo/StellCoilOpt` under the MIT license. Public commit
-  `4062b163cea12db636e2ccdc37b1da5d650f2ea5` passed 63 local tests and a remote
-  RTX 5090 CUDA 13 build/example smoke on 2026-08-08.
+  `https://github.com/fancyovo/StellCoilOpt` under the MIT license. Public
+  `main` commit `9de21bc4849252915b53825e64e9788bf8d65664` was pushed on
+  2026-08-10 with the current score defaults and synchronized README/method
+  docs. It passed 66 local tests and remote RTX 5090 CUDA 13/sm120 job `35941`:
+  defaults read back as `48/48/48` and `iota_degree=3`; the packaged example
+  returned `ok`, score `86.319425035571`, stage 8, and no residual GPU process.
 
-### Active score-evaluation compression experiment
+### Production score-evaluation defaults
 
-- 2026-08-10: branch `codex/score-eval-compression` profiles only ABI-10 calls
-  with a supplied axis hint and strict branch continuation. It does not time or
-  alter standalone global-axis search. Exact loop-invariant removals are active;
-  fixed-matrix QR alternatives remain experimental, while psi grid 48 is now
-  the production default.
+- 2026-08-10: the former `codex/score-eval-compression` work is merged into
+  production `main`. Exact loop-invariant removals, psi grid 48, cubic iota, and
+  strict-hint mode 2 are production defaults. Fixed-matrix QR alternatives
+  remain experimental; standalone global-axis search remains history-independent.
 - The established 69-case strict-continuation grid-80 timing reference was
   P50/P95 `0.990/1.254 s`. A later 8-case run was anomalously slower, so its
   absolute times are not a new baseline. Within that run, exact caching of

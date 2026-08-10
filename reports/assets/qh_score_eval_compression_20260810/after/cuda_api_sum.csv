@@ -1,0 +1,28 @@
+Generating SQLite file /home/scc/pb24511935/local_surface_evaluator_runs/score_eval_compression_35673/profile.sqlite from /home/scc/pb24511935/local_surface_evaluator_runs/score_eval_compression_35673/profile.nsys-rep
+Processing [/home/scc/pb24511935/local_surface_evaluator_runs/score_eval_compression_35673/profile.sqlite] with [/public/app/cuda/13.0/nsight-systems-2025.3.2/host-linux-x64/reports/cuda_api_sum.py]...
+Time (%),Total Time (ns),Num Calls,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+49.7,1800279446,26685,67464.1,3987.0,3435,103576970,1605174.3,cudaLaunchKernel
+35.6,1291873079,174,7424557.9,1265.0,1008,189924909,29782390.9,cudaDeviceSynchronize
+9.6,346894777,225,1541754.6,9313.0,4286,71848061,8838941.7,cudaMemcpy
+1.7,60667624,864,70217.2,3360.5,284,3498101,329845.9,cudaFree
+0.8,29961768,18,1664542.7,19600.5,4595,12553360,3986463.3,cudaMemcpyAsync
+0.8,28228060,1,28228060.0,28228060.0,28228060,28228060,0.0,cuLibraryLoadData
+0.8,27955763,507,55139.6,5137.0,2215,2141931,192451.6,cudaMalloc
+0.8,27787329,2589,10732.8,3814.0,2802,2646606,55979.8,cudaMemsetAsync
+0.1,5105747,14085,362.5,329.0,299,7163,175.3,cudaStreamGetCaptureInfo_v2_v11030
+0.1,2551719,2682,951.4,873.0,761,7295,414.0,cudaEventRecord
+0.1,2055686,18,114204.8,6445.0,3736,1803130,422066.4,cudaStreamCreateWithFlags
+0.0,339369,540,628.5,487.0,400,16167,758.7,cudaEventCreateWithFlags
+0.0,336220,1222,275.1,200.0,97,6533,419.8,cuGetProcAddress_v2
+0.0,292187,558,523.6,482.0,342,2176,198.9,cudaEventDestroy
+0.0,135691,15,9046.1,9146.0,2904,26613,5612.3,cudaMemset
+0.0,101763,18,5653.5,4493.0,3630,12067,2742.7,cudaStreamDestroy
+0.0,81579,135,604.3,260.0,86,4390,752.4,cuKernelGetName
+0.0,71599,24,2983.3,3030.0,812,9405,1822.7,cudaEventQuery
+0.0,70029,31,2259.0,1337.0,911,11817,2398.4,cuLibraryGetKernel
+0.0,46560,3,15520.0,11932.0,11662,22966,6449.8,cudaMemcpy2D
+0.0,46042,15,3069.5,2979.0,1021,9147,1964.8,cudaStreamSynchronize
+0.0,26492,18,1471.8,706.0,561,8222,1804.2,cudaEventCreate
+0.0,8438,4,2109.5,2163.5,1483,2628,565.2,cuInit
+0.0,1812,4,453.0,192.0,143,1285,555.2,cuModuleGetLoadingMode
+0.0,1321,2,660.5,660.5,481,840,253.9,cudaGetDriverEntryPoint_v11030

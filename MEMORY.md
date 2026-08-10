@@ -51,19 +51,26 @@
 
 ### Active score-evaluation compression experiment
 
-- The user rejected the proposed manifold-flow follow-up; keep that discussion
-  as theory only and do not implement it. The active task is to determine
-  whether the validated native ABI-10 score can be evaluated faster.
-- Preserve high-score ranking, score/status gate meaning, strict magnetic-axis
-  branch continuation, bounded runtime, and the all-native C++/CUDA production
-  path. The current continuous-surface ABI-10 implementation is the baseline;
-  obsolete legacy score results are not a valid target.
-- Recorded holdout baseline with a valid axis hint is total P50/P95
-  `0.990/1.254 s`. Non-overlapping P50 stages are psi `0.437 s`, axis
-  `0.249 s`, continuous surface `0.161 s`, alpha+QS `0.066 s`, and all other
-  work about `0.076 s`; an independent global-axis call is `2.836 s` median.
-  Profile psi, axis, and surface internally before changing algorithms, then
-  validate extreme-tail ranking and absence of new runtime long tails.
+- 2026-08-10: branch `codex/score-eval-compression` profiles only ABI-10 calls
+  with a supplied axis hint and strict branch continuation. It does not time or
+  alter standalone global-axis search. The user currently wants analysis first;
+  do not implement complex precision, QR, sampling, or default changes without
+  a decision after reading the report.
+- Two exact loop-invariant removals are accepted: cache toroidal trigonometry
+  per psi-evaluation point and cache axis interpolation per phi grid point.
+  Across 8 high-quality QUASR QH cases x 3 repeats, strict-hint P50/P95/max
+  improved from `1.323/1.463/1.496 s` to `1.117/1.262/1.264 s`. Maximum score
+  and component differences were `1.42e-14` and `2.84e-14`; no status changed.
+- The steady representative precision split is CPU FP64 `107 ms`, GPU FP64
+  `190 ms`, GPU mixed FP32-field/FP64-state `220 ms`, and GPU FP32-dominant
+  `542 ms`. Psi FP32 QR is the largest range at `414 ms`; its algorithmic
+  throughput is about `4.68 TFLOP/s`. NCU counters are unavailable on the
+  cluster (`ERR_NVGPUCTRPERM`), so no counter-derived trace TFLOPS is claimed.
+- Reduced psi grids/trace counts showed `0.64--0.79 s` potential on only eight
+  high-score cases; they are unvalidated candidates, not production defaults.
+  FP32 normal equations damaged ranking and introduced a slow tail; do not use.
+  Full evidence and recommendations are in
+  `reports/qh_score_evaluation_compression_20260810.md`.
 
 ### Completed 10000-step optimization continuation
 
@@ -154,7 +161,7 @@ $$
 
 ### Fast native score branch
 
-- The production evaluator is C++/CUDA ABI 9. Python is an orchestration and
+- The production evaluator is C++/CUDA ABI 10. Python is an orchestration and
   ctypes layer only; it must not reimplement or silently move the hot numerical
   chain to CPU.
 - From calibrated $\psi$, fitted $\alpha/\iota$, $\boldsymbol B$, and
@@ -423,14 +430,12 @@ linked reports.
 
 ## 10. Next Actions
 
-1. Subdivide the ABI-10 continuation-call psi, axis, and continuous-surface
-   stages with non-overlapping GPU-aware timing on fixed samples. Do not infer
-   a new bottleneck from nested timers.
-2. Test only bounded, native C++/CUDA reductions such as state reuse between
-   nearby optimization points, batched/fused evaluation, and justified sample
-   count reductions. Every candidate must be compared on fixed holdout and
-   extreme-high-score subsets for ranking, status changes, P50/P95/max time,
-   and long-tail behavior.
+1. Decide whether to validate the measured conservative discretization combo
+   on 128--1024 high-score, perturbed, and gate-boundary cases; do not change
+   defaults from the current eight-case result alone.
+2. If sub-0.8-second scoring is still required, prototype tall-skinny QR and
+   workspace/matrix reuse separately. Preserve QR stability; do not substitute
+   the rejected FP32 normal-equation path.
 3. Do not restart manifold-flow, score collection, proxy, black-box-gradient,
    or paused DESC-method work without a new explicit user request.
 
@@ -471,4 +476,3 @@ linked reports.
   from this experiment remain active.
 - A later manifold-flow implementation proposal was rejected by the user on
   2026-08-10. Do not treat it as an approved next step.
-

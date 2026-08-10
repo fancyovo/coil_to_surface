@@ -716,3 +716,7 @@ $$
 4. **$\alpha/\iota$ QR 可独立优化，但优先级低于磁轴。** 它与前述 $\psi$ QR 数学结构相似，但矩阵为 $32269\times2269$。可以测试增广右端项 QR、持久化 cuSOLVER/cuBLAS handle 与工作区；未经端到端物理残差验证，不使用已证明不稳定的 FP32 法方程。
 
 因此，`48^3` 之后不应继续把主要精力放在 $\psi$ 点数上。当前最有价值的工程目标是：在保留严格磁轴分支和椭圆拓扑判定的前提下，减少中心轴的重复周期积分，并验证是否能安全降低 960 步积分配置。
+
+### 14.5 默认值构建烟测
+
+远端 CUDA 13 / RTX 5090 作业 `35813` 对提交 `34cdf2a` 完成了全新构建。通过 ABI 直接读取 `sgpu_default_score_config` 得到 `psi_n_r=psi_n_z=psi_n_phi=48`；随后使用 `baseline` 入口且不传任何 `psi_n_*` 覆盖，单例严格续接 score 返回 `ok`，score 为 $87.1485$，调用方墙钟为 $0.5476\ \mathrm{s}$，其中 $\psi$ 拟合为 $96.84\ \mathrm{ms}$。GPU 前后利用率均为零、显存仅驱动占用 $2\ \mathrm{MiB}$，僵尸进程记录为空。原始烟测文件保存在 `reports/assets/qh_psi_grid_reduction_20260810/grid48_default_smoke_35813/`。

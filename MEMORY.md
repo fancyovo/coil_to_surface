@@ -83,9 +83,9 @@
   P50/P95 from `1.013/1.266` to `0.665/0.913 s`. All 138 calls were `ok`;
   independent angle-P95 median/P95 ratios were `0.9991/1.0137`, score Spearman
   was `0.999927`, and top-decile overlap was 100%. On 2026-08-10 the user
-  accepted grid 48 as the production default; core ABI defaults and the
-  `eval_quasr.py` / `score_noise_experiment.py` CLI defaults are now all 48.
-  Do not extrapolate this acceptance to grids below 48 without new validation.
+  accepted grid 48 as production default in core ABI and both direct CLIs.
+  CUDA13 smoke job `35813` built commit `34cdf2a`, read back `48/48/48`, and
+  scored one no-override case `ok` with no zombies. Do not extrapolate below 48.
 - With grid 48, 138-call native timing shows the magnetic-axis path is now the
   first bottleneck: P50 `251.96 ms` / median call share `37.57%`. Its FP64
   five-line verification is `156.34 ms`, mixed Newton refinement `46.52 ms`,

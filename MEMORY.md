@@ -101,7 +101,9 @@
   alternative was connected to the score path and no misleading end-to-end
   timing was run. Full methods, raw JSON, figures, and acceptance definitions
   are in section 12 of `reports/qh_score_evaluation_compression_20260810.md`
-  and `reports/assets/qh_psi_qr_benchmark_20260810/`.
+  and `reports/assets/qh_psi_qr_benchmark_20260810/`. The fixed-matrix
+  implementation is complete through `31d17f1`; the accepted report/result
+  snapshot is commit `30f79a4`.
 
 ### Completed 10000-step optimization continuation
 

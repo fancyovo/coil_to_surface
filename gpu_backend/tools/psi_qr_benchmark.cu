@@ -192,13 +192,21 @@ void verify_info(const DeviceBuffer<int>& info, const char* where) {
 
 class HouseholderSolver {
 public:
-    HouseholderSolver(Context& context, bool generic, int lda_alignment = 1)
+    HouseholderSolver(Context& context, bool generic, int lda_alignment = 1, int emulation = 0)
         : context_(context), generic_(generic),
           lda_(((context.m + lda_alignment - 1) / lda_alignment) * lda_alignment),
           matrix_(static_cast<std::size_t>(lda_) * context.n), rhs_(context.m),
           tau_(context.n), info_(1) {
         if (lda_alignment <= 0) throw std::runtime_error("invalid Householder lda alignment");
         check_solver(cusolverDnCreate(&solver_), "cusolverDnCreate");
+        if (emulation != 0) {
+            check_solver(cusolverDnSetMathMode(solver_, CUSOLVER_FP32_EMULATED_BF16X9_MATH),
+                         "enable cuSOLVER BF16x9 math");
+            const cudaEmulationStrategy_t strategy = emulation == 2
+                ? CUDA_EMULATION_STRATEGY_EAGER : CUDA_EMULATION_STRATEGY_PERFORMANT;
+            check_solver(cusolverDnSetEmulationStrategy(solver_, strategy),
+                         "set cuSOLVER emulation strategy");
+        }
         int legacy_geqrf = 0;
         int legacy_ormqr = 0;
         check_solver(cusolverDnSgeqrf_bufferSize(solver_, context_.m, context_.n, matrix_.data(), lda_,
@@ -1421,12 +1429,16 @@ int main(int argc, char** argv) {
         Timings timings;
         ErrorMetrics error;
         if (arguments.method == "legacy" || arguments.method == "generic" ||
-            arguments.method.rfind("legacy_pad", 0) == 0) {
+            arguments.method.rfind("legacy_pad", 0) == 0 ||
+            arguments.method.rfind("legacy_bf16x9_", 0) == 0) {
             int alignment = 1;
+            int emulation = 0;
             if (arguments.method.rfind("legacy_pad", 0) == 0) {
                 alignment = std::stoi(arguments.method.substr(10));
             }
-            HouseholderSolver solver(context, arguments.method == "generic", alignment);
+            if (arguments.method == "legacy_bf16x9_performant") emulation = 1;
+            else if (arguments.method == "legacy_bf16x9_eager") emulation = 2;
+            HouseholderSolver solver(context, arguments.method == "generic", alignment, emulation);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else if (arguments.method == "ir_ss" || arguments.method == "ir_sh" ||
                    arguments.method == "ir_sb" || arguments.method == "ir_sx") {

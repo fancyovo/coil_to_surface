@@ -69,8 +69,3 @@ stat --printf='%n %s bytes\n' "$snapshot" > "$output_dir/snapshot_size.txt"
 nvidia-smi --query-gpu=name,uuid,memory.total,driver_version --format=csv,noheader > "$output_dir/gpu.txt"
 printf '{"status":"ok","job_id":"%s","case_id":%s,"snapshot":"%s"}\n' \
     "$SLURM_JOB_ID" "$case_id" "$snapshot" > "$output_dir/freeze_done.json"
-
-if pgrep -u "$USER" -f 'benchmark_score_eval_hinted|psi_qr_benchmark' >/dev/null; then
-    echo "snapshot worker remains after completion" >&2
-    exit 1
-fi

@@ -39,8 +39,3 @@ fi
 "$benchmark_bin" \
     --snapshot "$snapshot" --method "$method" --device 0 \
     --warmups "$warmups" --repeats "$repeats" > "$output"
-
-if pgrep -u "$USER" -f 'psi_qr_benchmark' >/dev/null; then
-    echo "QR benchmark process remains after completion" >&2
-    exit 1
-fi

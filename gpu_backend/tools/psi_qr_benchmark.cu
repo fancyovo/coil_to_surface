@@ -311,6 +311,71 @@ private:
     std::size_t generic_host_bytes_ = 0;
 };
 
+class AugmentedRhsHouseholderSolver {
+public:
+    explicit AugmentedRhsHouseholderSolver(Context& context)
+        : context_(context), matrix_(static_cast<std::size_t>(context.m) * (context.n + 1)),
+          tau_(context.n + 1), info_(1) {
+        check_solver(cusolverDnCreate(&solver_), "augmented RHS cusolver create");
+        int geqrf_work = 0;
+        check_solver(cusolverDnSgeqrf_bufferSize(
+                         solver_, context_.m, context_.n + 1, matrix_.data(), context_.m,
+                         &geqrf_work),
+                     "augmented RHS geqrf buffer");
+        work_.allocate(static_cast<std::size_t>(geqrf_work));
+    }
+
+    ~AugmentedRhsHouseholderSolver() { cusolverDnDestroy(solver_); }
+
+    void run_once(Timings* timings) {
+        float* transformed_rhs = matrix_.data() + static_cast<std::size_t>(context_.m) * context_.n;
+        const double restore = wall_ms([&] {
+            check_cuda(cudaMemcpy(
+                           matrix_.data(), context_.matrix.data(),
+                           context_.matrix.size() * sizeof(float), cudaMemcpyDeviceToDevice),
+                       "restore augmented RHS matrix");
+            check_cuda(cudaMemcpy(
+                           transformed_rhs, context_.rhs.data(),
+                           static_cast<std::size_t>(context_.m) * sizeof(float),
+                           cudaMemcpyDeviceToDevice),
+                       "restore augmented RHS column");
+        });
+        const double factor = wall_ms([&] {
+            check_solver(cusolverDnSgeqrf(
+                             solver_, context_.m, context_.n + 1, matrix_.data(), context_.m,
+                             tau_.data(), work_.data(), static_cast<int>(work_.size()), info_.data()),
+                         "augmented RHS geqrf");
+        });
+        verify_info(info_, "augmented RHS geqrf info");
+        const double triangular = wall_ms([&] {
+            check_cublas(cublasStrsv(
+                             context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,
+                             CUBLAS_DIAG_NON_UNIT, context_.n, matrix_.data(), context_.m,
+                             transformed_rhs, 1),
+                         "augmented RHS trsv");
+        });
+        if (timings) {
+            timings->restore_ms.push_back(restore);
+            timings->factor_ms.push_back(factor);
+            timings->apply_ms.push_back(0.0);
+            timings->triangular_ms.push_back(triangular);
+            timings->solve_ms.push_back(factor + triangular);
+        }
+    }
+
+    const float* solution() const {
+        return matrix_.data() + static_cast<std::size_t>(context_.m) * context_.n;
+    }
+
+private:
+    Context& context_;
+    cusolverDnHandle_t solver_ = nullptr;
+    DeviceBuffer<float> matrix_;
+    DeviceBuffer<float> tau_;
+    DeviceBuffer<float> work_;
+    DeviceBuffer<int> info_;
+};
+
 enum class GelsIrKind { kSS, kSH, kSB, kSX };
 
 class GelsIrSolver {
@@ -1465,7 +1530,10 @@ int main(int argc, char** argv) {
 
         Timings timings;
         ErrorMetrics error;
-        if (arguments.method == "legacy" || arguments.method == "generic" ||
+        if (arguments.method == "augmented_rhs") {
+            AugmentedRhsHouseholderSolver solver(context);
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method == "legacy" || arguments.method == "generic" ||
             arguments.method == "legacy_nondeterministic" ||
             arguments.method.rfind("legacy_pad", 0) == 0 ||
             arguments.method.rfind("legacy_bf16x9_", 0) == 0) {

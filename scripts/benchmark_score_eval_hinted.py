@@ -19,8 +19,10 @@ from prepare_score_eval_profile_cases import PRODUCTION_SCORE, load_case
 
 VARIANTS = {
     "baseline": {},
+    "psi_grid72": {"psi_n_r": 72, "psi_n_z": 72, "psi_n_phi": 72},
     "psi_grid64": {"psi_n_r": 64, "psi_n_z": 64, "psi_n_phi": 64},
     "psi_grid56": {"psi_n_r": 56, "psi_n_z": 56, "psi_n_phi": 56},
+    "psi_grid48": {"psi_n_r": 48, "psi_n_z": 48, "psi_n_phi": 48},
     "psi_normal_eq_fp32": {"psi_solver_mode": 1, "psi_precision_mode": 2},
     "axis720": {"axis_trace_steps": 720, "axis_sample_count": 180},
     "surface96": {"surface_theta_count": 96},

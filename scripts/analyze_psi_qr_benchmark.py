@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
 def estimated_flops(method: str, m: int, n: int) -> float | None:
     householder = 2.0 * m * n**2 - (2.0 / 3.0) * n**3
     if (
-        method in {"legacy", "generic", "magma", "magma3"}
+        method in {"legacy", "generic", "augmented_rhs", "magma", "magma3"}
         or method.startswith("legacy_pad")
         or method.startswith("legacy_bf16x9")
     ):
@@ -44,7 +44,7 @@ def estimated_flops(method: str, m: int, n: int) -> float | None:
 
 
 def family(method: str) -> str:
-    if method in {"legacy", "generic"} or method.startswith("legacy_"):
+    if method in {"legacy", "generic", "augmented_rhs"} or method.startswith("legacy_"):
         return "Householder"
     if method.startswith("magma"):
         return "MAGMA"
@@ -165,6 +165,7 @@ def selected_records(records: list[dict]) -> list[dict]:
     preferred = [
         "legacy",
         "legacy_pad256",
+        "augmented_rhs",
         "legacy_nondeterministic",
         "generic",
         "magma",

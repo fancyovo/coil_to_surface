@@ -1049,11 +1049,18 @@ void evaluate_psi_host(
     const double X = (R - axis_R) / config.psi_a;
     const double Y = (Z - axis_Z) / config.psi_a;
     std::array<double, 25> xpow{}, ypow{};
+    std::array<double, 33> cosv{}, sinv{};
     xpow[0] = 1.0;
     ypow[0] = 1.0;
     for (int power = 1; power <= config.psi_poly_degree; ++power) {
         xpow[power] = xpow[power - 1] * X;
         ypow[power] = ypow[power - 1] * Y;
+    }
+    cosv[0] = 1.0;
+    for (int mode = 1; mode <= config.psi_m_tor; ++mode) {
+        const double argument = static_cast<double>(mode * nfp) * phi;
+        cosv[mode] = std::cos(argument);
+        sinv[mode] = std::sin(argument);
     }
     value = X * X;
     grad_R = 2.0 * X / config.psi_a;
@@ -1063,10 +1070,9 @@ void evaluate_psi_host(
         const int a = psi.modes.a[k];
         const int b = psi.modes.b[k];
         const int m = psi.modes.m[k];
-        const double argument = static_cast<double>(m * nfp) * phi;
-        const double trig = m == 0 ? 1.0 : (psi.modes.kind[k] == 0 ? std::cos(argument) : std::sin(argument));
+        const double trig = psi.modes.kind[k] == 0 ? cosv[m] : sinv[m];
         const double trig_phi = m == 0 ? 0.0 : static_cast<double>(m * nfp) *
-            (psi.modes.kind[k] == 0 ? -std::sin(argument) : std::cos(argument));
+            (psi.modes.kind[k] == 0 ? -sinv[m] : cosv[m]);
         const double mono = xpow[a] * ypow[b];
         const double derivative_x = a > 0 ? a * xpow[a - 1] * ypow[b] / config.psi_a : 0.0;
         const double derivative_y = b > 0 ? b * xpow[a] * ypow[b - 1] / config.psi_a : 0.0;
@@ -1094,6 +1100,19 @@ bool fit_psi_native(
     R.reserve(reserve);
     Z.reserve(reserve);
     phi.reserve(reserve);
+    std::vector<double> phi_grid(config.psi_n_phi);
+    std::vector<double> axis_R_grid(config.psi_n_phi), axis_Z_grid(config.psi_n_phi);
+    for (int iphi = 0; iphi < config.psi_n_phi; ++iphi) {
+        const double angle = TWOPI * iphi / static_cast<double>(nfp * config.psi_n_phi);
+        double axis_R_phi, axis_Z_phi;
+        phi_grid[iphi] = angle;
+        periodic_hermite_host(
+            angle, axis.R, axis.R_phi, nfp, axis_R_grid[iphi], axis_R_phi
+        );
+        periodic_hermite_host(
+            angle, axis.Z, axis.Z_phi, nfp, axis_Z_grid[iphi], axis_Z_phi
+        );
+    }
     {
         SGPU_NVTX_RANGE("psi.points.cpu");
         for (int ir = 0; ir < config.psi_n_r; ++ir) {
@@ -1103,13 +1122,9 @@ bool fit_psi_native(
                 const double radius = std::hypot(dR, dZ);
                 if (radius < config.psi_rho_min || radius > config.psi_a) continue;
                 for (int iphi = 0; iphi < config.psi_n_phi; ++iphi) {
-                    const double angle = TWOPI * iphi / static_cast<double>(nfp * config.psi_n_phi);
-                    double axis_R, axis_R_phi, axis_Z, axis_Z_phi;
-                    periodic_hermite_host(angle, axis.R, axis.R_phi, nfp, axis_R, axis_R_phi);
-                    periodic_hermite_host(angle, axis.Z, axis.Z_phi, nfp, axis_Z, axis_Z_phi);
-                    R.push_back(axis_R + dR);
-                    Z.push_back(axis_Z + dZ);
-                    phi.push_back(angle);
+                    R.push_back(axis_R_grid[iphi] + dR);
+                    Z.push_back(axis_Z_grid[iphi] + dZ);
+                    phi.push_back(phi_grid[iphi]);
                 }
             }
         }

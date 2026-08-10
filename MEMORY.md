@@ -33,10 +33,11 @@
 
 ### Repository and publication
 
-- 2026-08-10 production `main` in `.worktrees/main-integration` fast-forwarded
-  through score-compression commit `f9b5ebc`; current documented content commit
-  is `e6fc9a2`. The dirty root worktree remains on
-  `codex/score-eval-compression` at `f9b5ebc` and is not the integration target.
+- 2026-08-10 production `main` fast-forwarded through score-compression commit
+  `f9b5ebc`; current documented content commit is `e6fc9a2`. After integration,
+  the temporary `.worktrees/main-integration` worktree was retired and `main`
+  was checked out directly in the repository root. The completed feature branch
+  remains at `f9b5ebc` only as a historical pointer.
 - The private research repository contains personal/infrastructure paths and
   must not be published directly. The sanitized public project is maintained
   separately at `../opensource_staging` and published as

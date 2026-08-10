@@ -643,13 +643,19 @@ __global__ void store_bcgs_diagonal_kernel(
 
 class TsqrSolver {
 public:
-    TsqrSolver(Context& context, int blocks)
-        : context_(context), blocks_(blocks), matrix_(context.matrix.size()), rhs_(context.m),
+    TsqrSolver(Context& context, int blocks, bool packed = false)
+        : context_(context), blocks_(blocks), packed_(packed), matrix_(context.matrix.size()), rhs_(context.m),
           stacked_(static_cast<std::size_t>(blocks) * context.n * context.n),
           stacked_rhs_(static_cast<std::size_t>(blocks) * context.n), upper_tau_(context.n), upper_info_(1) {
         if (blocks_ < 2 || context_.m / blocks_ < context_.n) throw std::runtime_error("invalid TSQR block count");
         offsets_.resize(blocks_ + 1);
         for (int block = 0; block <= blocks_; ++block) offsets_[block] = context_.m * block / blocks_;
+        storage_offsets_.resize(blocks_ + 1);
+        storage_offsets_[0] = 0;
+        for (int block = 0; block < blocks_; ++block) {
+            const std::size_t rows = static_cast<std::size_t>(offsets_[block + 1] - offsets_[block]);
+            storage_offsets_[block + 1] = storage_offsets_[block] + rows * context_.n;
+        }
         local_.resize(blocks_);
         for (int block = 0; block < blocks_; ++block) {
             auto& state = local_[block];
@@ -661,14 +667,14 @@ public:
             state.info.allocate(1);
             int geqrf_work = 0;
             int ormqr_work = 0;
-            float* block_matrix = matrix_.data() + offsets_[block];
+            float* block_matrix = local_matrix(block);
             float* block_rhs = rhs_.data() + offsets_[block];
             check_solver(cusolverDnSgeqrf_bufferSize(
-                state.solver, state.rows, context_.n, block_matrix, context_.m, &geqrf_work),
+                state.solver, state.rows, context_.n, block_matrix, local_lda(block), &geqrf_work),
                 "TSQR local geqrf buffer");
             check_solver(cusolverDnSormqr_bufferSize(
                 state.solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, state.rows, 1, context_.n,
-                block_matrix, context_.m, state.tau.data(), block_rhs, state.rows, &ormqr_work),
+                block_matrix, local_lda(block), state.tau.data(), block_rhs, state.rows, &ormqr_work),
                 "TSQR local ormqr buffer");
             state.work.allocate(static_cast<std::size_t>(std::max(geqrf_work, ormqr_work)));
         }
@@ -696,8 +702,19 @@ public:
 
     void run_once(Timings* timings) {
         const double restore = wall_ms([&] {
-            check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), matrix_.size() * sizeof(float), cudaMemcpyDeviceToDevice),
-                       "restore TSQR matrix");
+            if (packed_) {
+                for (int block = 0; block < blocks_; ++block) {
+                    const int rows = offsets_[block + 1] - offsets_[block];
+                    check_cuda(cudaMemcpy2D(
+                        local_matrix(block), static_cast<std::size_t>(rows) * sizeof(float),
+                        context_.matrix.data() + offsets_[block], static_cast<std::size_t>(context_.m) * sizeof(float),
+                        static_cast<std::size_t>(rows) * sizeof(float), context_.n,
+                        cudaMemcpyDeviceToDevice), "pack TSQR matrix block");
+                }
+            } else {
+                check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), matrix_.size() * sizeof(float),
+                                      cudaMemcpyDeviceToDevice), "restore TSQR matrix");
+            }
             check_cuda(cudaMemcpy(rhs_.data(), context_.rhs.data(), rhs_.size() * sizeof(float), cudaMemcpyDeviceToDevice),
                        "restore TSQR rhs");
         });
@@ -705,7 +722,7 @@ public:
             for (int block = 0; block < blocks_; ++block) {
                 auto& state = local_[block];
                 check_solver(cusolverDnSgeqrf(
-                    state.solver, state.rows, context_.n, matrix_.data() + offsets_[block], context_.m,
+                    state.solver, state.rows, context_.n, local_matrix(block), local_lda(block),
                     state.tau.data(), state.work.data(), static_cast<int>(state.work.size()), state.info.data()),
                     "TSQR local geqrf");
             }
@@ -716,7 +733,7 @@ public:
                 auto& state = local_[block];
                 check_solver(cusolverDnSormqr(
                     state.solver, CUBLAS_SIDE_LEFT, CUBLAS_OP_T, state.rows, 1, context_.n,
-                    matrix_.data() + offsets_[block], context_.m, state.tau.data(),
+                    local_matrix(block), local_lda(block), state.tau.data(),
                     rhs_.data() + offsets_[block], state.rows, state.work.data(),
                     static_cast<int>(state.work.size()), state.info.data()), "TSQR local ormqr");
             }
@@ -729,7 +746,7 @@ public:
             const int upper_rows = blocks_ * context_.n;
             for (int index = 0; index < blocks_; ++index) {
                 gather_upper_kernel<<<grid, block>>>(
-                    matrix_.data() + offsets_[index], context_.m,
+                    local_matrix(index), local_lda(index),
                     stacked_.data() + static_cast<std::size_t>(index) * context_.n,
                     upper_rows, context_.n);
                 check_cuda(cudaMemcpyAsync(
@@ -772,6 +789,13 @@ public:
     const float* solution() const { return stacked_rhs_.data(); }
 
 private:
+    float* local_matrix(int block) {
+        return packed_ ? matrix_.data() + storage_offsets_[block] : matrix_.data() + offsets_[block];
+    }
+    int local_lda(int block) const {
+        return packed_ ? offsets_[block + 1] - offsets_[block] : context_.m;
+    }
+
     struct LocalState {
         int rows = 0;
         cudaStream_t stream = nullptr;
@@ -782,7 +806,9 @@ private:
     };
     Context& context_;
     int blocks_ = 0;
+    bool packed_ = false;
     std::vector<int> offsets_;
+    std::vector<std::size_t> storage_offsets_;
     std::vector<LocalState> local_;
     DeviceBuffer<float> matrix_;
     DeviceBuffer<float> rhs_;
@@ -1460,8 +1486,9 @@ int main(int argc, char** argv) {
         }
 #endif
         else if (arguments.method.rfind("tsqr", 0) == 0) {
-            const int blocks = std::stoi(arguments.method.substr(4));
-            TsqrSolver solver(context, blocks);
+            const bool packed = arguments.method.rfind("tsqrp", 0) == 0;
+            const int blocks = std::stoi(arguments.method.substr(packed ? 5 : 4));
+            TsqrSolver solver(context, blocks, packed);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else if (arguments.method.rfind("bcgs", 0) == 0) {
             const std::size_t underscore = arguments.method.find('_');

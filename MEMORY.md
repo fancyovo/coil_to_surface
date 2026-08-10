@@ -89,11 +89,12 @@
   was best. Implementation commit `c8b185f`; accepted evidence commit `233f57e`.
   Evidence is section 16 and assets
   `qh_iota_degree_calibration_35856` / `qh_iota_cubic_adam200_35864`.
-- 2026-08-10 commit `8b27035` launched matched 1000-step P107 jobs `35902`
-  (two fresh random directions) and `35903` (same through step 300, then previous
-  accepted update plus one orthogonal random direction). Both use the current
-  cubic-iota score, pinned `start_10`, two GPUs, and otherwise identical defaults.
-  Run roots end in `_random_35902` / `_previous_update_after300_35903`; ETA 65--75 min.
+- 2026-08-10 matched 1000-step P107 jobs `35902/35903` completed cleanly and
+  were identical through step 300. Two fresh random directions reached best
+  `92.6818` at step 994 with 1000 accepted updates. Reusing the previous update
+  plus one random direction reached only `92.5087` and then suffered 77 repeated
+  temporal-gradient rejections at steps 924--1000. Keep fresh random directions
+  as default; full evidence is section 17 of the current compression report.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
   QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
@@ -496,4 +497,4 @@ linked reports.
 
 ## 10. Active Next Action
 
-- Await jobs `35902/35903`; compare them only after the user resumes this task.
+- Keep two fresh random directions; the previous-update reuse experiment failed.

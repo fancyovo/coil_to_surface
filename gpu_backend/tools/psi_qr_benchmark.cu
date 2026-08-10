@@ -145,6 +145,7 @@ struct Timings {
     std::vector<double> apply_ms;
     std::vector<double> triangular_ms;
     std::vector<double> solve_ms;
+    std::vector<int> refinement_iterations;
 };
 
 struct ErrorMetrics {
@@ -277,6 +278,108 @@ private:
     std::vector<unsigned char> generic_host_;
     std::size_t generic_device_bytes_ = 0;
     std::size_t generic_host_bytes_ = 0;
+};
+
+enum class GelsIrKind { kSS, kSH, kSB, kSX };
+
+class GelsIrSolver {
+public:
+    GelsIrSolver(Context& context, GelsIrKind kind)
+        : context_(context), kind_(kind), matrix_(context.matrix.size()), rhs_(context.m),
+          solution_(context.n), info_(1) {
+        check_solver(cusolverDnCreate(&solver_), "IR GELS cusolver create");
+        std::size_t workspace_bytes = 0;
+        switch (kind_) {
+            case GelsIrKind::kSS:
+                check_solver(cusolverDnSSgels_bufferSize(
+                    solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                    rhs_.data(), context_.m, solution_.data(), context_.n, nullptr,
+                    &workspace_bytes), "SSgels buffer size");
+                break;
+            case GelsIrKind::kSH:
+                check_solver(cusolverDnSHgels_bufferSize(
+                    solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                    rhs_.data(), context_.m, solution_.data(), context_.n, nullptr,
+                    &workspace_bytes), "SHgels buffer size");
+                break;
+            case GelsIrKind::kSB:
+                check_solver(cusolverDnSBgels_bufferSize(
+                    solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                    rhs_.data(), context_.m, solution_.data(), context_.n, nullptr,
+                    &workspace_bytes), "SBgels buffer size");
+                break;
+            case GelsIrKind::kSX:
+                check_solver(cusolverDnSXgels_bufferSize(
+                    solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                    rhs_.data(), context_.m, solution_.data(), context_.n, nullptr,
+                    &workspace_bytes), "SXgels buffer size");
+                break;
+        }
+        workspace_.allocate(workspace_bytes);
+    }
+
+    ~GelsIrSolver() { cusolverDnDestroy(solver_); }
+
+    void run_once(Timings* timings) {
+        const double restore = wall_ms([&] {
+            check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), matrix_.size() * sizeof(float),
+                                  cudaMemcpyDeviceToDevice), "restore IR GELS matrix");
+            check_cuda(cudaMemcpy(rhs_.data(), context_.rhs.data(), rhs_.size() * sizeof(float),
+                                  cudaMemcpyDeviceToDevice), "restore IR GELS rhs");
+        });
+        cusolver_int_t iterations = 0;
+        const double solve = wall_ms([&] {
+            cusolverStatus_t status = CUSOLVER_STATUS_NOT_SUPPORTED;
+            switch (kind_) {
+                case GelsIrKind::kSS:
+                    status = cusolverDnSSgels(
+                        solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                        rhs_.data(), context_.m, solution_.data(), context_.n, workspace_.data(),
+                        workspace_.size(), &iterations, info_.data());
+                    break;
+                case GelsIrKind::kSH:
+                    status = cusolverDnSHgels(
+                        solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                        rhs_.data(), context_.m, solution_.data(), context_.n, workspace_.data(),
+                        workspace_.size(), &iterations, info_.data());
+                    break;
+                case GelsIrKind::kSB:
+                    status = cusolverDnSBgels(
+                        solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                        rhs_.data(), context_.m, solution_.data(), context_.n, workspace_.data(),
+                        workspace_.size(), &iterations, info_.data());
+                    break;
+                case GelsIrKind::kSX:
+                    status = cusolverDnSXgels(
+                        solver_, context_.m, context_.n, 1, matrix_.data(), context_.m,
+                        rhs_.data(), context_.m, solution_.data(), context_.n, workspace_.data(),
+                        workspace_.size(), &iterations, info_.data());
+                    break;
+            }
+            check_solver(status, "IR GELS solve");
+        });
+        verify_info(info_, "IR GELS info");
+        if (timings) {
+            timings->restore_ms.push_back(restore);
+            timings->factor_ms.push_back(solve);
+            timings->apply_ms.push_back(0.0);
+            timings->triangular_ms.push_back(0.0);
+            timings->solve_ms.push_back(solve);
+            timings->refinement_iterations.push_back(static_cast<int>(iterations));
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    Context& context_;
+    GelsIrKind kind_;
+    cusolverDnHandle_t solver_ = nullptr;
+    DeviceBuffer<float> matrix_;
+    DeviceBuffer<float> rhs_;
+    DeviceBuffer<float> solution_;
+    DeviceBuffer<unsigned char> workspace_;
+    DeviceBuffer<int> info_;
 };
 
 #ifdef SGPU_HAVE_MAGMA
@@ -932,6 +1035,14 @@ void print_result(
     print_array(timings.triangular_ms);
     std::cout << ",\"solve_ms\":";
     print_array(timings.solve_ms);
+    if (!timings.refinement_iterations.empty()) {
+        std::cout << ",\"refinement_iterations\":[";
+        for (std::size_t index = 0; index < timings.refinement_iterations.size(); ++index) {
+            if (index) std::cout << ',';
+            std::cout << timings.refinement_iterations[index];
+        }
+        std::cout << ']';
+    }
     std::cout << "}\n";
 }
 
@@ -990,6 +1101,14 @@ int main(int argc, char** argv) {
         ErrorMetrics error;
         if (arguments.method == "legacy" || arguments.method == "generic") {
             HouseholderSolver solver(context, arguments.method == "generic");
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method == "ir_ss" || arguments.method == "ir_sh" ||
+                   arguments.method == "ir_sb" || arguments.method == "ir_sx") {
+            GelsIrKind kind = GelsIrKind::kSS;
+            if (arguments.method == "ir_sh") kind = GelsIrKind::kSH;
+            else if (arguments.method == "ir_sb") kind = GelsIrKind::kSB;
+            else if (arguments.method == "ir_sx") kind = GelsIrKind::kSX;
+            GelsIrSolver solver(context, kind);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         }
 #ifdef SGPU_HAVE_MAGMA

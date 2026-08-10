@@ -51,11 +51,13 @@ def spearman(left: list[float], right: list[float]) -> float:
 
 def physical_point_count(grid: int) -> int:
     accepted = 0
+    inner_radius = 0.002 / 0.05
     for ir in range(grid):
         dr = -1.0 + 2.0 * ir / max(grid - 1, 1)
         for iz in range(grid):
             dz = -1.0 + 2.0 * iz / max(grid - 1, 1)
-            if dr * dr + dz * dz <= 1.0:
+            radius = math.hypot(dr, dz)
+            if inner_radius <= radius <= 1.0:
                 accepted += 1
     return accepted * grid
 
@@ -131,6 +133,17 @@ def main() -> None:
             ]
             for key in ANGLE_KEYS
         }
+        angle_absolute = {
+            key: [cases[case_id]["diagnostics"][key] for case_id in common]
+            for key in ANGLE_KEYS
+        }
+        angle_absolute_delta = {
+            key: [
+                abs(cases[case_id]["diagnostics"][key] - baseline[case_id]["diagnostics"][key])
+                for case_id in common
+            ]
+            for key in ANGLE_KEYS
+        }
         component_max_abs_delta = {
             key: max(
                 abs(cases[case_id]["components"][key] - baseline[case_id]["components"][key])
@@ -169,6 +182,13 @@ def main() -> None:
             "score_delta_max_abs": max(map(abs, score_deltas)),
             "score_spearman": spearman(baseline_scores, candidate_scores),
             "top_decile_overlap": len(baseline_top & candidate_top) / top_count,
+            "score_ge_90_max_abs_delta": max(
+                [
+                    abs(cases[case_id]["score"] - baseline[case_id]["score"])
+                    for case_id in common if baseline[case_id]["score"] >= 90.0
+                ],
+                default=float("nan"),
+            ),
             "psi_train_rms_ratio_median": float(np.median([
                 finite_ratio(cases[case_id]["diagnostics"]["psi_train_rms"], baseline[case_id]["diagnostics"]["psi_train_rms"])
                 for case_id in common
@@ -178,6 +198,15 @@ def main() -> None:
             },
             "angle_ratio_p95": {
                 key: percentile(values, 95) for key, values in angle_ratios.items()
+            },
+            "angle_absolute_median": {
+                key: float(np.median(values)) for key, values in angle_absolute.items()
+            },
+            "angle_absolute_p95": {
+                key: percentile(values, 95) for key, values in angle_absolute.items()
+            },
+            "angle_absolute_delta_p95": {
+                key: percentile(values, 95) for key, values in angle_absolute_delta.items()
             },
             "component_max_abs_delta": component_max_abs_delta,
             "downstream_max_abs_delta": downstream_max_abs_delta,
@@ -190,6 +219,10 @@ def main() -> None:
             "angle_p95_ratio_p95": record["angle_ratio_p95"]["psi_angle_p95"],
             "angle_l2_ratio_median": record["angle_ratio_median"]["psi_angle_l2"],
             "angle_l2_ratio_p95": record["angle_ratio_p95"]["psi_angle_l2"],
+            "angle_p95_absolute_median": record["angle_absolute_median"]["psi_angle_p95"],
+            "angle_p95_absolute_p95": record["angle_absolute_p95"]["psi_angle_p95"],
+            "angle_l2_absolute_median": record["angle_absolute_median"]["psi_angle_l2"],
+            "angle_l2_absolute_p95": record["angle_absolute_p95"]["psi_angle_l2"],
         })
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -200,6 +233,39 @@ def main() -> None:
         writer = csv.DictWriter(stream, fieldnames=list(csv_rows[0]))
         writer.writeheader()
         writer.writerows(csv_rows)
+
+    paired_rows = []
+    for variant in VARIANT_ORDER[1:]:
+        common = sorted(set(baseline) & set(per_case[variant]))
+        for case_id in common:
+            base = baseline[case_id]
+            candidate = per_case[variant][case_id]
+            paired_rows.append({
+                "case_id": case_id,
+                "variant": variant,
+                "grid": GRID_SIZE[variant],
+                "baseline_score": base["score"],
+                "candidate_score": candidate["score"],
+                "score_delta": candidate["score"] - base["score"],
+                **{
+                    f"baseline_{key}": base["diagnostics"][key]
+                    for key in ANGLE_KEYS
+                },
+                **{
+                    f"candidate_{key}": candidate["diagnostics"][key]
+                    for key in ANGLE_KEYS
+                },
+                **{
+                    f"ratio_{key}": finite_ratio(
+                        candidate["diagnostics"][key], base["diagnostics"][key]
+                    )
+                    for key in ANGLE_KEYS
+                },
+            })
+    with (args.output_dir / "paired_cases.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(paired_rows[0]))
+        writer.writeheader()
+        writer.writerows(paired_rows)
 
     grids = [GRID_SIZE[variant] for variant in VARIANT_ORDER]
     points = [summary[variant]["physical_point_count"] for variant in VARIANT_ORDER]
@@ -232,6 +298,31 @@ def main() -> None:
     ax.legend()
     fig.tight_layout()
     fig.savefig(args.output_dir / "physical_accuracy_vs_runtime.png", dpi=180)
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(8.2, 6.2))
+    for variant in VARIANT_ORDER[1:]:
+        common = sorted(set(baseline) & set(per_case[variant]))
+        ax.scatter(
+            [baseline[case_id]["diagnostics"]["psi_angle_p95"] for case_id in common],
+            [per_case[variant][case_id]["diagnostics"]["psi_angle_p95"] for case_id in common],
+            s=20,
+            alpha=0.65,
+            label=f"{GRID_SIZE[variant]}^3",
+        )
+    angle_values = [entry["diagnostics"]["psi_angle_p95"] for entry in baseline.values()]
+    low, high = min(angle_values) * 0.8, max(angle_values) * 1.25
+    ax.plot([low, high], [low, high], color="black", linewidth=1, linestyle="--")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(low, high)
+    ax.set_ylim(low, high)
+    ax.set_xlabel("Grid80 independent angle P95")
+    ax.set_ylabel("Reduced-grid independent angle P95")
+    ax.grid(alpha=0.25, which="both")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(args.output_dir / "physical_angle_preservation.png", dpi=180)
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8.5, 5.8))

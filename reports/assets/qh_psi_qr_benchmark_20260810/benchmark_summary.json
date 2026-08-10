@@ -757,6 +757,70 @@
       "estimated_algorithm_tflops": 0.8090172417964376
     },
     {
+      "method": "augmented_rhs",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "rows": 391014,
+      "cols": 1574,
+      "data_rows": 389440,
+      "householder_flops": 1934855903180.0,
+      "solve_ms_p50": 162.427868,
+      "solve_ms_p95": 162.4919612,
+      "equivalent_tflops_p50": 11.9120932079,
+      "factor_ms_p50": 162.350421,
+      "apply_ms_p50": 0,
+      "triangular_ms_p50": 0.077439,
+      "restore_ms_p50": 3.231981,
+      "coefficient_relative_error": 8.91098321117e-06,
+      "augmented_residual_relative": 0.00331990217023,
+      "physical_residual_relative": 0.000930160143018,
+      "backward_error": 2.60512412175e-05,
+      "normal_residual_relative": 2.22539190084e-05,
+      "restore_ms": [
+        3.233522,
+        3.231981,
+        3.233788,
+        3.229598,
+        3.230425
+      ],
+      "factor_ms": [
+        162.324518,
+        162.350273,
+        162.420873,
+        162.350421,
+        162.391588
+      ],
+      "apply_ms": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "triangular_ms": [
+        0.077439,
+        0.077595,
+        0.076734,
+        0.076944,
+        0.07779
+      ],
+      "solve_ms": [
+        162.401957,
+        162.427868,
+        162.497607,
+        162.427365,
+        162.469378
+      ],
+      "source_file": "augmented_rhs.json",
+      "family": "Householder",
+      "speedup_vs_legacy": 1.1200836977063566,
+      "physical_residual_ratio": 0.9999989211955328,
+      "reference_equivalent": true,
+      "bitwise_metric_equivalent": false,
+      "significant_integration_candidate": false,
+      "estimated_algorithm_flops": 1934855903178.6667,
+      "estimated_algorithm_tflops": 11.912093207913477
+    },
+    {
       "method": "choleskyqr2",
       "gpu": "NVIDIA GeForce RTX 5090",
       "rows": 391014,

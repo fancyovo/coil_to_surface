@@ -54,8 +54,8 @@
 - 2026-08-10: branch `codex/score-eval-compression` profiles only ABI-10 calls
   with a supplied axis hint and strict branch continuation. It does not time or
   alter standalone global-axis search. Exact loop-invariant removals are active;
-  the fixed-matrix QR research is complete and did not change the production
-  solver.
+  the fixed-matrix QR and psi-grid experiments did not change production
+  defaults.
 - The established 69-case strict-continuation holdout remains the production
   timing reference at P50/P95 `0.990/1.254 s`. A new 8-case high-score profile
   measured `1.323 s`, but it does not supersede that reference: fixed-size
@@ -76,11 +76,14 @@
   bottleneck. Its algorithmic throughput in this anomalously slow run is about
   `4.68 TFLOP/s`. NCU counters are unavailable on the cluster
   (`ERR_NVGPUCTRPERM`), so no counter-derived trace TFLOPS is claimed.
-- Reduced psi grids/trace counts showed `0.64--0.79 s` potential on only eight
-  high-score cases; they are unvalidated candidates, not production defaults.
-  FP32 normal equations damaged ranking and introduced a slow tail; do not use.
-  Full evidence and recommendations are in
-  `reports/qh_score_evaluation_compression_20260810.md`.
+- 2026-08-10 psi-grid acceptance used all 69 historical strict-continuation
+  `legacy-ok` holdout cases, five grids, two repeats, and fixed 4000-point
+  independent physical validation. Grid 48 reduced physical fit rows from
+  389440 to 82176, psi-fit P50 from `0.4402` to `0.0983 s`, and score-call
+  P50/P95 from `1.013/1.266` to `0.665/0.913 s`. All 138 calls were `ok`;
+  independent angle-P95 median/P95 ratios were `0.9991/1.0137`, score Spearman
+  was `0.999927`, and top-decile overlap was 100%. Grid 48 is the next
+  optimization-neighborhood candidate, not yet the production default.
 - 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
   `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
   QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
@@ -92,15 +95,26 @@
   nondeterministic mode, BF16x9 mode, stable TSQR/block-GS, and mixed-precision
   iterative refinement do not improve latency. MAGMA 2.10 Householder is
   accurate but about 14.5x slower (`2.632 s`) because of its hybrid panel path.
+- The fixed-matrix field named `physical_residual_relative` is actually the
+  unnormalized training-equation residual
+  `||A_data x-b_data||/||b_data||`; it is not the independent normalized
+  `|B.grad(psi)|/(|B||grad(psi)|)` angle. Same-matrix solver screening uses the
+  former plus coefficient/normal residuals; production acceptance uses the
+  latter, downstream score, status, and ranking.
+- Fusing the RHS as the last column of `[A|b]` removes the standalone `Sormqr`
+  pass: single-RTX5090 P50/P95 became `162.428/162.492 ms` (1.120x), coefficient
+  relative difference `8.91e-6`, and training-equation residual ratio
+  `0.999999`. This is a useful exact-form candidate but is not integrated into
+  production after only one frozen-matrix test.
 - Shifted Gram and short PCGLS reach actual estimated `35--45 TFLOP/s`, proving
-  the GEMM throughput is available, but their physical residuals are 6--24x
-  the Householder baseline and their coefficient errors are order one. FP32
+  the GEMM throughput is available, but their training-equation residuals are
+  6--24x the Householder baseline and their coefficient errors are order one. FP32
   unshifted Gram/CholeskyQR2 loses positive definiteness at pivot 579; TF32
   fails earlier. LSQR does not converge before losing its speed advantage.
 - No tested method is both at least 1.5x faster and reference-accurate, so no
   alternative was connected to the score path and no misleading end-to-end
   timing was run. Full methods, raw JSON, figures, and acceptance definitions
-  are in section 12 of `reports/qh_score_evaluation_compression_20260810.md`
+  are in sections 12--13 of `reports/qh_score_evaluation_compression_20260810.md`
   and `reports/assets/qh_psi_qr_benchmark_20260810/`. The fixed-matrix
   implementation is complete through `31d17f1`; the accepted report/result
   snapshot is commit `30f79a4`.
@@ -440,6 +454,10 @@ linked reports.
   the best passed complete physical evaluation. Exact continuation to 10000
   produced no further best update, providing strong evidence that the current
   fixed optimizer configuration had exhausted this trajectory.
+- **Reduced-latent flow:** exact-zero source tails at $k=16\ldots80$ failed
+  geometry reconstruction (best median relative curve RMS `47.24%`); manifold
+  flow was then rejected. Do not use those checkpoints. See
+  `reports/qh_reduced_latent_flow_plan.md` for the complete experiment.
 
 ## 9. Important Files
 
@@ -463,49 +481,11 @@ linked reports.
 
 ## 10. Next Actions
 
-1. Decide whether to validate the measured conservative discretization combo
-   on 128--1024 high-score, perturbed, and gate-boundary cases; do not change
-   defaults from the current eight-case result alone.
-2. If sub-0.8-second scoring is still required, prototype tall-skinny QR and
-   workspace/matrix reuse separately. Preserve QR stability; do not substitute
-   the rejected FP32 normal-equation path.
+1. Validate grid 48 on saved Adam trajectory neighborhoods and gate-boundary
+   perturbations, focusing on local ranking, score smoothness, and accept/reject
+   decisions before changing the production default.
+2. If another small gain matters after grid-48 acceptance, connect augmented-RHS
+   Householder QR behind an explicit mode and run the same end-to-end physical
+   and ranking checks. Never substitute the rejected FP32 normal-equation path.
 3. Do not restart manifold-flow, score collection, proxy, black-box-gradient,
    or paused DESC-method work without a new explicit user request.
-
-## 11. Completed Reduced-Latent Flow Experiment (2026-08-10)
-
-- Branch `codex/reduced-latent-flow` tested exact-zero source tails with
-  $k=80,64,48,32,24,16$ active coordinates per coil token. All six 30.3M
-  parameter models converged under the validation-plateau protocol; no run hit
-  its emergency step cap. Implementation and held-out evaluator commits are
-  `8175364` and `e654862`; the acceptance report and frozen evidence are commit
-  `8f43e38`. The final local suite passed 179 tests.
-- Acceptance used all 8508 held-out test samples in 33 `(nfp,n_coils)` groups
-  and the exact `data -> inverse -> zero tail -> forward -> data` chain. RK4-256
-  controlled $k=48,64,80$; RK4-512 controls for $k=16,24,32$ reduced ambient
-  P95 to at most 3.5% of projected P95. All stderr files were empty and every
-  allocated RTX 5090 returned to 2 MiB / 0% after training and evaluation.
-- The method failed representation acceptance. Even the best $k=80$ model had
-  median curve RMS error `0.55557 m`, median relative curve RMS `47.24%`, and
-  P95 curve RMS `0.93978 m`; smaller $k$ gave roughly `0.59--0.64 m` medians.
-  Errors were dominated by Fourier modes 0 and 1 and persisted across coil
-  counts, so this is macro-geometry failure, not harmless high-mode loss.
-- Inverse tail energy was only about $10^{-4}$ to $10^{-3}$ yet exact projection
-  caused order-one reconstruction change. The singular exact-zero source and
-  ordinary velocity loss created a stiff, high-gain tail information channel;
-  validation velocity loss therefore did not measure bottleneck reconstruction.
-  Do not use these six checkpoints for score optimization or extend the same
-  training. The next serious route is a physical-metric PCA baseline followed
-  by an explicit encoder-decoder trained directly on bottleneck reconstruction.
-- Native score preservation was intentionally not run after median physical
-  curve errors reached 47--54%; score cannot rescue a representation that has
-  already failed geometry/current acceptance. Prepared paired score inputs
-  remain remote if a later audit explicitly requests them.
-- Full methods, tables, figures, job metadata, and machine-readable evidence are
-  in `reports/qh_reduced_latent_flow_plan.md` and
-  `reports/assets/qh_reduced_latent_flow_20260810/`. Remote checkpoints and
-  per-sample rows remain under
-  `~/local_surface_evaluator/runs/qh_reduced_latent_20260810/`. No project jobs
-  from this experiment remain active.
-- A later manifold-flow implementation proposal was rejected by the user on
-  2026-08-10. Do not treat it as an approved next step.

@@ -4,6 +4,10 @@
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 
+#ifdef SGPU_HAVE_MAGMA
+#include <magma_v2.h>
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -274,6 +278,87 @@ private:
     std::size_t generic_device_bytes_ = 0;
     std::size_t generic_host_bytes_ = 0;
 };
+
+#ifdef SGPU_HAVE_MAGMA
+class MagmaSolver {
+public:
+    MagmaSolver(Context& context, bool version3)
+        : context_(context), version3_(version3), matrix_(context.matrix.size()), rhs_(context.m),
+          tau_(context.n) {
+        if (magma_init() != MAGMA_SUCCESS) throw std::runtime_error("magma_init failed");
+        initialized_ = true;
+        nb_ = magma_get_sgeqrf_nb(context_.m, context_.n);
+        const int rounded_n = ((context_.n + 31) / 32) * 32;
+        const std::size_t dt_count = static_cast<std::size_t>(2 * context_.n + rounded_n) *
+            std::max(nb_, 1);
+        dt_.allocate(dt_count);
+        const std::size_t lwork = static_cast<std::size_t>(context_.m - context_.n + nb_) *
+            (1 + nb_) + nb_;
+        if (lwork > static_cast<std::size_t>(std::numeric_limits<magma_int_t>::max())) {
+            throw std::runtime_error("MAGMA host workspace exceeds magma_int_t");
+        }
+        hwork_.resize(lwork);
+    }
+
+    ~MagmaSolver() {
+        if (initialized_) magma_finalize();
+    }
+
+    void run_once(Timings* timings) {
+        const double restore = wall_ms([&] {
+            check_cuda(cudaMemcpy(matrix_.data(), context_.matrix.data(), matrix_.size() * sizeof(float),
+                                  cudaMemcpyDeviceToDevice), "restore MAGMA matrix");
+            check_cuda(cudaMemcpy(rhs_.data(), context_.rhs.data(), rhs_.size() * sizeof(float),
+                                  cudaMemcpyDeviceToDevice), "restore MAGMA rhs");
+        });
+        magma_int_t info = 0;
+        const double factor = wall_ms([&] {
+            const magma_int_t status = version3_
+                ? magma_sgeqrf3_gpu(context_.m, context_.n, matrix_.data(), context_.m,
+                                    tau_.data(), dt_.data(), &info)
+                : magma_sgeqrf_gpu(context_.m, context_.n, matrix_.data(), context_.m,
+                                   tau_.data(), dt_.data(), &info);
+            if (status != MAGMA_SUCCESS || info != 0) {
+                throw std::runtime_error("MAGMA geqrf failed: status=" + std::to_string(status) +
+                                         " info=" + std::to_string(info));
+            }
+        });
+        const double apply = wall_ms([&] {
+            const magma_int_t status = version3_
+                ? magma_sgeqrs3_gpu(context_.m, context_.n, 1, matrix_.data(), context_.m,
+                                    tau_.data(), dt_.data(), rhs_.data(), context_.m,
+                                    hwork_.data(), static_cast<magma_int_t>(hwork_.size()), &info)
+                : magma_sgeqrs_gpu(context_.m, context_.n, 1, matrix_.data(), context_.m,
+                                   tau_.data(), dt_.data(), rhs_.data(), context_.m,
+                                   hwork_.data(), static_cast<magma_int_t>(hwork_.size()), &info);
+            if (status != MAGMA_SUCCESS || info != 0) {
+                throw std::runtime_error("MAGMA geqrs failed: status=" + std::to_string(status) +
+                                         " info=" + std::to_string(info));
+            }
+        });
+        if (timings) {
+            timings->restore_ms.push_back(restore);
+            timings->factor_ms.push_back(factor);
+            timings->apply_ms.push_back(apply);
+            timings->triangular_ms.push_back(0.0);
+            timings->solve_ms.push_back(factor + apply);
+        }
+    }
+
+    const float* solution() const { return rhs_.data(); }
+
+private:
+    Context& context_;
+    bool version3_ = false;
+    bool initialized_ = false;
+    magma_int_t nb_ = 0;
+    DeviceBuffer<float> matrix_;
+    DeviceBuffer<float> rhs_;
+    std::vector<float> tau_;
+    DeviceBuffer<float> dt_;
+    std::vector<float> hwork_;
+};
+#endif
 
 __global__ void gather_upper_kernel(
     const float* input, int input_lda, float* output, int output_lda, int n
@@ -906,7 +991,14 @@ int main(int argc, char** argv) {
         if (arguments.method == "legacy" || arguments.method == "generic") {
             HouseholderSolver solver(context, arguments.method == "generic");
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
-        } else if (arguments.method.rfind("tsqr", 0) == 0) {
+        }
+#ifdef SGPU_HAVE_MAGMA
+        else if (arguments.method == "magma" || arguments.method == "magma3") {
+            MagmaSolver solver(context, arguments.method == "magma3");
+            std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        }
+#endif
+        else if (arguments.method.rfind("tsqr", 0) == 0) {
             const int blocks = std::stoi(arguments.method.substr(4));
             TsqrSolver solver(context, blocks);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);

@@ -4,6 +4,7 @@ find_package(CUDAToolkit REQUIRED)
 
 option(SGPU_ENABLE_NVTX "Enable profiling-only NVTX ranges" OFF)
 option(SGPU_BUILD_QR_BENCHMARK "Build the standalone psi QR benchmark" OFF)
+set(SGPU_MAGMA_ROOT "" CACHE PATH "Optional MAGMA installation for the QR benchmark")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
@@ -44,6 +45,15 @@ if(SGPU_BUILD_QR_BENCHMARK)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
     target_link_libraries(psi_qr_benchmark PRIVATE CUDA::cublas CUDA::cusolver)
+    if(SGPU_MAGMA_ROOT)
+        find_path(SGPU_MAGMA_INCLUDE_DIR magma_v2.h
+            PATHS ${SGPU_MAGMA_ROOT}/include NO_DEFAULT_PATH REQUIRED)
+        find_library(SGPU_MAGMA_LIBRARY magma
+            PATHS ${SGPU_MAGMA_ROOT}/lib ${SGPU_MAGMA_ROOT}/lib64 NO_DEFAULT_PATH REQUIRED)
+        target_include_directories(psi_qr_benchmark PRIVATE ${SGPU_MAGMA_INCLUDE_DIR})
+        target_link_libraries(psi_qr_benchmark PRIVATE ${SGPU_MAGMA_LIBRARY})
+        target_compile_definitions(psi_qr_benchmark PRIVATE SGPU_HAVE_MAGMA=1)
+    endif()
     target_link_options(psi_qr_benchmark PRIVATE -static-libstdc++ -static-libgcc)
     set_target_properties(psi_qr_benchmark PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endif()

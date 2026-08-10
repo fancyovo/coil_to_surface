@@ -19,11 +19,16 @@ method=${METHOD:?METHOD is required}
 cuda_root=${CUDA_ROOT:-/public/app/cuda/13.0}
 warmups=${WARMUPS:-1}
 repeats=${REPEATS:-5}
+benchmark_bin=${BENCHMARK_BIN:-$project/build/qr_bench/psi_qr_benchmark}
+magma_root=${MAGMA_ROOT:-}
 
 mkdir -p "$project/logs" "$(dirname "$output")"
 cd "$project"
 export PATH="$cuda_root/bin:$PATH"
 export LD_LIBRARY_PATH="$cuda_root/lib64:${LD_LIBRARY_PATH:-}"
+if [[ -n "$magma_root" ]]; then
+    export LD_LIBRARY_PATH="$magma_root/lib:/public/app/intel/oneapi/mkl/2026.0/lib:$LD_LIBRARY_PATH"
+fi
 
 gpu_state_before=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | sed '/^[[:space:]]*$/d' | wc -l)
 if [[ "$gpu_state_before" -ne 0 ]]; then
@@ -31,7 +36,7 @@ if [[ "$gpu_state_before" -ne 0 ]]; then
     exit 1
 fi
 
-build/qr_bench/psi_qr_benchmark \
+"$benchmark_bin" \
     --snapshot "$snapshot" --method "$method" --device 0 \
     --warmups "$warmups" --repeats "$repeats" > "$output"
 

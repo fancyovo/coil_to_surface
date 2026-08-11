@@ -145,5 +145,135 @@
         "relative_error": 0.0
       }
     }
+  },
+  "coordinate_ablation": {
+    "exact_without_coordinate_vs_full": {
+      "cosine": 0.8438860367454333,
+      "reference_norm": 28.99591130459968,
+      "candidate_norm": 25.364573747702853,
+      "norm_ratio": 0.8747638065674184,
+      "relative_error": 0.5374102656772248
+    },
+    "exact_coordinate_contribution": {
+      "cosine": 0.6220934513986277,
+      "reference_norm": 28.99591130459968,
+      "candidate_norm": 15.643280973946602,
+      "norm_ratio": 0.5394995456295618,
+      "relative_error": 0.7872874259107232,
+      "norm_fraction_of_full": 0.5394995456295618
+    },
+    "exact_other_contribution": {
+      "cosine": 0.8438860367454342,
+      "reference_norm": 28.99591130459968,
+      "candidate_norm": 22.828116372933923,
+      "norm_ratio": 0.7872874259107232,
+      "relative_error": 0.5394995456295618
+    },
+    "variants": {
+      "pcgls2": {
+        "without_coordinate_vs_exact_without_coordinate": {
+          "cosine": 0.933317405751456,
+          "reference_norm": 25.364573747702853,
+          "candidate_norm": 24.294903734616195,
+          "norm_ratio": 0.9578281888855502,
+          "relative_error": 0.35988803621573484
+        },
+        "without_coordinate_vs_exact_full": {
+          "cosine": 0.7628248924149952,
+          "reference_norm": 28.99591130459968,
+          "candidate_norm": 24.294903734616195,
+          "norm_ratio": 0.8378734325471,
+          "relative_error": 0.6509458248487436
+        },
+        "coordinate_value_exact_p05_p50_p95": [
+          89.36573217680895,
+          89.41575840072667,
+          89.5134651323785
+        ],
+        "coordinate_value_candidate_p05_p50_p95": [
+          89.35816219651609,
+          89.41816627832839,
+          89.51174010716997
+        ],
+        "coordinate_value_error_rmse": 0.08848963554320247,
+        "coordinate_value_error_max_abs": 0.3723285583629945
+      },
+      "pcgls4": {
+        "without_coordinate_vs_exact_without_coordinate": {
+          "cosine": 0.9999004921800558,
+          "reference_norm": 25.364573747702853,
+          "candidate_norm": 25.308167354875984,
+          "norm_ratio": 0.9977761742267804,
+          "relative_error": 0.014265989795611922
+        },
+        "without_coordinate_vs_exact_full": {
+          "cosine": 0.8430409855332015,
+          "reference_norm": 28.99591130459968,
+          "candidate_norm": 25.308167354875984,
+          "norm_ratio": 0.8728184842688941,
+          "relative_error": 0.5386729955568247
+        },
+        "coordinate_value_exact_p05_p50_p95": [
+          89.36573217680895,
+          89.41575840072667,
+          89.5134651323785
+        ],
+        "coordinate_value_candidate_p05_p50_p95": [
+          89.36509690329433,
+          89.47572432278616,
+          89.51507900658859
+        ],
+        "coordinate_value_error_rmse": 0.08531172971824223,
+        "coordinate_value_error_max_abs": 0.22278547368540558
+      }
+    }
+  },
+  "coordinate_population": {
+    "source": "reports\\assets\\qh_iota_degree_calibration_35856\\benchmark.jsonl",
+    "variant": "iota_cubic",
+    "independent_case_count": 69,
+    "coordinate_score_pearson": 0.4847613516705334,
+    "subsets": {
+      "all": {
+        "count": 69,
+        "coordinate_min_p10_p50_p90_max": [
+          60.2590389335373,
+          71.02501733472508,
+          82.48402596443104,
+          89.83619200673208,
+          90.62524730407476
+        ]
+      },
+      "score_ge_80": {
+        "count": 39,
+        "coordinate_min_p10_p50_p90_max": [
+          69.5395036212379,
+          76.07565108946648,
+          88.09246163320462,
+          89.90514900944895,
+          90.62524730407476
+        ]
+      },
+      "score_ge_85": {
+        "count": 26,
+        "coordinate_min_p10_p50_p90_max": [
+          75.38713208883516,
+          80.85182511150091,
+          88.77880229841563,
+          89.97786998121248,
+          90.62524730407476
+        ]
+      },
+      "score_ge_88": {
+        "count": 23,
+        "coordinate_min_p10_p50_p90_max": [
+          78.53125157976251,
+          84.24021664791705,
+          88.97034420860936,
+          90.00902905758115,
+          90.62524730407476
+        ]
+      }
+    }
   }
 }

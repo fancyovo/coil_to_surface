@@ -2799,8 +2799,7 @@ int sgpu_fit_psi_fullgpu(
                 cublas_check(cublasSgemv(f->blas, CUBLAS_OP_N, qr_rows, n_coeff, &minus_one,
                     d_qr_mat_f, qr_rows, d_coeff_f, 1, &one, d_warm_residual_f, 1), "fit warm initial residual") ||
                 cublas_check(cublasSgemv(f->blas, CUBLAS_OP_T, qr_rows, n_coeff, &one,
-                    d_qr_mat_f, qr_rows, d_warm_residual_f, 1, &zero, d_warm_normal_f, 1), "fit warm initial normal") ||
-                cublas_check(cublasScopy(f->blas, n_coeff, d_warm_normal_f, 1, d_warm_direction_f, 1), "fit warm initial direction")) {
+                    d_qr_mat_f, qr_rows, d_warm_residual_f, 1, &zero, d_warm_normal_f, 1), "fit warm initial normal")) {
                 cleanup();
                 return 1;
             }
@@ -2817,6 +2816,13 @@ int sgpu_fit_psi_fullgpu(
                     cleanup();
                     return 1;
                 }
+            }
+            if (cublas_check(cublasScopy(
+                    f->blas, n_coeff, d_warm_normal_f, 1,
+                    d_warm_direction_f, 1
+                ), "fit warm initial direction")) {
+                cleanup();
+                return 1;
             }
             float gamma = 0.0f;
             if (cublas_check(cublasSdot(f->blas, n_coeff, d_warm_normal_f, 1, d_warm_normal_f, 1, &gamma), "fit warm initial gamma")) {

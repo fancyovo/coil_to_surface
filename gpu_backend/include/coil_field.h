@@ -447,6 +447,27 @@ int sgpu_score_coils_g4_fixed_branch_batch(
     SgpuScoreResult* query_score_results
 );
 
+// Experimental local-oracle path: every query recomputes the complete score,
+// but initializes its full-density psi solve from the center QR coefficients.
+int sgpu_score_coils_psi_warm_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    int warm_iterations,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    SgpuScoreResult* query_score_results
+);
+
 // Internal-oracle entrypoint: returns the reported 0--100 coil component and
 // its piecewise analytical gradient with active percentile/minimum indices
 // frozen at the supplied coil.

@@ -1062,6 +1062,9 @@ struct PsiData {
     double angle_l2 = std::numeric_limits<double>::quiet_NaN();
 };
 
+thread_local const std::vector<double>* g_active_psi_warm_coefficients = nullptr;
+thread_local int g_active_psi_warm_iterations = 0;
+
 void evaluate_psi_host(
     const PsiData& psi,
     const AxisData& axis,
@@ -1163,7 +1166,12 @@ bool fit_psi_native(
     }
     point_generation_time = seconds_since(started);
     psi.modes = build_psi_modes(config.psi_poly_degree, config.psi_m_tor);
-    psi.coeffs.resize(psi.modes.a.size());
+    if (g_active_psi_warm_coefficients) {
+        if (g_active_psi_warm_coefficients->size() != psi.modes.a.size()) return false;
+        psi.coeffs = *g_active_psi_warm_coefficients;
+    } else {
+        psi.coeffs.resize(psi.modes.a.size());
+    }
     std::array<double, 16> stats{};
     started = Clock::now();
     int code = 0;
@@ -1176,7 +1184,8 @@ bool fit_psi_native(
             psi.modes.a.data(), psi.modes.b.data(), psi.modes.m.data(), psi.modes.kind.data(),
             static_cast<int>(psi.modes.a.size()), nfp, config.psi_a,
             config.psi_poly_degree, config.psi_m_tor, config.psi_ridge,
-            config.psi_solver_mode, config.psi_precision_mode,
+            g_active_psi_warm_coefficients ? 1000 + g_active_psi_warm_iterations : config.psi_solver_mode,
+            config.psi_precision_mode,
             psi.coeffs.data(), &psi.train_rms, stats.data(), static_cast<int>(stats.size())
         );
     }
@@ -3169,6 +3178,7 @@ struct AlphaFitNative {
 
 struct FixedFrontG2Cache {
     AxisData axis;
+    PsiData psi;
     DeviceVolumePoints points;
     DeviceBuffer<float> B;
     DeviceBuffer<float> grad_B;
@@ -5987,6 +5997,7 @@ int sgpu_score_coils(
         }
         if (g_active_g2_cache && g_active_g2_cache->ready) {
             g_active_g2_cache->axis = axis;
+            g_active_g2_cache->psi = psi;
         }
     } while (false);
 
@@ -6562,6 +6573,73 @@ int sgpu_score_coils_g4_fixed_branch_batch(
     }
     sgpu_internal_set_error("");
     return 0;
+}
+
+int sgpu_score_coils_psi_warm_batch(
+    const double* center_coeffs_x,
+    const double* center_coeffs_y,
+    const double* center_coeffs_z,
+    const double* center_currents_a,
+    const double* query_coeffs_x,
+    const double* query_coeffs_y,
+    const double* query_coeffs_z,
+    const double* query_currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    int warm_iterations,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* center_score_result,
+    SgpuScoreResult* query_score_results
+) {
+    if (!center_coeffs_x || !center_coeffs_y || !center_coeffs_z ||
+        !center_currents_a || !query_coeffs_x || !query_coeffs_y ||
+        !query_coeffs_z || !query_currents_a || query_count <= 0 ||
+        n_base_coils <= 0 || n_coeff <= 0 || nfp <= 0 || warm_iterations < 0 ||
+        !config || !center_score_result || !query_score_results) {
+        sgpu_internal_set_error("invalid psi warm-batch input");
+        return 1;
+    }
+
+    FixedFrontG2Cache cache;
+    g_active_gradient_group = 2;
+    g_active_g2_cache = &cache;
+    const int center_code = sgpu_score_coils(
+        center_coeffs_x, center_coeffs_y, center_coeffs_z, center_currents_a,
+        n_base_coils, n_coeff, nfp, config, center_score_result
+    );
+    g_active_g2_cache = nullptr;
+    g_active_gradient_group = 0;
+    if (center_code != 0 || center_score_result->status != SGPU_SCORE_OK ||
+        !cache.ready || cache.psi.coeffs.empty()) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        sgpu_internal_set_error("psi warm-batch center score is not ok");
+        return center_code != 0 ? center_code : 1;
+    }
+    if (cache.field) {
+        sgpu_destroy_field(cache.field);
+        cache.field = nullptr;
+    }
+
+    const size_t coefficient_stride = static_cast<size_t>(n_base_coils) * n_coeff;
+    const size_t current_stride = static_cast<size_t>(n_base_coils);
+    g_active_psi_warm_coefficients = &cache.psi.coeffs;
+    g_active_psi_warm_iterations = warm_iterations;
+    int return_code = 0;
+    for (int query = 0; query < query_count; ++query) {
+        return_code = sgpu_score_coils(
+            query_coeffs_x + query * coefficient_stride,
+            query_coeffs_y + query * coefficient_stride,
+            query_coeffs_z + query * coefficient_stride,
+            query_currents_a + query * current_stride,
+            n_base_coils, n_coeff, nfp, config, &query_score_results[query]
+        );
+        if (return_code != 0) break;
+    }
+    g_active_psi_warm_coefficients = nullptr;
+    g_active_psi_warm_iterations = 0;
+    return return_code;
 }
 
 int sgpu_score_coils_g3_gradient(

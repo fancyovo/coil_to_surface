@@ -65,7 +65,7 @@ if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq 
     echo "GPU compute process remains after benchmark" >&2
     exit 3
 fi
-if ps -eo stat=,pid=,ppid=,comm= | awk '$1 ~ /^Z/ {found=1} END {exit !found}'; then
+if ps -u "$USER" -o stat=,pid=,ppid=,comm= | awk '$1 ~ /^Z/ {found=1} END {exit !found}'; then
     echo "Zombie process remains after benchmark" >&2
     exit 4
 fi

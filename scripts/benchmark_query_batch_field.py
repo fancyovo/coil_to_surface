@@ -184,9 +184,8 @@ def main() -> None:
             (x, center_x, "x"), (y, center_y, "y"), (z, center_z, "z"),
             (current, center_current, "current"),
         ):
-            coil_components += np.einsum(
-                "q..., ...->q", values - center_values, coil_linear["gradient"][name]
-            )
+            weighted_delta = (values - center_values) * coil_linear["gradient"][name]
+            coil_components += weighted_delta.reshape(args.query_count, -1).sum(axis=1)
         (local_results, local_stats), local_score_wall_s = timed(
             lambda: batch.score_local_batch(
                 current, *batch_axis,

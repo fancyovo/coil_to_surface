@@ -2518,7 +2518,7 @@ int sgpu_batch_trace_period_mixed(
         cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
         return 1;
     }
-    constexpr int threads = 64;
+    constexpr int threads = 256;
     const size_t shared_bytes = static_cast<size_t>(SEG_TILE * 6 + threads * 3) * sizeof(float);
     const bool failed =
         cuda_check(cudaMemcpy(d_R0, R0_host, bytes, cudaMemcpyHostToDevice), "batch trace R0 copy") ||
@@ -2579,7 +2579,7 @@ int sgpu_batch_trace_axis_samples(
         cleanup();
         return 1;
     }
-    constexpr int threads = 64;
+    constexpr int threads = 256;
     const size_t shared_bytes = static_cast<size_t>(SEG_TILE * 6 + threads * 3) * sizeof(float);
     const bool failed =
         cuda_check(cudaMemcpy(d_R0, R0_host, input_bytes, cudaMemcpyHostToDevice), "batch axis R0 copy") ||
@@ -2597,6 +2597,175 @@ int sgpu_batch_trace_axis_samples(
         cuda_check(cudaMemcpy(Z_phi_host, d_Z_phi, output_bytes, cudaMemcpyDeviceToHost), "batch axis Z_phi copy");
     cleanup();
     if (failed) return 1;
+    set_error("");
+    return 0;
+}
+
+int sgpu_batch_refine_axis_hint(
+    void* handle,
+    const double* hint_R_host,
+    const double* hint_Z_host,
+    int nfp,
+    int trace_steps,
+    int newton_iterations,
+    double finite_difference_step,
+    double maximum_newton_step,
+    double residual_tolerance,
+    double hint_max_distance,
+    double* axis_R_host,
+    double* axis_Z_host,
+    double* residual_host,
+    double* topology_trace_host,
+    double* topology_det_host,
+    unsigned char* valid_host
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !hint_R_host || !hint_Z_host || nfp <= 0 || trace_steps <= 0 ||
+        newton_iterations < 0 || !(finite_difference_step > 0.0) ||
+        !(maximum_newton_step > 0.0) || !(residual_tolerance > 0.0) ||
+        !(hint_max_distance > 0.0) || !axis_R_host || !axis_Z_host ||
+        !residual_host || !topology_trace_host || !topology_det_host || !valid_host) {
+        set_error("invalid batch axis-refinement arguments");
+        return 1;
+    }
+    const int query_count = field->query_count;
+    std::vector<double> R(hint_R_host, hint_R_host + query_count);
+    std::vector<double> Z(hint_Z_host, hint_Z_host + query_count);
+    std::vector<double> R_end(query_count), Z_end(query_count);
+    std::vector<double> fR(query_count), fZ(query_count), residual(query_count);
+    if (sgpu_batch_trace_period_mixed(
+            field, R.data(), Z.data(), R_end.data(), Z_end.data(), 1, nfp, trace_steps)) {
+        return 1;
+    }
+    for (int query = 0; query < query_count; ++query) {
+        fR[query] = R_end[query] - R[query];
+        fZ[query] = Z_end[query] - Z[query];
+        residual[query] = std::hypot(fR[query], fZ[query]);
+    }
+    constexpr int derivative_lines = 4;
+    constexpr int line_search_lines = 4;
+    const double line_search_scale[line_search_lines] = {1.0, 0.5, 0.25, 0.125};
+    for (int iteration = 0; iteration < newton_iterations; ++iteration) {
+        bool any_active = false;
+        std::vector<double> eval_R(static_cast<size_t>(query_count) * derivative_lines);
+        std::vector<double> eval_Z(eval_R.size());
+        for (int query = 0; query < query_count; ++query) {
+            any_active = any_active || residual[query] > residual_tolerance;
+            const size_t base = static_cast<size_t>(query) * derivative_lines;
+            eval_R[base] = R[query] + finite_difference_step;
+            eval_Z[base] = Z[query];
+            eval_R[base + 1] = R[query] - finite_difference_step;
+            eval_Z[base + 1] = Z[query];
+            eval_R[base + 2] = R[query];
+            eval_Z[base + 2] = Z[query] + finite_difference_step;
+            eval_R[base + 3] = R[query];
+            eval_Z[base + 3] = Z[query] - finite_difference_step;
+        }
+        if (!any_active) break;
+        std::vector<double> eval_R_end(eval_R.size()), eval_Z_end(eval_Z.size());
+        if (sgpu_batch_trace_period_mixed(
+                field, eval_R.data(), eval_Z.data(), eval_R_end.data(), eval_Z_end.data(),
+                derivative_lines, nfp, trace_steps)) {
+            return 1;
+        }
+        std::vector<double> step_R(query_count, 0.0), step_Z(query_count, 0.0);
+        for (int query = 0; query < query_count; ++query) {
+            if (!(residual[query] > residual_tolerance)) continue;
+            const size_t base = static_cast<size_t>(query) * derivative_lines;
+            const double residual_R_plus = eval_R_end[base] - eval_R[base];
+            const double residual_R_minus = eval_R_end[base + 1] - eval_R[base + 1];
+            const double residual_Z_r_plus = eval_Z_end[base] - eval_Z[base];
+            const double residual_Z_r_minus = eval_Z_end[base + 1] - eval_Z[base + 1];
+            const double residual_R_z_plus = eval_R_end[base + 2] - eval_R[base + 2];
+            const double residual_R_z_minus = eval_R_end[base + 3] - eval_R[base + 3];
+            const double residual_Z_plus = eval_Z_end[base + 2] - eval_Z[base + 2];
+            const double residual_Z_minus = eval_Z_end[base + 3] - eval_Z[base + 3];
+            const double inverse_denominator = 0.5 / finite_difference_step;
+            const double j11 = (residual_R_plus - residual_R_minus) * inverse_denominator;
+            const double j21 = (residual_Z_r_plus - residual_Z_r_minus) * inverse_denominator;
+            const double j12 = (residual_R_z_plus - residual_R_z_minus) * inverse_denominator;
+            const double j22 = (residual_Z_plus - residual_Z_minus) * inverse_denominator;
+            const double determinant = j11 * j22 - j12 * j21;
+            if (std::abs(determinant) <= 1.0e-14) continue;
+            step_R[query] = (-fR[query] * j22 + j12 * fZ[query]) / determinant;
+            step_Z[query] = (j21 * fR[query] - j11 * fZ[query]) / determinant;
+            const double norm = std::hypot(step_R[query], step_Z[query]);
+            const double scale = std::min(1.0, maximum_newton_step / std::max(norm, 1.0e-300));
+            step_R[query] *= scale;
+            step_Z[query] *= scale;
+        }
+        std::vector<double> trial_R(static_cast<size_t>(query_count) * line_search_lines);
+        std::vector<double> trial_Z(trial_R.size());
+        for (int query = 0; query < query_count; ++query) {
+            const size_t base = static_cast<size_t>(query) * line_search_lines;
+            for (int line = 0; line < line_search_lines; ++line) {
+                trial_R[base + line] = R[query] + line_search_scale[line] * step_R[query];
+                trial_Z[base + line] = Z[query] + line_search_scale[line] * step_Z[query];
+            }
+        }
+        std::vector<double> trial_R_end(trial_R.size()), trial_Z_end(trial_Z.size());
+        if (sgpu_batch_trace_period_mixed(
+                field, trial_R.data(), trial_Z.data(), trial_R_end.data(), trial_Z_end.data(),
+                line_search_lines, nfp, trace_steps)) {
+            return 1;
+        }
+        for (int query = 0; query < query_count; ++query) {
+            const size_t base = static_cast<size_t>(query) * line_search_lines;
+            for (int line = 0; line < line_search_lines; ++line) {
+                const double candidate_fR = trial_R_end[base + line] - trial_R[base + line];
+                const double candidate_fZ = trial_Z_end[base + line] - trial_Z[base + line];
+                const double candidate_residual = std::hypot(candidate_fR, candidate_fZ);
+                if (std::isfinite(candidate_residual) && candidate_residual < residual[query]) {
+                    R[query] = trial_R[base + line];
+                    Z[query] = trial_Z[base + line];
+                    fR[query] = candidate_fR;
+                    fZ[query] = candidate_fZ;
+                    residual[query] = candidate_residual;
+                    break;
+                }
+            }
+        }
+    }
+
+    std::vector<double> topology_R(static_cast<size_t>(query_count) * derivative_lines);
+    std::vector<double> topology_Z(topology_R.size());
+    for (int query = 0; query < query_count; ++query) {
+        const size_t base = static_cast<size_t>(query) * derivative_lines;
+        topology_R[base] = R[query] + finite_difference_step;
+        topology_Z[base] = Z[query];
+        topology_R[base + 1] = R[query] - finite_difference_step;
+        topology_Z[base + 1] = Z[query];
+        topology_R[base + 2] = R[query];
+        topology_Z[base + 2] = Z[query] + finite_difference_step;
+        topology_R[base + 3] = R[query];
+        topology_Z[base + 3] = Z[query] - finite_difference_step;
+    }
+    std::vector<double> topology_R_end(topology_R.size()), topology_Z_end(topology_Z.size());
+    if (sgpu_batch_trace_period_mixed(
+            field, topology_R.data(), topology_Z.data(), topology_R_end.data(),
+            topology_Z_end.data(), derivative_lines, nfp, trace_steps)) {
+        return 1;
+    }
+    for (int query = 0; query < query_count; ++query) {
+        const size_t base = static_cast<size_t>(query) * derivative_lines;
+        const double inverse_denominator = 0.5 / finite_difference_step;
+        const double a = (topology_R_end[base] - topology_R_end[base + 1]) * inverse_denominator;
+        const double c = (topology_Z_end[base] - topology_Z_end[base + 1]) * inverse_denominator;
+        const double b = (topology_R_end[base + 2] - topology_R_end[base + 3]) * inverse_denominator;
+        const double d = (topology_Z_end[base + 2] - topology_Z_end[base + 3]) * inverse_denominator;
+        const double trace = a + d;
+        const double determinant = a * d - b * c;
+        const bool elliptic = determinant > 0.0 && std::isfinite(trace) &&
+            std::isfinite(determinant) && std::abs(trace / std::sqrt(determinant)) < 2.0;
+        const double hint_distance = std::hypot(R[query] - hint_R_host[query], Z[query] - hint_Z_host[query]);
+        axis_R_host[query] = R[query];
+        axis_Z_host[query] = Z[query];
+        residual_host[query] = residual[query];
+        topology_trace_host[query] = trace;
+        topology_det_host[query] = determinant;
+        valid_host[query] = residual[query] <= residual_tolerance && elliptic &&
+            hint_distance <= hint_max_distance;
+    }
     set_error("");
     return 0;
 }

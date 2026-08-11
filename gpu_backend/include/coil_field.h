@@ -558,6 +558,25 @@ int sgpu_batch_trace_axis_samples(
     double* Z_phi_host
 );
 
+int sgpu_batch_refine_axis_hint(
+    void* handle,
+    const double* hint_R_host,
+    const double* hint_Z_host,
+    int nfp,
+    int trace_steps,
+    int newton_iterations,
+    double finite_difference_step,
+    double maximum_newton_step,
+    double residual_tolerance,
+    double hint_max_distance,
+    double* axis_R_host,
+    double* axis_Z_host,
+    double* residual_host,
+    double* topology_trace_host,
+    double* topology_det_host,
+    unsigned char* valid_host
+);
+
 void sgpu_destroy_field(void* handle);
 
 int sgpu_segment_count(void* handle);

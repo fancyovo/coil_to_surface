@@ -93,8 +93,17 @@ def main() -> None:
         (batch_R1, batch_Z1), trace_wall_s = timed(
             lambda: batch.trace_period(R0, Z0, steps=args.trace_steps)
         )
-        batch_axis, axis_wall_s = timed(lambda: batch.trace_axis_samples(
+        refined_axis, refine_axis_wall_s = timed(lambda: batch.refine_axis_hint(
             axis_R0, axis_Z0,
+            trace_steps=args.axis_integration_steps,
+            newton_iterations=6,
+            finite_difference_step=2.0e-4,
+            maximum_newton_step=0.25,
+            residual_tolerance=1.0e-7,
+            hint_max_distance=0.08,
+        ))
+        batch_axis, axis_wall_s = timed(lambda: batch.trace_axis_samples(
+            refined_axis["R"], refined_axis["Z"],
             integration_steps=args.axis_integration_steps,
             sample_count=args.axis_samples,
         ))
@@ -117,10 +126,10 @@ def main() -> None:
                 )
                 single_R1, single_Z1 = field.trace_period_blockline_mixed(
                     R0[query], Z0[query], steps=args.trace_steps,
-                    threads_per_line=64, mode="bf32_state64",
+                    threads_per_line=256, mode="bf32_state64",
                 )
                 single_axis = field.trace_axis_samples(
-                    axis_R0[query], axis_Z0[query], nfp=nfp,
+                    refined_axis["R"][query], refined_axis["Z"][query], nfp=nfp,
                     integration_steps=args.axis_integration_steps,
                     sample_count=args.axis_samples,
                 )
@@ -160,12 +169,27 @@ def main() -> None:
             "eval_B": eval_B_wall_s,
             "eval_B_grad": eval_B_grad_wall_s,
             "trace_period_5_lines": trace_wall_s,
+            "refine_axis_hint": refine_axis_wall_s,
             "trace_axis_samples": axis_wall_s,
             "tested_stage_total": create_wall_s + eval_B_wall_s + eval_B_grad_wall_s +
-                trace_wall_s + axis_wall_s,
+                trace_wall_s + refine_axis_wall_s + axis_wall_s,
             "sequential_reference_subset": reference_wall_s,
         },
         "reference_errors": errors,
+        "axis_refinement": {
+            "valid_count": int(np.count_nonzero(refined_axis["valid"])),
+            "residual_p50_p95_max": [
+                float(value) for value in np.quantile(
+                    refined_axis["residual"], [0.5, 0.95, 1.0]
+                )
+            ],
+            "hint_distance_p50_p95_max": [
+                float(value) for value in np.quantile(np.hypot(
+                    refined_axis["R"] - axis_R0,
+                    refined_axis["Z"] - axis_Z0,
+                ), [0.5, 0.95, 1.0])
+            ],
+        },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")

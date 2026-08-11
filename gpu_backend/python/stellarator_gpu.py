@@ -1966,6 +1966,14 @@ class BatchCoilFieldGpu:
             ctypes.c_int, ctypes.c_int, double_pointer, double_pointer,
             double_pointer, double_pointer,
         ]
+        self.lib.sgpu_batch_refine_axis_hint.restype = ctypes.c_int
+        self.lib.sgpu_batch_refine_axis_hint.argtypes = [
+            ctypes.c_void_p, double_pointer, double_pointer,
+            ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double,
+            double_pointer, double_pointer, double_pointer, double_pointer,
+            double_pointer, ctypes.POINTER(ctypes.c_ubyte),
+        ]
         self.lib.sgpu_last_error.restype = ctypes.c_char_p
 
     def _check(self, code: int):
@@ -2056,6 +2064,48 @@ class BatchCoilFieldGpu:
         )
         self._check(code)
         return tuple(outputs)
+
+    def refine_axis_hint(
+        self,
+        R0,
+        Z0,
+        *,
+        trace_steps: int = 960,
+        newton_iterations: int = 6,
+        finite_difference_step: float = 2.0e-4,
+        maximum_newton_step: float = 0.25,
+        residual_tolerance: float = 1.0e-7,
+        hint_max_distance: float = 0.08,
+    ):
+        R0 = np.ascontiguousarray(R0, dtype=np.float64).reshape(-1)
+        Z0 = np.ascontiguousarray(Z0, dtype=np.float64).reshape(-1)
+        if R0.shape != (self.query_count,) or Z0.shape != (self.query_count,):
+            raise ValueError("batch axis hints must contain one point per query")
+        outputs = [np.empty(self.query_count, dtype=np.float64) for _ in range(5)]
+        valid = np.empty(self.query_count, dtype=np.uint8)
+        code = self.lib.sgpu_batch_refine_axis_hint(
+            self.handle,
+            R0.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            Z0.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(self.nfp),
+            ctypes.c_int(int(trace_steps)),
+            ctypes.c_int(int(newton_iterations)),
+            ctypes.c_double(float(finite_difference_step)),
+            ctypes.c_double(float(maximum_newton_step)),
+            ctypes.c_double(float(residual_tolerance)),
+            ctypes.c_double(float(hint_max_distance)),
+            *(array.ctypes.data_as(ctypes.POINTER(ctypes.c_double)) for array in outputs),
+            valid.ctypes.data_as(ctypes.POINTER(ctypes.c_ubyte)),
+        )
+        self._check(code)
+        return {
+            "R": outputs[0],
+            "Z": outputs[1],
+            "residual": outputs[2],
+            "topology_trace": outputs[3],
+            "topology_det": outputs[4],
+            "valid": valid.astype(bool),
+        }
 
 
 def load_case(path: str | Path, key: str = "raw"):

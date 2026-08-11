@@ -109,7 +109,8 @@ python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --beta2 "${BETA2:-0.999}" \
   --psi-iterations "${PSI_ITERATIONS:-4}" \
   --alpha-iterations "${ALPHA_ITERATIONS:-4}" \
-  --surface-theta-count "${SURFACE_THETA_COUNT:-128}" \
+  --formal-surface-theta-count "${FORMAL_SURFACE_THETA_COUNT:-128}" \
+  --local-surface-theta-count "${LOCAL_SURFACE_THETA_COUNT:-64}" \
   --iota-degree "${IOTA_DEGREE:-3}" \
   --plot-every "${PLOT_EVERY:-5}" \
   "${resume_args[@]}" &

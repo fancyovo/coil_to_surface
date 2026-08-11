@@ -142,7 +142,8 @@ class LocalFullGradientEstimator:
         segments_per_coil: int,
         psi_iterations: int,
         alpha_iterations: int,
-        surface_theta_count: int,
+        formal_surface_theta_count: int,
+        local_surface_theta_count: int,
         iota_degree: int,
     ) -> None:
         self.lib = lib
@@ -151,7 +152,8 @@ class LocalFullGradientEstimator:
         self.segments_per_coil = int(segments_per_coil)
         self.psi_iterations = int(psi_iterations)
         self.alpha_iterations = int(alpha_iterations)
-        self.surface_theta_count = int(surface_theta_count)
+        self.formal_surface_theta_count = int(formal_surface_theta_count)
+        self.local_surface_theta_count = int(local_surface_theta_count)
         self.iota_degree = int(iota_degree)
         modes = build_modes(10, 12)
         self.mode_a = np.asarray([mode.a for mode in modes], dtype=np.int32)
@@ -195,7 +197,7 @@ class LocalFullGradientEstimator:
                 target_helicity=(1, self.nfp),
                 config_overrides=score_config(
                     iota_degree=self.iota_degree,
-                    surface_theta_count=self.surface_theta_count,
+                    surface_theta_count=self.formal_surface_theta_count,
                     axis_hint=center_axis,
                 ),
             )
@@ -279,7 +281,7 @@ class LocalFullGradientEstimator:
                 psi_rms,
                 coil_components,
                 capture,
-                surface_theta_count=self.surface_theta_count,
+                surface_theta_count=self.local_surface_theta_count,
                 alpha_iterations=self.alpha_iterations,
             )
             timings["local_score"] = time.perf_counter() - started
@@ -423,7 +425,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--segments-per-coil", type=int, default=256)
     parser.add_argument("--psi-iterations", type=int, default=4)
     parser.add_argument("--alpha-iterations", type=int, default=4)
-    parser.add_argument("--surface-theta-count", type=int, default=128)
+    parser.add_argument("--formal-surface-theta-count", type=int, default=128)
+    parser.add_argument("--local-surface-theta-count", type=int, default=64)
     parser.add_argument("--iota-degree", type=int, default=3)
     parser.add_argument("--temporal-guard-window", type=int, default=20)
     parser.add_argument("--temporal-guard-min-history", type=int, default=20)
@@ -534,6 +537,8 @@ def main() -> None:
                 "psi_grid": 48,
                 "psi_iterations": args.psi_iterations,
                 "alpha_iterations": args.alpha_iterations,
+                "formal_surface_theta_count": args.formal_surface_theta_count,
+                "local_surface_theta_count": args.local_surface_theta_count,
             },
             "adam": {
                 "learning_rate": args.learning_rate,
@@ -560,7 +565,8 @@ def main() -> None:
         segments_per_coil=args.segments_per_coil,
         psi_iterations=args.psi_iterations,
         alpha_iterations=args.alpha_iterations,
-        surface_theta_count=args.surface_theta_count,
+        formal_surface_theta_count=args.formal_surface_theta_count,
+        local_surface_theta_count=args.local_surface_theta_count,
         iota_degree=args.iota_degree,
     )
 
@@ -580,7 +586,7 @@ def main() -> None:
         nfp=args.nfp,
         score_device=args.score_device,
         iota_degree=args.iota_degree,
-        surface_theta_count=args.surface_theta_count,
+        surface_theta_count=args.formal_surface_theta_count,
         previous_result=None,
     )
     if not result_valid(current_result):
@@ -749,7 +755,7 @@ def main() -> None:
                     nfp=args.nfp,
                     score_device=args.score_device,
                     iota_degree=args.iota_degree,
-                    surface_theta_count=args.surface_theta_count,
+                    surface_theta_count=args.formal_surface_theta_count,
                     previous_result=previous_result,
                 )
                 proposal_decode_wall_s += decode_wall_s

@@ -9,7 +9,10 @@ from typing import Any
 import numpy as np
 
 
-VARIANTS = ("axis_qr16k", "axis_ne16k", "axis_ne8k", "fixed_ne8k")
+VARIANTS = (
+    "axis_qr16k", "axis_qr8k", "axis_ne16k", "axis_ne8k",
+    "fixed_qr16k", "fixed_qr8k", "fixed_ne8k",
+)
 
 
 def json_safe(value: Any) -> Any:
@@ -206,7 +209,12 @@ def main() -> None:
         len(center_labels), 2, figsize=(12, 4 * len(center_labels)), squeeze=False,
         constrained_layout=True,
     )
-    colors = {"axis_qr16k": "#2667a8", "axis_ne16k": "#d1495b", "axis_ne8k": "#edae49", "fixed_ne8k": "#3a7d44"}
+    colors = {
+        "axis_qr16k": "#2667a8", "axis_qr8k": "#6baed6",
+        "axis_ne16k": "#d1495b", "axis_ne8k": "#edae49",
+        "fixed_qr16k": "#3a7d44", "fixed_qr8k": "#74c476",
+        "fixed_ne8k": "#9467bd",
+    }
     for row_index, label in enumerate(center_labels):
         exact = slope_bank[(label, selected_scale, "exact")]
         for name in VARIANTS:

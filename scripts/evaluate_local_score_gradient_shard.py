@@ -162,20 +162,26 @@ def main() -> None:
         for name, overrides in (
             ("exact", exact_config(center)),
             ("axis_qr16k", proxy_config(center, small=False, normal=False)),
+            ("axis_qr8k", proxy_config(center, small=True, normal=False)),
             ("axis_ne16k", proxy_config(center, small=False, normal=True)),
             ("axis_ne8k", proxy_config(center, small=True, normal=True)),
         ):
             call_started = time.perf_counter()
-            result = score_coils_native(
-                args.lib, x[index], y[index], z[index], current[index],
-                int(center["nfp"]), device_id=0,
-                target_helicity=(1, int(center["nfp"])),
-                config_overrides=overrides,
-            )
-            row["variants"][name] = {
-                **compact(result),
-                "call_wall_s": time.perf_counter() - call_started,
-            }
+            try:
+                result = score_coils_native(
+                    args.lib, x[index], y[index], z[index], current[index],
+                    int(center["nfp"]), device_id=0,
+                    target_helicity=(1, int(center["nfp"])),
+                    config_overrides=overrides,
+                )
+                row["variants"][name] = {
+                    **compact(result),
+                    "call_wall_s": time.perf_counter() - call_started,
+                }
+            except GpuError as error:
+                row["variants"][name] = failed_variant(
+                    str(error), time.perf_counter() - call_started
+                )
         rows[index] = row
 
     for center_index, center in centers.items():
@@ -185,30 +191,35 @@ def main() -> None:
         if not group:
             continue
         indices = np.asarray([int(row["candidate_index"]) for row in group], dtype=np.int64)
-        call_started = time.perf_counter()
         center_candidate_index = center_candidate_indices[center_index]
-        try:
-            payload = score_coils_g4_fixed_branch_batch_native(
-                args.lib,
-                x[center_candidate_index], y[center_candidate_index],
-                z[center_candidate_index], current[center_candidate_index],
-                x[indices], y[indices], z[indices], current[indices],
-                int(center["nfp"]), device_id=0,
-                target_helicity=(1, int(center["nfp"])),
-                config_overrides=proxy_config(center, small=True, normal=True),
-            )
-            batch_wall = time.perf_counter() - call_started
-            for index, result in zip(indices, payload["query_score_results"], strict=True):
-                rows[int(index)]["variants"]["fixed_ne8k"] = {
-                    **compact(result),
-                    "call_wall_s": float(result["timing"]["total_s"]),
-                    "batch_wall_s": batch_wall,
-                }
-        except GpuError as error:
-            batch_wall = time.perf_counter() - call_started
-            failure = failed_variant(str(error), batch_wall)
-            for index in indices:
-                rows[int(index)]["variants"]["fixed_ne8k"] = failure
+        for name, small, normal in (
+            ("fixed_qr16k", False, False),
+            ("fixed_qr8k", True, False),
+            ("fixed_ne8k", True, True),
+        ):
+            call_started = time.perf_counter()
+            try:
+                payload = score_coils_g4_fixed_branch_batch_native(
+                    args.lib,
+                    x[center_candidate_index], y[center_candidate_index],
+                    z[center_candidate_index], current[center_candidate_index],
+                    x[indices], y[indices], z[indices], current[indices],
+                    int(center["nfp"]), device_id=0,
+                    target_helicity=(1, int(center["nfp"])),
+                    config_overrides=proxy_config(center, small=small, normal=normal),
+                )
+                batch_wall = time.perf_counter() - call_started
+                for index, result in zip(indices, payload["query_score_results"], strict=True):
+                    rows[int(index)]["variants"][name] = {
+                        **compact(result),
+                        "call_wall_s": float(result["timing"]["total_s"]),
+                        "batch_wall_s": batch_wall,
+                    }
+            except GpuError as error:
+                batch_wall = time.perf_counter() - call_started
+                failure = failed_variant(str(error), batch_wall)
+                for index in indices:
+                    rows[int(index)]["variants"][name] = failure
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as handle:

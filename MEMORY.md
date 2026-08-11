@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-10 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-11 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -495,4 +495,5 @@ linked reports.
 
 ## 10. Active Next Action
 
-- Keep two fresh random directions; the previous-update reuse experiment failed.
+- 2026-08-11: `codex/direct-alpha-fast-score` was created directly from production `main` commit `835e4d6` for a report-only exploration; no score code has changed. `reports/direct_alpha_fast_score_feasibility_20260811.md` concludes that joint spatial $\alpha/\iota$ fitting is linear, but physical volume QS can be recovered without $s$ only when $\iota(\psi)$ is monotone/nondegenerate and a held-out Clebsch closure recovers $\nabla\psi$; otherwise it must be labeled only as a direct-invariant proxy.
+- The independent order-8 continuation remains remote job `36169`, targeting Adam step 5000 under `~/local_surface_evaluator/runs/qh_fourier_order8_adam5000_20260811`; this branch switch does not affect it, and it should be accepted when the user next asks rather than polled during this report task.

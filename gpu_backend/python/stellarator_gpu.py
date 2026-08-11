@@ -1541,6 +1541,19 @@ class CoilFieldGpu:
             ctypes.c_int,
             ctypes.c_int,
         ]
+        self.lib.sgpu_trace_axis_samples.restype = ctypes.c_int
+        self.lib.sgpu_trace_axis_samples.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+        ]
         self.lib.sgpu_last_error.restype = ctypes.c_char_p
 
     def _check(self, code: int):
@@ -1853,6 +1866,28 @@ class CoilFieldGpu:
                 R0, Z0, steps, threads_per_line=threads_per_line, mode="f32", nfp=nfp
             )
         return self.trace_period_blockline(R0, Z0, steps, threads_per_line=threads_per_line, nfp=nfp)
+
+    def trace_axis_samples(
+        self,
+        R0: float,
+        Z0: float,
+        *,
+        integration_steps: int,
+        sample_count: int,
+        nfp: int | None = None,
+    ):
+        outputs = [np.empty(int(sample_count), dtype=np.float64) for _ in range(4)]
+        code = self.lib.sgpu_trace_axis_samples(
+            self.handle,
+            ctypes.c_double(float(R0)),
+            ctypes.c_double(float(Z0)),
+            ctypes.c_int(self.nfp if nfp is None else int(nfp)),
+            ctypes.c_int(int(integration_steps)),
+            ctypes.c_int(int(sample_count)),
+            *(array.ctypes.data_as(ctypes.POINTER(ctypes.c_double)) for array in outputs),
+        )
+        self._check(code)
+        return tuple(outputs)
 
 
 class BatchCoilFieldGpu:

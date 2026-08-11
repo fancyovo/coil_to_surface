@@ -1717,7 +1717,7 @@ int main(int argc, char** argv) {
             LsqrSolver solver(context, iterations);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
         } else if (arguments.method.rfind("warmcgls", 0) == 0) {
-            const int iterations = std::stoi(arguments.method.substr(9));
+            const int iterations = std::stoi(arguments.method.substr(8));
             WarmCglsSolver solver(context, warm_initial, iterations);
             std::tie(timings, error) = benchmark_solver(
                 context, solver, arguments.warmups, arguments.repeats

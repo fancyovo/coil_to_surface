@@ -40,7 +40,8 @@ fi
 cmake -S "$PROJECT/gpu_backend" -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CUDA_ARCHITECTURES=120 \
-    -DCMAKE_CUDA_COMPILER="$CUDA_ROOT/bin/nvcc"
+    -DCMAKE_CUDA_COMPILER="$CUDA_ROOT/bin/nvcc" \
+    -DSGPU_BUILD_QR_BENCHMARK=ON
 cmake --build "$BUILD_DIR" --target psi_qr_benchmark -j4
 
 BENCHMARK="$RUN_ROOT/benchmark.jsonl"

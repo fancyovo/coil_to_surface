@@ -291,9 +291,11 @@ def main() -> None:
         component_names = ["axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil"]
         center_coordinate = float(center_capture["score_result"]["components"]["coordinate"])
         exact_scores = []
+        exact_component_rows = []
         for row in endpoint_rows[: args.query_count]:
             exact = exact_by_candidate[int(row["candidate_index"])]
             components = np.asarray([exact["components"][name] for name in component_names])
+            exact_component_rows.append(components)
             before = float(np.dot(weights, components) / weights.sum())
             gate = float(exact["score"] / max(before, 1.0e-30))
             before_no_coordinate = before + weights[3] / weights.sum() * (
@@ -301,17 +303,44 @@ def main() -> None:
             )
             exact_scores.append(before_no_coordinate * gate)
         exact_scores = np.asarray(exact_scores)
+        exact_component_rows = np.asarray(exact_component_rows)
+        local_component_rows = np.asarray([
+            [result["components"][name] for name in component_names]
+            for result in local_results
+        ])
         local_directional = (local_scores[1::2] - local_scores[0::2]) / 0.01
         exact_directional = (exact_scores[1::2] - exact_scores[0::2]) / 0.01
         cosine = float(np.dot(local_directional, exact_directional) / max(
             np.linalg.norm(local_directional) * np.linalg.norm(exact_directional), 1.0e-30
         ))
+        component_comparison = {}
+        for index, name in enumerate(component_names):
+            local_component_directional = (
+                local_component_rows[1::2, index] - local_component_rows[0::2, index]
+            ) / 0.01
+            exact_component_directional = (
+                exact_component_rows[1::2, index] - exact_component_rows[0::2, index]
+            ) / 0.01
+            denominator = np.linalg.norm(local_component_directional) * np.linalg.norm(
+                exact_component_directional
+            )
+            component_comparison[name] = {
+                "cosine": None if denominator == 0.0 else float(
+                    np.dot(local_component_directional, exact_component_directional) / denominator
+                ),
+                "local_rms": float(np.sqrt(np.mean(local_component_directional ** 2))),
+                "exact_rms": float(np.sqrt(np.mean(exact_component_directional ** 2))),
+                "endpoint_rms_difference": float(np.sqrt(np.mean(
+                    (local_component_rows[:, index] - exact_component_rows[:, index]) ** 2
+                ))),
+            }
         gradient_comparison = {
             "coordinate_omitted_exact_cosine": cosine,
             "local_directional_rms": float(np.sqrt(np.mean(local_directional ** 2))),
             "exact_directional_rms": float(np.sqrt(np.mean(exact_directional ** 2))),
             "local_directional": local_directional.tolist(),
             "exact_directional": exact_directional.tolist(),
+            "components": component_comparison,
         }
 
     output = {

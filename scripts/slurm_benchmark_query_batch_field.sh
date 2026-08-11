@@ -17,6 +17,10 @@ set -euo pipefail
 project="${PROJECT:?PROJECT is required}"
 candidate_dir="${CANDIDATE_DIR:?CANDIDATE_DIR is required}"
 run_root="${RUN_ROOT:?RUN_ROOT is required}"
+query_count="${QUERY_COUNT:-600}"
+surface_theta_count="${SURFACE_THETA_COUNT:-64}"
+alpha_iterations="${ALPHA_ITERATIONS:-4}"
+full_reference_dir="${FULL_REFERENCE_DIR:-}"
 cuda_root="${CUDA_ROOT:-/public/app/cuda/13.0}"
 build_dir="$project/gpu_backend/build_query_batch"
 
@@ -72,16 +76,22 @@ cmake --build "$build_dir" --target stellarator_gpu -j4
 lib="$build_dir/libstellarator_gpu.so"
 sha256sum "$lib" > "$run_root/library.sha256"
 git rev-parse HEAD > "$run_root/git_head.txt"
-python "$project/scripts/benchmark_query_batch_field.py" \
+command=(python "$project/scripts/benchmark_query_batch_field.py" \
   --candidate-dir "$candidate_dir" \
   --lib "$lib" \
   --output "$run_root/summary.json" \
-  --query-count 600 \
+  --query-count "$query_count" \
   --point-count 256 \
   --segments-per-coil 256 \
   --trace-steps 400 \
   --axis-integration-steps 960 \
-  --axis-samples 240
+  --axis-samples 240 \
+  --surface-theta-count "$surface_theta_count" \
+  --alpha-iterations "$alpha_iterations")
+if [[ -n "$full_reference_dir" ]]; then
+  command+=(--full-reference-dir "$full_reference_dir")
+fi
+"${command[@]}"
 
 if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
   echo "GPU compute process remains after batch-field benchmark" >&2

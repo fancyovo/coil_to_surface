@@ -711,6 +711,209 @@ private:
     DeviceBuffer<float> image_;
 };
 
+__global__ void pointwise_scale_kernel(float* values, const float* scale, int count) {
+    const int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < count) values[index] *= scale[index];
+}
+
+class WarmPreconditionedCglsSolver {
+public:
+    WarmPreconditionedCglsSolver(
+        Context& context,
+        const std::vector<float>& initial_solution,
+        const Snapshot& center_snapshot,
+        const Snapshot& endpoint_snapshot,
+        int iterations
+    )
+        : context_(context), iterations_(iterations), center_m_(static_cast<int>(center_snapshot.header.rows)),
+          center_factor_(static_cast<std::size_t>(center_m_) * context.n), center_tau_(context.n),
+          center_info_(1), scale_ratio_(context.n), initial_solution_(context.n), solution_(context.n),
+          residual_(context.m), normal_(context.n), direction_(context.n),
+          transformed_direction_(context.n), image_(context.m) {
+        if (iterations_ < 0) throw std::runtime_error("warm PCGLS iterations must be nonnegative");
+        if (initial_solution.size() != static_cast<std::size_t>(context.n) ||
+            center_snapshot.header.cols != endpoint_snapshot.header.cols) {
+            throw std::runtime_error("warm PCGLS input dimensions do not match");
+        }
+        check_solver(cusolverDnCreate(&center_solver_), "warm PCGLS center cusolver create");
+        int work_size = 0;
+        check_solver(cusolverDnSgeqrf_bufferSize(
+            center_solver_, center_m_, context.n, center_factor_.data(), center_m_, &work_size
+        ), "warm PCGLS center QR buffer");
+        center_work_.allocate(static_cast<std::size_t>(work_size));
+        check_cuda(cudaMemcpy(
+            center_factor_.data(), center_snapshot.matrix.data(),
+            center_factor_.size() * sizeof(float), cudaMemcpyHostToDevice
+        ), "warm PCGLS copy center matrix");
+        check_solver(cusolverDnSgeqrf(
+            center_solver_, center_m_, context.n, center_factor_.data(), center_m_,
+            center_tau_.data(), center_work_.data(), work_size, center_info_.data()
+        ), "warm PCGLS factor center matrix");
+        verify_info(center_info_, "warm PCGLS center QR info");
+
+        std::vector<float> ratio(static_cast<std::size_t>(context.n));
+        for (int index = 0; index < context.n; ++index) {
+            const double center_scale = center_snapshot.scale[static_cast<std::size_t>(index)];
+            const double endpoint_scale = endpoint_snapshot.scale[static_cast<std::size_t>(index)];
+            if (!(center_scale > 0.0) || !(endpoint_scale > 0.0)) {
+                throw std::runtime_error("warm PCGLS column scale is nonpositive");
+            }
+            ratio[static_cast<std::size_t>(index)] = static_cast<float>(endpoint_scale / center_scale);
+        }
+        check_cuda(cudaMemcpy(
+            scale_ratio_.data(), ratio.data(), ratio.size() * sizeof(float), cudaMemcpyHostToDevice
+        ), "warm PCGLS copy scale ratio");
+        check_cuda(cudaMemcpy(
+            initial_solution_.data(), initial_solution.data(),
+            initial_solution.size() * sizeof(float), cudaMemcpyHostToDevice
+        ), "warm PCGLS copy initial solution");
+        check_cublas(cublasSetMathMode(context_.blas, CUBLAS_PEDANTIC_MATH),
+                     "set warm PCGLS math mode");
+        check_cublas(cublasSetPointerMode(context_.blas, CUBLAS_POINTER_MODE_HOST),
+                     "set warm PCGLS pointer mode");
+        check_cuda(cudaDeviceSynchronize(), "warm PCGLS setup synchronize");
+    }
+
+    ~WarmPreconditionedCglsSolver() {
+        cublasSetMathMode(context_.blas, CUBLAS_DEFAULT_MATH);
+        cusolverDnDestroy(center_solver_);
+    }
+
+    void apply_inverse_preconditioner(float* values) {
+        check_cublas(cublasStrsv(
+            context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
+            context_.n, center_factor_.data(), center_m_, values, 1
+        ), "warm PCGLS R^-1");
+        pointwise_scale_kernel<<<(context_.n + 255) / 256, 256>>>(
+            values, scale_ratio_.data(), context_.n
+        );
+        check_cuda(cudaGetLastError(), "warm PCGLS endpoint scaling");
+    }
+
+    void apply_inverse_transpose_preconditioner(float* values) {
+        pointwise_scale_kernel<<<(context_.n + 255) / 256, 256>>>(
+            values, scale_ratio_.data(), context_.n
+        );
+        check_cuda(cudaGetLastError(), "warm PCGLS transpose endpoint scaling");
+        check_cublas(cublasStrsv(
+            context_.blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, CUBLAS_DIAG_NON_UNIT,
+            context_.n, center_factor_.data(), center_m_, values, 1
+        ), "warm PCGLS R^-T");
+    }
+
+    void run_once(Timings* timings) {
+        const float one = 1.0f, minus_one = -1.0f, zero = 0.0f;
+        const double restore = wall_ms([&] {
+            check_cuda(cudaMemcpy(
+                solution_.data(), initial_solution_.data(),
+                static_cast<std::size_t>(context_.n) * sizeof(float), cudaMemcpyDeviceToDevice
+            ), "restore warm PCGLS solution");
+            check_cuda(cudaMemcpy(
+                residual_.data(), context_.rhs.data(),
+                static_cast<std::size_t>(context_.m) * sizeof(float), cudaMemcpyDeviceToDevice
+            ), "restore warm PCGLS rhs");
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_N, context_.m, context_.n, &minus_one,
+                context_.matrix.data(), context_.m, solution_.data(), 1, &one, residual_.data(), 1
+            ), "warm PCGLS initial residual");
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one,
+                context_.matrix.data(), context_.m, residual_.data(), 1, &zero, normal_.data(), 1
+            ), "warm PCGLS initial normal residual");
+            apply_inverse_transpose_preconditioner(normal_.data());
+            check_cublas(cublasScopy(
+                context_.blas, context_.n, normal_.data(), 1, direction_.data(), 1
+            ), "warm PCGLS initial direction");
+        });
+
+        int completed = 0;
+        const double solve = wall_ms([&] {
+            float gamma = 0.0f;
+            check_cublas(cublasSdot(
+                context_.blas, context_.n, normal_.data(), 1, normal_.data(), 1, &gamma
+            ), "warm PCGLS initial gamma");
+            for (int iteration = 0; iteration < iterations_; ++iteration) {
+                if (!(gamma > 0.0f) || !std::isfinite(gamma)) break;
+                check_cublas(cublasScopy(
+                    context_.blas, context_.n, direction_.data(), 1,
+                    transformed_direction_.data(), 1
+                ), "warm PCGLS copy direction");
+                apply_inverse_preconditioner(transformed_direction_.data());
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_N, context_.m, context_.n, &one,
+                    context_.matrix.data(), context_.m, transformed_direction_.data(), 1,
+                    &zero, image_.data(), 1
+                ), "warm PCGLS A P^-1 p");
+                float delta = 0.0f;
+                check_cublas(cublasSdot(
+                    context_.blas, context_.m, image_.data(), 1, image_.data(), 1, &delta
+                ), "warm PCGLS delta");
+                if (!(delta > 0.0f) || !std::isfinite(delta)) break;
+                const float alpha = gamma / delta;
+                const float minus_alpha = -alpha;
+                check_cublas(cublasSaxpy(
+                    context_.blas, context_.n, &alpha, transformed_direction_.data(), 1,
+                    solution_.data(), 1
+                ), "warm PCGLS solution update");
+                check_cublas(cublasSaxpy(
+                    context_.blas, context_.m, &minus_alpha, image_.data(), 1,
+                    residual_.data(), 1
+                ), "warm PCGLS residual update");
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_T, context_.m, context_.n, &one,
+                    context_.matrix.data(), context_.m, residual_.data(), 1,
+                    &zero, normal_.data(), 1
+                ), "warm PCGLS A^T r");
+                apply_inverse_transpose_preconditioner(normal_.data());
+                float gamma_new = 0.0f;
+                check_cublas(cublasSdot(
+                    context_.blas, context_.n, normal_.data(), 1, normal_.data(), 1,
+                    &gamma_new
+                ), "warm PCGLS gamma");
+                ++completed;
+                if (!(gamma_new > 0.0f) || !std::isfinite(gamma_new)) break;
+                const float beta = gamma_new / gamma;
+                check_cublas(cublasSscal(
+                    context_.blas, context_.n, &beta, direction_.data(), 1
+                ), "warm PCGLS direction scale");
+                check_cublas(cublasSaxpy(
+                    context_.blas, context_.n, &one, normal_.data(), 1,
+                    direction_.data(), 1
+                ), "warm PCGLS direction update");
+                gamma = gamma_new;
+            }
+        });
+        if (timings) {
+            timings->restore_ms.push_back(restore);
+            timings->factor_ms.push_back(0.0);
+            timings->apply_ms.push_back(solve);
+            timings->triangular_ms.push_back(0.0);
+            timings->solve_ms.push_back(restore + solve);
+            timings->refinement_iterations.push_back(completed);
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    Context& context_;
+    int iterations_ = 0;
+    int center_m_ = 0;
+    cusolverDnHandle_t center_solver_ = nullptr;
+    DeviceBuffer<float> center_factor_;
+    DeviceBuffer<float> center_tau_;
+    DeviceBuffer<float> center_work_;
+    DeviceBuffer<int> center_info_;
+    DeviceBuffer<float> scale_ratio_;
+    DeviceBuffer<float> initial_solution_;
+    DeviceBuffer<float> solution_;
+    DeviceBuffer<float> residual_;
+    DeviceBuffer<float> normal_;
+    DeviceBuffer<float> direction_;
+    DeviceBuffer<float> transformed_direction_;
+    DeviceBuffer<float> image_;
+};
+
 #ifdef SGPU_HAVE_MAGMA
 class MagmaSolver {
 public:
@@ -1655,11 +1858,14 @@ int main(int argc, char** argv) {
         }
 
         std::vector<float> warm_initial;
-        if (arguments.method.rfind("warmcgls", 0) == 0) {
+        Snapshot warm_snapshot;
+        const bool warm_method = arguments.method.rfind("warmcgls", 0) == 0 ||
+            arguments.method.rfind("warmpcgls", 0) == 0;
+        if (warm_method) {
             if (arguments.warm_snapshot.empty()) {
                 throw std::runtime_error("warmcgls requires --warm-snapshot");
             }
-            Snapshot warm_snapshot = read_snapshot(arguments.warm_snapshot);
+            warm_snapshot = read_snapshot(arguments.warm_snapshot);
             if (warm_snapshot.header.cols != snapshot.header.cols) {
                 throw std::runtime_error("warm and endpoint snapshots have different column counts");
             }
@@ -1719,6 +1925,14 @@ int main(int argc, char** argv) {
         } else if (arguments.method.rfind("warmcgls", 0) == 0) {
             const int iterations = std::stoi(arguments.method.substr(8));
             WarmCglsSolver solver(context, warm_initial, iterations);
+            std::tie(timings, error) = benchmark_solver(
+                context, solver, arguments.warmups, arguments.repeats
+            );
+        } else if (arguments.method.rfind("warmpcgls", 0) == 0) {
+            const int iterations = std::stoi(arguments.method.substr(9));
+            WarmPreconditionedCglsSolver solver(
+                context, warm_initial, warm_snapshot, snapshot, iterations
+            );
             std::tie(timings, error) = benchmark_solver(
                 context, solver, arguments.warmups, arguments.repeats
             );

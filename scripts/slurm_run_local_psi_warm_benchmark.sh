@@ -18,11 +18,14 @@ RUN_ROOT="${RUN_ROOT:-$HOME/local_surface_evaluator/runs/local_psi_warm_start_20
 BUILD_DIR="${BUILD_DIR:-$PROJECT/build_psi_warm_start}"
 CUDA_ROOT="${CUDA_ROOT:-/public/app/cuda/13.0}"
 ITERATIONS="${ITERATIONS:-0 1 2 4 8 16 32 64}"
+METHOD_PREFIX="${METHOD_PREFIX:-warmcgls}"
+BENCHMARK_FILE="${BENCHMARK_FILE:-$RUN_ROOT/benchmark.jsonl}"
+ANALYSIS_DIR="${ANALYSIS_DIR:-$RUN_ROOT/analysis}"
 
 export PATH="$CUDA_ROOT/bin:$PATH"
 export LD_LIBRARY_PATH="$CUDA_ROOT/lib64:${LD_LIBRARY_PATH:-}"
 
-mkdir -p "$RUN_ROOT/analysis"
+mkdir -p "$ANALYSIS_DIR"
 test -f "$RUN_ROOT/snapshots/center.bin"
 test -f "$RUN_ROOT/snapshots/manifest.json"
 
@@ -44,7 +47,7 @@ cmake -S "$PROJECT/gpu_backend" -B "$BUILD_DIR" \
     -DSGPU_BUILD_QR_BENCHMARK=ON
 cmake --build "$BUILD_DIR" --target psi_qr_benchmark -j4
 
-BENCHMARK="$RUN_ROOT/benchmark.jsonl"
+BENCHMARK="$BENCHMARK_FILE"
 if [[ "${REUSE_BENCHMARK:-0}" == "1" ]]; then
     test -s "$BENCHMARK"
 else
@@ -55,7 +58,7 @@ else
             "$BUILD_DIR/psi_qr_benchmark" \
                 --snapshot "$endpoint" \
                 --warm-snapshot "$RUN_ROOT/snapshots/center.bin" \
-                --method "warmcgls${iteration}" \
+                --method "${METHOD_PREFIX}${iteration}" \
                 --repeats 1 >> "$BENCHMARK"
         done
     done
@@ -63,7 +66,8 @@ fi
 
 python "$PROJECT/scripts/analyze_local_psi_warm_start.py" \
     --run-root "$RUN_ROOT" \
-    --output-dir "$RUN_ROOT/analysis"
+    --benchmark "$BENCHMARK" \
+    --output-dir "$ANALYSIS_DIR"
 
 gpu_csv > "$RUN_ROOT/gpu_benchmark_postflight.csv"
 if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then

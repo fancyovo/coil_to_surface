@@ -4,6 +4,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+import re
 import struct
 
 import matplotlib.pyplot as plt
@@ -35,6 +36,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--benchmark", type=Path)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -50,7 +52,8 @@ def main() -> None:
         baselines[label] = float(row["psi_train_rms"]) * math.sqrt(data_rows) / norm
 
     raw_rows = []
-    with (args.run_root / "benchmark.jsonl").open(encoding="utf-8") as handle:
+    benchmark_path = args.benchmark or (args.run_root / "benchmark.jsonl")
+    with benchmark_path.open(encoding="utf-8") as handle:
         for line in handle:
             raw_rows.append(json.loads(line))
 
@@ -76,7 +79,10 @@ def main() -> None:
         if endpoint not in endpoint_metadata:
             raise ValueError(f"benchmark endpoint missing from manifest: {endpoint}")
         for row in block:
-            iterations = int(row["method"].removeprefix("warmcgls"))
+            match = re.search(r"(\d+)$", row["method"])
+            if not match:
+                raise ValueError(f"method does not end in an iteration count: {row['method']}")
+            iterations = int(match.group(1))
             physical = float(row["physical_residual_relative"])
             rows.append({
                 **row,
@@ -122,6 +128,7 @@ def main() -> None:
     ]
     summary = {
         "format": "local_psi_warm_start_analysis_v1",
+        "method_prefix": re.sub(r"\d+$", "", raw_rows[0]["method"]),
         "scale": manifest["scale"],
         "direction_count": manifest["direction_count"],
         "endpoint_count": len(endpoint_metadata),
@@ -160,7 +167,9 @@ def main() -> None:
     for axis in axes:
         axis.set_xlabel("CGLS iterations")
         axis.grid(True, alpha=0.25)
-    fig.suptitle("Full-grid48 warm-started endpoint fits at fixed h=0.005")
+    fig.suptitle(
+        f"Full-grid48 {summary['method_prefix']} endpoint fits at fixed h=0.005"
+    )
     fig.tight_layout()
     fig.savefig(args.output_dir / "warm_start_convergence.png", dpi=180)
     plt.close(fig)

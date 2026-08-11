@@ -587,6 +587,130 @@ private:
     DeviceBuffer<float> solution_;
 };
 
+class WarmCglsSolver {
+public:
+    WarmCglsSolver(Context& context, const std::vector<float>& initial_solution, int iterations)
+        : context_(context), iterations_(iterations), initial_solution_(context.n),
+          solution_(context.n), residual_(context.m), normal_(context.n),
+          direction_(context.n), image_(context.m) {
+        if (iterations_ < 0) throw std::runtime_error("warm CGLS iterations must be nonnegative");
+        if (initial_solution.size() != static_cast<std::size_t>(context.n)) {
+            throw std::runtime_error("warm CGLS initial solution has the wrong size");
+        }
+        check_cuda(cudaMemcpy(
+            initial_solution_.data(), initial_solution.data(),
+            initial_solution.size() * sizeof(float), cudaMemcpyHostToDevice
+        ), "copy warm CGLS initial solution");
+        check_cublas(cublasSetMathMode(context_.blas, CUBLAS_PEDANTIC_MATH),
+                     "set warm CGLS math mode");
+        check_cublas(cublasSetPointerMode(context_.blas, CUBLAS_POINTER_MODE_HOST),
+                     "set warm CGLS pointer mode");
+    }
+
+    ~WarmCglsSolver() { cublasSetMathMode(context_.blas, CUBLAS_DEFAULT_MATH); }
+
+    void run_once(Timings* timings) {
+        const float one = 1.0f;
+        const float minus_one = -1.0f;
+        const float zero = 0.0f;
+        const double restore = wall_ms([&] {
+            check_cuda(cudaMemcpy(
+                solution_.data(), initial_solution_.data(),
+                static_cast<std::size_t>(context_.n) * sizeof(float), cudaMemcpyDeviceToDevice
+            ), "restore warm CGLS solution");
+            check_cuda(cudaMemcpy(
+                residual_.data(), context_.rhs.data(),
+                static_cast<std::size_t>(context_.m) * sizeof(float), cudaMemcpyDeviceToDevice
+            ), "restore warm CGLS rhs");
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_N, context_.m, context_.n,
+                &minus_one, context_.matrix.data(), context_.m,
+                solution_.data(), 1, &one, residual_.data(), 1
+            ), "warm CGLS initial residual");
+            check_cublas(cublasSgemv(
+                context_.blas, CUBLAS_OP_T, context_.m, context_.n,
+                &one, context_.matrix.data(), context_.m,
+                residual_.data(), 1, &zero, normal_.data(), 1
+            ), "warm CGLS initial normal residual");
+            check_cublas(cublasScopy(
+                context_.blas, context_.n, normal_.data(), 1, direction_.data(), 1
+            ), "warm CGLS initial direction");
+        });
+
+        int completed = 0;
+        const double solve = wall_ms([&] {
+            float gamma = 0.0f;
+            check_cublas(cublasSdot(
+                context_.blas, context_.n, normal_.data(), 1, normal_.data(), 1, &gamma
+            ), "warm CGLS initial gamma");
+            for (int iteration = 0; iteration < iterations_; ++iteration) {
+                if (!(gamma > 0.0f) || !std::isfinite(gamma)) break;
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_N, context_.m, context_.n,
+                    &one, context_.matrix.data(), context_.m,
+                    direction_.data(), 1, &zero, image_.data(), 1
+                ), "warm CGLS A p");
+                float delta = 0.0f;
+                check_cublas(cublasSdot(
+                    context_.blas, context_.m, image_.data(), 1, image_.data(), 1, &delta
+                ), "warm CGLS delta");
+                if (!(delta > 0.0f) || !std::isfinite(delta)) break;
+                const float alpha = gamma / delta;
+                check_cublas(cublasSaxpy(
+                    context_.blas, context_.n, &alpha, direction_.data(), 1,
+                    solution_.data(), 1
+                ), "warm CGLS solution update");
+                const float minus_alpha = -alpha;
+                check_cublas(cublasSaxpy(
+                    context_.blas, context_.m, &minus_alpha, image_.data(), 1,
+                    residual_.data(), 1
+                ), "warm CGLS residual update");
+                check_cublas(cublasSgemv(
+                    context_.blas, CUBLAS_OP_T, context_.m, context_.n,
+                    &one, context_.matrix.data(), context_.m,
+                    residual_.data(), 1, &zero, normal_.data(), 1
+                ), "warm CGLS A^T r");
+                float gamma_new = 0.0f;
+                check_cublas(cublasSdot(
+                    context_.blas, context_.n, normal_.data(), 1, normal_.data(), 1,
+                    &gamma_new
+                ), "warm CGLS gamma");
+                ++completed;
+                if (!(gamma_new > 0.0f) || !std::isfinite(gamma_new)) break;
+                const float beta = gamma_new / gamma;
+                check_cublas(cublasSscal(
+                    context_.blas, context_.n, &beta, direction_.data(), 1
+                ), "warm CGLS direction scale");
+                check_cublas(cublasSaxpy(
+                    context_.blas, context_.n, &one, normal_.data(), 1,
+                    direction_.data(), 1
+                ), "warm CGLS direction update");
+                gamma = gamma_new;
+            }
+        });
+        if (timings) {
+            timings->restore_ms.push_back(restore);
+            timings->factor_ms.push_back(0.0);
+            timings->apply_ms.push_back(solve);
+            timings->triangular_ms.push_back(0.0);
+            timings->solve_ms.push_back(restore + solve);
+            timings->refinement_iterations.push_back(completed);
+        }
+    }
+
+    const float* solution() const { return solution_.data(); }
+
+private:
+    Context& context_;
+    int iterations_ = 0;
+    DeviceBuffer<float> initial_solution_;
+    DeviceBuffer<float> solution_;
+    DeviceBuffer<float> residual_;
+    DeviceBuffer<float> normal_;
+    DeviceBuffer<float> direction_;
+    DeviceBuffer<float> image_;
+};
+
 #ifdef SGPU_HAVE_MAGMA
 class MagmaSolver {
 public:
@@ -1479,6 +1603,7 @@ void print_result(
 
 struct Arguments {
     std::string snapshot;
+    std::string warm_snapshot;
     std::string method = "legacy";
     int device = 0;
     int warmups = 1;
@@ -1494,6 +1619,7 @@ Arguments parse_arguments(int argc, char** argv) {
             return argv[index];
         };
         if (key == "--snapshot") arguments.snapshot = value();
+        else if (key == "--warm-snapshot") arguments.warm_snapshot = value();
         else if (key == "--method") arguments.method = value();
         else if (key == "--device") arguments.device = std::stoi(value());
         else if (key == "--warmups") arguments.warmups = std::stoi(value());
@@ -1528,6 +1654,36 @@ int main(int argc, char** argv) {
                        "save reference solution");
         }
 
+        std::vector<float> warm_initial;
+        if (arguments.method.rfind("warmcgls", 0) == 0) {
+            if (arguments.warm_snapshot.empty()) {
+                throw std::runtime_error("warmcgls requires --warm-snapshot");
+            }
+            Snapshot warm_snapshot = read_snapshot(arguments.warm_snapshot);
+            if (warm_snapshot.header.cols != snapshot.header.cols) {
+                throw std::runtime_error("warm and endpoint snapshots have different column counts");
+            }
+            Context warm_context(warm_snapshot);
+            HouseholderSolver warm_reference(warm_context, false);
+            warm_reference.run_once(nullptr);
+            std::vector<float> warm_scaled(static_cast<std::size_t>(context.n));
+            check_cuda(cudaMemcpy(
+                warm_scaled.data(), warm_reference.solution(),
+                warm_scaled.size() * sizeof(float), cudaMemcpyDeviceToHost
+            ), "copy center QR solution");
+            warm_initial.resize(warm_scaled.size());
+            for (std::size_t index = 0; index < warm_initial.size(); ++index) {
+                const double center_scale = warm_snapshot.scale[index];
+                const double endpoint_scale = snapshot.scale[index];
+                if (!(center_scale > 0.0) || !(endpoint_scale > 0.0)) {
+                    throw std::runtime_error("warm or endpoint column scale is nonpositive");
+                }
+                warm_initial[index] = static_cast<float>(
+                    static_cast<double>(warm_scaled[index]) * endpoint_scale / center_scale
+                );
+            }
+        }
+
         Timings timings;
         ErrorMetrics error;
         if (arguments.method == "augmented_rhs") {
@@ -1560,6 +1716,12 @@ int main(int argc, char** argv) {
             const int iterations = std::stoi(arguments.method.substr(4));
             LsqrSolver solver(context, iterations);
             std::tie(timings, error) = benchmark_solver(context, solver, arguments.warmups, arguments.repeats);
+        } else if (arguments.method.rfind("warmcgls", 0) == 0) {
+            const int iterations = std::stoi(arguments.method.substr(9));
+            WarmCglsSolver solver(context, warm_initial, iterations);
+            std::tie(timings, error) = benchmark_solver(
+                context, solver, arguments.warmups, arguments.repeats
+            );
         }
 #ifdef SGPU_HAVE_MAGMA
         else if (arguments.method == "magma" || arguments.method == "magma3") {

@@ -68,6 +68,18 @@ struct CoilField {
     cusolverDnHandle_t solver = nullptr;
 };
 
+struct BatchCoilField {
+    int device_id = 0;
+    int query_count = 0;
+    int n_segments = 0;
+    float* d_x = nullptr;
+    float* d_y = nullptr;
+    float* d_z = nullptr;
+    float* d_wx = nullptr;
+    float* d_wy = nullptr;
+    float* d_wz = nullptr;
+};
+
 void set_error(const char* msg) { g_last_error = msg ? msg : ""; }
 void set_error(const std::string& msg) { g_last_error = msg; }
 
@@ -739,6 +751,95 @@ void generate_segments(
     }
 }
 
+__device__ void eval_fourier_device(
+    const double* coefficients,
+    int order,
+    double t,
+    double& value,
+    double& derivative
+) {
+    value = coefficients[0];
+    derivative = 0.0;
+    for (int mode = 1; mode <= order; ++mode) {
+        double sine = 0.0;
+        double cosine = 0.0;
+        sincos(TWOPI * static_cast<double>(mode) * t, &sine, &cosine);
+        const double sin_coefficient = coefficients[2 * mode - 1];
+        const double cos_coefficient = coefficients[2 * mode];
+        value += sin_coefficient * sine + cos_coefficient * cosine;
+        derivative += TWOPI * static_cast<double>(mode) *
+            (sin_coefficient * cosine - cos_coefficient * sine);
+    }
+}
+
+__global__ void generate_segment_batch_kernel(
+    const double* __restrict__ coeffs_x,
+    const double* __restrict__ coeffs_y,
+    const double* __restrict__ coeffs_z,
+    const double* __restrict__ currents,
+    int query_count,
+    int nbase,
+    int ncoeff,
+    int nfp,
+    int segments_per_coil,
+    int segments_per_query,
+    float* __restrict__ x,
+    float* __restrict__ y,
+    float* __restrict__ z,
+    float* __restrict__ wx,
+    float* __restrict__ wy,
+    float* __restrict__ wz
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const size_t total = static_cast<size_t>(query_count) * segments_per_query;
+    if (flat >= total) return;
+    const int query = static_cast<int>(flat / segments_per_query);
+    int local = static_cast<int>(flat - static_cast<size_t>(query) * segments_per_query);
+    const int image = local % (2 * nfp);
+    local /= 2 * nfp;
+    const int segment = local % segments_per_coil;
+    const int coil = local / segments_per_coil;
+    const int period_index = image / 2;
+    const bool reflected = (image & 1) != 0;
+    const size_t coefficient_offset =
+        (static_cast<size_t>(query) * nbase + coil) * ncoeff;
+    const double t = (static_cast<double>(segment) + 0.5) /
+        static_cast<double>(segments_per_coil);
+    const int order = (ncoeff - 1) / 2;
+    double px = 0.0, py = 0.0, pz = 0.0;
+    double vx = 0.0, vy = 0.0, vz = 0.0;
+    eval_fourier_device(coeffs_x + coefficient_offset, order, t, px, vx);
+    eval_fourier_device(coeffs_y + coefficient_offset, order, t, py, vy);
+    eval_fourier_device(coeffs_z + coefficient_offset, order, t, pz, vz);
+    const double segment_scale = 1.0 / static_cast<double>(segments_per_coil);
+    vx *= segment_scale;
+    vy *= segment_scale;
+    vz *= segment_scale;
+    double current = currents[static_cast<size_t>(query) * nbase + coil];
+    if (reflected) {
+        py = -py;
+        pz = -pz;
+        vy = -vy;
+        vz = -vz;
+        current = -current;
+    }
+    const double angle = TWOPI * static_cast<double>(period_index) /
+        static_cast<double>(nfp);
+    double sine = 0.0;
+    double cosine = 0.0;
+    sincos(angle, &sine, &cosine);
+    const double rx = cosine * px - sine * py;
+    const double ry = sine * px + cosine * py;
+    const double rvx = cosine * vx - sine * vy;
+    const double rvy = sine * vx + cosine * vy;
+    x[flat] = static_cast<float>(rx);
+    y[flat] = static_cast<float>(ry);
+    z[flat] = static_cast<float>(pz);
+    wx[flat] = static_cast<float>(current * rvx);
+    wy[flat] = static_cast<float>(current * rvy);
+    wz[flat] = static_cast<float>(current * vz);
+}
+
 template <typename T>
 int copy_to_device(T** dst, const std::vector<T>& src, const char* name) {
     if (cuda_check(cudaMalloc(reinterpret_cast<void**>(dst), src.size() * sizeof(T)), name)) return 1;
@@ -1005,6 +1106,234 @@ __global__ void eval_B_grad_kernel(
         B[3 * point + 2] = accum[2];
         for (int component = 0; component < 9; ++component) {
             grad_B[9 * point + component] = accum[3 + component];
+        }
+    }
+}
+
+template <bool WITH_GRADIENT>
+__global__ void eval_B_batch_f32_kernel(
+    const float* __restrict__ seg_x,
+    const float* __restrict__ seg_y,
+    const float* __restrict__ seg_z,
+    const float* __restrict__ seg_wx,
+    const float* __restrict__ seg_wy,
+    const float* __restrict__ seg_wz,
+    int nseg,
+    const float* __restrict__ xyz,
+    float* __restrict__ B,
+    float* __restrict__ grad_B,
+    int points_per_query,
+    int blocks_per_query
+) {
+    extern __shared__ float shared[];
+    float* sx = shared;
+    float* sy = sx + SEG_TILE;
+    float* sz = sy + SEG_TILE;
+    float* swx = sz + SEG_TILE;
+    float* swy = swx + SEG_TILE;
+    float* swz = swy + SEG_TILE;
+
+    const int query = blockIdx.x / blocks_per_query;
+    const int query_block = blockIdx.x - query * blocks_per_query;
+    const int lane = threadIdx.x & (WARP_SIZE - 1);
+    const int point = query_block * WARPS_PER_BLOCK + threadIdx.x / WARP_SIZE;
+    const bool valid = point < points_per_query;
+    const size_t point_index = static_cast<size_t>(query) * points_per_query + point;
+    const size_t segment_offset = static_cast<size_t>(query) * nseg;
+    const float px = valid ? xyz[3 * point_index] : 0.0f;
+    const float py = valid ? xyz[3 * point_index + 1] : 0.0f;
+    const float pz = valid ? xyz[3 * point_index + 2] : 0.0f;
+    float accum[12] = {};
+
+    for (int base = 0; base < nseg; base += SEG_TILE) {
+        const int count = min(SEG_TILE, nseg - base);
+        for (int item = threadIdx.x; item < count; item += blockDim.x) {
+            const size_t source = segment_offset + base + item;
+            sx[item] = seg_x[source];
+            sy[item] = seg_y[source];
+            sz[item] = seg_z[source];
+            swx[item] = seg_wx[source];
+            swy[item] = seg_wy[source];
+            swz[item] = seg_wz[source];
+        }
+        __syncthreads();
+        if (valid) {
+            for (int item = lane; item < count; item += WARP_SIZE) {
+                const float rx = px - sx[item];
+                const float ry = py - sy[item];
+                const float rz = pz - sz[item];
+                const float r2 = rx * rx + ry * ry + rz * rz + 1.0e-30f;
+                const float invr = rsqrtf(r2);
+                const float invr2 = invr * invr;
+                const float invr3 = invr * invr2;
+                const float wx_value = swx[item];
+                const float wy_value = swy[item];
+                const float wz_value = swz[item];
+                const float ux = wy_value * rz - wz_value * ry;
+                const float uy = wz_value * rx - wx_value * rz;
+                const float uz = wx_value * ry - wy_value * rx;
+                accum[0] += ux * invr3;
+                accum[1] += uy * invr3;
+                accum[2] += uz * invr3;
+                if constexpr (WITH_GRADIENT) {
+                    const float invr5 = invr3 * invr2;
+                    const float common_x = -3.0f * rx * invr5;
+                    const float common_y = -3.0f * ry * invr5;
+                    const float common_z = -3.0f * rz * invr5;
+                    accum[3] += ux * common_x;
+                    accum[4] += -wz_value * invr3 + ux * common_y;
+                    accum[5] += wy_value * invr3 + ux * common_z;
+                    accum[6] += wz_value * invr3 + uy * common_x;
+                    accum[7] += uy * common_y;
+                    accum[8] += -wx_value * invr3 + uy * common_z;
+                    accum[9] += -wy_value * invr3 + uz * common_x;
+                    accum[10] += wx_value * invr3 + uz * common_y;
+                    accum[11] += uz * common_z;
+                }
+            }
+        }
+        __syncthreads();
+    }
+    const int component_count = WITH_GRADIENT ? 12 : 3;
+    for (int component = 0; component < component_count; ++component) {
+        accum[component] = warp_sum_t(accum[component]) *
+            static_cast<float>(MU0_OVER_4PI);
+    }
+    if (valid && lane == 0) {
+        B[3 * point_index] = accum[0];
+        B[3 * point_index + 1] = accum[1];
+        B[3 * point_index + 2] = accum[2];
+        if constexpr (WITH_GRADIENT) {
+            for (int component = 0; component < 9; ++component) {
+                grad_B[9 * point_index + component] = accum[3 + component];
+            }
+        }
+    }
+}
+
+__global__ void trace_period_batch_mixed_kernel(
+    const float* __restrict__ seg_x,
+    const float* __restrict__ seg_y,
+    const float* __restrict__ seg_z,
+    const float* __restrict__ seg_wx,
+    const float* __restrict__ seg_wy,
+    const float* __restrict__ seg_wz,
+    int nseg,
+    const double* __restrict__ R0,
+    const double* __restrict__ Z0,
+    double* __restrict__ R1,
+    double* __restrict__ Z1,
+    int lines_per_query,
+    int nfp,
+    int steps
+) {
+    extern __shared__ float shared[];
+    const int query = blockIdx.x / lines_per_query;
+    const int line = blockIdx.x - query * lines_per_query;
+    const size_t line_index = static_cast<size_t>(query) * lines_per_query + line;
+    const size_t segment_offset = static_cast<size_t>(query) * nseg;
+    double R = R0[line_index];
+    double Z = Z0[line_index];
+    const double period = TWOPI / static_cast<double>(nfp);
+    const double h = period / static_cast<double>(steps);
+    for (int step = 0; step < steps; ++step) {
+        const double phi = h * static_cast<double>(step);
+        double k1r, k1z, k2r, k2z, k3r, k3z, k4r, k4z;
+        rhs_cyl_block_bf32_state64(
+            R, Z, phi, seg_x + segment_offset, seg_y + segment_offset,
+            seg_z + segment_offset, seg_wx + segment_offset,
+            seg_wy + segment_offset, seg_wz + segment_offset, nseg, shared, k1r, k1z
+        );
+        rhs_cyl_block_bf32_state64(
+            R + 0.5 * h * k1r, Z + 0.5 * h * k1z, phi + 0.5 * h,
+            seg_x + segment_offset, seg_y + segment_offset, seg_z + segment_offset,
+            seg_wx + segment_offset, seg_wy + segment_offset, seg_wz + segment_offset,
+            nseg, shared, k2r, k2z
+        );
+        rhs_cyl_block_bf32_state64(
+            R + 0.5 * h * k2r, Z + 0.5 * h * k2z, phi + 0.5 * h,
+            seg_x + segment_offset, seg_y + segment_offset, seg_z + segment_offset,
+            seg_wx + segment_offset, seg_wy + segment_offset, seg_wz + segment_offset,
+            nseg, shared, k3r, k3z
+        );
+        rhs_cyl_block_bf32_state64(
+            R + h * k3r, Z + h * k3z, phi + h,
+            seg_x + segment_offset, seg_y + segment_offset, seg_z + segment_offset,
+            seg_wx + segment_offset, seg_wy + segment_offset, seg_wz + segment_offset,
+            nseg, shared, k4r, k4z
+        );
+        R += (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r);
+        Z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z);
+    }
+    if (threadIdx.x == 0) {
+        R1[line_index] = R;
+        Z1[line_index] = Z;
+    }
+}
+
+__global__ void trace_axis_samples_batch_kernel(
+    const float* __restrict__ seg_x,
+    const float* __restrict__ seg_y,
+    const float* __restrict__ seg_z,
+    const float* __restrict__ seg_wx,
+    const float* __restrict__ seg_wy,
+    const float* __restrict__ seg_wz,
+    int nseg,
+    const double* __restrict__ R0,
+    const double* __restrict__ Z0,
+    int nfp,
+    int substeps_per_sample,
+    int sample_count,
+    double* __restrict__ R_out,
+    double* __restrict__ Z_out,
+    double* __restrict__ R_phi_out,
+    double* __restrict__ Z_phi_out
+) {
+    extern __shared__ float shared[];
+    const int query = blockIdx.x;
+    const size_t segment_offset = static_cast<size_t>(query) * nseg;
+    double R = R0[query];
+    double Z = Z0[query];
+    const int total_steps = sample_count * substeps_per_sample;
+    const double period = TWOPI / static_cast<double>(nfp);
+    const double h = period / static_cast<double>(total_steps);
+    for (int sample = 0; sample < sample_count; ++sample) {
+        for (int substep = 0; substep < substeps_per_sample; ++substep) {
+            const int step = sample * substeps_per_sample + substep;
+            const double phi = h * static_cast<double>(step);
+            double k1r, k1z, k2r, k2z, k3r, k3z, k4r, k4z;
+            rhs_cyl_block_bf32_state64(
+                R, Z, phi, seg_x + segment_offset, seg_y + segment_offset,
+                seg_z + segment_offset, seg_wx + segment_offset,
+                seg_wy + segment_offset, seg_wz + segment_offset, nseg, shared, k1r, k1z
+            );
+            if (substep == 0 && threadIdx.x == 0) {
+                const size_t output = static_cast<size_t>(query) * sample_count + sample;
+                R_out[output] = R;
+                Z_out[output] = Z;
+                R_phi_out[output] = k1r;
+                Z_phi_out[output] = k1z;
+            }
+            rhs_cyl_block_bf32_state64(
+                R + 0.5 * h * k1r, Z + 0.5 * h * k1z, phi + 0.5 * h,
+                seg_x + segment_offset, seg_y + segment_offset, seg_z + segment_offset,
+                seg_wx + segment_offset, seg_wy + segment_offset, seg_wz + segment_offset,
+                nseg, shared, k2r, k2z
+            );
+            rhs_cyl_block_bf32_state64(
+                R + 0.5 * h * k2r, Z + 0.5 * h * k2z, phi + 0.5 * h,
+                seg_x + segment_offset, seg_y + segment_offset, seg_z + segment_offset,
+                seg_wx + segment_offset, seg_wy + segment_offset, seg_wz + segment_offset,
+                nseg, shared, k3r, k3z
+            );
+            rhs_cyl_block_bf32_state64(
+                R + h * k3r, Z + h * k3z, phi + h,
+                seg_x + segment_offset, seg_y + segment_offset, seg_z + segment_offset,
+                seg_wx + segment_offset, seg_wy + segment_offset, seg_wz + segment_offset,
+                nseg, shared, k4r, k4z
+            );
+            R += (h / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r);
+            Z += (h / 6.0) * (k1z + 2.0 * k2z + 2.0 * k3z + k4z);
         }
     }
 }
@@ -1968,6 +2297,308 @@ int sgpu_create_field(
         set_error(e.what());
         return 1;
     }
+}
+
+int sgpu_create_field_batch_f32(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    int segments_per_coil,
+    int device_id,
+    void** out_handle
+) {
+    if (!out_handle) {
+        set_error("batch field out_handle is null");
+        return 1;
+    }
+    *out_handle = nullptr;
+    if (!coeffs_x || !coeffs_y || !coeffs_z || !currents_a || query_count <= 0 ||
+        n_base_coils <= 0 || n_coeff <= 0 || (n_coeff & 1) == 0 || nfp <= 0 ||
+        segments_per_coil <= 0) {
+        set_error("invalid batch field dimensions");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(device_id), "batch field cudaSetDevice")) return 1;
+    BatchCoilField* field = new BatchCoilField();
+    field->device_id = device_id;
+    field->query_count = query_count;
+    field->n_segments = n_base_coils * 2 * nfp * segments_per_coil;
+    const size_t coefficient_count = static_cast<size_t>(query_count) * n_base_coils * n_coeff;
+    const size_t current_count = static_cast<size_t>(query_count) * n_base_coils;
+    const size_t segment_count = static_cast<size_t>(query_count) * field->n_segments;
+    double* d_coeffs_x = nullptr;
+    double* d_coeffs_y = nullptr;
+    double* d_coeffs_z = nullptr;
+    double* d_currents = nullptr;
+    auto cleanup_inputs = [&] {
+        cudaFree(d_coeffs_x);
+        cudaFree(d_coeffs_y);
+        cudaFree(d_coeffs_z);
+        cudaFree(d_currents);
+    };
+    auto allocate = [](void** pointer, size_t bytes) {
+        return cuda_check(cudaMalloc(pointer, bytes), "batch field allocation") == 0;
+    };
+    if (!allocate(reinterpret_cast<void**>(&d_coeffs_x), coefficient_count * sizeof(double)) ||
+        !allocate(reinterpret_cast<void**>(&d_coeffs_y), coefficient_count * sizeof(double)) ||
+        !allocate(reinterpret_cast<void**>(&d_coeffs_z), coefficient_count * sizeof(double)) ||
+        !allocate(reinterpret_cast<void**>(&d_currents), current_count * sizeof(double)) ||
+        !allocate(reinterpret_cast<void**>(&field->d_x), segment_count * sizeof(float)) ||
+        !allocate(reinterpret_cast<void**>(&field->d_y), segment_count * sizeof(float)) ||
+        !allocate(reinterpret_cast<void**>(&field->d_z), segment_count * sizeof(float)) ||
+        !allocate(reinterpret_cast<void**>(&field->d_wx), segment_count * sizeof(float)) ||
+        !allocate(reinterpret_cast<void**>(&field->d_wy), segment_count * sizeof(float)) ||
+        !allocate(reinterpret_cast<void**>(&field->d_wz), segment_count * sizeof(float))) {
+        cleanup_inputs();
+        sgpu_destroy_field_batch(field);
+        return 1;
+    }
+    const size_t coefficient_bytes = coefficient_count * sizeof(double);
+    const size_t current_bytes = current_count * sizeof(double);
+    if (cuda_check(cudaMemcpy(d_coeffs_x, coeffs_x, coefficient_bytes, cudaMemcpyHostToDevice), "batch copy coeffs_x") ||
+        cuda_check(cudaMemcpy(d_coeffs_y, coeffs_y, coefficient_bytes, cudaMemcpyHostToDevice), "batch copy coeffs_y") ||
+        cuda_check(cudaMemcpy(d_coeffs_z, coeffs_z, coefficient_bytes, cudaMemcpyHostToDevice), "batch copy coeffs_z") ||
+        cuda_check(cudaMemcpy(d_currents, currents_a, current_bytes, cudaMemcpyHostToDevice), "batch copy currents")) {
+        cleanup_inputs();
+        sgpu_destroy_field_batch(field);
+        return 1;
+    }
+    constexpr int threads = 256;
+    const int blocks = static_cast<int>((segment_count + threads - 1) / threads);
+    generate_segment_batch_kernel<<<blocks, threads>>>(
+        d_coeffs_x, d_coeffs_y, d_coeffs_z, d_currents, query_count,
+        n_base_coils, n_coeff, nfp, segments_per_coil, field->n_segments,
+        field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz
+    );
+    const bool failed =
+        cuda_check(cudaGetLastError(), "batch segment generation") ||
+        cuda_check(cudaDeviceSynchronize(), "batch segment generation sync");
+    cleanup_inputs();
+    if (failed) {
+        sgpu_destroy_field_batch(field);
+        return 1;
+    }
+    *out_handle = field;
+    set_error("");
+    return 0;
+}
+
+void sgpu_destroy_field_batch(void* handle) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field) return;
+    cudaSetDevice(field->device_id);
+    cudaFree(field->d_x);
+    cudaFree(field->d_y);
+    cudaFree(field->d_z);
+    cudaFree(field->d_wx);
+    cudaFree(field->d_wy);
+    cudaFree(field->d_wz);
+    delete field;
+}
+
+int sgpu_batch_eval_B_f32(
+    void* handle,
+    const float* xyz_host,
+    float* B_host,
+    int points_per_query
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !xyz_host || !B_host || points_per_query <= 0) {
+        set_error("invalid batch eval_B arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "batch eval_B cudaSetDevice")) return 1;
+    const size_t point_count = static_cast<size_t>(field->query_count) * points_per_query;
+    const size_t vector_bytes = point_count * 3 * sizeof(float);
+    float* d_xyz = nullptr;
+    float* d_B = nullptr;
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_xyz), vector_bytes), "batch eval_B xyz allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_B), vector_bytes), "batch eval_B output allocation")) {
+        cudaFree(d_xyz);
+        cudaFree(d_B);
+        return 1;
+    }
+    const int blocks_per_query = (points_per_query + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    const bool failed =
+        cuda_check(cudaMemcpy(d_xyz, xyz_host, vector_bytes, cudaMemcpyHostToDevice), "batch eval_B input copy") ||
+        (eval_B_batch_f32_kernel<false><<<field->query_count * blocks_per_query, THREADS_PER_BLOCK, shared_bytes>>>(
+            field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz,
+            field->n_segments, d_xyz, d_B, nullptr, points_per_query, blocks_per_query
+        ), false) ||
+        cuda_check(cudaGetLastError(), "batch eval_B kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "batch eval_B sync") ||
+        cuda_check(cudaMemcpy(B_host, d_B, vector_bytes, cudaMemcpyDeviceToHost), "batch eval_B output copy");
+    cudaFree(d_xyz);
+    cudaFree(d_B);
+    if (failed) return 1;
+    set_error("");
+    return 0;
+}
+
+int sgpu_batch_eval_B_grad_f32(
+    void* handle,
+    const float* xyz_host,
+    float* B_host,
+    float* grad_B_host,
+    int points_per_query
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !xyz_host || !B_host || !grad_B_host || points_per_query <= 0) {
+        set_error("invalid batch eval_B_grad arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "batch eval_B_grad cudaSetDevice")) return 1;
+    const size_t point_count = static_cast<size_t>(field->query_count) * points_per_query;
+    const size_t vector_bytes = point_count * 3 * sizeof(float);
+    const size_t gradient_bytes = point_count * 9 * sizeof(float);
+    float* d_xyz = nullptr;
+    float* d_B = nullptr;
+    float* d_grad_B = nullptr;
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_xyz), vector_bytes), "batch eval_B_grad xyz allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_B), vector_bytes), "batch eval_B_grad B allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_grad_B), gradient_bytes), "batch eval_B_grad gradient allocation")) {
+        cudaFree(d_xyz);
+        cudaFree(d_B);
+        cudaFree(d_grad_B);
+        return 1;
+    }
+    const int blocks_per_query = (points_per_query + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    const bool failed =
+        cuda_check(cudaMemcpy(d_xyz, xyz_host, vector_bytes, cudaMemcpyHostToDevice), "batch eval_B_grad input copy") ||
+        (eval_B_batch_f32_kernel<true><<<field->query_count * blocks_per_query, THREADS_PER_BLOCK, shared_bytes>>>(
+            field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz,
+            field->n_segments, d_xyz, d_B, d_grad_B, points_per_query, blocks_per_query
+        ), false) ||
+        cuda_check(cudaGetLastError(), "batch eval_B_grad kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "batch eval_B_grad sync") ||
+        cuda_check(cudaMemcpy(B_host, d_B, vector_bytes, cudaMemcpyDeviceToHost), "batch eval_B_grad B copy") ||
+        cuda_check(cudaMemcpy(grad_B_host, d_grad_B, gradient_bytes, cudaMemcpyDeviceToHost), "batch eval_B_grad gradient copy");
+    cudaFree(d_xyz);
+    cudaFree(d_B);
+    cudaFree(d_grad_B);
+    if (failed) return 1;
+    set_error("");
+    return 0;
+}
+
+int sgpu_batch_trace_period_mixed(
+    void* handle,
+    const double* R0_host,
+    const double* Z0_host,
+    double* R1_host,
+    double* Z1_host,
+    int lines_per_query,
+    int nfp,
+    int steps
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !R0_host || !Z0_host || !R1_host || !Z1_host ||
+        lines_per_query <= 0 || nfp <= 0 || steps <= 0) {
+        set_error("invalid batch trace-period arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "batch trace cudaSetDevice")) return 1;
+    const size_t line_count = static_cast<size_t>(field->query_count) * lines_per_query;
+    const size_t bytes = line_count * sizeof(double);
+    double* d_R0 = nullptr;
+    double* d_Z0 = nullptr;
+    double* d_R1 = nullptr;
+    double* d_Z1 = nullptr;
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R0), bytes), "batch trace R0 allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z0), bytes), "batch trace Z0 allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R1), bytes), "batch trace R1 allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z1), bytes), "batch trace Z1 allocation")) {
+        cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
+        return 1;
+    }
+    constexpr int threads = 64;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE * 6 + threads * 3) * sizeof(float);
+    const bool failed =
+        cuda_check(cudaMemcpy(d_R0, R0_host, bytes, cudaMemcpyHostToDevice), "batch trace R0 copy") ||
+        cuda_check(cudaMemcpy(d_Z0, Z0_host, bytes, cudaMemcpyHostToDevice), "batch trace Z0 copy") ||
+        (trace_period_batch_mixed_kernel<<<static_cast<int>(line_count), threads, shared_bytes>>>(
+            field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz,
+            field->n_segments, d_R0, d_Z0, d_R1, d_Z1, lines_per_query, nfp, steps
+        ), false) ||
+        cuda_check(cudaGetLastError(), "batch trace kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "batch trace sync") ||
+        cuda_check(cudaMemcpy(R1_host, d_R1, bytes, cudaMemcpyDeviceToHost), "batch trace R1 copy") ||
+        cuda_check(cudaMemcpy(Z1_host, d_Z1, bytes, cudaMemcpyDeviceToHost), "batch trace Z1 copy");
+    cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R1); cudaFree(d_Z1);
+    if (failed) return 1;
+    set_error("");
+    return 0;
+}
+
+int sgpu_batch_trace_axis_samples(
+    void* handle,
+    const double* R0_host,
+    const double* Z0_host,
+    int nfp,
+    int integration_steps,
+    int sample_count,
+    double* R_host,
+    double* Z_host,
+    double* R_phi_host,
+    double* Z_phi_host
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !R0_host || !Z0_host || !R_host || !Z_host || !R_phi_host ||
+        !Z_phi_host || nfp <= 0 || integration_steps <= 0 || sample_count <= 0 ||
+        integration_steps % sample_count != 0) {
+        set_error("invalid batch axis-sample arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "batch axis cudaSetDevice")) return 1;
+    const size_t input_bytes = static_cast<size_t>(field->query_count) * sizeof(double);
+    const size_t output_count = static_cast<size_t>(field->query_count) * sample_count;
+    const size_t output_bytes = output_count * sizeof(double);
+    double* d_R0 = nullptr;
+    double* d_Z0 = nullptr;
+    double* d_R = nullptr;
+    double* d_Z = nullptr;
+    double* d_R_phi = nullptr;
+    double* d_Z_phi = nullptr;
+    auto cleanup = [&] {
+        cudaFree(d_R0); cudaFree(d_Z0); cudaFree(d_R); cudaFree(d_Z);
+        cudaFree(d_R_phi); cudaFree(d_Z_phi);
+    };
+    if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R0), input_bytes), "batch axis R0 allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z0), input_bytes), "batch axis Z0 allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R), output_bytes), "batch axis R allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z), output_bytes), "batch axis Z allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_R_phi), output_bytes), "batch axis R_phi allocation") ||
+        cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_Z_phi), output_bytes), "batch axis Z_phi allocation")) {
+        cleanup();
+        return 1;
+    }
+    constexpr int threads = 64;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE * 6 + threads * 3) * sizeof(float);
+    const bool failed =
+        cuda_check(cudaMemcpy(d_R0, R0_host, input_bytes, cudaMemcpyHostToDevice), "batch axis R0 copy") ||
+        cuda_check(cudaMemcpy(d_Z0, Z0_host, input_bytes, cudaMemcpyHostToDevice), "batch axis Z0 copy") ||
+        (trace_axis_samples_batch_kernel<<<field->query_count, threads, shared_bytes>>>(
+            field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz,
+            field->n_segments, d_R0, d_Z0, nfp, integration_steps / sample_count,
+            sample_count, d_R, d_Z, d_R_phi, d_Z_phi
+        ), false) ||
+        cuda_check(cudaGetLastError(), "batch axis kernel") ||
+        cuda_check(cudaDeviceSynchronize(), "batch axis sync") ||
+        cuda_check(cudaMemcpy(R_host, d_R, output_bytes, cudaMemcpyDeviceToHost), "batch axis R copy") ||
+        cuda_check(cudaMemcpy(Z_host, d_Z, output_bytes, cudaMemcpyDeviceToHost), "batch axis Z copy") ||
+        cuda_check(cudaMemcpy(R_phi_host, d_R_phi, output_bytes, cudaMemcpyDeviceToHost), "batch axis R_phi copy") ||
+        cuda_check(cudaMemcpy(Z_phi_host, d_Z_phi, output_bytes, cudaMemcpyDeviceToHost), "batch axis Z_phi copy");
+    cleanup();
+    if (failed) return 1;
+    set_error("");
+    return 0;
 }
 
 void sgpu_destroy_field(void* handle) {

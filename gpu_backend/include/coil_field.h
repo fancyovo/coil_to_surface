@@ -500,6 +500,64 @@ int sgpu_create_field(
     void** out_handle
 );
 
+// Experimental query-major FP32 field used by the local full-gradient oracle.
+// Coefficients are flattened as [query][coil][coefficient]. All point and line
+// arrays passed to the batch operations are flattened as [query][item][...].
+int sgpu_create_field_batch_f32(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int query_count,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    int segments_per_coil,
+    int device_id,
+    void** out_handle
+);
+
+void sgpu_destroy_field_batch(void* handle);
+
+int sgpu_batch_eval_B_f32(
+    void* handle,
+    const float* xyz_host,
+    float* B_host,
+    int points_per_query
+);
+
+int sgpu_batch_eval_B_grad_f32(
+    void* handle,
+    const float* xyz_host,
+    float* B_host,
+    float* grad_B_host,
+    int points_per_query
+);
+
+int sgpu_batch_trace_period_mixed(
+    void* handle,
+    const double* R0_host,
+    const double* Z0_host,
+    double* R1_host,
+    double* Z1_host,
+    int lines_per_query,
+    int nfp,
+    int steps
+);
+
+int sgpu_batch_trace_axis_samples(
+    void* handle,
+    const double* R0_host,
+    const double* Z0_host,
+    int nfp,
+    int integration_steps,
+    int sample_count,
+    double* R_host,
+    double* Z_host,
+    double* R_phi_host,
+    double* Z_phi_host
+);
+
 void sgpu_destroy_field(void* handle);
 
 int sgpu_segment_count(void* handle);

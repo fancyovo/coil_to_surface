@@ -18,6 +18,7 @@ CANDIDATE_DIR="${CANDIDATE_DIR:-$HOME/local_surface_evaluator/runs/local_score_g
 RUN_ROOT="${RUN_ROOT:-$HOME/local_surface_evaluator/runs/local_psi_warm_score_20260811}"
 BUILD_DIR="${BUILD_DIR:-$PROJECT/build_psi_warm_score}"
 CUDA_ROOT="${CUDA_ROOT:-/public/app/cuda/13.0}"
+ITERATIONS="${ITERATIONS:-0,2,4,8,16}"
 
 export PATH="$CUDA_ROOT/bin:$PATH"
 export LD_LIBRARY_PATH="$CUDA_ROOT/lib64:${LD_LIBRARY_PATH:-}"
@@ -42,7 +43,7 @@ python "$PROJECT/scripts/evaluate_local_psi_warm_score.py" \
     --lib "$BUILD_DIR/libstellarator_gpu.so" \
     --output-dir "$RUN_ROOT/results" \
     --scale 0.005 \
-    --iterations 0,2,4,8,16
+    --iterations "$ITERATIONS"
 
 git -C "$PROJECT" rev-parse HEAD > "$RUN_ROOT/git_head.txt"
 sha256sum "$BUILD_DIR/libstellarator_gpu.so" > "$RUN_ROOT/library.sha256"

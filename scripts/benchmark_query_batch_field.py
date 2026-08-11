@@ -128,6 +128,18 @@ def main() -> None:
         center_capture, center_capture_wall_s = timed(lambda: batch.capture_psi_center(
             center_x, center_y, center_z, center_current,
             target_helicity=(1, nfp),
+            config_overrides={
+                "iota_degree": 3,
+                "surface_selection_mode": 1,
+                "surface_confidence_periods": 1,
+                "surface_theta_count": 128,
+                "surface_trace_steps": 400,
+                "surface_flux_bisection_iters": 6,
+                "axis_hint_enabled": 1,
+                "axis_hint_require_continuation": 2,
+                "axis_hint_R": float(center["axis_R"]),
+                "axis_hint_Z": float(center["axis_Z"]),
+            },
         ))
         batch_B, eval_B_wall_s = timed(lambda: batch.eval_B(points))
         (batch_B_grad, batch_gradient), eval_B_grad_wall_s = timed(

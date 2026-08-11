@@ -6281,14 +6281,16 @@ __global__ void local_batch_alpha_delta_kernel(
         const float value = direction[static_cast<size_t>(query) * column_count + column];
         sum += ridge * value * value;
     }
-    extern __shared__ float shared[];
-    shared[threadIdx.x] = sum;
+    extern __shared__ float local_shared_float[];
+    local_shared_float[threadIdx.x] = sum;
     __syncthreads();
     for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (threadIdx.x < stride) shared[threadIdx.x] += shared[threadIdx.x + stride];
+        if (threadIdx.x < stride) {
+            local_shared_float[threadIdx.x] += local_shared_float[threadIdx.x + stride];
+        }
         __syncthreads();
     }
-    if (threadIdx.x == 0) delta[query] = shared[0];
+    if (threadIdx.x == 0) delta[query] = local_shared_float[0];
 }
 
 __global__ void local_batch_column_norm_kernel(
@@ -6304,14 +6306,16 @@ __global__ void local_batch_column_norm_kernel(
         const float value = values[static_cast<size_t>(column) * rows + row];
         sum += value * value;
     }
-    extern __shared__ float shared[];
-    shared[threadIdx.x] = sum;
+    extern __shared__ float local_shared_float[];
+    local_shared_float[threadIdx.x] = sum;
     __syncthreads();
     for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (threadIdx.x < stride) shared[threadIdx.x] += shared[threadIdx.x + stride];
+        if (threadIdx.x < stride) {
+            local_shared_float[threadIdx.x] += local_shared_float[threadIdx.x + stride];
+        }
         __syncthreads();
     }
-    if (threadIdx.x == 0) norms[column] = shared[0];
+    if (threadIdx.x == 0) norms[column] = local_shared_float[0];
 }
 
 __global__ void local_batch_direction_update_kernel(

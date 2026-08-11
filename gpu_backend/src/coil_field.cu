@@ -40,6 +40,15 @@ constexpr int SURFACE_THREADS = 64;
 
 thread_local std::string g_last_error;
 
+struct PsiWarmPreconditionerCache {
+    bool capture_enabled = false;
+    int coefficient_count = 0;
+    std::vector<float> upper_factor;
+    std::vector<double> center_scale;
+};
+
+thread_local PsiWarmPreconditionerCache g_psi_warm_preconditioner;
+
 struct CoilField {
     int device_id = 0;
     int n_segments = 0;
@@ -1420,6 +1429,11 @@ __global__ void scale_coeff_kernel_f32(float* coeff, const double* scale, int n)
     if (i < n) coeff[i] *= static_cast<float>(scale[i]);
 }
 
+__global__ void scale_coeff_float_kernel(float* coeff, const float* scale, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) coeff[i] *= scale[i];
+}
+
 template <typename T>
 __global__ void axpy_negative_kernel(const T* x, const T* y, T* out, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2341,6 +2355,29 @@ int sgpu_normal_eq_f32(
     return 0;
 }
 
+int sgpu_set_psi_warm_preconditioner_capture(int enabled) {
+    g_psi_warm_preconditioner.capture_enabled = enabled != 0;
+    if (enabled) {
+        g_psi_warm_preconditioner.coefficient_count = 0;
+        g_psi_warm_preconditioner.upper_factor.clear();
+        g_psi_warm_preconditioner.center_scale.clear();
+    }
+    set_error("");
+    return 0;
+}
+
+int sgpu_has_psi_warm_preconditioner(int coefficient_count) {
+    return coefficient_count > 0 &&
+        g_psi_warm_preconditioner.coefficient_count == coefficient_count &&
+        g_psi_warm_preconditioner.upper_factor.size() ==
+            static_cast<size_t>(coefficient_count) * coefficient_count &&
+        g_psi_warm_preconditioner.center_scale.size() == static_cast<size_t>(coefficient_count);
+}
+
+void sgpu_clear_psi_warm_preconditioner() {
+    g_psi_warm_preconditioner = PsiWarmPreconditionerCache{};
+}
+
 int sgpu_fit_psi_fullgpu(
     void* handle,
     const double* R_host,
@@ -2388,8 +2425,11 @@ int sgpu_fit_psi_fullgpu(
         set_error("n_coeff does not match poly_degree/m_tor");
         return 1;
     }
+    const bool warm_preconditioned = solver_mode >= 2000;
     const bool warm_solver = solver_mode >= 1000;
-    const int warm_iterations = warm_solver ? solver_mode - 1000 : 0;
+    const int warm_iterations = warm_solver
+        ? solver_mode - (warm_preconditioned ? 2000 : 1000)
+        : 0;
     if (solver_mode != 1 && solver_mode != 2 && !warm_solver) {
         set_error("solver_mode must be 1 (normal_eq), 2 (qr), or an experimental warm mode");
         return 1;
@@ -2423,6 +2463,8 @@ int sgpu_fit_psi_fullgpu(
     float *d_qr_mat_f = nullptr, *d_qr_rhs_f = nullptr, *d_tau_f = nullptr, *d_work_f = nullptr;
     float *d_warm_residual_f = nullptr, *d_warm_normal_f = nullptr;
     float *d_warm_direction_f = nullptr, *d_warm_image_f = nullptr;
+    float *d_warm_transformed_direction_f = nullptr, *d_warm_scale_ratio_f = nullptr;
+    float *d_warm_center_factor_f = nullptr;
     std::vector<float> coeff_host_f;
     double* d_coeff_src_d = nullptr;
     float* d_coeff_src_f = nullptr;
@@ -2441,6 +2483,8 @@ int sgpu_fit_psi_fullgpu(
         cudaFree(d_qr_mat_f); cudaFree(d_qr_rhs_f); cudaFree(d_tau_f); cudaFree(d_work_f);
         cudaFree(d_warm_residual_f); cudaFree(d_warm_normal_f);
         cudaFree(d_warm_direction_f); cudaFree(d_warm_image_f);
+        cudaFree(d_warm_transformed_direction_f); cudaFree(d_warm_scale_ratio_f);
+        cudaFree(d_warm_center_factor_f);
     };
 
     auto fail = [&](const char* msg) {
@@ -2719,6 +2763,35 @@ int sgpu_fit_psi_fullgpu(
                 cleanup();
                 return 1;
             }
+            if (warm_preconditioned) {
+                if (!sgpu_has_psi_warm_preconditioner(n_coeff)) {
+                    return fail("fit warm center QR preconditioner is unavailable");
+                }
+                std::vector<double> endpoint_scale(static_cast<size_t>(n_coeff));
+                std::vector<float> scale_ratio(static_cast<size_t>(n_coeff));
+                if (cuda_check(cudaMemcpy(
+                        endpoint_scale.data(), d_scale,
+                        static_cast<size_t>(n_coeff) * sizeof(double), cudaMemcpyDeviceToHost
+                    ), "fit warm copy endpoint scale")) {
+                    cleanup();
+                    return 1;
+                }
+                for (int index = 0; index < n_coeff; ++index) {
+                    scale_ratio[static_cast<size_t>(index)] = static_cast<float>(
+                        endpoint_scale[static_cast<size_t>(index)] /
+                        g_psi_warm_preconditioner.center_scale[static_cast<size_t>(index)]
+                    );
+                }
+                const size_t factor_bytes = static_cast<size_t>(n_coeff) * n_coeff * sizeof(float);
+                if (cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_warm_transformed_direction_f), static_cast<size_t>(n_coeff) * sizeof(float)), "fit warm transformed direction") ||
+                    cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_warm_scale_ratio_f), static_cast<size_t>(n_coeff) * sizeof(float)), "fit warm scale ratio") ||
+                    cuda_check(cudaMalloc(reinterpret_cast<void**>(&d_warm_center_factor_f), factor_bytes), "fit warm center factor") ||
+                    cuda_check(cudaMemcpy(d_warm_scale_ratio_f, scale_ratio.data(), static_cast<size_t>(n_coeff) * sizeof(float), cudaMemcpyHostToDevice), "fit warm upload scale ratio") ||
+                    cuda_check(cudaMemcpy(d_warm_center_factor_f, g_psi_warm_preconditioner.upper_factor.data(), factor_bytes, cudaMemcpyHostToDevice), "fit warm upload center factor")) {
+                    cleanup();
+                    return 1;
+                }
+            }
             scale_coeff_kernel_f32<<<blocks1d_coeff, threads>>>(d_coeff_f, d_scale, n_coeff);
             const float one = 1.0f, minus_one = -1.0f, zero = 0.0f;
             if (cuda_check(cudaGetLastError(), "fit warm scale initial") ||
@@ -2731,6 +2804,20 @@ int sgpu_fit_psi_fullgpu(
                 cleanup();
                 return 1;
             }
+            if (warm_preconditioned) {
+                scale_coeff_float_kernel<<<blocks1d_coeff, threads>>>(
+                    d_warm_normal_f, d_warm_scale_ratio_f, n_coeff
+                );
+                if (cuda_check(cudaGetLastError(), "fit warm precondition normal scale") ||
+                    cublas_check(cublasStrsv(
+                        f->blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T,
+                        CUBLAS_DIAG_NON_UNIT, n_coeff, d_warm_center_factor_f,
+                        n_coeff, d_warm_normal_f, 1
+                    ), "fit warm center R^-T")) {
+                    cleanup();
+                    return 1;
+                }
+            }
             float gamma = 0.0f;
             if (cublas_check(cublasSdot(f->blas, n_coeff, d_warm_normal_f, 1, d_warm_normal_f, 1, &gamma), "fit warm initial gamma")) {
                 cleanup();
@@ -2738,8 +2825,31 @@ int sgpu_fit_psi_fullgpu(
             }
             for (int iteration = 0; iteration < warm_iterations; ++iteration) {
                 if (!(gamma > 0.0f) || !std::isfinite(gamma)) break;
+                float* search_direction = d_warm_direction_f;
+                if (warm_preconditioned) {
+                    if (cublas_check(cublasScopy(
+                            f->blas, n_coeff, d_warm_direction_f, 1,
+                            d_warm_transformed_direction_f, 1
+                        ), "fit warm copy preconditioned direction") ||
+                        cublas_check(cublasStrsv(
+                            f->blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,
+                            CUBLAS_DIAG_NON_UNIT, n_coeff, d_warm_center_factor_f,
+                            n_coeff, d_warm_transformed_direction_f, 1
+                        ), "fit warm center R^-1")) {
+                        cleanup();
+                        return 1;
+                    }
+                    scale_coeff_float_kernel<<<blocks1d_coeff, threads>>>(
+                        d_warm_transformed_direction_f, d_warm_scale_ratio_f, n_coeff
+                    );
+                    if (cuda_check(cudaGetLastError(), "fit warm precondition direction scale")) {
+                        cleanup();
+                        return 1;
+                    }
+                    search_direction = d_warm_transformed_direction_f;
+                }
                 if (cublas_check(cublasSgemv(f->blas, CUBLAS_OP_N, qr_rows, n_coeff, &one,
-                        d_qr_mat_f, qr_rows, d_warm_direction_f, 1, &zero, d_warm_image_f, 1), "fit warm A p")) {
+                        d_qr_mat_f, qr_rows, search_direction, 1, &zero, d_warm_image_f, 1), "fit warm A p")) {
                     cleanup();
                     return 1;
                 }
@@ -2751,12 +2861,26 @@ int sgpu_fit_psi_fullgpu(
                 if (!(delta > 0.0f) || !std::isfinite(delta)) break;
                 const float alpha = gamma / delta;
                 const float minus_alpha = -alpha;
-                if (cublas_check(cublasSaxpy(f->blas, n_coeff, &alpha, d_warm_direction_f, 1, d_coeff_f, 1), "fit warm solution update") ||
+                if (cublas_check(cublasSaxpy(f->blas, n_coeff, &alpha, search_direction, 1, d_coeff_f, 1), "fit warm solution update") ||
                     cublas_check(cublasSaxpy(f->blas, qr_rows, &minus_alpha, d_warm_image_f, 1, d_warm_residual_f, 1), "fit warm residual update") ||
                     cublas_check(cublasSgemv(f->blas, CUBLAS_OP_T, qr_rows, n_coeff, &one,
                         d_qr_mat_f, qr_rows, d_warm_residual_f, 1, &zero, d_warm_normal_f, 1), "fit warm A^T r")) {
                     cleanup();
                     return 1;
+                }
+                if (warm_preconditioned) {
+                    scale_coeff_float_kernel<<<blocks1d_coeff, threads>>>(
+                        d_warm_normal_f, d_warm_scale_ratio_f, n_coeff
+                    );
+                    if (cuda_check(cudaGetLastError(), "fit warm precondition next normal scale") ||
+                        cublas_check(cublasStrsv(
+                            f->blas, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T,
+                            CUBLAS_DIAG_NON_UNIT, n_coeff, d_warm_center_factor_f,
+                            n_coeff, d_warm_normal_f, 1
+                        ), "fit warm next center R^-T")) {
+                        cleanup();
+                        return 1;
+                    }
                 }
                 float gamma_new = 0.0f;
                 if (cublas_check(cublasSdot(f->blas, n_coeff, d_warm_normal_f, 1, d_warm_normal_f, 1, &gamma_new), "fit warm gamma")) {
@@ -2856,6 +2980,28 @@ int sgpu_fit_psi_fullgpu(
                 return 1;
             }
             stats.qr_factor_s = std::chrono::duration<double>(clock::now() - t_qr).count();
+            if (precision_mode == 2 && solver_mode == 2 &&
+                g_psi_warm_preconditioner.capture_enabled) {
+                g_psi_warm_preconditioner.coefficient_count = n_coeff;
+                g_psi_warm_preconditioner.upper_factor.resize(
+                    static_cast<size_t>(n_coeff) * n_coeff
+                );
+                g_psi_warm_preconditioner.center_scale.resize(static_cast<size_t>(n_coeff));
+                if (cuda_check(cudaMemcpy2D(
+                        g_psi_warm_preconditioner.upper_factor.data(),
+                        static_cast<size_t>(n_coeff) * sizeof(float),
+                        d_qr_mat_f, static_cast<size_t>(qr_rows) * sizeof(float),
+                        static_cast<size_t>(n_coeff) * sizeof(float), n_coeff,
+                        cudaMemcpyDeviceToHost
+                    ), "fit capture center R") ||
+                    cuda_check(cudaMemcpy(
+                        g_psi_warm_preconditioner.center_scale.data(), d_scale,
+                        static_cast<size_t>(n_coeff) * sizeof(double), cudaMemcpyDeviceToHost
+                    ), "fit capture center scale")) {
+                    cleanup();
+                    return 1;
+                }
+            }
         }
 
         t_qr = clock::now();

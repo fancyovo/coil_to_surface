@@ -86,6 +86,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--scale", type=float, default=0.005)
     parser.add_argument("--iterations", default="0,2,4,8,16")
+    parser.add_argument("--preconditioned", action="store_true")
     args = parser.parse_args()
     iterations = [int(value) for value in args.iterations.split(",")]
     if args.output_dir.exists():
@@ -134,6 +135,7 @@ def main() -> None:
             x[center_index], y[center_index], z[center_index], current[center_index],
             x[endpoint_indices], y[endpoint_indices], z[endpoint_indices], current[endpoint_indices],
             int(center["nfp"]), count, device_id=0,
+            use_center_qr_preconditioner=args.preconditioned,
             target_helicity=(1, int(center["nfp"])), config_overrides=config,
         )
         query = {
@@ -179,6 +181,7 @@ def main() -> None:
 
     output = {
         "format": "local_psi_warm_score_v1",
+        "preconditioned": args.preconditioned,
         "scale": args.scale,
         "direction_count": 4,
         "center": center,

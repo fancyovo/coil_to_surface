@@ -463,6 +463,7 @@ int sgpu_score_coils_psi_warm_batch(
     int n_coeff,
     int nfp,
     int warm_iterations,
+    int use_center_qr_preconditioner,
     const SgpuScoreConfig* config,
     SgpuScoreResult* center_score_result,
     SgpuScoreResult* query_score_results
@@ -563,6 +564,10 @@ int sgpu_normal_eq_f32(
     int n_rows,
     int n_cols
 );
+
+int sgpu_set_psi_warm_preconditioner_capture(int enabled);
+int sgpu_has_psi_warm_preconditioner(int coefficient_count);
+void sgpu_clear_psi_warm_preconditioner();
 
 int sgpu_fit_psi_fullgpu(
     void* handle,

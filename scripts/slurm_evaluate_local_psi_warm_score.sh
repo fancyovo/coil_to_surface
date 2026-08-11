@@ -20,6 +20,7 @@ BUILD_DIR="${BUILD_DIR:-$PROJECT/build_psi_warm_score}"
 CUDA_ROOT="${CUDA_ROOT:-/public/app/cuda/13.0}"
 ITERATIONS="${ITERATIONS:-0,2,4,8,16}"
 ITERATIONS_CSV="${ITERATIONS//:/,}"
+PRECONDITIONED="${PRECONDITIONED:-0}"
 
 export PATH="$CUDA_ROOT/bin:$PATH"
 export LD_LIBRARY_PATH="$CUDA_ROOT/lib64:${LD_LIBRARY_PATH:-}"
@@ -39,12 +40,18 @@ cmake -S "$PROJECT/gpu_backend" -B "$BUILD_DIR" \
     -DCMAKE_CUDA_COMPILER="$CUDA_ROOT/bin/nvcc"
 cmake --build "$BUILD_DIR" --target stellarator_gpu -j4
 
+preconditioner_args=()
+if [[ "$PRECONDITIONED" == "1" ]]; then
+    preconditioner_args+=(--preconditioned)
+fi
+
 python "$PROJECT/scripts/evaluate_local_psi_warm_score.py" \
     --candidate-dir "$CANDIDATE_DIR" \
     --lib "$BUILD_DIR/libstellarator_gpu.so" \
     --output-dir "$RUN_ROOT/results" \
     --scale 0.005 \
-    --iterations "$ITERATIONS_CSV"
+    --iterations "$ITERATIONS_CSV" \
+    "${preconditioner_args[@]}"
 
 git -C "$PROJECT" rev-parse HEAD > "$RUN_ROOT/git_head.txt"
 sha256sum "$BUILD_DIR/libstellarator_gpu.so" > "$RUN_ROOT/library.sha256"

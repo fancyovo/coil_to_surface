@@ -1,0 +1,87 @@
+{
+  "flow_steps": 128,
+  "decode_wall_s": 5.130928145721555,
+  "direction_mode": "coordinate",
+  "direction_count": 300,
+  "dimension": 300,
+  "scales": [
+    0.005,
+    0.01
+  ]
+}
+{
+  "shard_index": 2,
+  "shard_count": 4,
+  "candidate_count": 300,
+  "variants": [
+    "axis_qr16k"
+  ],
+  "wall_s": 601.047083074227
+}
+{
+  "shard_index": 1,
+  "shard_count": 4,
+  "candidate_count": 300,
+  "variants": [
+    "axis_qr16k"
+  ],
+  "wall_s": 607.1795805748552
+}
+{
+  "shard_index": 3,
+  "shard_count": 4,
+  "candidate_count": 300,
+  "variants": [
+    "axis_qr16k"
+  ],
+  "wall_s": 607.801771113649
+}
+{
+  "shard_index": 0,
+  "shard_count": 4,
+  "candidate_count": 301,
+  "variants": [
+    "axis_qr16k"
+  ],
+  "wall_s": 625.1859705839306
+}
+{
+  "timings": {
+    "exact": {
+      "mean": 1.6365211773245012,
+      "p50": 1.6077531911432743,
+      "p95": 1.6510782670229673
+    },
+    "axis_qr16k": {
+      "mean": 0.39578137110351125,
+      "p50": 0.3917781710624695,
+      "p95": 0.404251741245389
+    }
+  },
+  "aggregate": [
+    {
+      "scale": 0.005,
+      "variant": "axis_qr16k",
+      "minimum_cosine": 0.23675305539297456,
+      "mean_cosine": 0.23675305539297456,
+      "mean_sign_agreement": 0.5133333333333333,
+      "timing_p50_s": 0.3917781710624695
+    },
+    {
+      "scale": 0.01,
+      "variant": "axis_qr16k",
+      "minimum_cosine": -0.07176958949973407,
+      "mean_cosine": -0.07176958949973407,
+      "mean_sign_agreement": 0.53,
+      "timing_p50_s": 0.3917781710624695
+    }
+  ],
+  "recommended": {
+    "scale": 0.005,
+    "variant": "axis_qr16k",
+    "minimum_cosine": 0.23675305539297456,
+    "mean_cosine": 0.23675305539297456,
+    "mean_sign_agreement": 0.5133333333333333,
+    "timing_p50_s": 0.3917781710624695
+  }
+}

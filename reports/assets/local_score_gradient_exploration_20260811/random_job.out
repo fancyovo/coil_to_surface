@@ -1,0 +1,186 @@
+{
+  "flow_steps": 128,
+  "decode_wall_s": 2.3081286177039146,
+  "direction_mode": "random",
+  "direction_count": 32,
+  "dimension": 300,
+  "scales": [
+    0.0025,
+    0.005,
+    0.01
+  ]
+}
+{
+  "shard_index": 3,
+  "shard_count": 4,
+  "candidate_count": 144,
+  "wall_s": 535.7397504374385
+}
+{
+  "shard_index": 2,
+  "shard_count": 4,
+  "candidate_count": 145,
+  "wall_s": 536.6484727039933
+}
+{
+  "shard_index": 1,
+  "shard_count": 4,
+  "candidate_count": 145,
+  "wall_s": 541.4858250264078
+}
+{
+  "shard_index": 0,
+  "shard_count": 4,
+  "candidate_count": 145,
+  "wall_s": 550.1629210468382
+}
+{
+  "timings": {
+    "exact": {
+      "mean": 1.8505219343393424,
+      "p50": 1.9283782336860895,
+      "p95": 1.9849596900865436
+    },
+    "axis_qr16k": {
+      "mean": 0.45317677143053997,
+      "p50": 0.47796883061528206,
+      "p95": 0.49137376639992
+    },
+    "axis_qr8k": {
+      "mean": 0.39127623598655886,
+      "p50": 0.4165436066687107,
+      "p95": 0.427977410890162
+    },
+    "axis_ne16k": {
+      "mean": 0.37166320708996836,
+      "p50": 0.39592647086828947,
+      "p95": 0.40675630122423173
+    },
+    "axis_ne8k": {
+      "mean": NaN,
+      "p50": NaN,
+      "p95": NaN
+    },
+    "fixed_qr16k": {
+      "mean": 0.2005302422409012,
+      "p50": 0.199628986,
+      "p95": 0.20485125799999998
+    },
+    "fixed_qr8k": {
+      "mean": 0.13901977591003462,
+      "p50": 0.1381786405,
+      "p95": 0.14185109125
+    },
+    "fixed_ne8k": {
+      "mean": NaN,
+      "p50": NaN,
+      "p95": NaN
+    }
+  },
+  "aggregate": [
+    {
+      "scale": 0.0025,
+      "variant": "axis_qr16k",
+      "minimum_cosine": 0.016398471772103657,
+      "mean_cosine": 0.05412878389845697,
+      "mean_sign_agreement": 0.59375,
+      "timing_p50_s": 0.47796883061528206
+    },
+    {
+      "scale": 0.0025,
+      "variant": "axis_qr8k",
+      "minimum_cosine": -0.05547812978712203,
+      "mean_cosine": 0.17399531219877762,
+      "mean_sign_agreement": 0.6354166666666666,
+      "timing_p50_s": 0.4165436066687107
+    },
+    {
+      "scale": 0.0025,
+      "variant": "fixed_qr16k",
+      "minimum_cosine": -0.21221609305937006,
+      "mean_cosine": -0.01880810284414844,
+      "mean_sign_agreement": 0.5520833333333334,
+      "timing_p50_s": 0.199628986
+    },
+    {
+      "scale": 0.0025,
+      "variant": "fixed_qr8k",
+      "minimum_cosine": -0.1984596770021953,
+      "mean_cosine": -0.02824234712292964,
+      "mean_sign_agreement": 0.5625,
+      "timing_p50_s": 0.1381786405
+    },
+    {
+      "scale": 0.005,
+      "variant": "axis_qr16k",
+      "minimum_cosine": -0.22149932078214665,
+      "mean_cosine": 0.34711005774847586,
+      "mean_sign_agreement": 0.7083333333333334,
+      "timing_p50_s": 0.47796883061528206
+    },
+    {
+      "scale": 0.005,
+      "variant": "axis_qr8k",
+      "minimum_cosine": -0.5537684101051232,
+      "mean_cosine": -0.2448112124343302,
+      "mean_sign_agreement": 0.4166666666666667,
+      "timing_p50_s": 0.4165436066687107
+    },
+    {
+      "scale": 0.005,
+      "variant": "fixed_qr16k",
+      "minimum_cosine": -0.3556018350514916,
+      "mean_cosine": 0.33833648076902456,
+      "mean_sign_agreement": 0.6041666666666666,
+      "timing_p50_s": 0.199628986
+    },
+    {
+      "scale": 0.005,
+      "variant": "fixed_qr8k",
+      "minimum_cosine": -0.32746954041707615,
+      "mean_cosine": 0.26204183361953987,
+      "mean_sign_agreement": 0.6145833333333334,
+      "timing_p50_s": 0.1381786405
+    },
+    {
+      "scale": 0.01,
+      "variant": "axis_qr16k",
+      "minimum_cosine": 0.5020283198333859,
+      "mean_cosine": 0.5995833871823231,
+      "mean_sign_agreement": 0.7083333333333334,
+      "timing_p50_s": 0.47796883061528206
+    },
+    {
+      "scale": 0.01,
+      "variant": "axis_qr8k",
+      "minimum_cosine": -0.64133266817513,
+      "mean_cosine": -0.28058066586349834,
+      "mean_sign_agreement": 0.4270833333333333,
+      "timing_p50_s": 0.4165436066687107
+    },
+    {
+      "scale": 0.01,
+      "variant": "fixed_qr16k",
+      "minimum_cosine": 0.6379994171825227,
+      "mean_cosine": 0.6379994171825227,
+      "mean_sign_agreement": 0.59375,
+      "timing_p50_s": 0.199628986
+    },
+    {
+      "scale": 0.01,
+      "variant": "fixed_qr8k",
+      "minimum_cosine": -0.048707857053580106,
+      "mean_cosine": 0.14543478296344303,
+      "mean_sign_agreement": 0.46875,
+      "timing_p50_s": 0.1381786405
+    }
+  ],
+  "recommended": {
+    "scale": 0.01,
+    "variant": "fixed_qr16k",
+    "minimum_cosine": 0.6379994171825227,
+    "mean_cosine": 0.6379994171825227,
+    "mean_sign_agreement": 0.59375,
+    "timing_p50_s": 0.199628986
+  }
+}

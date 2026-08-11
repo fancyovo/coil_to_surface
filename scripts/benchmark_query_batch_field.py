@@ -44,7 +44,8 @@ def main() -> None:
     parser.add_argument("--point-count", type=int, default=256)
     parser.add_argument("--segments-per-coil", type=int, default=256)
     parser.add_argument("--trace-steps", type=int, default=400)
-    parser.add_argument("--axis-samples", type=int, default=64)
+    parser.add_argument("--axis-integration-steps", type=int, default=960)
+    parser.add_argument("--axis-samples", type=int, default=240)
     parser.add_argument("--reference-count", type=int, default=4)
     args = parser.parse_args()
 
@@ -94,7 +95,7 @@ def main() -> None:
         )
         batch_axis, axis_wall_s = timed(lambda: batch.trace_axis_samples(
             axis_R0, axis_Z0,
-            integration_steps=args.trace_steps,
+            integration_steps=args.axis_integration_steps,
             sample_count=args.axis_samples,
         ))
 
@@ -120,7 +121,7 @@ def main() -> None:
                 )
                 single_axis = field.trace_axis_samples(
                     axis_R0[query], axis_Z0[query], nfp=nfp,
-                    integration_steps=args.trace_steps,
+                    integration_steps=args.axis_integration_steps,
                     sample_count=args.axis_samples,
                 )
             finally:
@@ -152,6 +153,7 @@ def main() -> None:
         "segments_per_coil": args.segments_per_coil,
         "nfp": nfp,
         "trace_steps": args.trace_steps,
+        "axis_integration_steps": args.axis_integration_steps,
         "axis_samples": args.axis_samples,
         "timing_s": {
             "field_create": create_wall_s,

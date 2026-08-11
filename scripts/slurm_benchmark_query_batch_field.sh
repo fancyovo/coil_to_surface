@@ -80,7 +80,8 @@ python "$project/scripts/benchmark_query_batch_field.py" \
   --point-count 256 \
   --segments-per-coil 256 \
   --trace-steps 400 \
-  --axis-samples 64
+  --axis-integration-steps 960 \
+  --axis-samples 240
 
 if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
   echo "GPU compute process remains after batch-field benchmark" >&2

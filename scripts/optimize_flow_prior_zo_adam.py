@@ -167,6 +167,8 @@ def load_initial_noise(path: Path) -> tuple[np.ndarray, dict[str, Any]]:
         noise = payload["flow_prior_zo_adam"]["noise"]
     elif "flow_prior_standard_adam" in payload:
         noise = payload["flow_prior_standard_adam"]["noise"]
+    elif "flow_prior_local_full_gradient_adam" in payload:
+        noise = payload["flow_prior_local_full_gradient_adam"]["noise"]
     elif "flow_prior_subspace_bfgs" in payload:
         noise = payload["flow_prior_subspace_bfgs"]["noise"]
     elif "flow_prior_g3_informed_subspace_adam" in payload:

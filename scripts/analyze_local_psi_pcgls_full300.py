@@ -16,6 +16,19 @@ def cosine(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.dot(left, right) / denominator) if denominator > 0.0 else float("nan")
 
 
+def gradient_comparison(reference: np.ndarray, candidate: np.ndarray) -> dict[str, float]:
+    reference_norm = float(np.linalg.norm(reference))
+    candidate_norm = float(np.linalg.norm(candidate))
+    error_norm = float(np.linalg.norm(candidate - reference))
+    return {
+        "cosine": cosine(reference, candidate),
+        "reference_norm": reference_norm,
+        "candidate_norm": candidate_norm,
+        "norm_ratio": candidate_norm / reference_norm if reference_norm > 0.0 else float("nan"),
+        "relative_error": error_norm / reference_norm if reference_norm > 0.0 else float("nan"),
+    }
+
+
 def gradients(rows: list[dict], variant: str, field: str, scale: float) -> np.ndarray:
     by_direction: dict[int, dict[int, dict]] = {}
     for row in rows:
@@ -67,17 +80,17 @@ def main() -> None:
         exact_scores = np.asarray([row["variants"]["exact"]["score"] for row in rows])
         scores = np.asarray([row["variants"][variant]["score"] for row in rows])
         component_cosines[variant] = {
-            name: cosine(
+            name: gradient_comparison(
                 gradients(rows, "exact", name, args.scale),
                 gradients(rows, variant, name, args.scale),
             )
             for name in COMPONENTS
         }
+        score_comparison = gradient_comparison(exact_gradient, gradient)
         summary.append({
             "variant": variant,
             "all_status_ok": all(row["variants"][variant]["status"] == "ok" for row in rows),
-            "score_gradient_cosine": cosine(exact_gradient, gradient),
-            "score_gradient_norm_ratio": float(np.linalg.norm(gradient) / np.linalg.norm(exact_gradient)),
+            "score_gradient": score_comparison,
             "score_gradient_sign_fraction": float(np.mean(np.sign(gradient) == np.sign(exact_gradient))),
             "score_rmse": float(np.sqrt(np.mean(np.square(scores - exact_scores)))),
             "score_max_abs_error": float(np.max(np.abs(scores - exact_scores))),
@@ -115,7 +128,10 @@ def main() -> None:
     fig.savefig(args.output_dir / "full300_score_gradient_scatter.png", dpi=180)
     plt.close(fig)
 
-    matrix = np.asarray([[component_cosines[variant][name] for variant in variants] for name in COMPONENTS])
+    matrix = np.asarray([
+        [component_cosines[variant][name]["cosine"] for variant in variants]
+        for name in COMPONENTS
+    ])
     fig, axis = plt.subplots(figsize=(6.2, 4.8))
     image = axis.imshow(matrix, vmin=-1.0, vmax=1.0, cmap="coolwarm", aspect="auto")
     axis.set_xticks(range(len(variants)), labels=variants)

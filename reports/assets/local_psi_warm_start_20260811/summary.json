@@ -1,0 +1,149 @@
+{
+  "format": "local_psi_pcgls_full300_v1",
+  "scale": 0.005,
+  "direction_count": 300,
+  "endpoint_count": 600,
+  "exact_timing": {
+    "all_status_ok": true,
+    "psi_fit_s_p50": 0.06662322600000001,
+    "total_s_p50": 0.7450555895
+  },
+  "summary": [
+    {
+      "variant": "pcgls2",
+      "all_status_ok": true,
+      "score_gradient": {
+        "cosine": 0.6395901791200679,
+        "reference_norm": 28.99591130459968,
+        "candidate_norm": 26.928940573504157,
+        "norm_ratio": 0.9287150967809853,
+        "relative_error": 0.8212902171495728
+      },
+      "score_gradient_sign_fraction": 0.74,
+      "score_rmse": 0.010832082579785065,
+      "score_max_abs_error": 0.08003733501570309,
+      "psi_fit_s_p50": 0.0127411165,
+      "total_s_p50": 0.6886748435000001
+    },
+    {
+      "variant": "pcgls4",
+      "all_status_ok": true,
+      "score_gradient": {
+        "cosine": 0.7239876397277686,
+        "reference_norm": 28.99591130459968,
+        "candidate_norm": 28.182306634248953,
+        "norm_ratio": 0.971940710474526,
+        "relative_error": 0.7330229347122513
+      },
+      "score_gradient_sign_fraction": 0.7466666666666667,
+      "score_rmse": 0.008530960218341517,
+      "score_max_abs_error": 0.022270007163626815,
+      "psi_fit_s_p50": 0.014334234500000001,
+      "total_s_p50": 0.691697961
+    }
+  ],
+  "component_gradient_cosines": {
+    "pcgls2": {
+      "axis": {
+        "cosine": 1.0,
+        "reference_norm": 218.070301358464,
+        "candidate_norm": 218.070301358464,
+        "norm_ratio": 1.0,
+        "relative_error": 0.0
+      },
+      "psi": {
+        "cosine": 0.7670732643926875,
+        "reference_norm": 1.9865907543464363,
+        "candidate_norm": 2.5194168612959755,
+        "norm_ratio": 1.2682113091404337,
+        "relative_error": 0.8140871863305184
+      },
+      "surface": {
+        "cosine": 0.6621240602766327,
+        "reference_norm": 97.50707060767469,
+        "candidate_norm": 2.2624982969793686,
+        "norm_ratio": 0.023203428047619854,
+        "relative_error": 0.9847899791786612
+      },
+      "coordinate": {
+        "cosine": 0.09384882600958591,
+        "reference_norm": 156.43280973946983,
+        "candidate_norm": 156.5430640572045,
+        "norm_ratio": 1.000704803026413,
+        "relative_error": 1.3466923037233733
+      },
+      "volume_qs": {
+        "cosine": 0.9664693638936577,
+        "reference_norm": 12.702410090435297,
+        "candidate_norm": 11.400127937735364,
+        "norm_ratio": 0.8974775539894961,
+        "relative_error": 0.26588877089648033
+      },
+      "iota": {
+        "cosine": NaN,
+        "reference_norm": 0.0,
+        "candidate_norm": 0.0,
+        "norm_ratio": NaN,
+        "relative_error": NaN
+      },
+      "coil": {
+        "cosine": 1.0,
+        "reference_norm": 30.155003566233557,
+        "candidate_norm": 30.155003566233557,
+        "norm_ratio": 1.0,
+        "relative_error": 0.0
+      }
+    },
+    "pcgls4": {
+      "axis": {
+        "cosine": 1.0,
+        "reference_norm": 218.070301358464,
+        "candidate_norm": 218.070301358464,
+        "norm_ratio": 1.0,
+        "relative_error": 0.0
+      },
+      "psi": {
+        "cosine": 0.9575059371635635,
+        "reference_norm": 1.9865907543464363,
+        "candidate_norm": 1.9930068630882962,
+        "norm_ratio": 1.0032297083472388,
+        "relative_error": 0.2920154851164278
+      },
+      "surface": {
+        "cosine": 0.9999999937807895,
+        "reference_norm": 97.50707060767469,
+        "candidate_norm": 97.51863040775994,
+        "norm_ratio": 1.000118553454772,
+        "relative_error": 0.00016277228620221445
+      },
+      "coordinate": {
+        "cosine": 0.09896625249201574,
+        "reference_norm": 156.43280973946983,
+        "candidate_norm": 159.98475322507863,
+        "norm_ratio": 1.0227058728378298,
+        "relative_error": 1.3577557096415815
+      },
+      "volume_qs": {
+        "cosine": 0.9981642542682079,
+        "reference_norm": 12.702410090435297,
+        "candidate_norm": 12.70275957909185,
+        "norm_ratio": 1.0000275135705796,
+        "relative_error": 0.06059367323755937
+      },
+      "iota": {
+        "cosine": NaN,
+        "reference_norm": 0.0,
+        "candidate_norm": 0.0,
+        "norm_ratio": NaN,
+        "relative_error": NaN
+      },
+      "coil": {
+        "cosine": 1.0,
+        "reference_norm": 30.155003566233557,
+        "candidate_norm": 30.155003566233557,
+        "norm_ratio": 1.0,
+        "relative_error": 0.0
+      }
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "format": "local_psi_warm_start_analysis_v1",
+  "scale": 0.005,
+  "direction_count": 4,
+  "endpoint_count": 8,
+  "qr_physical_residual_relative": {
+    "direction_000_minus": 0.001171389251214235,
+    "direction_000_plus": 0.0011721450509730909,
+    "direction_001_minus": 0.0011719599123342804,
+    "direction_001_plus": 0.001172372096734942,
+    "direction_002_minus": 0.0011717801463396974,
+    "direction_002_plus": 0.0011722873084618612,
+    "direction_003_minus": 0.0011722623684362393,
+    "direction_003_plus": 0.0011715583294764147
+  },
+  "aggregate": [
+    {
+      "iterations": 0,
+      "endpoint_count": 8,
+      "solve_ms_p50": 0.6651324999999999,
+      "solve_ms_p95": 0.6758318,
+      "physical_residual_ratio_p50": 1.0312361417755327,
+      "physical_residual_ratio_max": 1.1248860913526146,
+      "coefficient_relative_error_p50": 0.0003666278551925,
+      "coefficient_relative_error_max": 0.000617874667664,
+      "normal_residual_relative_p50": 0.00477745088316,
+      "normal_residual_relative_max": 0.0102114254894
+    },
+    {
+      "iterations": 1,
+      "endpoint_count": 8,
+      "solve_ms_p50": 1.3176875,
+      "solve_ms_p95": 1.33017355,
+      "physical_residual_ratio_p50": 1.0125674550305046,
+      "physical_residual_ratio_max": 1.051100040474445,
+      "coefficient_relative_error_p50": 0.0003642886989075,
+      "coefficient_relative_error_max": 0.000612306462835,
+      "normal_residual_relative_p50": 0.00210803205098,
+      "normal_residual_relative_max": 0.00383762415282
+    },
+    {
+      "iterations": 2,
+      "endpoint_count": 8,
+      "solve_ms_p50": 1.9512045,
+      "solve_ms_p95": 1.9586983999999998,
+      "physical_residual_ratio_p50": 1.0086670103461486,
+      "physical_residual_ratio_max": 1.0378097811438631,
+      "coefficient_relative_error_p50": 0.0003627588564975,
+      "coefficient_relative_error_max": 0.00060840286947,
+      "normal_residual_relative_p50": 0.001190836753603,
+      "normal_residual_relative_max": 0.00234895446401
+    },
+    {
+      "iterations": 4,
+      "endpoint_count": 8,
+      "solve_ms_p50": 3.2440455,
+      "solve_ms_p95": 3.2556453,
+      "physical_residual_ratio_p50": 1.0059391086021559,
+      "physical_residual_ratio_max": 1.026078139379788,
+      "coefficient_relative_error_p50": 0.0003589093703575,
+      "coefficient_relative_error_max": 0.000597132968389,
+      "normal_residual_relative_p50": 0.000754329696006,
+      "normal_residual_relative_max": 0.00175174888459
+    },
+    {
+      "iterations": 8,
+      "endpoint_count": 8,
+      "solve_ms_p50": 5.8436725,
+      "solve_ms_p95": 5.85304325,
+      "physical_residual_ratio_p50": 1.002577419428285,
+      "physical_residual_ratio_max": 1.0108298136198777,
+      "coefficient_relative_error_p50": 0.000347703774015,
+      "coefficient_relative_error_max": 0.000569167889757,
+      "normal_residual_relative_p50": 0.00043911001442300006,
+      "normal_residual_relative_max": 0.000999117331235
+    },
+    {
+      "iterations": 16,
+      "endpoint_count": 8,
+      "solve_ms_p50": 11.034858,
+      "solve_ms_p95": 11.0394962,
+      "physical_residual_ratio_p50": 1.001714141013014,
+      "physical_residual_ratio_max": 1.0041136446017571,
+      "coefficient_relative_error_p50": 0.00033530602734850004,
+      "coefficient_relative_error_max": 0.000543596448839,
+      "normal_residual_relative_p50": 0.000225592271104,
+      "normal_residual_relative_max": 0.000433653481694
+    },
+    {
+      "iterations": 32,
+      "endpoint_count": 8,
+      "solve_ms_p50": 21.387712999999998,
+      "solve_ms_p95": 21.4144265,
+      "physical_residual_ratio_p50": 1.0008487882346813,
+      "physical_residual_ratio_max": 1.001876376998005,
+      "coefficient_relative_error_p50": 0.000316405385344,
+      "coefficient_relative_error_max": 0.000500460486952,
+      "normal_residual_relative_p50": 0.00012168749078,
+      "normal_residual_relative_max": 0.000311279134632
+    },
+    {
+      "iterations": 64,
+      "endpoint_count": 8,
+      "solve_ms_p50": 42.1504835,
+      "solve_ms_p95": 42.181119100000004,
+      "physical_residual_ratio_p50": 1.0001690744662888,
+      "physical_residual_ratio_max": 1.001178566307525,
+      "coefficient_relative_error_p50": 0.00030507575614800004,
+      "coefficient_relative_error_max": 0.000448012834119,
+      "normal_residual_relative_p50": 4.493065896465e-05,
+      "normal_residual_relative_max": 8.24066445342e-05
+    }
+  ],
+  "first_accepted_iterations": 2,
+  "acceptance": {
+    "maximum_physical_residual_ratio": 1.05,
+    "maximum_scaled_coefficient_relative_error": 0.05
+  }
+}

@@ -40,10 +40,6 @@ def json_safe(value: Any) -> Any:
     return value
 
 
-def surface_levels(level: float) -> tuple[float, ...]:
-    return (float(level),) * 16
-
-
 def exact_config(center: dict[str, Any]) -> dict[str, Any]:
     return {
         "iota_degree": 3,
@@ -61,7 +57,6 @@ def exact_config(center: dict[str, Any]) -> dict[str, Any]:
 
 def proxy_config(center: dict[str, Any], *, small: bool, normal: bool) -> dict[str, Any]:
     point_count = 8192 if small else 16384
-    grid = 24 if small else 32
     return {
         "iota_degree": 3,
         "axis_hint_enabled": 1,
@@ -72,14 +67,12 @@ def proxy_config(center: dict[str, Any], *, small: bool, normal: bool) -> dict[s
         "axis_fallback_newton_iters": 2,
         "axis_trace_steps": 256,
         "axis_sample_count": 120,
-        "psi_n_r": grid,
-        "psi_n_z": grid,
-        "psi_n_phi": grid,
+        "psi_n_r": 32,
+        "psi_n_z": 32,
+        "psi_n_phi": 32,
         "psi_validation_points": 64,
         "psi_solver_mode": 1 if normal else 2,
         "psi_precision_mode": 2,
-        "surface_level_count": 1,
-        "surface_levels": surface_levels(center["surface_level"]),
         "surface_selection_mode": 1,
         "surface_confidence_periods": 1,
         "surface_theta_count": 64,

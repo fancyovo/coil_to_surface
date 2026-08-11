@@ -3192,8 +3192,17 @@ struct FixedFrontG2Cache {
     bool ready = false;
 };
 
+struct AlphaWarmPreconditionerCache {
+    int column_count = 0;
+    int qr_rows = 0;
+    std::vector<float> upper_factor;
+    std::vector<float> center_scale;
+    std::vector<float> center_scaled_solution;
+};
+
 thread_local FixedFrontG2Cache* g_active_g2_cache = nullptr;
 thread_local int g_active_gradient_group = 0;
+thread_local AlphaWarmPreconditionerCache g_alpha_warm_preconditioner;
 
 bool fit_alpha_native(
     const DeviceVolumePoints& points,
@@ -5713,6 +5722,1689 @@ bool compute_alpha_iota_g3_gradient(
     );
 }
 
+__global__ void local_batch_build_ray_coefficients_kernel(
+    const float* __restrict__ coefficients,
+    const int* __restrict__ mode_a,
+    const int* __restrict__ mode_b,
+    const int* __restrict__ mode_m,
+    const int* __restrict__ mode_kind,
+    int coefficient_count,
+    int query_count,
+    int nfp,
+    int degree,
+    int m_tor,
+    int n_phi,
+    int n_theta,
+    float phi_offset,
+    float theta_offset,
+    float* __restrict__ ray_coefficients
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const int ray_count = n_phi * n_theta;
+    const size_t total = static_cast<size_t>(query_count) * ray_count;
+    if (flat >= total) return;
+    const int query = static_cast<int>(flat / ray_count);
+    const int ray = static_cast<int>(flat - static_cast<size_t>(query) * ray_count);
+    const int phi_index = ray / n_theta;
+    const int theta_index = ray - phi_index * n_theta;
+    const float phi = (phi_index + phi_offset) * static_cast<float>(TWOPI) /
+        static_cast<float>(nfp * n_phi);
+    float shifted_theta = theta_index + theta_offset + 0.217f * phi_index;
+    shifted_theta -= floorf(shifted_theta / n_theta) * n_theta;
+    const float theta = shifted_theta * static_cast<float>(TWOPI) / n_theta;
+    float sine, cosine;
+    sincosf(theta, &sine, &cosine);
+    float cpow[25], spow[25], cosv[33], sinv[33];
+    cpow[0] = spow[0] = 1.0f;
+    for (int power = 1; power <= degree; ++power) {
+        cpow[power] = cpow[power - 1] * cosine;
+        spow[power] = spow[power - 1] * sine;
+    }
+    cosv[0] = 1.0f;
+    sinv[0] = 0.0f;
+    for (int mode = 1; mode <= m_tor; ++mode) {
+        sincosf(static_cast<float>(mode * nfp) * phi, &sinv[mode], &cosv[mode]);
+    }
+    float local[25];
+    for (int power = 0; power <= degree; ++power) local[power] = 0.0f;
+    local[2] = cosine * cosine;
+    const float* query_coefficients = coefficients + static_cast<size_t>(query) * coefficient_count;
+    for (int index = 0; index < coefficient_count; ++index) {
+        const int mode = mode_m[index];
+        const float trig = mode == 0 ? 1.0f :
+            (mode_kind[index] == 0 ? cosv[mode] : sinv[mode]);
+        local[mode_a[index] + mode_b[index]] += query_coefficients[index] *
+            cpow[mode_a[index]] * spow[mode_b[index]] * trig;
+    }
+    float* output = ray_coefficients + flat * (degree + 1);
+    for (int power = 0; power <= degree; ++power) output[power] = local[power];
+}
+
+__global__ void local_batch_solve_boundary_radii_kernel(
+    const float* __restrict__ ray_coefficients,
+    int ray_count,
+    int query_count,
+    int degree,
+    float radius_scale,
+    const float* __restrict__ levels,
+    int level_count,
+    int iterations,
+    float tolerance,
+    float max_radius_scale,
+    float* __restrict__ radii,
+    float* __restrict__ residuals
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const size_t per_query = static_cast<size_t>(ray_count) * level_count;
+    if (flat >= static_cast<size_t>(query_count) * per_query) return;
+    const int query = static_cast<int>(flat / per_query);
+    const int local = static_cast<int>(flat - static_cast<size_t>(query) * per_query);
+    const int level_index = local / ray_count;
+    const int ray = local - level_index * ray_count;
+    const float* polynomial = ray_coefficients +
+        (static_cast<size_t>(query) * ray_count + ray) * (degree + 1);
+    const float level = levels[level_index];
+    const float q = polynomial[2];
+    float radius = q > 1.0e-10f
+        ? radius_scale * sqrtf(fmaxf(level, 0.0f) / q)
+        : radius_scale * sqrtf(fmaxf(level, 1.0e-16f));
+    const float maximum = max_radius_scale * radius_scale;
+    radius = fminf(maximum, fmaxf(1.0e-12f * radius_scale, radius));
+    float final_residual = INFINITY;
+    for (int iteration = 0; iteration < iterations; ++iteration) {
+        const float u = radius / radius_scale;
+        float value = 0.0f, derivative = 0.0f;
+        float previous = u, power = u * u;
+        for (int current_degree = 2; current_degree <= degree; ++current_degree) {
+            if (current_degree > 2) {
+                previous = power;
+                power *= u;
+            }
+            value += polynomial[current_degree] * power;
+            derivative += current_degree * polynomial[current_degree] * previous / radius_scale;
+        }
+        final_residual = value - level;
+        if (fabsf(final_residual) <= tolerance) break;
+        const float denominator = fabsf(derivative) > 1.0e-14f
+            ? derivative : copysignf(1.0e-14f, derivative == 0.0f ? 1.0f : derivative);
+        const float limit = 0.4f * fmaxf(radius, 1.0e-10f);
+        radius = fminf(maximum, fmaxf(
+            1.0e-12f * radius_scale,
+            radius - fminf(limit, fmaxf(-limit, final_residual / denominator))
+        ));
+    }
+    const float u = radius / radius_scale;
+    float value = 0.0f, power = u * u;
+    for (int current_degree = 2; current_degree <= degree; ++current_degree) {
+        if (current_degree > 2) power *= u;
+        value += polynomial[current_degree] * power;
+    }
+    radii[flat] = radius;
+    residuals[flat] = fabsf(value - level);
+}
+
+__global__ void local_batch_generate_flux_points_kernel(
+    const float* __restrict__ boundary_radii,
+    const float* __restrict__ gauss_nodes,
+    int query_count,
+    int n_phi,
+    int n_levels,
+    int n_theta,
+    int n_radial,
+    int nfp,
+    const float* __restrict__ axis_R,
+    const float* __restrict__ axis_Z,
+    const float* __restrict__ axis_R_phi,
+    const float* __restrict__ axis_Z_phi,
+    int axis_count,
+    float* __restrict__ xyz
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const int points_per_query = n_phi * n_levels * n_theta * n_radial;
+    if (flat >= static_cast<size_t>(query_count) * points_per_query) return;
+    const int query = static_cast<int>(flat / points_per_query);
+    int remainder = static_cast<int>(flat - static_cast<size_t>(query) * points_per_query);
+    const int radial_index = remainder % n_radial;
+    remainder /= n_radial;
+    const int theta_index = remainder % n_theta;
+    remainder /= n_theta;
+    const int level_index = remainder % n_levels;
+    const int phi_index = remainder / n_levels;
+    const int ray_count = n_phi * n_theta;
+    const int ray = phi_index * n_theta + theta_index;
+    const float boundary = boundary_radii[
+        static_cast<size_t>(query) * ray_count * n_levels + level_index * ray_count + ray
+    ];
+    const float radius = 0.5f * boundary * (gauss_nodes[radial_index] + 1.0f);
+    const float phi = phi_index * static_cast<float>(TWOPI) / static_cast<float>(nfp * n_phi);
+    const float theta = theta_index * static_cast<float>(TWOPI) / n_theta;
+    float axis_radius, axis_radius_phi, axis_z, axis_z_phi;
+    const size_t axis_offset = static_cast<size_t>(query) * axis_count;
+    periodic_hermite_device(phi, axis_R + axis_offset, axis_R_phi + axis_offset,
+        axis_count, static_cast<float>(TWOPI) / nfp, axis_radius, axis_radius_phi);
+    periodic_hermite_device(phi, axis_Z + axis_offset, axis_Z_phi + axis_offset,
+        axis_count, static_cast<float>(TWOPI) / nfp, axis_z, axis_z_phi);
+    float sine_phi, cosine_phi, sine_theta, cosine_theta;
+    sincosf(phi, &sine_phi, &cosine_phi);
+    sincosf(theta, &sine_theta, &cosine_theta);
+    const float R = axis_radius + radius * cosine_theta;
+    xyz[3 * flat] = R * cosine_phi;
+    xyz[3 * flat + 1] = R * sine_phi;
+    xyz[3 * flat + 2] = axis_z + radius * sine_theta;
+}
+
+__global__ void local_batch_reduce_flux_sections_kernel(
+    const float* __restrict__ B,
+    const float* __restrict__ boundary_radii,
+    const float* __restrict__ gauss_nodes,
+    const float* __restrict__ gauss_weights,
+    int query_count,
+    int n_phi,
+    int n_levels,
+    int n_theta,
+    int n_radial,
+    int nfp,
+    double* __restrict__ sections
+) {
+    extern __shared__ double shared[];
+    const int sections_per_query = n_phi * n_levels;
+    const int flat_section = blockIdx.x;
+    const int query = flat_section / sections_per_query;
+    if (query >= query_count) return;
+    const int section = flat_section - query * sections_per_query;
+    const int level_index = section % n_levels;
+    const int phi_index = section / n_levels;
+    const int ray_count = n_phi * n_theta;
+    const int points_per_query = n_phi * n_levels * n_theta * n_radial;
+    const float phi = phi_index * static_cast<float>(TWOPI) / static_cast<float>(nfp * n_phi);
+    float sine_phi, cosine_phi;
+    sincosf(phi, &sine_phi, &cosine_phi);
+    double sum = 0.0;
+    for (int local = threadIdx.x; local < n_theta * n_radial; local += blockDim.x) {
+        const int radial_index = local % n_radial;
+        const int theta_index = local / n_radial;
+        const int ray = phi_index * n_theta + theta_index;
+        const float boundary = boundary_radii[
+            static_cast<size_t>(query) * ray_count * n_levels + level_index * ray_count + ray
+        ];
+        const float radius = 0.5f * boundary * (gauss_nodes[radial_index] + 1.0f);
+        const float radial_weight = 0.5f * boundary * gauss_weights[radial_index];
+        const int point = ((phi_index * n_levels + level_index) * n_theta + theta_index) *
+            n_radial + radial_index;
+        const size_t point_offset = static_cast<size_t>(query) * points_per_query + point;
+        const float b_phi = -B[3 * point_offset] * sine_phi + B[3 * point_offset + 1] * cosine_phi;
+        sum += static_cast<double>(b_phi) * radius * radial_weight;
+    }
+    shared[threadIdx.x] = sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) shared[threadIdx.x] += shared[threadIdx.x + stride];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) sections[flat_section] = shared[0] / n_theta;
+}
+
+__global__ void local_batch_generate_volume_points_kernel(
+    const float* __restrict__ boundary_radii,
+    int query_count,
+    int n_phi,
+    int n_theta,
+    int n_radial,
+    int output_count,
+    int nfp,
+    float rho_min,
+    float edge_level,
+    const float* __restrict__ flux_coefficients,
+    int flux_degree,
+    const float* __restrict__ edge_flux,
+    const float* __restrict__ psi_coefficients,
+    const int* __restrict__ mode_a,
+    const int* __restrict__ mode_b,
+    const int* __restrict__ mode_m,
+    const int* __restrict__ mode_kind,
+    int psi_coefficient_count,
+    int psi_degree,
+    int psi_m_tor,
+    float psi_a,
+    const float* __restrict__ axis_R,
+    const float* __restrict__ axis_Z,
+    const float* __restrict__ axis_R_phi,
+    const float* __restrict__ axis_Z_phi,
+    int axis_count,
+    float* __restrict__ xyz,
+    float* __restrict__ grad_s,
+    float* __restrict__ grad_theta,
+    float* __restrict__ grad_phi,
+    float* __restrict__ rho_out,
+    float* __restrict__ theta_out,
+    float* __restrict__ phi_out,
+    float* __restrict__ volume_weight,
+    float* __restrict__ flux_derivative_out
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(query_count) * output_count) return;
+    const int query = static_cast<int>(flat / output_count);
+    const int output_index = static_cast<int>(flat - static_cast<size_t>(query) * output_count);
+    const int candidate_count = n_phi * n_theta * n_radial;
+    int source = min(candidate_count - 1, static_cast<int>(
+        static_cast<long long>(output_index) * candidate_count / output_count
+    ));
+    const int radial_index = source % n_radial;
+    source /= n_radial;
+    const int theta_index = source % n_theta;
+    const int phi_index = source / n_theta;
+    const int ray_count = n_phi * n_theta;
+    const int ray = phi_index * n_theta + theta_index;
+    const float boundary = boundary_radii[static_cast<size_t>(query) * ray_count + ray];
+    const float radial_fraction = sqrtf(
+        rho_min * rho_min + (1.0f - rho_min * rho_min) *
+        (radial_index + 0.371f) / n_radial
+    );
+    const float radius = boundary * radial_fraction;
+    const float phi = (phi_index + 0.417f) * static_cast<float>(TWOPI) /
+        static_cast<float>(nfp * n_phi);
+    float shifted_theta = theta_index + 0.613f + 0.217f * phi_index;
+    shifted_theta -= floorf(shifted_theta / n_theta) * n_theta;
+    const float geometric_theta = shifted_theta * static_cast<float>(TWOPI) / n_theta;
+    const size_t axis_offset = static_cast<size_t>(query) * axis_count;
+    float axis_radius, axis_radius_phi, axis_z, axis_z_phi;
+    periodic_hermite_device(phi, axis_R + axis_offset, axis_R_phi + axis_offset,
+        axis_count, static_cast<float>(TWOPI) / nfp, axis_radius, axis_radius_phi);
+    periodic_hermite_device(phi, axis_Z + axis_offset, axis_Z_phi + axis_offset,
+        axis_count, static_cast<float>(TWOPI) / nfp, axis_z, axis_z_phi);
+    float sine_phi, cosine_phi, sine_theta, cosine_theta;
+    sincosf(phi, &sine_phi, &cosine_phi);
+    sincosf(geometric_theta, &sine_theta, &cosine_theta);
+    const float R = axis_radius + radius * cosine_theta;
+    const float Z = axis_z + radius * sine_theta;
+    float s_value, grad_R, grad_Z, grad_phi_coordinate;
+    evaluate_psi_device(
+        psi_coefficients + static_cast<size_t>(query) * psi_coefficient_count,
+        mode_a, mode_b, mode_m, mode_kind, psi_coefficient_count,
+        nfp, psi_degree, psi_m_tor, psi_a, R, Z, phi,
+        axis_radius, axis_z, axis_radius_phi, axis_z_phi,
+        s_value, grad_R, grad_Z, grad_phi_coordinate
+    );
+    const float* query_flux_coefficients =
+        flux_coefficients + static_cast<size_t>(query) * flux_degree;
+    float flux = 0.0f, flux_derivative = 0.0f;
+    float power = s_value, derivative_power = 1.0f;
+    for (int coefficient = 0; coefficient < flux_degree; ++coefficient) {
+        flux += query_flux_coefficients[coefficient] * power;
+        flux_derivative += (coefficient + 1) * query_flux_coefficients[coefficient] * derivative_power;
+        power *= s_value;
+        derivative_power *= s_value;
+    }
+    const float physical_rho = sqrtf(fmaxf(flux / edge_flux[query], 0.0f));
+    const float physical_grad_phi = grad_phi_coordinate / R;
+    xyz[3 * flat] = R * cosine_phi;
+    xyz[3 * flat + 1] = R * sine_phi;
+    xyz[3 * flat + 2] = Z;
+    grad_s[3 * flat] = grad_R * cosine_phi - physical_grad_phi * sine_phi;
+    grad_s[3 * flat + 1] = grad_R * sine_phi + physical_grad_phi * cosine_phi;
+    grad_s[3 * flat + 2] = grad_Z;
+    const float radius2 = fmaxf(radius * radius, 1.0e-30f);
+    const float theta_R = radius * sine_theta / radius2;
+    const float theta_Z = -radius * cosine_theta / radius2;
+    const float theta_phi_coordinate =
+        (radius * cosine_theta * axis_z_phi - radius * sine_theta * axis_radius_phi) / radius2;
+    const float physical_theta_phi = theta_phi_coordinate / R;
+    grad_theta[3 * flat] = theta_R * cosine_phi - physical_theta_phi * sine_phi;
+    grad_theta[3 * flat + 1] = theta_R * sine_phi + physical_theta_phi * cosine_phi;
+    grad_theta[3 * flat + 2] = theta_Z;
+    grad_phi[3 * flat] = -sine_phi / R;
+    grad_phi[3 * flat + 1] = cosine_phi / R;
+    grad_phi[3 * flat + 2] = 0.0f;
+    rho_out[flat] = physical_rho;
+    theta_out[flat] = -geometric_theta;
+    phi_out[flat] = phi;
+    volume_weight[flat] = R * boundary * boundary;
+    flux_derivative_out[flat] = flux_derivative;
+}
+
+__global__ void local_batch_alpha_histogram_kernel(
+    const float* __restrict__ rho,
+    int query_count,
+    int point_count,
+    int fit_count,
+    int radial_bins,
+    int* __restrict__ bin_counts
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(query_count) * fit_count) return;
+    const int query = static_cast<int>(flat / fit_count);
+    const int index = static_cast<int>(flat - static_cast<size_t>(query) * fit_count);
+    const int point = min(point_count - 1, static_cast<int>(
+        static_cast<long long>(index) * point_count / fit_count
+    ));
+    const float radial = rho[static_cast<size_t>(query) * point_count + point];
+    const int bin = min(radial_bins - 1, max(0, static_cast<int>(radial * radial_bins)));
+    atomicAdd(bin_counts + static_cast<size_t>(query) * radial_bins + bin, 1);
+}
+
+__global__ void local_batch_alpha_prepare_kernel(
+    const float* __restrict__ B,
+    const float* __restrict__ grad_s,
+    const float* __restrict__ grad_theta,
+    const float* __restrict__ grad_phi,
+    const float* __restrict__ source_rho,
+    const float* __restrict__ source_theta,
+    const float* __restrict__ source_phi,
+    int query_count,
+    int point_count,
+    int fit_count,
+    int radial_bins,
+    const int* __restrict__ bin_counts,
+    float* __restrict__ b_theta,
+    float* __restrict__ b_phi,
+    float* __restrict__ weights,
+    float* __restrict__ rho,
+    float* __restrict__ theta,
+    float* __restrict__ phi,
+    double* __restrict__ diagnostics
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(query_count) * fit_count) return;
+    const int query = static_cast<int>(flat / fit_count);
+    const int index = static_cast<int>(flat - static_cast<size_t>(query) * fit_count);
+    const int point = min(point_count - 1, static_cast<int>(
+        static_cast<long long>(index) * point_count / fit_count
+    ));
+    const size_t source = static_cast<size_t>(query) * point_count + point;
+    float grad_norm2 = 0.0f, field_dot_grad = 0.0f, field_norm2 = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        const float field = B[3 * source + component];
+        const float gradient = grad_s[3 * source + component];
+        grad_norm2 += gradient * gradient;
+        field_dot_grad += field * gradient;
+        field_norm2 += field * field;
+    }
+    const float normal_coefficient = field_dot_grad / fmaxf(grad_norm2, 1.0e-30f);
+    float along_theta = 0.0f, along_phi = 0.0f, normal_norm2 = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        const float normal = normal_coefficient * grad_s[3 * source + component];
+        const float tangent = B[3 * source + component] - normal;
+        along_theta += tangent * grad_theta[3 * source + component];
+        along_phi += tangent * grad_phi[3 * source + component];
+        normal_norm2 += normal * normal;
+    }
+    const float radial = source_rho[source];
+    const int bin = min(radial_bins - 1, max(0, static_cast<int>(radial * radial_bins)));
+    const float weight = rsqrtf(static_cast<float>(max(
+        bin_counts[static_cast<size_t>(query) * radial_bins + bin], 1
+    ))) / sqrtf(fmaxf(field_norm2, 1.0e-30f));
+    b_theta[flat] = along_theta;
+    b_phi[flat] = along_phi;
+    weights[flat] = weight;
+    rho[flat] = radial;
+    theta[flat] = source_theta[source];
+    phi[flat] = source_phi[source];
+    atomic_add_double(diagnostics + static_cast<size_t>(query) * 3, static_cast<double>(weight) * weight);
+    atomic_add_double(diagnostics + static_cast<size_t>(query) * 3 + 1, normal_norm2);
+    atomic_add_double(diagnostics + static_cast<size_t>(query) * 3 + 2, field_norm2);
+}
+
+__global__ void local_batch_normalize_alpha_kernel(
+    float* __restrict__ weights,
+    const float* __restrict__ b_theta,
+    const double* __restrict__ diagnostics,
+    int query_count,
+    int fit_count,
+    float* __restrict__ rhs
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(query_count) * fit_count) return;
+    const int query = static_cast<int>(flat / fit_count);
+    const float scale = sqrtf(static_cast<float>(
+        fit_count / fmax(diagnostics[static_cast<size_t>(query) * 3], 1.0e-300)
+    ));
+    weights[flat] *= scale;
+    rhs[flat] = -weights[flat] * b_theta[flat];
+}
+
+__global__ void local_batch_assemble_alpha_tile_kernel(
+    const int* __restrict__ mode_m,
+    const int* __restrict__ mode_n,
+    const int* __restrict__ mode_kind,
+    const float* __restrict__ radial_coefficients,
+    int mode_count,
+    int radial_order,
+    int iota_degree,
+    int nfp,
+    const float* __restrict__ rho,
+    const float* __restrict__ theta,
+    const float* __restrict__ phi,
+    const float* __restrict__ b_theta,
+    const float* __restrict__ b_phi,
+    const float* __restrict__ weights,
+    int fit_count,
+    int query_begin,
+    int tile_count,
+    const float* __restrict__ center_scale,
+    float* __restrict__ matrices
+) {
+    const int column = blockIdx.x;
+    const int local_query = blockIdx.y;
+    if (local_query >= tile_count) return;
+    const int query = query_begin + local_query;
+    const int column_count = mode_count + iota_degree + 1;
+    float* matrix = matrices + static_cast<size_t>(local_query) * fit_count * column_count +
+        static_cast<size_t>(column) * fit_count;
+    const size_t query_offset = static_cast<size_t>(query) * fit_count;
+    if (column < mode_count) {
+        const int m = mode_m[column];
+        const int n = mode_n[column];
+        const int kind = mode_kind[column];
+        const float* radial_coeff =
+            radial_coefficients + static_cast<size_t>(column) * (radial_order + 1);
+        for (int row = threadIdx.x; row < fit_count; row += blockDim.x) {
+            const size_t index = query_offset + row;
+            const float radial = evaluate_radial_polynomial(radial_coeff, radial_order, rho[index]);
+            const float argument = m * theta[index] - n * nfp * phi[index];
+            float sine, cosine;
+            sincosf(argument, &sine, &cosine);
+            const float derivative_theta = kind == 0 ? -m * radial * sine : m * radial * cosine;
+            const float derivative_phi = kind == 0 ? n * nfp * radial * sine : -n * nfp * radial * cosine;
+            matrix[row] = weights[index] *
+                (derivative_theta * b_theta[index] + derivative_phi * b_phi[index]) /
+                center_scale[column];
+        }
+    } else {
+        const int power_index = column - mode_count;
+        if (power_index > iota_degree) return;
+        for (int row = threadIdx.x; row < fit_count; row += blockDim.x) {
+            const size_t index = query_offset + row;
+            float radial_power = 1.0f;
+            const float u = rho[index] * rho[index];
+            for (int power = 0; power < power_index; ++power) radial_power *= u;
+            matrix[row] = -weights[index] * radial_power * b_phi[index] /
+                center_scale[column];
+        }
+    }
+}
+
+__global__ void local_batch_initialize_alpha_coefficients_kernel(
+    const float* __restrict__ center,
+    int column_count,
+    int tile_count,
+    float* __restrict__ coefficients
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat < static_cast<size_t>(column_count) * tile_count) {
+        coefficients[flat] = center[flat % column_count];
+    }
+}
+
+__global__ void local_batch_initialize_alpha_residual_kernel(
+    const float* __restrict__ rhs,
+    const float* __restrict__ prediction,
+    int fit_count,
+    int query_begin,
+    int tile_count,
+    float* __restrict__ residual
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(fit_count) * tile_count) return;
+    const int local_query = static_cast<int>(flat / fit_count);
+    const int row = static_cast<int>(flat - static_cast<size_t>(local_query) * fit_count);
+    residual[flat] = rhs[static_cast<size_t>(query_begin + local_query) * fit_count + row] -
+        prediction[flat];
+}
+
+__global__ void local_batch_alpha_normal_ridge_kernel(
+    float* __restrict__ normal,
+    const float* __restrict__ coefficients,
+    float ridge,
+    size_t count
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat < count) normal[flat] -= ridge * coefficients[flat];
+}
+
+__global__ void local_batch_alpha_delta_kernel(
+    const float* __restrict__ image,
+    int fit_count,
+    const float* __restrict__ direction,
+    int column_count,
+    int tile_count,
+    float ridge,
+    float* __restrict__ delta
+) {
+    const int query = blockIdx.x;
+    if (query >= tile_count) return;
+    float sum = 0.0f;
+    for (int row = threadIdx.x; row < fit_count; row += blockDim.x) {
+        const float value = image[static_cast<size_t>(query) * fit_count + row];
+        sum += value * value;
+    }
+    for (int column = threadIdx.x; column < column_count; column += blockDim.x) {
+        const float value = direction[static_cast<size_t>(query) * column_count + column];
+        sum += ridge * value * value;
+    }
+    extern __shared__ float shared[];
+    shared[threadIdx.x] = sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) shared[threadIdx.x] += shared[threadIdx.x + stride];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) delta[query] = shared[0];
+}
+
+__global__ void local_batch_column_norm_kernel(
+    const float* __restrict__ values,
+    int rows,
+    int columns,
+    float* __restrict__ norms
+) {
+    const int column = blockIdx.x;
+    if (column >= columns) return;
+    float sum = 0.0f;
+    for (int row = threadIdx.x; row < rows; row += blockDim.x) {
+        const float value = values[static_cast<size_t>(column) * rows + row];
+        sum += value * value;
+    }
+    extern __shared__ float shared[];
+    shared[threadIdx.x] = sum;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) shared[threadIdx.x] += shared[threadIdx.x + stride];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) norms[column] = shared[0];
+}
+
+__global__ void local_batch_direction_update_kernel(
+    float* __restrict__ direction,
+    const float* __restrict__ normal,
+    const float* __restrict__ gamma,
+    const float* __restrict__ gamma_new,
+    int rows,
+    int columns
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(rows) * columns) return;
+    const int column = static_cast<int>(flat / rows);
+    direction[flat] = normal[flat] +
+        gamma_new[column] / fmaxf(gamma[column], 1.0e-30f) * direction[flat];
+}
+
+__global__ void local_batch_alpha_update_kernel(
+    float* __restrict__ coefficients,
+    float* __restrict__ residual,
+    const float* __restrict__ direction,
+    const float* __restrict__ image,
+    const float* __restrict__ gamma,
+    const float* __restrict__ delta,
+    int column_count,
+    int fit_count,
+    int tile_count
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const size_t point_total = static_cast<size_t>(fit_count) * tile_count;
+    const size_t coefficient_total = static_cast<size_t>(column_count) * tile_count;
+    if (flat < point_total) {
+        const int query = static_cast<int>(flat / fit_count);
+        residual[flat] -= gamma[query] / fmaxf(delta[query], 1.0e-30f) * image[flat];
+    }
+    if (flat < coefficient_total) {
+        const int query = static_cast<int>(flat / column_count);
+        coefficients[flat] += gamma[query] / fmaxf(delta[query], 1.0e-30f) * direction[flat];
+    }
+}
+
+__global__ void local_batch_extract_iota_kernel(
+    const float* __restrict__ scaled_coefficients,
+    const float* __restrict__ scale,
+    int column_count,
+    int mode_count,
+    int iota_count,
+    int query_begin,
+    int tile_count,
+    float* __restrict__ iota
+) {
+    const int flat = blockIdx.x * blockDim.x + threadIdx.x;
+    if (flat >= tile_count * iota_count) return;
+    const int local_query = flat / iota_count;
+    const int degree = flat - local_query * iota_count;
+    iota[static_cast<size_t>(query_begin + local_query) * iota_count + degree] =
+        scaled_coefficients[static_cast<size_t>(local_query) * column_count + mode_count + degree] /
+        scale[mode_count + degree];
+}
+
+__global__ void local_batch_qs_metric_kernel(
+    const float* __restrict__ B,
+    const float* __restrict__ grad_B,
+    const float* __restrict__ grad_s,
+    const float* __restrict__ flux_derivative,
+    const float* __restrict__ rho,
+    const float* __restrict__ volume_weight,
+    int query_count,
+    int point_count,
+    const float* __restrict__ iota_coefficients,
+    int iota_degree,
+    int helicity_M,
+    int helicity_N,
+    int nfp,
+    const double* __restrict__ G,
+    float edge_rho_threshold,
+    double* __restrict__ sums,
+    unsigned int* __restrict__ psi_histogram,
+    int histogram_bins,
+    double* __restrict__ psi_sums
+) {
+    const size_t flat = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (flat >= static_cast<size_t>(query_count) * point_count) return;
+    const int query = static_cast<int>(flat / point_count);
+    float magnitude2 = 0.0f, grad_s_norm2 = 0.0f, field_dot_grad_s = 0.0f;
+    for (int component = 0; component < 3; ++component) {
+        const float field = B[3 * flat + component];
+        const float gradient = grad_s[3 * flat + component];
+        magnitude2 += field * field;
+        grad_s_norm2 += gradient * gradient;
+        field_dot_grad_s += field * gradient;
+    }
+    const float magnitude = sqrtf(fmaxf(magnitude2, 1.0e-30f));
+    float grad_magnitude[3];
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+        float sum = 0.0f;
+        for (int component = 0; component < 3; ++component) {
+            sum += grad_B[9 * flat + 3 * component + coordinate] * B[3 * flat + component];
+        }
+        grad_magnitude[coordinate] = sum / magnitude;
+    }
+    float grad_psi[3];
+    for (int component = 0; component < 3; ++component) {
+        grad_psi[component] = flux_derivative[flat] * grad_s[3 * flat + component];
+    }
+    const float cross_x = B[3 * flat + 1] * grad_psi[2] - B[3 * flat + 2] * grad_psi[1];
+    const float cross_y = B[3 * flat + 2] * grad_psi[0] - B[3 * flat] * grad_psi[2];
+    const float cross_z = B[3 * flat] * grad_psi[1] - B[3 * flat + 1] * grad_psi[0];
+    const float A = cross_x * grad_magnitude[0] + cross_y * grad_magnitude[1] +
+        cross_z * grad_magnitude[2];
+    const float C = B[3 * flat] * grad_magnitude[0] + B[3 * flat + 1] * grad_magnitude[1] +
+        B[3 * flat + 2] * grad_magnitude[2];
+    const float u = rho[flat] * rho[flat];
+    const float* query_iota = iota_coefficients + static_cast<size_t>(query) * (iota_degree + 1);
+    float iota = 0.0f, power = 1.0f;
+    for (int degree = 0; degree <= iota_degree; ++degree) {
+        iota += query_iota[degree] * power;
+        power *= u;
+    }
+    const double f_c = (helicity_M * static_cast<double>(iota) - helicity_N) * A -
+        helicity_M * G[query] * C;
+    const double f_c_qa = static_cast<double>(iota) * A - G[query] * C;
+    const double f_c_qp = -static_cast<double>(nfp) * A;
+    const double denominator = fmax(static_cast<double>(magnitude) * magnitude * magnitude, 1.0e-30);
+    const double normalized = f_c / denominator;
+    const double normalized_qa = f_c_qa / denominator;
+    const double normalized_qp = f_c_qp / denominator;
+    const double weight = volume_weight[flat];
+    double* query_sums = sums + static_cast<size_t>(query) * 9;
+    atomic_add_double(query_sums, weight);
+    atomic_add_double(query_sums + 1, weight * normalized * normalized);
+    atomic_add_double(query_sums + 4, weight * weight);
+    atomic_add_double(query_sums + 7, weight * normalized_qa * normalized_qa);
+    atomic_add_double(query_sums + 8, weight * normalized_qp * normalized_qp);
+    if (rho[flat] >= edge_rho_threshold) {
+        atomic_add_double(query_sums + 2, weight);
+        atomic_add_double(query_sums + 3, weight * normalized * normalized);
+        atomic_add_double(query_sums + 5, weight * weight);
+        atomic_add_double(query_sums + 6, 1.0);
+    }
+    const double psi_scale2 = static_cast<double>(magnitude2) * grad_s_norm2;
+    atomic_add_double(psi_sums + static_cast<size_t>(query) * 2,
+        static_cast<double>(field_dot_grad_s) * field_dot_grad_s);
+    atomic_add_double(psi_sums + static_cast<size_t>(query) * 2 + 1, psi_scale2);
+    const float angle = fabsf(field_dot_grad_s) / sqrtf(fmaxf(magnitude2 * grad_s_norm2, 1.0e-30f));
+    const float log_angle = log10f(fmaxf(angle, 1.0e-10f));
+    const int bin = min(histogram_bins - 1, max(0, static_cast<int>(
+        (log_angle + 10.0f) * histogram_bins / 8.0f
+    )));
+    atomicAdd(psi_histogram + static_cast<size_t>(query) * histogram_bins + bin, 1u);
+}
+
+bool score_local_batch_impl(
+    void* batch_field,
+    const double* currents_a,
+    int n_base_coils,
+    int nfp,
+    const double* axis_R_host,
+    const double* axis_Z_host,
+    const double* axis_R_phi_host,
+    const double* axis_Z_phi_host,
+    int axis_count,
+    const double* axis_residual,
+    const double* axis_topology_trace,
+    const double* axis_topology_det,
+    const double* psi_coefficients_host,
+    int psi_coefficient_count,
+    const double* psi_train_rms,
+    const double* coil_components,
+    const SgpuScoreResult& center,
+    const SgpuScoreConfig& config,
+    int surface_theta_count,
+    int alpha_iterations,
+    SgpuScoreResult* results,
+    double* stats_out,
+    int stats_len
+) {
+    using LocalClock = std::chrono::steady_clock;
+    const auto total_started = LocalClock::now();
+    const int query_count = sgpu_internal_batch_query_count(batch_field);
+    if (query_count <= 0 || !currents_a || n_base_coils <= 0 || nfp <= 0 || !axis_R_host ||
+        !axis_Z_host || !axis_R_phi_host || !axis_Z_phi_host || axis_count <= 1 ||
+        !axis_residual || !axis_topology_trace || !axis_topology_det ||
+        !psi_coefficients_host || psi_coefficient_count <= 0 || !psi_train_rms ||
+        !coil_components || surface_theta_count < 8 || alpha_iterations < 0 || !results) {
+        sgpu_internal_set_error("invalid local batch score input");
+        return false;
+    }
+    const PsiModes psi_modes = build_psi_modes(config.psi_poly_degree, config.psi_m_tor);
+    if (static_cast<int>(psi_modes.a.size()) != psi_coefficient_count) {
+        sgpu_internal_set_error("local batch psi mode count mismatch");
+        return false;
+    }
+    const int alpha_column_count = static_cast<int>(
+        build_clebsch_modes_native(
+            config.alpha_radial_order, config.alpha_poloidal_order,
+            config.alpha_toroidal_order
+        ).m.size()
+    ) + config.iota_degree + 1;
+    if (g_alpha_warm_preconditioner.column_count != alpha_column_count ||
+        g_alpha_warm_preconditioner.upper_factor.size() !=
+            static_cast<size_t>(alpha_column_count) * alpha_column_count) {
+        sgpu_internal_set_error("local batch alpha center preconditioner is unavailable");
+        return false;
+    }
+    std::vector<AxisData> axes(query_count);
+    std::vector<PsiData> psis(query_count);
+    for (int query = 0; query < query_count; ++query) {
+        AxisData& axis = axes[query];
+        const size_t axis_offset = static_cast<size_t>(query) * axis_count;
+        axis.R.assign(axis_R_host + axis_offset, axis_R_host + axis_offset + axis_count);
+        axis.Z.assign(axis_Z_host + axis_offset, axis_Z_host + axis_offset + axis_count);
+        axis.R_phi.assign(axis_R_phi_host + axis_offset, axis_R_phi_host + axis_offset + axis_count);
+        axis.Z_phi.assign(axis_Z_phi_host + axis_offset, axis_Z_phi_host + axis_offset + axis_count);
+        axis.selected.R = axis.R[0];
+        axis.selected.Z = axis.Z[0];
+        axis.selected.residual = axis_residual[query];
+        axis.selected.topology_trace = axis_topology_trace[query];
+        axis.selected.topology_det = axis_topology_det[query];
+        axis.selected.elliptic = axis_topology_det[query] > 0.0 &&
+            std::abs(axis_topology_trace[query]) /
+                std::sqrt(axis_topology_det[query]) < 2.0;
+        axis.selected.ellipse_aspect = center.axis_ellipse_aspect;
+        PsiData& psi = psis[query];
+        psi.modes = psi_modes;
+        const size_t psi_offset = static_cast<size_t>(query) * psi_coefficient_count;
+        psi.coeffs.assign(
+            psi_coefficients_host + psi_offset,
+            psi_coefficients_host + psi_offset + psi_coefficient_count
+        );
+        psi.train_rms = psi_train_rms[query];
+        initialize_result(&results[query], config.device_id);
+    }
+
+    const auto surface_started = LocalClock::now();
+    const double edge_level = center.surface_level;
+    std::vector<double> surface_R(static_cast<size_t>(query_count) * surface_theta_count);
+    std::vector<double> surface_Z(surface_R.size()), surface_radius(surface_R.size());
+    for (int query = 0; query < query_count; ++query) {
+        for (int theta_index = 0; theta_index < surface_theta_count; ++theta_index) {
+            const size_t index = static_cast<size_t>(query) * surface_theta_count + theta_index;
+            const double theta = TWOPI * theta_index / surface_theta_count;
+            std::array<double, 25> polynomial;
+            ray_polynomial_phi0(psis[query], config, theta, polynomial);
+            const double radius = solve_ray_radius(polynomial, edge_level, config);
+            surface_radius[index] = radius;
+            surface_R[index] = axes[query].R[0] + radius * std::cos(theta);
+            surface_Z[index] = axes[query].Z[0] + radius * std::sin(theta);
+        }
+    }
+    std::vector<double> surface_R_end(surface_R.size()), surface_Z_end(surface_Z.size());
+    if (sgpu_batch_trace_period_mixed(
+            batch_field, surface_R.data(), surface_Z.data(), surface_R_end.data(),
+            surface_Z_end.data(), surface_theta_count, nfp, config.surface_trace_steps)) {
+        return false;
+    }
+    std::vector<double> surface_drift(query_count, 0.0);
+    for (int query = 0; query < query_count; ++query) {
+        std::vector<double> relative(surface_theta_count);
+        double radius_mean = 0.0;
+        for (int theta_index = 0; theta_index < surface_theta_count; ++theta_index) {
+            radius_mean += surface_radius[static_cast<size_t>(query) * surface_theta_count + theta_index] /
+                surface_theta_count;
+        }
+        for (int theta_index = 0; theta_index < surface_theta_count; ++theta_index) {
+            const size_t index = static_cast<size_t>(query) * surface_theta_count + theta_index;
+            double value, grad_R, grad_Z, grad_phi;
+            evaluate_psi_host(
+                psis[query], axes[query], config, nfp,
+                surface_R_end[index], surface_Z_end[index], TWOPI / nfp,
+                value, grad_R, grad_Z, grad_phi
+            );
+            const double gradient_norm = std::sqrt(
+                grad_R * grad_R + grad_Z * grad_Z +
+                std::pow(grad_phi / surface_R_end[index], 2.0)
+            );
+            relative[theta_index] = std::abs(value - edge_level) /
+                std::max(gradient_norm * radius_mean, 1.0e-14);
+        }
+        surface_drift[query] = percentile(relative, 0.95);
+    }
+    const double surface_seconds = std::chrono::duration<double>(
+        LocalClock::now() - surface_started
+    ).count();
+
+    std::vector<float> axis_R(static_cast<size_t>(query_count) * axis_count);
+    std::vector<float> axis_Z(axis_R.size()), axis_R_phi(axis_R.size()), axis_Z_phi(axis_R.size());
+    std::vector<float> psi_coefficients(static_cast<size_t>(query_count) * psi_coefficient_count);
+    for (size_t index = 0; index < axis_R.size(); ++index) {
+        axis_R[index] = static_cast<float>(axis_R_host[index]);
+        axis_Z[index] = static_cast<float>(axis_Z_host[index]);
+        axis_R_phi[index] = static_cast<float>(axis_R_phi_host[index]);
+        axis_Z_phi[index] = static_cast<float>(axis_Z_phi_host[index]);
+    }
+    for (size_t index = 0; index < psi_coefficients.size(); ++index) {
+        psi_coefficients[index] = static_cast<float>(psi_coefficients_host[index]);
+    }
+    DeviceBuffer<float> d_axis_R, d_axis_Z, d_axis_R_phi, d_axis_Z_phi, d_psi_coefficients;
+    DeviceBuffer<int> d_psi_a, d_psi_b, d_psi_m, d_psi_kind;
+    if (!copy_to_device(d_axis_R, axis_R) || !copy_to_device(d_axis_Z, axis_Z) ||
+        !copy_to_device(d_axis_R_phi, axis_R_phi) || !copy_to_device(d_axis_Z_phi, axis_Z_phi) ||
+        !copy_to_device(d_psi_coefficients, psi_coefficients) ||
+        !copy_to_device(d_psi_a, psi_modes.a) || !copy_to_device(d_psi_b, psi_modes.b) ||
+        !copy_to_device(d_psi_m, psi_modes.m) || !copy_to_device(d_psi_kind, psi_modes.kind)) {
+        sgpu_internal_set_error("local batch common upload failed");
+        return false;
+    }
+
+    constexpr int threads = 256;
+    auto synchronize_stage = [](const char* stage) {
+        const cudaError_t error = cudaDeviceSynchronize();
+        if (error == cudaSuccess) return true;
+        std::string message(stage);
+        message += ": ";
+        message += cudaGetErrorString(error);
+        sgpu_internal_set_error(message.c_str());
+        return false;
+    };
+
+    // Calibrate toroidal flux for every query at the center-selected surface
+    // level. Only the tiny 11-by-4 polynomial fits return to the host.
+    const auto flux_started = LocalClock::now();
+    const int flux_phi = config.flux_phi_count;
+    const int flux_levels = config.flux_level_count;
+    const int flux_theta = config.flux_theta_count;
+    const int flux_radial = config.flux_radial_quadrature;
+    const int flux_rays = flux_phi * flux_theta;
+    const int flux_points_per_query = flux_phi * flux_levels * flux_theta * flux_radial;
+    std::vector<float> levels(flux_levels);
+    for (int index = 0; index < flux_levels; ++index) {
+        const double fraction = static_cast<double>(index + 1) / flux_levels;
+        levels[index] = static_cast<float>(edge_level * fraction * fraction);
+    }
+    std::vector<float> gauss_nodes, gauss_weights;
+    gauss_legendre(flux_radial, gauss_nodes, gauss_weights);
+    std::vector<float> flux_coefficients(
+        static_cast<size_t>(query_count) * config.flux_polynomial_degree
+    );
+    std::vector<float> edge_flux(query_count);
+    {
+        DeviceBuffer<float> d_levels, d_gauss_nodes, d_gauss_weights;
+        DeviceBuffer<float> d_ray_coefficients(
+            static_cast<size_t>(query_count) * flux_rays * (config.psi_poly_degree + 1)
+        );
+        DeviceBuffer<float> d_radii(
+            static_cast<size_t>(query_count) * flux_levels * flux_rays
+        );
+        DeviceBuffer<float> d_residuals(d_radii.size());
+        DeviceBuffer<float> d_xyz(
+            static_cast<size_t>(query_count) * flux_points_per_query * 3
+        );
+        DeviceBuffer<float> d_B(d_xyz.size());
+        DeviceBuffer<double> d_sections(
+            static_cast<size_t>(query_count) * flux_phi * flux_levels
+        );
+        if (!copy_to_device(d_levels, levels) ||
+            !copy_to_device(d_gauss_nodes, gauss_nodes) ||
+            !copy_to_device(d_gauss_weights, gauss_weights) ||
+            !d_ray_coefficients.data() || !d_radii.data() || !d_residuals.data() ||
+            !d_xyz.data() || !d_B.data() || !d_sections.data()) {
+            sgpu_internal_set_error("local batch flux allocation failed");
+            return false;
+        }
+        const size_t ray_total = static_cast<size_t>(query_count) * flux_rays;
+        local_batch_build_ray_coefficients_kernel<<<
+            static_cast<unsigned int>((ray_total + threads - 1) / threads), threads
+        >>>(
+            d_psi_coefficients.data(), d_psi_a.data(), d_psi_b.data(), d_psi_m.data(),
+            d_psi_kind.data(), psi_coefficient_count, query_count, nfp,
+            config.psi_poly_degree, config.psi_m_tor, flux_phi, flux_theta,
+            0.0f, 0.0f, d_ray_coefficients.data()
+        );
+        const size_t radius_total = ray_total * flux_levels;
+        local_batch_solve_boundary_radii_kernel<<<
+            static_cast<unsigned int>((radius_total + threads - 1) / threads), threads
+        >>>(
+            d_ray_coefficients.data(), flux_rays, query_count, config.psi_poly_degree,
+            static_cast<float>(config.psi_a), d_levels.data(), flux_levels,
+            config.surface_newton_iters,
+            static_cast<float>(config.surface_newton_tolerance),
+            static_cast<float>(config.surface_max_radius_scale),
+            d_radii.data(), d_residuals.data()
+        );
+        const size_t point_total =
+            static_cast<size_t>(query_count) * flux_points_per_query;
+        local_batch_generate_flux_points_kernel<<<
+            static_cast<unsigned int>((point_total + threads - 1) / threads), threads
+        >>>(
+            d_radii.data(), d_gauss_nodes.data(), query_count, flux_phi, flux_levels,
+            flux_theta, flux_radial, nfp, d_axis_R.data(), d_axis_Z.data(),
+            d_axis_R_phi.data(), d_axis_Z_phi.data(), axis_count, d_xyz.data()
+        );
+        if (cudaGetLastError() != cudaSuccess ||
+            sgpu_internal_batch_eval_B_f32_device(
+                batch_field, d_xyz.data(), d_B.data(), flux_points_per_query)) {
+            sgpu_internal_set_error("local batch flux field evaluation failed");
+            return false;
+        }
+        local_batch_reduce_flux_sections_kernel<<<
+            query_count * flux_phi * flux_levels, threads, threads * sizeof(double)
+        >>>(
+            d_B.data(), d_radii.data(), d_gauss_nodes.data(), d_gauss_weights.data(),
+            query_count, flux_phi, flux_levels, flux_theta, flux_radial, nfp,
+            d_sections.data()
+        );
+        if (!synchronize_stage("local batch flux reduction")) return false;
+
+        std::vector<float> radii(d_radii.size()), residuals(d_residuals.size());
+        std::vector<double> sections(d_sections.size());
+        if (cudaMemcpy(radii.data(), d_radii.data(), radii.size() * sizeof(float),
+                       cudaMemcpyDeviceToHost) != cudaSuccess ||
+            cudaMemcpy(residuals.data(), d_residuals.data(), residuals.size() * sizeof(float),
+                       cudaMemcpyDeviceToHost) != cudaSuccess ||
+            cudaMemcpy(sections.data(), d_sections.data(), sections.size() * sizeof(double),
+                       cudaMemcpyDeviceToHost) != cudaSuccess) {
+            sgpu_internal_set_error("local batch flux result copy failed");
+            return false;
+        }
+        const int polynomial_degree = config.flux_polynomial_degree;
+        std::vector<double> matrix(static_cast<size_t>(flux_levels) * polynomial_degree);
+        for (int row = 0; row < flux_levels; ++row) {
+            double power = levels[row];
+            for (int column = 0; column < polynomial_degree; ++column) {
+                matrix[static_cast<size_t>(row) * polynomial_degree + column] = power;
+                power *= levels[row];
+            }
+        }
+        for (int query = 0; query < query_count; ++query) {
+            SgpuScoreResult& result = results[query];
+            std::vector<double> mean(flux_levels, 0.0), section_std(flux_levels, 0.0);
+            const size_t section_offset = static_cast<size_t>(query) * flux_phi * flux_levels;
+            for (int level = 0; level < flux_levels; ++level) {
+                for (int phi_index = 0; phi_index < flux_phi; ++phi_index) {
+                    mean[level] += sections[
+                        section_offset + static_cast<size_t>(phi_index) * flux_levels + level
+                    ] / flux_phi;
+                }
+                for (int phi_index = 0; phi_index < flux_phi; ++phi_index) {
+                    const double delta = sections[
+                        section_offset + static_cast<size_t>(phi_index) * flux_levels + level
+                    ] - mean[level];
+                    section_std[level] += delta * delta / flux_phi;
+                }
+                section_std[level] = std::sqrt(section_std[level]);
+            }
+            std::vector<double> coefficients;
+            if (!solve_small_least_squares(
+                    matrix, mean, flux_levels, polynomial_degree, coefficients)) {
+                sgpu_internal_set_error("local batch flux polynomial fit failed");
+                return false;
+            }
+            double fit_error2 = 0.0;
+            for (int column = 0; column < polynomial_degree; ++column) {
+                flux_coefficients[
+                    static_cast<size_t>(query) * polynomial_degree + column
+                ] = static_cast<float>(coefficients[column]);
+            }
+            for (int row = 0; row < flux_levels; ++row) {
+                double fitted = 0.0, power = levels[row];
+                for (int column = 0; column < polynomial_degree; ++column) {
+                    fitted += coefficients[column] * power;
+                    power *= levels[row];
+                }
+                const double delta = fitted - mean[row];
+                fit_error2 += delta * delta / flux_levels;
+            }
+            double derivative_min = std::numeric_limits<double>::infinity();
+            double derivative_max = -std::numeric_limits<double>::infinity();
+            for (int sample = 0; sample <= 200; ++sample) {
+                const double level = edge_level * sample / 200.0;
+                double derivative = 0.0, power = 1.0;
+                for (int column = 0; column < polynomial_degree; ++column) {
+                    derivative += (column + 1) * coefficients[column] * power;
+                    power *= level;
+                }
+                derivative_min = std::min(derivative_min, derivative);
+                derivative_max = std::max(derivative_max, derivative);
+            }
+            double edge = 0.0, edge_power = edge_level;
+            for (double coefficient : coefficients) {
+                edge += coefficient * edge_power;
+                edge_power *= edge_level;
+            }
+            edge_flux[query] = static_cast<float>(edge);
+            const size_t radius_offset = static_cast<size_t>(query) * flux_levels * flux_rays;
+            result.flux_boundary_residual_max = 0.0;
+            for (size_t index = 0; index < static_cast<size_t>(flux_levels) * flux_rays; ++index) {
+                result.flux_boundary_residual_max = std::max(
+                    result.flux_boundary_residual_max,
+                    static_cast<double>(residuals[radius_offset + index])
+                );
+            }
+            double volume_integrand = 0.0, major_radius = 0.0;
+            for (int phi_index = 0; phi_index < flux_phi; ++phi_index) {
+                const double phi = TWOPI * phi_index / static_cast<double>(nfp * flux_phi);
+                double axis_radius, axis_radius_phi_value, axis_z, axis_z_phi_value;
+                periodic_hermite_host(
+                    phi, axes[query].R, axes[query].R_phi, nfp,
+                    axis_radius, axis_radius_phi_value
+                );
+                periodic_hermite_host(
+                    phi, axes[query].Z, axes[query].Z_phi, nfp,
+                    axis_z, axis_z_phi_value
+                );
+                major_radius += axis_radius / flux_phi;
+                for (int theta_index = 0; theta_index < flux_theta; ++theta_index) {
+                    const int ray = phi_index * flux_theta + theta_index;
+                    const double radius = radii[
+                        radius_offset + static_cast<size_t>(flux_levels - 1) * flux_rays + ray
+                    ];
+                    const double theta = TWOPI * theta_index / flux_theta;
+                    volume_integrand += (
+                        0.5 * axis_radius * radius * radius +
+                        std::cos(theta) * radius * radius * radius / 3.0
+                    ) / static_cast<double>(flux_phi * flux_theta);
+                }
+            }
+            const double volume = TWOPI * TWOPI * volume_integrand;
+            const double minor_radius = std::sqrt(
+                std::max(volume, 0.0) /
+                std::max(2.0 * PI * PI * major_radius, 1.0e-30)
+            );
+            result.surface_level = edge_level;
+            result.surface_effective_level = edge_level;
+            result.surface_drift_relative_p95 = surface_drift[query];
+            result.surface_one_period_drift_relative_p95 = surface_drift[query];
+            result.surface_volume = volume;
+            result.surface_effective_minor_radius = minor_radius;
+            result.surface_inverse_aspect_ratio = minor_radius / std::max(major_radius, 1.0e-30);
+            result.flux_edge = edge;
+            result.flux_fit_relative_rms =
+                std::sqrt(fit_error2) / std::max(std::abs(mean.back()), 1.0e-30);
+            result.flux_section_relative_std_edge =
+                section_std.back() / std::max(std::abs(mean.back()), 1.0e-30);
+            result.flux_derivative_min = derivative_min;
+            result.flux_derivative_max = derivative_max;
+            result.flux_attempt_count = 1;
+            result.stage_completed = SCORE_STAGE_FLUX;
+        }
+    }
+    const double flux_seconds = std::chrono::duration<double>(
+        LocalClock::now() - flux_started
+    ).count();
+
+    // Build one full-density physical-volume cloud per query. Local endpoints
+    // inherit the center's feasible active set, so no per-query compaction or
+    // branch search is performed in this gradient-only oracle.
+    const auto volume_started = LocalClock::now();
+    const int volume_phi = config.volume_phi_count;
+    const int volume_theta_count = config.volume_theta_count;
+    const int volume_rays = volume_phi * volume_theta_count;
+    const int candidate_target = static_cast<int>(std::ceil(config.volume_point_count * 1.25));
+    const int volume_radial = (candidate_target + volume_rays - 1) / volume_rays;
+    const int volume_points = config.volume_point_count;
+    const size_t volume_total = static_cast<size_t>(query_count) * volume_points;
+    DeviceBuffer<float> d_volume_xyz(volume_total * 3), d_volume_grad_s(volume_total * 3);
+    DeviceBuffer<float> d_volume_grad_theta(volume_total * 3), d_volume_grad_phi(volume_total * 3);
+    DeviceBuffer<float> d_volume_rho(volume_total), d_volume_theta_values(volume_total);
+    DeviceBuffer<float> d_volume_phi_values(volume_total), d_volume_weight(volume_total);
+    DeviceBuffer<float> d_volume_flux_derivative(volume_total);
+    DeviceBuffer<float> d_volume_B(volume_total * 3), d_volume_grad_B(volume_total * 9);
+    {
+        std::vector<float> edge_levels(query_count, static_cast<float>(edge_level));
+        DeviceBuffer<float> d_edge_levels, d_flux_coefficients, d_edge_flux;
+        DeviceBuffer<float> d_volume_ray_coefficients(
+            static_cast<size_t>(query_count) * volume_rays * (config.psi_poly_degree + 1)
+        );
+        DeviceBuffer<float> d_volume_boundary(static_cast<size_t>(query_count) * volume_rays);
+        DeviceBuffer<float> d_volume_boundary_residual(d_volume_boundary.size());
+        if (!copy_to_device(d_edge_levels, edge_levels) ||
+            !copy_to_device(d_flux_coefficients, flux_coefficients) ||
+            !copy_to_device(d_edge_flux, edge_flux) ||
+            !d_volume_ray_coefficients.data() || !d_volume_boundary.data() ||
+            !d_volume_boundary_residual.data() || !d_volume_xyz.data() ||
+            !d_volume_grad_s.data() || !d_volume_grad_theta.data() ||
+            !d_volume_grad_phi.data() || !d_volume_rho.data() ||
+            !d_volume_theta_values.data() || !d_volume_phi_values.data() ||
+            !d_volume_weight.data() || !d_volume_flux_derivative.data() ||
+            !d_volume_B.data() || !d_volume_grad_B.data()) {
+            sgpu_internal_set_error("local batch volume allocation failed");
+            return false;
+        }
+        const size_t ray_total = static_cast<size_t>(query_count) * volume_rays;
+        local_batch_build_ray_coefficients_kernel<<<
+            static_cast<unsigned int>((ray_total + threads - 1) / threads), threads
+        >>>(
+            d_psi_coefficients.data(), d_psi_a.data(), d_psi_b.data(), d_psi_m.data(),
+            d_psi_kind.data(), psi_coefficient_count, query_count, nfp,
+            config.psi_poly_degree, config.psi_m_tor, volume_phi, volume_theta_count,
+            0.417f, 0.613f, d_volume_ray_coefficients.data()
+        );
+        local_batch_solve_boundary_radii_kernel<<<
+            static_cast<unsigned int>((ray_total + threads - 1) / threads), threads
+        >>>(
+            d_volume_ray_coefficients.data(), volume_rays, query_count,
+            config.psi_poly_degree, static_cast<float>(config.psi_a),
+            d_edge_levels.data(), 1, config.surface_newton_iters,
+            static_cast<float>(config.surface_newton_tolerance),
+            static_cast<float>(config.surface_max_radius_scale),
+            d_volume_boundary.data(), d_volume_boundary_residual.data()
+        );
+        local_batch_generate_volume_points_kernel<<<
+            static_cast<unsigned int>((volume_total + threads - 1) / threads), threads
+        >>>(
+            d_volume_boundary.data(), query_count, volume_phi, volume_theta_count,
+            volume_radial, volume_points, nfp,
+            static_cast<float>(config.volume_rho_min), static_cast<float>(edge_level),
+            d_flux_coefficients.data(), config.flux_polynomial_degree, d_edge_flux.data(),
+            d_psi_coefficients.data(), d_psi_a.data(), d_psi_b.data(), d_psi_m.data(),
+            d_psi_kind.data(), psi_coefficient_count, config.psi_poly_degree,
+            config.psi_m_tor, static_cast<float>(config.psi_a),
+            d_axis_R.data(), d_axis_Z.data(), d_axis_R_phi.data(), d_axis_Z_phi.data(),
+            axis_count, d_volume_xyz.data(), d_volume_grad_s.data(),
+            d_volume_grad_theta.data(), d_volume_grad_phi.data(), d_volume_rho.data(),
+            d_volume_theta_values.data(), d_volume_phi_values.data(), d_volume_weight.data(),
+            d_volume_flux_derivative.data()
+        );
+        if (cudaGetLastError() != cudaSuccess ||
+            sgpu_internal_batch_eval_B_grad_f32_device(
+                batch_field, d_volume_xyz.data(), d_volume_B.data(),
+                d_volume_grad_B.data(), volume_points) ||
+            !synchronize_stage("local batch volume field")) {
+            sgpu_internal_set_error("local batch volume field evaluation failed");
+            return false;
+        }
+    }
+    const double volume_seconds = std::chrono::duration<double>(
+        LocalClock::now() - volume_started
+    ).count();
+
+    // Fit alpha/iota in bounded query tiles. The center Householder R is used
+    // only as a right preconditioner; every endpoint has its own design matrix.
+    const auto alpha_started = LocalClock::now();
+    const int fit_count = std::min(config.alpha_fit_point_count, volume_points);
+    const ClebschModesNative alpha_modes = build_clebsch_modes_native(
+        config.alpha_radial_order, config.alpha_poloidal_order,
+        config.alpha_toroidal_order
+    );
+    const int mode_count = static_cast<int>(alpha_modes.m.size());
+    const int column_count = mode_count + config.iota_degree + 1;
+    const int radial_bins = config.radial_bin_count;
+    const size_t fit_total = static_cast<size_t>(query_count) * fit_count;
+    DeviceBuffer<int> d_alpha_m, d_alpha_n, d_alpha_kind;
+    DeviceBuffer<int> d_alpha_bin_counts(static_cast<size_t>(query_count) * radial_bins);
+    DeviceBuffer<float> d_alpha_radial;
+    DeviceBuffer<float> d_b_theta(fit_total), d_b_phi(fit_total), d_alpha_weights(fit_total);
+    DeviceBuffer<float> d_alpha_rho(fit_total), d_alpha_theta(fit_total), d_alpha_phi(fit_total);
+    DeviceBuffer<float> d_alpha_rhs(fit_total);
+    DeviceBuffer<double> d_alpha_diagnostics(static_cast<size_t>(query_count) * 3);
+    DeviceBuffer<float> d_center_R, d_center_scale, d_center_solution;
+    DeviceBuffer<float> d_iota(static_cast<size_t>(query_count) * (config.iota_degree + 1));
+    if (!copy_to_device(d_alpha_m, alpha_modes.m) ||
+        !copy_to_device(d_alpha_n, alpha_modes.n) ||
+        !copy_to_device(d_alpha_kind, alpha_modes.kind) ||
+        !copy_to_device(d_alpha_radial, alpha_modes.radial_coefficients) ||
+        !copy_to_device(d_center_R, g_alpha_warm_preconditioner.upper_factor) ||
+        !copy_to_device(d_center_scale, g_alpha_warm_preconditioner.center_scale) ||
+        !copy_to_device(d_center_solution, g_alpha_warm_preconditioner.center_scaled_solution) ||
+        !d_alpha_bin_counts.data() || !d_b_theta.data() || !d_b_phi.data() ||
+        !d_alpha_weights.data() || !d_alpha_rho.data() || !d_alpha_theta.data() ||
+        !d_alpha_phi.data() || !d_alpha_rhs.data() || !d_alpha_diagnostics.data() ||
+        !d_iota.data() ||
+        cudaMemset(d_alpha_bin_counts.data(), 0,
+                   d_alpha_bin_counts.size() * sizeof(int)) != cudaSuccess ||
+        cudaMemset(d_alpha_diagnostics.data(), 0,
+                   d_alpha_diagnostics.size() * sizeof(double)) != cudaSuccess) {
+        sgpu_internal_set_error("local batch alpha common allocation failed");
+        return false;
+    }
+    local_batch_alpha_histogram_kernel<<<
+        static_cast<unsigned int>((fit_total + threads - 1) / threads), threads
+    >>>(
+        d_volume_rho.data(), query_count, volume_points, fit_count, radial_bins,
+        d_alpha_bin_counts.data()
+    );
+    local_batch_alpha_prepare_kernel<<<
+        static_cast<unsigned int>((fit_total + threads - 1) / threads), threads
+    >>>(
+        d_volume_B.data(), d_volume_grad_s.data(), d_volume_grad_theta.data(),
+        d_volume_grad_phi.data(), d_volume_rho.data(), d_volume_theta_values.data(),
+        d_volume_phi_values.data(), query_count, volume_points, fit_count, radial_bins,
+        d_alpha_bin_counts.data(), d_b_theta.data(), d_b_phi.data(),
+        d_alpha_weights.data(), d_alpha_rho.data(), d_alpha_theta.data(),
+        d_alpha_phi.data(), d_alpha_diagnostics.data()
+    );
+    local_batch_normalize_alpha_kernel<<<
+        static_cast<unsigned int>((fit_total + threads - 1) / threads), threads
+    >>>(
+        d_alpha_weights.data(), d_b_theta.data(), d_alpha_diagnostics.data(),
+        query_count, fit_count, d_alpha_rhs.data()
+    );
+    if (!synchronize_stage("local batch alpha preparation")) return false;
+    std::vector<double> alpha_diagnostics(d_alpha_diagnostics.size());
+    if (cudaMemcpy(
+            alpha_diagnostics.data(), d_alpha_diagnostics.data(),
+            alpha_diagnostics.size() * sizeof(double), cudaMemcpyDeviceToHost
+        ) != cudaSuccess) {
+        sgpu_internal_set_error("local batch alpha diagnostics copy failed");
+        return false;
+    }
+
+    cublasHandle_t blas = nullptr;
+    if (cublasCreate(&blas) != CUBLAS_STATUS_SUCCESS) {
+        sgpu_internal_set_error("local batch alpha cuBLAS initialization failed");
+        return false;
+    }
+    cublasSetMathMode(blas, CUBLAS_PEDANTIC_MATH);
+    const float one = 1.0f, zero = 0.0f;
+    const float ridge = static_cast<float>(std::max(config.alpha_ridge, 0.0));
+    const int alpha_tile_size = std::min(query_count, 8);
+    bool alpha_ok = true;
+    for (int query_begin = 0; query_begin < query_count && alpha_ok;
+         query_begin += alpha_tile_size) {
+        const int tile = std::min(alpha_tile_size, query_count - query_begin);
+        const size_t matrix_stride = static_cast<size_t>(fit_count) * column_count;
+        DeviceBuffer<float> d_matrix(static_cast<size_t>(tile) * matrix_stride);
+        DeviceBuffer<float> d_coefficients(static_cast<size_t>(tile) * column_count);
+        DeviceBuffer<float> d_prediction(static_cast<size_t>(tile) * fit_count);
+        DeviceBuffer<float> d_residual(static_cast<size_t>(tile) * fit_count);
+        DeviceBuffer<float> d_normal(static_cast<size_t>(tile) * column_count);
+        DeviceBuffer<float> d_direction(static_cast<size_t>(tile) * column_count);
+        DeviceBuffer<float> d_transformed(static_cast<size_t>(tile) * column_count);
+        DeviceBuffer<float> d_image(static_cast<size_t>(tile) * fit_count);
+        DeviceBuffer<float> d_gamma(tile), d_gamma_new(tile), d_delta(tile);
+        if (!d_matrix.data() || !d_coefficients.data() || !d_prediction.data() ||
+            !d_residual.data() || !d_normal.data() || !d_direction.data() ||
+            !d_transformed.data() || !d_image.data() || !d_gamma.data() ||
+            !d_gamma_new.data() || !d_delta.data()) {
+            alpha_ok = false;
+            break;
+        }
+        dim3 alpha_grid(column_count, tile);
+        local_batch_assemble_alpha_tile_kernel<<<alpha_grid, threads>>>(
+            d_alpha_m.data(), d_alpha_n.data(), d_alpha_kind.data(),
+            d_alpha_radial.data(), mode_count, config.alpha_radial_order,
+            config.iota_degree, nfp, d_alpha_rho.data(), d_alpha_theta.data(),
+            d_alpha_phi.data(), d_b_theta.data(), d_b_phi.data(),
+            d_alpha_weights.data(), fit_count, query_begin, tile,
+            d_center_scale.data(), d_matrix.data()
+        );
+        local_batch_initialize_alpha_coefficients_kernel<<<
+            (tile * column_count + threads - 1) / threads, threads
+        >>>(d_center_solution.data(), column_count, tile, d_coefficients.data());
+        cublasStatus_t status = cublasSgemmStridedBatched(
+            blas, CUBLAS_OP_N, CUBLAS_OP_N, fit_count, 1, column_count,
+            &one, d_matrix.data(), fit_count, static_cast<long long>(matrix_stride),
+            d_coefficients.data(), column_count, column_count,
+            &zero, d_prediction.data(), fit_count, fit_count, tile
+        );
+        local_batch_initialize_alpha_residual_kernel<<<
+            (tile * fit_count + threads - 1) / threads, threads
+        >>>(
+            d_alpha_rhs.data(), d_prediction.data(), fit_count, query_begin,
+            tile, d_residual.data()
+        );
+        if (status == CUBLAS_STATUS_SUCCESS) {
+            status = cublasSgemmStridedBatched(
+                blas, CUBLAS_OP_T, CUBLAS_OP_N, column_count, 1, fit_count,
+                &one, d_matrix.data(), fit_count, static_cast<long long>(matrix_stride),
+                d_residual.data(), fit_count, fit_count,
+                &zero, d_normal.data(), column_count, column_count, tile
+            );
+        }
+        local_batch_alpha_normal_ridge_kernel<<<
+            (tile * column_count + threads - 1) / threads, threads
+        >>>(
+            d_normal.data(), d_coefficients.data(), ridge,
+            static_cast<size_t>(tile) * column_count
+        );
+        if (status == CUBLAS_STATUS_SUCCESS) {
+            status = cublasStrsm(
+                blas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T,
+                CUBLAS_DIAG_NON_UNIT, column_count, tile, &one,
+                d_center_R.data(), column_count, d_normal.data(), column_count
+            );
+        }
+        if (cudaMemcpy(
+                d_direction.data(), d_normal.data(),
+                d_direction.size() * sizeof(float), cudaMemcpyDeviceToDevice
+            ) != cudaSuccess) status = CUBLAS_STATUS_EXECUTION_FAILED;
+        local_batch_column_norm_kernel<<<tile, threads, threads * sizeof(float)>>>(
+            d_normal.data(), column_count, tile, d_gamma.data()
+        );
+        for (int iteration = 0; iteration < alpha_iterations &&
+             status == CUBLAS_STATUS_SUCCESS; ++iteration) {
+            if (cudaMemcpy(
+                    d_transformed.data(), d_direction.data(),
+                    d_transformed.size() * sizeof(float), cudaMemcpyDeviceToDevice
+                ) != cudaSuccess) {
+                status = CUBLAS_STATUS_EXECUTION_FAILED;
+                break;
+            }
+            status = cublasStrsm(
+                blas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,
+                CUBLAS_DIAG_NON_UNIT, column_count, tile, &one,
+                d_center_R.data(), column_count, d_transformed.data(), column_count
+            );
+            if (status == CUBLAS_STATUS_SUCCESS) {
+                status = cublasSgemmStridedBatched(
+                    blas, CUBLAS_OP_N, CUBLAS_OP_N, fit_count, 1, column_count,
+                    &one, d_matrix.data(), fit_count, static_cast<long long>(matrix_stride),
+                    d_transformed.data(), column_count, column_count,
+                    &zero, d_image.data(), fit_count, fit_count, tile
+                );
+            }
+            local_batch_alpha_delta_kernel<<<tile, threads, threads * sizeof(float)>>>(
+                d_image.data(), fit_count, d_transformed.data(), column_count,
+                tile, ridge, d_delta.data()
+            );
+            local_batch_alpha_update_kernel<<<
+                (std::max(tile * fit_count, tile * column_count) + threads - 1) / threads,
+                threads
+            >>>(
+                d_coefficients.data(), d_residual.data(), d_transformed.data(),
+                d_image.data(), d_gamma.data(), d_delta.data(), column_count,
+                fit_count, tile
+            );
+            if (status == CUBLAS_STATUS_SUCCESS) {
+                status = cublasSgemmStridedBatched(
+                    blas, CUBLAS_OP_T, CUBLAS_OP_N, column_count, 1, fit_count,
+                    &one, d_matrix.data(), fit_count, static_cast<long long>(matrix_stride),
+                    d_residual.data(), fit_count, fit_count,
+                    &zero, d_normal.data(), column_count, column_count, tile
+                );
+            }
+            local_batch_alpha_normal_ridge_kernel<<<
+                (tile * column_count + threads - 1) / threads, threads
+            >>>(
+                d_normal.data(), d_coefficients.data(), ridge,
+                static_cast<size_t>(tile) * column_count
+            );
+            if (status == CUBLAS_STATUS_SUCCESS) {
+                status = cublasStrsm(
+                    blas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T,
+                    CUBLAS_DIAG_NON_UNIT, column_count, tile, &one,
+                    d_center_R.data(), column_count, d_normal.data(), column_count
+                );
+            }
+            local_batch_column_norm_kernel<<<tile, threads, threads * sizeof(float)>>>(
+                d_normal.data(), column_count, tile, d_gamma_new.data()
+            );
+            local_batch_direction_update_kernel<<<
+                (tile * column_count + threads - 1) / threads, threads
+            >>>(
+                d_direction.data(), d_normal.data(), d_gamma.data(),
+                d_gamma_new.data(), column_count, tile
+            );
+            std::swap(d_gamma, d_gamma_new);
+        }
+        local_batch_extract_iota_kernel<<<
+            (tile * (config.iota_degree + 1) + threads - 1) / threads, threads
+        >>>(
+            d_coefficients.data(), d_center_scale.data(), column_count, mode_count,
+            config.iota_degree + 1, query_begin, tile, d_iota.data()
+        );
+        if (status != CUBLAS_STATUS_SUCCESS ||
+            !synchronize_stage("local batch alpha tile")) {
+            alpha_ok = false;
+        }
+    }
+    cublasDestroy(blas);
+    if (!alpha_ok) {
+        sgpu_internal_set_error("local batch alpha PCGLS failed");
+        return false;
+    }
+    const double alpha_seconds = std::chrono::duration<double>(
+        LocalClock::now() - alpha_started
+    ).count();
+
+    const auto qs_started = LocalClock::now();
+    std::vector<double> G(query_count);
+    for (int query = 0; query < query_count; ++query) {
+        double current_sum = 0.0;
+        for (int coil = 0; coil < n_base_coils; ++coil) {
+            current_sum += std::abs(
+                currents_a[static_cast<size_t>(query) * n_base_coils + coil]
+            );
+        }
+        const double magnitude = 2.0e-7 * 2.0 * nfp * current_sum;
+        G[query] = std::copysign(magnitude, static_cast<double>(edge_flux[query]));
+    }
+    constexpr int histogram_bins = 256;
+    DeviceBuffer<double> d_G, d_qs_sums(static_cast<size_t>(query_count) * 9);
+    DeviceBuffer<double> d_psi_sums(static_cast<size_t>(query_count) * 2);
+    DeviceBuffer<unsigned int> d_psi_histogram(
+        static_cast<size_t>(query_count) * histogram_bins
+    );
+    if (!copy_to_device(d_G, G) || !d_qs_sums.data() || !d_psi_sums.data() ||
+        !d_psi_histogram.data() ||
+        cudaMemset(d_qs_sums.data(), 0, d_qs_sums.size() * sizeof(double)) != cudaSuccess ||
+        cudaMemset(d_psi_sums.data(), 0, d_psi_sums.size() * sizeof(double)) != cudaSuccess ||
+        cudaMemset(d_psi_histogram.data(), 0,
+                   d_psi_histogram.size() * sizeof(unsigned int)) != cudaSuccess) {
+        sgpu_internal_set_error("local batch QS allocation failed");
+        return false;
+    }
+    const float edge_threshold = static_cast<float>(
+        config.volume_rho_min + (1.0 - config.volume_rho_min) *
+        (config.radial_bin_count - 1.0) / config.radial_bin_count
+    );
+    local_batch_qs_metric_kernel<<<
+        static_cast<unsigned int>((volume_total + threads - 1) / threads), threads
+    >>>(
+        d_volume_B.data(), d_volume_grad_B.data(), d_volume_grad_s.data(),
+        d_volume_flux_derivative.data(), d_volume_rho.data(), d_volume_weight.data(),
+        query_count, volume_points, d_iota.data(), config.iota_degree,
+        config.target_M, config.target_N, nfp, d_G.data(), edge_threshold,
+        d_qs_sums.data(), d_psi_histogram.data(), histogram_bins, d_psi_sums.data()
+    );
+    if (!synchronize_stage("local batch QS reduction")) return false;
+    std::vector<double> qs_sums(d_qs_sums.size()), psi_sums(d_psi_sums.size());
+    std::vector<unsigned int> psi_histogram(d_psi_histogram.size());
+    std::vector<float> iota(static_cast<size_t>(query_count) * (config.iota_degree + 1));
+    if (cudaMemcpy(qs_sums.data(), d_qs_sums.data(), qs_sums.size() * sizeof(double),
+                   cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(psi_sums.data(), d_psi_sums.data(), psi_sums.size() * sizeof(double),
+                   cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(psi_histogram.data(), d_psi_histogram.data(),
+                   psi_histogram.size() * sizeof(unsigned int),
+                   cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(iota.data(), d_iota.data(), iota.size() * sizeof(float),
+                   cudaMemcpyDeviceToHost) != cudaSuccess) {
+        sgpu_internal_set_error("local batch QS result copy failed");
+        return false;
+    }
+    const double qs_seconds = std::chrono::duration<double>(
+        LocalClock::now() - qs_started
+    ).count();
+
+    const double target_helicity_norm = std::max(
+        std::hypot(static_cast<double>(config.target_M), static_cast<double>(config.target_N)),
+        1.0
+    );
+    const double qp_helicity_norm = std::max(std::abs(nfp), 1);
+    const bool qh_target = config.target_M != 0 && config.target_N != 0;
+    const double u_min = config.volume_rho_min * config.volume_rho_min;
+    for (int query = 0; query < query_count; ++query) {
+        SgpuScoreResult& result = results[query];
+        result.axis_R = axes[query].selected.R;
+        result.axis_Z = axes[query].selected.Z;
+        result.axis_residual = axes[query].selected.residual;
+        result.axis_topology_trace = axes[query].selected.topology_trace;
+        result.axis_topology_det = axes[query].selected.topology_det;
+        result.axis_ellipse_aspect = axes[query].selected.ellipse_aspect;
+        result.axis_candidate_count = 1;
+        result.axis_used_hint = 1;
+        result.psi_train_rms = psis[query].train_rms;
+        result.psi_angle_l2 = std::sqrt(
+            psi_sums[static_cast<size_t>(query) * 2] /
+            std::max(psi_sums[static_cast<size_t>(query) * 2 + 1], 1.0e-300)
+        );
+        const unsigned int percentile_target =
+            static_cast<unsigned int>(std::ceil(0.95 * volume_points));
+        unsigned int cumulative = 0;
+        int percentile_bin = histogram_bins - 1;
+        for (int bin = 0; bin < histogram_bins; ++bin) {
+            cumulative += psi_histogram[static_cast<size_t>(query) * histogram_bins + bin];
+            if (cumulative >= percentile_target) {
+                percentile_bin = bin;
+                break;
+            }
+        }
+        result.psi_angle_p95 = std::pow(
+            10.0, -10.0 + 8.0 * (percentile_bin + 1.0) / histogram_bins
+        );
+        result.psi_angle_mean = std::numeric_limits<double>::quiet_NaN();
+        psis[query].angle_p95 = result.psi_angle_p95;
+        psis[query].angle_l2 = result.psi_angle_l2;
+        psis[query].angle_mean = result.psi_angle_mean;
+        result.stable_surface_count = 1;
+        result.surface_long_trace_periods_completed = 1;
+        result.volume_candidate_count = volume_phi * volume_theta_count * volume_radial;
+        result.volume_available_count = result.volume_candidate_count;
+        result.volume_point_count = volume_points;
+        result.volume_valid_fraction = 1.0;
+        result.alpha_column_count = column_count;
+        result.alpha_normal_B_relative_l2 = std::sqrt(
+            alpha_diagnostics[static_cast<size_t>(query) * 3 + 1] /
+            std::max(alpha_diagnostics[static_cast<size_t>(query) * 3 + 2], 1.0e-300)
+        );
+        // The coordinate component is deliberately frozen in this derivative proxy.
+        result.alpha_relative_l2 = center.alpha_relative_l2;
+        result.iota_min = std::numeric_limits<double>::infinity();
+        result.iota_max = -std::numeric_limits<double>::infinity();
+        for (int sample = 0; sample <= 256; ++sample) {
+            const double u = u_min + (1.0 - u_min) * sample / 256.0;
+            double value = 0.0, power = 1.0;
+            for (int degree = 0; degree <= config.iota_degree; ++degree) {
+                value += iota[
+                    static_cast<size_t>(query) * (config.iota_degree + 1) + degree
+                ] * power;
+                power *= u;
+            }
+            result.iota_min = std::min(result.iota_min, value);
+            result.iota_max = std::max(result.iota_max, value);
+        }
+        const double* sums = qs_sums.data() + static_cast<size_t>(query) * 9;
+        result.qs_global_error = std::sqrt(sums[1] / std::max(sums[0], 1.0e-300));
+        result.qs_edge_error = std::sqrt(sums[3] / std::max(sums[2], 1.0e-300));
+        result.qs_qa_global_error = std::sqrt(sums[7] / std::max(sums[0], 1.0e-300));
+        result.qs_qp_global_error_raw = std::sqrt(sums[8] / std::max(sums[0], 1.0e-300));
+        result.qs_vacuum_G = G[query];
+        result.qs_target_global_error_per_helicity = result.qs_global_error / target_helicity_norm;
+        result.qs_target_edge_error_per_helicity = result.qs_edge_error / target_helicity_norm;
+        result.qs_qa_global_error_per_helicity = result.qs_qa_global_error;
+        result.qs_qp_global_error_per_helicity = result.qs_qp_global_error_raw / qp_helicity_norm;
+        result.qs_qp_global_error = result.qs_qp_global_error_per_helicity;
+        result.volume_weight_effective_fraction =
+            sums[0] * sums[0] / std::max(volume_points * sums[4], 1.0e-300);
+        result.edge_weight_effective_fraction =
+            sums[2] * sums[2] / std::max(sums[6] * sums[5], 1.0e-300);
+
+        std::vector<SurfaceScreen> screens(1);
+        screens[0].level = edge_level;
+        screens[0].relative_drift_p95 = surface_drift[query];
+        screens[0].one_period_relative_drift_p95 = surface_drift[query];
+        screens[0].stable = true;
+        screens[0].strict = true;
+        screens[0].verified = true;
+        CoilMetrics dummy_coil;
+        fill_early_components(config, dummy_coil, axes[query], psis[query], screens, result);
+        result.components[SGPU_SCORE_COMPONENT_COIL] = clip01(coil_components[query] / 100.0);
+        result.components[SGPU_SCORE_COMPONENT_COORDINATE] =
+            clip01(center.components[SGPU_SCORE_COMPONENT_COORDINATE] / 100.0);
+        const double iota_score = !qh_target ? 1.0 : std::pow(
+            clip01(minimum_absolute_iota(result.iota_min, result.iota_max) /
+                   config.score_qh_iota_threshold),
+            config.score_qh_iota_power
+        );
+        result.score_iota = iota_score;
+        result.components[SGPU_SCORE_COMPONENT_IOTA] = iota_score;
+        const double global_score = q_down(
+            result.qs_target_global_error_per_helicity,
+            config.score_qs_global_scale, 0.9
+        );
+        const double edge_score = q_down(
+            result.qs_target_edge_error_per_helicity,
+            config.score_qs_edge_scale, 0.9, global_score
+        );
+        const double residual_score = blend({{0.80, global_score}, {0.20, edge_score}});
+        const double competitor_error = std::min(
+            result.qs_qa_global_error_per_helicity,
+            result.qs_qp_global_error_per_helicity
+        );
+        const double advantage = !qh_target ? 1.0 : competitor_error / std::max(
+            result.qs_target_global_error_per_helicity + competitor_error, 1.0e-300
+        );
+        const double size_score = q_saturating_up(
+            result.surface_inverse_aspect_ratio,
+            config.score_surface_inverse_aspect_saturation
+        );
+        const double size_factor = config.score_volume_qs_size_floor +
+            (1.0 - config.score_volume_qs_size_floor) * size_score;
+        const double iota_factor = !qh_target ? 1.0 :
+            config.score_volume_qs_iota_floor +
+            (1.0 - config.score_volume_qs_iota_floor) * iota_score;
+        result.score_surface_size = size_score;
+        result.score_qs_residual = residual_score;
+        result.score_qh_helicity_advantage = clip01(advantage);
+        result.score_volume_qs_size_factor = size_factor;
+        result.score_volume_qs_iota_factor = iota_factor;
+        result.components[SGPU_SCORE_COMPONENT_VOLUME_QS] =
+            residual_score * size_factor * iota_factor;
+        result.status = SGPU_SCORE_OK;
+        result.stage_completed = SCORE_STAGE_QS;
+        result.timings[SGPU_SCORE_TIME_SURFACE_SCREEN] = surface_seconds;
+        result.timings[SGPU_SCORE_TIME_FLUX] = flux_seconds;
+        result.timings[SGPU_SCORE_TIME_VOLUME_POINTS] = volume_seconds;
+        result.timings[SGPU_SCORE_TIME_ALPHA_QR] = alpha_seconds;
+        result.timings[SGPU_SCORE_TIME_QS_METRICS] = qs_seconds;
+        finalize_score(config, result);
+    }
+    const double total_seconds = std::chrono::duration<double>(
+        LocalClock::now() - total_started
+    ).count();
+    for (int query = 0; query < query_count; ++query) {
+        results[query].timings[SGPU_SCORE_TIME_TOTAL] = total_seconds;
+    }
+    if (stats_out && stats_len > 0) {
+        const double values[] = {
+            static_cast<double>(query_count), surface_seconds, flux_seconds,
+            volume_seconds, alpha_seconds, qs_seconds, total_seconds,
+            static_cast<double>(alpha_tile_size), static_cast<double>(volume_points),
+            static_cast<double>(flux_points_per_query),
+        };
+        const int count = std::min<int>(
+            stats_len, static_cast<int>(sizeof(values) / sizeof(values[0]))
+        );
+        std::copy(values, values + count, stats_out);
+    }
+    sgpu_internal_set_error("");
+    return true;
+
 }  // namespace
 
 extern "C" {
@@ -5723,6 +7415,54 @@ std::size_t sgpu_score_config_size() {
 
 std::size_t sgpu_score_result_size() {
     return sizeof(SgpuScoreResult);
+}
+
+int sgpu_score_coils_local_batch(
+    void* batch_field_handle,
+    const double* currents_a,
+    int n_base_coils,
+    int nfp,
+    const double* axis_R,
+    const double* axis_Z,
+    const double* axis_R_phi,
+    const double* axis_Z_phi,
+    int axis_count,
+    const double* axis_residual,
+    const double* axis_topology_trace,
+    const double* axis_topology_det,
+    const double* psi_coefficients,
+    int psi_coefficient_count,
+    const double* psi_train_rms,
+    const double* coil_components,
+    const SgpuScoreResult* center_result,
+    const SgpuScoreConfig* config,
+    int surface_theta_count,
+    int alpha_iterations,
+    SgpuScoreResult* query_results,
+    double* stats_out,
+    int stats_len
+) {
+    if (!batch_field_handle || !center_result || !config || !query_results) {
+        sgpu_internal_set_error("invalid local batch score handle or result");
+        return 1;
+    }
+    std::string reason;
+    if (!validate_config(*config, reason)) {
+        sgpu_internal_set_error(reason.c_str());
+        return 1;
+    }
+    if (cudaSetDevice(config->device_id) != cudaSuccess) {
+        sgpu_internal_set_error("local batch cudaSetDevice failed");
+        return 1;
+    }
+    return score_local_batch_impl(
+        batch_field_handle, currents_a, n_base_coils, nfp,
+        axis_R, axis_Z, axis_R_phi, axis_Z_phi, axis_count,
+        axis_residual, axis_topology_trace, axis_topology_det,
+        psi_coefficients, psi_coefficient_count, psi_train_rms,
+        coil_components, *center_result, *config, surface_theta_count,
+        alpha_iterations, query_results, stats_out, stats_len
+    ) ? 0 : 1;
 }
 
 int sgpu_default_score_config(SgpuScoreConfig* config) {
@@ -6680,10 +8420,11 @@ int sgpu_score_coils_capture_psi_center(
         return 1;
     }
     *psi_coefficient_count = 0;
+    g_alpha_warm_preconditioner = AlphaWarmPreconditionerCache{};
     sgpu_clear_psi_warm_preconditioner();
     sgpu_set_psi_warm_preconditioner_capture(1);
     FixedFrontG2Cache cache;
-    g_active_gradient_group = 2;
+    g_active_gradient_group = 3;
     g_active_g2_cache = &cache;
     const int code = sgpu_score_coils(
         coeffs_x, coeffs_y, coeffs_z, currents_a,
@@ -6694,11 +8435,41 @@ int sgpu_score_coils_capture_psi_center(
     sgpu_set_psi_warm_preconditioner_capture(0);
     if (code != 0 || result->status != SGPU_SCORE_OK || !cache.ready ||
         cache.psi.coeffs.empty() || !sgpu_has_psi_warm_preconditioner(
-            static_cast<int>(cache.psi.coeffs.size()))) {
+            static_cast<int>(cache.psi.coeffs.size())) || !cache.alpha.adjoint_ready) {
         if (cache.field) sgpu_destroy_field(cache.field);
         sgpu_clear_psi_warm_preconditioner();
         sgpu_internal_set_error("psi-center capture score is not ok");
         return code != 0 ? code : 1;
+    }
+    g_alpha_warm_preconditioner.column_count = cache.alpha.column_count;
+    g_alpha_warm_preconditioner.qr_rows = cache.alpha.qr_rows;
+    g_alpha_warm_preconditioner.upper_factor.resize(
+        static_cast<size_t>(cache.alpha.column_count) * cache.alpha.column_count
+    );
+    g_alpha_warm_preconditioner.center_scale.resize(cache.alpha.column_count);
+    g_alpha_warm_preconditioner.center_scaled_solution.resize(cache.alpha.column_count);
+    if (cudaMemcpy2D(
+            g_alpha_warm_preconditioner.upper_factor.data(),
+            static_cast<size_t>(cache.alpha.column_count) * sizeof(float),
+            cache.alpha.qr_matrix.data(),
+            static_cast<size_t>(cache.alpha.qr_rows) * sizeof(float),
+            static_cast<size_t>(cache.alpha.column_count) * sizeof(float),
+            cache.alpha.column_count,
+            cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(
+            g_alpha_warm_preconditioner.center_scale.data(), cache.alpha.scales.data(),
+            static_cast<size_t>(cache.alpha.column_count) * sizeof(float),
+            cudaMemcpyDeviceToHost) != cudaSuccess ||
+        cudaMemcpy(
+            g_alpha_warm_preconditioner.center_scaled_solution.data(),
+            cache.alpha.scaled_solution.data(),
+            static_cast<size_t>(cache.alpha.column_count) * sizeof(float),
+            cudaMemcpyDeviceToHost) != cudaSuccess) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        sgpu_clear_psi_warm_preconditioner();
+        g_alpha_warm_preconditioner = AlphaWarmPreconditionerCache{};
+        sgpu_internal_set_error("alpha-center preconditioner capture failed");
+        return 1;
     }
     if (static_cast<int>(cache.psi.coeffs.size()) > psi_coefficient_capacity) {
         if (cache.field) sgpu_destroy_field(cache.field);

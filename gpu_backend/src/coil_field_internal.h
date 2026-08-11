@@ -17,6 +17,23 @@ int sgpu_internal_eval_B_grad_f32_device(
     int n_points
 );
 
+int sgpu_internal_batch_query_count(void* handle);
+
+int sgpu_internal_batch_eval_B_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    int points_per_query
+);
+
+int sgpu_internal_batch_eval_B_grad_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    float* grad_B_device,
+    int points_per_query
+);
+
 int sgpu_internal_B_grad_segment_vjp_f32_device(
     void* handle,
     const float* xyz_device,

@@ -2766,6 +2766,60 @@ int sgpu_batch_eval_B_f32(
     return 0;
 }
 
+int sgpu_internal_batch_query_count(void* handle) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    return field ? field->query_count : 0;
+}
+
+int sgpu_internal_batch_eval_B_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    int points_per_query
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !xyz_device || !B_device || points_per_query <= 0) {
+        set_error("invalid device batch eval_B arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "device batch eval_B cudaSetDevice")) return 1;
+    const int blocks_per_query = (points_per_query + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_batch_f32_kernel<false><<<
+        field->query_count * blocks_per_query, THREADS_PER_BLOCK, shared_bytes
+    >>>(
+        field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz,
+        field->n_segments, xyz_device, B_device, nullptr,
+        points_per_query, blocks_per_query
+    );
+    return cuda_check(cudaGetLastError(), "device batch eval_B kernel");
+}
+
+int sgpu_internal_batch_eval_B_grad_f32_device(
+    void* handle,
+    const float* xyz_device,
+    float* B_device,
+    float* grad_B_device,
+    int points_per_query
+) {
+    BatchCoilField* field = reinterpret_cast<BatchCoilField*>(handle);
+    if (!field || !xyz_device || !B_device || !grad_B_device || points_per_query <= 0) {
+        set_error("invalid device batch eval_B_grad arguments");
+        return 1;
+    }
+    if (cuda_check(cudaSetDevice(field->device_id), "device batch eval_B_grad cudaSetDevice")) return 1;
+    const int blocks_per_query = (points_per_query + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK;
+    const size_t shared_bytes = static_cast<size_t>(SEG_TILE) * 6 * sizeof(float);
+    eval_B_batch_f32_kernel<true><<<
+        field->query_count * blocks_per_query, THREADS_PER_BLOCK, shared_bytes
+    >>>(
+        field->d_x, field->d_y, field->d_z, field->d_wx, field->d_wy, field->d_wz,
+        field->n_segments, xyz_device, B_device, grad_B_device,
+        points_per_query, blocks_per_query
+    );
+    return cuda_check(cudaGetLastError(), "device batch eval_B_grad kernel");
+}
+
 int sgpu_batch_eval_B_grad_f32(
     void* handle,
     const float* xyz_host,

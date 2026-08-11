@@ -15,7 +15,7 @@ for path in (REPO_ROOT, GPU_PYTHON):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from stellarator_gpu import BatchCoilFieldGpu, CoilFieldGpu
+from stellarator_gpu import BatchCoilFieldGpu, CoilFieldGpu, coil_component_gradient_native
 from stellarator_eval.axis import interp_periodic_hermite
 from stellarator_eval.psi import build_modes
 
@@ -82,6 +82,9 @@ def main() -> None:
     parser.add_argument("--psi-rho-min", type=float, default=0.002)
     parser.add_argument("--psi-ridge", type=float, default=1.0e-6)
     parser.add_argument("--psi-iterations", type=int, default=4)
+    parser.add_argument("--surface-theta-count", type=int, default=64)
+    parser.add_argument("--alpha-iterations", type=int, default=4)
+    parser.add_argument("--full-reference-dir", type=Path)
     args = parser.parse_args()
 
     manifest = json.loads((args.candidate_dir / "candidates.json").read_text(encoding="utf-8"))
@@ -124,7 +127,7 @@ def main() -> None:
     try:
         center_capture, center_capture_wall_s = timed(lambda: batch.capture_psi_center(
             center_x, center_y, center_z, center_current,
-            target_helicity=(1, 0),
+            target_helicity=(1, nfp),
         ))
         batch_B, eval_B_wall_s = timed(lambda: batch.eval_B(points))
         (batch_B_grad, batch_gradient), eval_B_grad_wall_s = timed(
@@ -171,6 +174,27 @@ def main() -> None:
                 rho_min=args.psi_rho_min,
                 ridge=args.psi_ridge,
                 iterations=args.psi_iterations,
+            )
+        )
+        coil_linear = coil_component_gradient_native(
+            args.lib, center_x, center_y, center_z, center_current, nfp
+        )
+        coil_components = np.full(args.query_count, coil_linear["component"])
+        for values, center_values, name in (
+            (x, center_x, "x"), (y, center_y, "y"), (z, center_z, "z"),
+            (current, center_current, "current"),
+        ):
+            coil_components += np.einsum(
+                "q..., ...->q", values - center_values, coil_linear["gradient"][name]
+            )
+        (local_results, local_stats), local_score_wall_s = timed(
+            lambda: batch.score_local_batch(
+                current, *batch_axis,
+                refined_axis["residual"], refined_axis["topology_trace"],
+                refined_axis["topology_det"], batch_psi, batch_psi_rms,
+                coil_components, center_capture,
+                surface_theta_count=args.surface_theta_count,
+                alpha_iterations=args.alpha_iterations,
             )
         )
 
@@ -243,6 +267,42 @@ def main() -> None:
         batch.clear_psi_preconditioner()
         batch.close()
 
+    local_scores = np.asarray([result["score"] for result in local_results])
+    local_statuses = [result["status"] for result in local_results]
+    gradient_comparison = None
+    if args.full_reference_dir:
+        exact_by_candidate = {}
+        for path in sorted(args.full_reference_dir.glob("rank_*.jsonl")):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                row = json.loads(line)
+                exact_by_candidate[int(row["metadata"]["candidate_index"])] = row["variants"]["exact"]
+        weights = np.asarray([10.0, 10.0, 10.0, 10.0, 42.0, 10.0, 8.0])
+        component_names = ["axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil"]
+        center_coordinate = float(center_capture["score_result"]["components"]["coordinate"])
+        exact_scores = []
+        for row in endpoint_rows[: args.query_count]:
+            exact = exact_by_candidate[int(row["candidate_index"])]
+            components = np.asarray([exact["components"][name] for name in component_names])
+            before = float(np.dot(weights, components) / weights.sum())
+            gate = float(exact["score"] / max(before, 1.0e-30))
+            before_no_coordinate = before + weights[3] / weights.sum() * (
+                center_coordinate - components[3]
+            )
+            exact_scores.append(before_no_coordinate * gate)
+        exact_scores = np.asarray(exact_scores)
+        local_directional = (local_scores[1::2] - local_scores[0::2]) / 0.01
+        exact_directional = (exact_scores[1::2] - exact_scores[0::2]) / 0.01
+        cosine = float(np.dot(local_directional, exact_directional) / max(
+            np.linalg.norm(local_directional) * np.linalg.norm(exact_directional), 1.0e-30
+        ))
+        gradient_comparison = {
+            "coordinate_omitted_exact_cosine": cosine,
+            "local_directional_rms": float(np.sqrt(np.mean(local_directional ** 2))),
+            "exact_directional_rms": float(np.sqrt(np.mean(exact_directional ** 2))),
+            "local_directional": local_directional.tolist(),
+            "exact_directional": exact_directional.tolist(),
+        }
+
     output = {
         "format": "query_batch_field_benchmark_v1",
         "query_count": args.query_count,
@@ -267,6 +327,17 @@ def main() -> None:
             ],
         },
         "center_score": center_capture["score_result"],
+        "local_score": {
+            "stats": local_stats,
+            "wall_s": local_score_wall_s,
+            "status_counts": {
+                status: local_statuses.count(status) for status in sorted(set(local_statuses))
+            },
+            "score_p05_p50_p95": [
+                float(value) for value in np.quantile(local_scores, [0.05, 0.5, 0.95])
+            ],
+            "gradient_comparison": gradient_comparison,
+        },
         "timing_s": {
             "center_capture": center_capture_wall_s,
             "field_create": create_wall_s,
@@ -276,6 +347,7 @@ def main() -> None:
             "refine_axis_hint": refine_axis_wall_s,
             "trace_axis_samples": axis_wall_s,
             "fit_psi_batch": batch_psi_wall_s,
+            "score_local_batch": local_score_wall_s,
             "tested_stage_total": create_wall_s + eval_B_wall_s + eval_B_grad_wall_s +
                 trace_wall_s + refine_axis_wall_s + axis_wall_s + batch_psi_wall_s,
             "sequential_reference_subset": reference_wall_s,

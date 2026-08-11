@@ -691,6 +691,35 @@ int sgpu_fit_psi_batch_pcgls_f32(
     int stats_len
 );
 
+// Experimental local full-gradient oracle. The selected center surface level
+// and coordinate component are fixed, while each query retains its own axis,
+// psi, flux calibration, volume geometry, iota and differential-QS response.
+int sgpu_score_coils_local_batch(
+    void* batch_field_handle,
+    const double* currents_a,
+    int n_base_coils,
+    int nfp,
+    const double* axis_R,
+    const double* axis_Z,
+    const double* axis_R_phi,
+    const double* axis_Z_phi,
+    int axis_count,
+    const double* axis_residual,
+    const double* axis_topology_trace,
+    const double* axis_topology_det,
+    const double* psi_coefficients,
+    int psi_coefficient_count,
+    const double* psi_train_rms,
+    const double* coil_components,
+    const SgpuScoreResult* center_result,
+    const SgpuScoreConfig* config,
+    int surface_theta_count,
+    int alpha_iterations,
+    SgpuScoreResult* query_results,
+    double* stats_out,
+    int stats_len
+);
+
 int sgpu_fit_psi_fullgpu(
     void* handle,
     const double* R_host,

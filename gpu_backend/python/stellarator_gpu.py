@@ -1995,6 +1995,16 @@ class BatchCoilFieldGpu:
             double_pointer, double_pointer, double_pointer,
             double_pointer, ctypes.c_int,
         ]
+        self.lib.sgpu_score_coils_local_batch.restype = ctypes.c_int
+        self.lib.sgpu_score_coils_local_batch.argtypes = [
+            ctypes.c_void_p, double_pointer, ctypes.c_int, ctypes.c_int,
+            double_pointer, double_pointer, double_pointer, double_pointer,
+            ctypes.c_int, double_pointer, double_pointer, double_pointer,
+            double_pointer, ctypes.c_int, double_pointer, double_pointer,
+            ctypes.POINTER(_SgpuScoreResult), ctypes.POINTER(_SgpuScoreConfig),
+            ctypes.c_int, ctypes.c_int, ctypes.POINTER(_SgpuScoreResult),
+            double_pointer, ctypes.c_int,
+        ]
         self.lib.sgpu_clear_psi_warm_preconditioner.restype = None
         self.lib.sgpu_clear_psi_warm_preconditioner.argtypes = []
         self.lib.sgpu_last_error.restype = ctypes.c_char_p
@@ -2055,6 +2065,8 @@ class BatchCoilFieldGpu:
         return {
             "score_result": _score_result_dict(result),
             "psi_coefficients": coefficients[: coefficient_count.value].copy(),
+            "_result_struct": result,
+            "_config_struct": config,
         }
 
     def fit_psi_pcgls(
@@ -2130,6 +2142,86 @@ class BatchCoilFieldGpu:
 
     def clear_psi_preconditioner(self):
         self.lib.sgpu_clear_psi_warm_preconditioner()
+
+    def score_local_batch(
+        self,
+        currents_a,
+        axis_R,
+        axis_Z,
+        axis_R_phi,
+        axis_Z_phi,
+        axis_residual,
+        axis_topology_trace,
+        axis_topology_det,
+        psi_coefficients,
+        psi_train_rms,
+        coil_components,
+        center_capture,
+        *,
+        surface_theta_count: int = 64,
+        alpha_iterations: int = 4,
+    ):
+        """Evaluate the gradient-only dynamic local score for all queries."""
+        currents = np.ascontiguousarray(currents_a, dtype=np.float64)
+        if currents.shape != (self.query_count, self.n_base_coils):
+            raise ValueError("currents must have shape (query, coil)")
+        axes = [
+            np.ascontiguousarray(values, dtype=np.float64)
+            for values in (axis_R, axis_Z, axis_R_phi, axis_Z_phi)
+        ]
+        if any(values.ndim != 2 or values.shape[0] != self.query_count for values in axes):
+            raise ValueError("batch axis arrays must have shape (query, axis_sample)")
+        if not all(values.shape == axes[0].shape for values in axes[1:]):
+            raise ValueError("batch axis arrays must have matching shapes")
+        diagnostics = [
+            np.ascontiguousarray(values, dtype=np.float64).ravel()
+            for values in (axis_residual, axis_topology_trace, axis_topology_det)
+        ]
+        if any(values.size != self.query_count for values in diagnostics):
+            raise ValueError("axis diagnostics must have one value per query")
+        psi = np.ascontiguousarray(psi_coefficients, dtype=np.float64)
+        if psi.ndim != 2 or psi.shape[0] != self.query_count:
+            raise ValueError("psi coefficients must have shape (query, coefficient)")
+        psi_rms = np.ascontiguousarray(psi_train_rms, dtype=np.float64).ravel()
+        coil = np.ascontiguousarray(coil_components, dtype=np.float64).ravel()
+        if psi_rms.size != self.query_count or coil.size != self.query_count:
+            raise ValueError("psi RMS and coil components must have one value per query")
+        center_result = center_capture.get("_result_struct")
+        config = center_capture.get("_config_struct")
+        if center_result is None or config is None:
+            raise ValueError("center_capture must come from capture_psi_center")
+        result_array = (_SgpuScoreResult * self.query_count)()
+        stats = np.empty(10, dtype=np.float64)
+        code = self.lib.sgpu_score_coils_local_batch(
+            self.handle,
+            currents.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(self.n_base_coils), ctypes.c_int(self.nfp),
+            *(values.ctypes.data_as(ctypes.POINTER(ctypes.c_double)) for values in axes),
+            ctypes.c_int(axes[0].shape[1]),
+            *(values.ctypes.data_as(ctypes.POINTER(ctypes.c_double)) for values in diagnostics),
+            psi.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(psi.shape[1]),
+            psi_rms.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            coil.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.byref(center_result), ctypes.byref(config),
+            ctypes.c_int(int(surface_theta_count)),
+            ctypes.c_int(int(alpha_iterations)), result_array,
+            stats.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_int(stats.size),
+        )
+        self._check(code)
+        return [_score_result_dict(value) for value in result_array], {
+            "query_count": int(stats[0]),
+            "surface_s": float(stats[1]),
+            "flux_s": float(stats[2]),
+            "volume_s": float(stats[3]),
+            "alpha_s": float(stats[4]),
+            "qs_s": float(stats[5]),
+            "total_s": float(stats[6]),
+            "alpha_tile_size": int(stats[7]),
+            "volume_points_per_query": int(stats[8]),
+            "flux_points_per_query": int(stats[9]),
+        }
 
     def __del__(self):
         try:

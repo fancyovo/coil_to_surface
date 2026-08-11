@@ -54,6 +54,8 @@ def load_rows(result_dir: Path) -> list[dict[str, Any]]:
 
 
 def quantiles(values: list[float]) -> dict[str, float]:
+    if not values:
+        return {"mean": float("nan"), "p50": float("nan"), "p95": float("nan")}
     array = np.asarray(values, dtype=np.float64)
     return {
         "mean": float(array.mean()),

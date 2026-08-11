@@ -17,6 +17,7 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 from stellarator_gpu import (
+    GpuError,
     score_coils_g4_fixed_branch_batch_native,
     score_coils_native,
 )
@@ -120,6 +121,18 @@ def compact(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def failed_variant(message: str, wall_s: float) -> dict[str, Any]:
+    return {
+        "score": float("nan"),
+        "status": "internal_error",
+        "components": {},
+        "timing": {},
+        "diagnostics": {"error_message": message},
+        "call_wall_s": wall_s,
+        "batch_wall_s": wall_s,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--candidate-dir", type=Path, required=True)
@@ -181,22 +194,28 @@ def main() -> None:
         indices = np.asarray([int(row["candidate_index"]) for row in group], dtype=np.int64)
         call_started = time.perf_counter()
         center_candidate_index = center_candidate_indices[center_index]
-        payload = score_coils_g4_fixed_branch_batch_native(
-            args.lib,
-            x[center_candidate_index], y[center_candidate_index],
-            z[center_candidate_index], current[center_candidate_index],
-            x[indices], y[indices], z[indices], current[indices],
-            int(center["nfp"]), device_id=0,
-            target_helicity=(1, int(center["nfp"])),
-            config_overrides=proxy_config(center, small=True, normal=True),
-        )
-        batch_wall = time.perf_counter() - call_started
-        for index, result in zip(indices, payload["query_score_results"], strict=True):
-            rows[int(index)]["variants"]["fixed_ne8k"] = {
-                **compact(result),
-                "call_wall_s": float(result["timing"]["total_s"]),
-                "batch_wall_s": batch_wall,
-            }
+        try:
+            payload = score_coils_g4_fixed_branch_batch_native(
+                args.lib,
+                x[center_candidate_index], y[center_candidate_index],
+                z[center_candidate_index], current[center_candidate_index],
+                x[indices], y[indices], z[indices], current[indices],
+                int(center["nfp"]), device_id=0,
+                target_helicity=(1, int(center["nfp"])),
+                config_overrides=proxy_config(center, small=True, normal=True),
+            )
+            batch_wall = time.perf_counter() - call_started
+            for index, result in zip(indices, payload["query_score_results"], strict=True):
+                rows[int(index)]["variants"]["fixed_ne8k"] = {
+                    **compact(result),
+                    "call_wall_s": float(result["timing"]["total_s"]),
+                    "batch_wall_s": batch_wall,
+                }
+        except GpuError as error:
+            batch_wall = time.perf_counter() - call_started
+            failure = failed_variant(str(error), batch_wall)
+            for index in indices:
+                rows[int(index)]["variants"]["fixed_ne8k"] = failure
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as handle:

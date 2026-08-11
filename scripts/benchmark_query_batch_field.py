@@ -16,6 +16,8 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 from stellarator_gpu import BatchCoilFieldGpu, CoilFieldGpu
+from stellarator_eval.axis import interp_periodic_hermite
+from stellarator_eval.psi import build_modes
 
 
 def score_arguments(tokens: np.ndarray) -> tuple[np.ndarray, ...]:
@@ -35,6 +37,32 @@ def timed(function):
     return result, time.perf_counter() - started
 
 
+def psi_training_points(
+    axis: tuple[np.ndarray, ...],
+    query: int,
+    *,
+    nfp: int,
+    radius_scale: float,
+    grid: int,
+    rho_min: float,
+) -> tuple[np.ndarray, ...]:
+    offsets = np.linspace(-radius_scale, radius_scale, grid)
+    phis = np.linspace(0.0, 2.0 * np.pi / nfp, grid, endpoint=False)
+    dR, dZ, phi = np.meshgrid(offsets, offsets, phis, indexing="ij")
+    keep = (np.hypot(dR, dZ) >= rho_min) & (np.hypot(dR, dZ) <= radius_scale)
+    dR = dR[keep]
+    dZ = dZ[keep]
+    phi = phi[keep]
+    phi_axis = np.linspace(0.0, 2.0 * np.pi / nfp, axis[0].shape[1], endpoint=False)
+    axis_R, _ = interp_periodic_hermite(
+        phi, phi_axis, axis[0][query], axis[2][query], nfp
+    )
+    axis_Z, _ = interp_periodic_hermite(
+        phi, phi_axis, axis[1][query], axis[3][query], nfp
+    )
+    return axis_R + dR, axis_Z + dZ, phi
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--candidate-dir", type=Path, required=True)
@@ -47,6 +75,13 @@ def main() -> None:
     parser.add_argument("--axis-integration-steps", type=int, default=960)
     parser.add_argument("--axis-samples", type=int, default=240)
     parser.add_argument("--reference-count", type=int, default=4)
+    parser.add_argument("--psi-degree", type=int, default=10)
+    parser.add_argument("--psi-mtor", type=int, default=12)
+    parser.add_argument("--psi-grid", type=int, default=48)
+    parser.add_argument("--psi-radius", type=float, default=0.05)
+    parser.add_argument("--psi-rho-min", type=float, default=0.002)
+    parser.add_argument("--psi-ridge", type=float, default=1.0e-6)
+    parser.add_argument("--psi-iterations", type=int, default=4)
     args = parser.parse_args()
 
     manifest = json.loads((args.candidate_dir / "candidates.json").read_text(encoding="utf-8"))
@@ -63,6 +98,7 @@ def main() -> None:
     endpoint_indices = np.asarray([
         int(row["candidate_index"]) for row in endpoint_rows[: args.query_count]
     ])
+    center_x, center_y, center_z, center_current = score_arguments(tokens[0])
     x, y, z, current = score_arguments(tokens[endpoint_indices])
     nfp = int(center["nfp"])
 
@@ -86,6 +122,10 @@ def main() -> None:
         segments_per_coil=args.segments_per_coil, device_id=0,
     ))
     try:
+        center_capture, center_capture_wall_s = timed(lambda: batch.capture_psi_center(
+            center_x, center_y, center_z, center_current,
+            target_helicity=(1, 0),
+        ))
         batch_B, eval_B_wall_s = timed(lambda: batch.eval_B(points))
         (batch_B_grad, batch_gradient), eval_B_grad_wall_s = timed(
             lambda: batch.eval_B_grad(points)
@@ -107,6 +147,32 @@ def main() -> None:
             integration_steps=args.axis_integration_steps,
             sample_count=args.axis_samples,
         ))
+        modes = build_modes(args.psi_degree, args.psi_mtor)
+        mode_a = np.asarray([mode.a for mode in modes], dtype=np.int32)
+        mode_b = np.asarray([mode.b for mode in modes], dtype=np.int32)
+        mode_m = np.asarray([mode.m for mode in modes], dtype=np.int32)
+        mode_kind = np.asarray(
+            [0 if mode.kind == "cos" else 1 for mode in modes], dtype=np.int32
+        )
+        center_psi = center_capture["psi_coefficients"]
+        if center_psi.size != len(modes):
+            raise RuntimeError(
+                f"center psi coefficient count {center_psi.size} != mode count {len(modes)}"
+            )
+        (batch_psi, batch_psi_rms, batch_psi_stats), batch_psi_wall_s = timed(
+            lambda: batch.fit_psi_pcgls(
+                *batch_axis,
+                mode_a, mode_b, mode_m, mode_kind,
+                center_psi,
+                radius_scale=args.psi_radius,
+                radial_grid=args.psi_grid,
+                vertical_grid=args.psi_grid,
+                phi_grid=args.psi_grid,
+                rho_min=args.psi_rho_min,
+                ridge=args.psi_ridge,
+                iterations=args.psi_iterations,
+            )
+        )
 
         references = np.linspace(
             0, args.query_count - 1, min(args.reference_count, args.query_count), dtype=int
@@ -133,6 +199,22 @@ def main() -> None:
                     integration_steps=args.axis_integration_steps,
                     sample_count=args.axis_samples,
                 )
+                train_R, train_Z, train_phi = psi_training_points(
+                    batch_axis, int(query), nfp=nfp,
+                    radius_scale=args.psi_radius, grid=args.psi_grid,
+                    rho_min=args.psi_rho_min,
+                )
+                single_psi, single_psi_rms, single_psi_stats = field.fit_psi_fullgpu(
+                    train_R, train_Z, train_phi,
+                    *single_axis,
+                    mode_a, mode_b, mode_m, mode_kind,
+                    a=args.psi_radius,
+                    poly_degree=args.psi_degree,
+                    m_tor=args.psi_mtor,
+                    ridge=args.psi_ridge,
+                    precision="fp32",
+                    solver="qr",
+                )
             finally:
                 field.close()
             reference_wall_s += time.perf_counter() - started
@@ -151,8 +233,14 @@ def main() -> None:
                 )))),
                 "axis_R_phi_relative_rms": relative_rms(batch_axis[2][query], single_axis[2]),
                 "axis_Z_phi_relative_rms": relative_rms(batch_axis[3][query], single_axis[3]),
+                "psi_coefficient_relative_rms": relative_rms(batch_psi[query], single_psi),
+                "psi_train_rms_batch": float(batch_psi_rms[query]),
+                "psi_train_rms_exact": float(single_psi_rms),
+                "psi_train_rms_ratio": float(batch_psi_rms[query] / single_psi_rms),
+                "psi_exact_fit_s": float(single_psi_stats["total_s"]),
             })
     finally:
+        batch.clear_psi_preconditioner()
         batch.close()
 
     output = {
@@ -164,15 +252,32 @@ def main() -> None:
         "trace_steps": args.trace_steps,
         "axis_integration_steps": args.axis_integration_steps,
         "axis_samples": args.axis_samples,
+        "psi": {
+            "degree": args.psi_degree,
+            "m_tor": args.psi_mtor,
+            "coefficient_count": int(center_psi.size),
+            "grid": args.psi_grid,
+            "radius": args.psi_radius,
+            "rho_min": args.psi_rho_min,
+            "ridge": args.psi_ridge,
+            "iterations": args.psi_iterations,
+            "batch_stats": batch_psi_stats,
+            "train_rms_p50_p95_max": [
+                float(value) for value in np.quantile(batch_psi_rms, [0.5, 0.95, 1.0])
+            ],
+        },
+        "center_score": center_capture["score_result"],
         "timing_s": {
+            "center_capture": center_capture_wall_s,
             "field_create": create_wall_s,
             "eval_B": eval_B_wall_s,
             "eval_B_grad": eval_B_grad_wall_s,
             "trace_period_5_lines": trace_wall_s,
             "refine_axis_hint": refine_axis_wall_s,
             "trace_axis_samples": axis_wall_s,
+            "fit_psi_batch": batch_psi_wall_s,
             "tested_stage_total": create_wall_s + eval_B_wall_s + eval_B_grad_wall_s +
-                trace_wall_s + refine_axis_wall_s + axis_wall_s,
+                trace_wall_s + refine_axis_wall_s + axis_wall_s + batch_psi_wall_s,
             "sequential_reference_subset": reference_wall_s,
         },
         "reference_errors": errors,

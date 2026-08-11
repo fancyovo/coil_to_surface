@@ -469,6 +469,24 @@ int sgpu_score_coils_psi_warm_batch(
     SgpuScoreResult* query_score_results
 );
 
+// Captures the center psi QR factor for the query-major local oracle and
+// returns the fitted center coefficients. The capture remains valid until
+// sgpu_clear_psi_warm_preconditioner is called on the same host thread.
+int sgpu_score_coils_capture_psi_center(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* result,
+    double* psi_coefficients,
+    int psi_coefficient_capacity,
+    int* psi_coefficient_count
+);
+
 // Internal-oracle entrypoint: returns the reported 0--100 coil component and
 // its piecewise analytical gradient with active percentile/minimum indices
 // frozen at the supplied coil.
@@ -645,6 +663,33 @@ int sgpu_normal_eq_f32(
 int sgpu_set_psi_warm_preconditioner_capture(int enabled);
 int sgpu_has_psi_warm_preconditioner(int coefficient_count);
 void sgpu_clear_psi_warm_preconditioner();
+
+int sgpu_fit_psi_batch_pcgls_f32(
+    void* batch_field_handle,
+    const double* axis_R_host,
+    const double* axis_Z_host,
+    const double* axis_R_phi_host,
+    const double* axis_Z_phi_host,
+    int axis_count,
+    const int* mode_a_host,
+    const int* mode_b_host,
+    const int* mode_m_host,
+    const int* mode_kind_host,
+    int coefficient_count,
+    int nfp,
+    double radius_scale,
+    int radial_grid,
+    int vertical_grid,
+    int phi_grid,
+    double rho_min,
+    double ridge,
+    int iterations,
+    const double* center_coefficients_host,
+    double* coefficients_host,
+    double* train_rms_host,
+    double* stats_out,
+    int stats_len
+);
 
 int sgpu_fit_psi_fullgpu(
     void* handle,

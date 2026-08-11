@@ -6660,6 +6660,59 @@ int sgpu_score_coils_psi_warm_batch(
     return return_code;
 }
 
+int sgpu_score_coils_capture_psi_center(
+    const double* coeffs_x,
+    const double* coeffs_y,
+    const double* coeffs_z,
+    const double* currents_a,
+    int n_base_coils,
+    int n_coeff,
+    int nfp,
+    const SgpuScoreConfig* config,
+    SgpuScoreResult* result,
+    double* psi_coefficients,
+    int psi_coefficient_capacity,
+    int* psi_coefficient_count
+) {
+    if (!coeffs_x || !coeffs_y || !coeffs_z || !currents_a || !config || !result ||
+        !psi_coefficients || psi_coefficient_capacity <= 0 || !psi_coefficient_count) {
+        sgpu_internal_set_error("invalid psi-center capture input");
+        return 1;
+    }
+    *psi_coefficient_count = 0;
+    sgpu_clear_psi_warm_preconditioner();
+    sgpu_set_psi_warm_preconditioner_capture(1);
+    FixedFrontG2Cache cache;
+    g_active_gradient_group = 2;
+    g_active_g2_cache = &cache;
+    const int code = sgpu_score_coils(
+        coeffs_x, coeffs_y, coeffs_z, currents_a,
+        n_base_coils, n_coeff, nfp, config, result
+    );
+    g_active_g2_cache = nullptr;
+    g_active_gradient_group = 0;
+    sgpu_set_psi_warm_preconditioner_capture(0);
+    if (code != 0 || result->status != SGPU_SCORE_OK || !cache.ready ||
+        cache.psi.coeffs.empty() || !sgpu_has_psi_warm_preconditioner(
+            static_cast<int>(cache.psi.coeffs.size()))) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        sgpu_clear_psi_warm_preconditioner();
+        sgpu_internal_set_error("psi-center capture score is not ok");
+        return code != 0 ? code : 1;
+    }
+    if (static_cast<int>(cache.psi.coeffs.size()) > psi_coefficient_capacity) {
+        if (cache.field) sgpu_destroy_field(cache.field);
+        sgpu_clear_psi_warm_preconditioner();
+        sgpu_internal_set_error("psi-center capture output capacity is too small");
+        return 1;
+    }
+    std::copy(cache.psi.coeffs.begin(), cache.psi.coeffs.end(), psi_coefficients);
+    *psi_coefficient_count = static_cast<int>(cache.psi.coeffs.size());
+    if (cache.field) sgpu_destroy_field(cache.field);
+    sgpu_internal_set_error("");
+    return 0;
+}
+
 int sgpu_score_coils_g3_gradient(
     const double* coeffs_x,
     const double* coeffs_y,

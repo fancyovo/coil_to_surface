@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-11 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-12 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -495,5 +495,5 @@ linked reports.
 
 ## 10. Active Next Action
 
-- 2026-08-11 full-density warm-$s$ experiment completed through P107 job `36505`: center-$R_0$-preconditioned CGLS4 solved the full grid48 endpoint matrix in `3.96 ms` with maximum scaled coefficient error `2.56e-5`. The fixed-$h=0.005$ complete-score gradient cosine was only `0.724`, caused almost entirely by coordinate; omitting that endpoint derivative raised matching-QR cosine to `0.99990`. This omission is now the fixed experimental gradient-proxy convention, while formal center/proposal scores retain coordinate. Psi fit P50 fell from `66.62` to `14.33 ms`, but score P50 only fell from `745.06` to `691.70 ms`. A current 300-D gradient uses 600 endpoints sharded over four GPUs but serial within each card; PCGLS4 scoring is about `107--108 s`, plus `3--5 s` flow. Production ABI/grid48 QR/optimizer remain unchanged. Never cite invalid job `36500`; see the final report sections and `reports/assets/local_psi_warm_start_20260811/`.
+- 2026-08-12 full-density warm-$s$ experiment completed through P107 job `36505`: center-$R_0$-preconditioned CGLS4 solved the full grid48 endpoint matrix in `3.96 ms` with maximum scaled coefficient error `2.56e-5`. The fixed-$h=0.005$ complete-score gradient cosine was only `0.724`, caused almost entirely by coordinate; omitting that endpoint derivative raised matching-QR cosine to `0.99990`. This omission is now the fixed experimental gradient-proxy convention, while formal center/proposal scores retain coordinate. Current 300-D evaluation uses four GPUs but serial queries within each card (`~110--113 s` including flow). The next accepted architecture target is one RTX 5090, one logical 600-query API, no host query loop, matrix-free full-density PCGLS4 for both LS systems, dynamic axes/$s$ with only center surface level fixed, and formal proposal re-scoring; first/tuned end-to-end budgets are `15--25 s` / `8--15 s`, not yet measured. Production remains unchanged. Never cite invalid job `36500`; see the final report sections and `reports/assets/local_psi_warm_start_20260811/`.
 - Order-8 exact-state job `36169` was accepted on `codex/fourier-mode-8-flow` commit `0dd4f23`: 1200--5000 raised best `92.3712` to `93.7713@4929`, with QH error `0.003069`, valid iota, all centers/endpoints `ok`, and clean GPU postflight. This proves strong order-8 capacity but not easier early optimization. Evidence is report section 14 and `reports/assets/qh_fourier_order8_adam5000_20260811/` on that branch.

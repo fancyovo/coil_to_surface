@@ -1268,3 +1268,175 @@ $$
 - flow 对全部端点做一次批量解码，吞吐已经足够，约占总墙钟的 3%--5%。瓶颈仍是 600 个 score query 没有合并成 query 维度的 CUDA batch。
 
 因此目前不是“600 路 GPU 并行”，而是“4 卡各自串行 150 个端点”。若后续实施真正的 query-batch CUDA，首先要优化的是磁轴 continuation、场计算、$\alpha/\iota$ 和体 QS 的候选维批处理；coordinate 消融只解决方向可靠性，不提供这部分加速。
+
+## 单卡 600-query 全链路批量化方案
+
+本节按新的明确目标讨论：**只使用一张 RTX 5090，一次接收全部 600 个差分端点，并让每个大耗时阶段都把 query 维度放进 CUDA 网格。** 这里的“600 个点”指 600 个线圈端点，不是每个位形内部的物理采样点。
+
+### 什么才算真正实现了 600-query batch
+
+合格的接口应当类似
+
+```text
+center cache + endpoint[600, n_coils, 100]
+    -> proxy_score[600]
+```
+
+并满足：
+
+- Python 只调用一次，C++ 也不允许写 `for (query=0; query<600; ++query) score(query)`；
+- CUDA kernel 的网格至少包含 `(query, physical_point)` 或 `(query, trajectory)` 两个维度；
+- PCGLS 的 4 次迭代仍然具有顺序，但每一次迭代都同时推进 600 个 query；
+- 轴和磁面追踪的时间步仍然具有顺序，但每个时间步同时推进全部 query 和全部轨道；
+- 候选失败只修改 `active[query]` 掩码，不触发单独 fallback、重新搜索或 CPU 路径；
+- 正负端点使用相同 kernel、相同物理点顺序和相同归约树，尽量让数值误差在中心差分中抵消。
+
+GPU 的线程块必然分波次执行，不可能让全部线程在同一个时钟周期驻留。这里要求的是**一个逻辑 batch、一个设备任务图、没有逐 query 主机循环**，而不是不符合硬件含义的“所有运算物理同时发生”。
+
+### 总体数据流
+
+建议建立一个只对当前中心有效的 `GradientBatchContext`：
+
+```text
+正式中心 score
+  -> 中心磁轴与严格分支
+  -> 中心 s/psi 系数与 QR 预条件器
+  -> 中心磁面 level s0、射线拓扑和体点模板
+  -> 中心 alpha/iota 系数与 QR 预条件器
+
+600 latent endpoints
+  -> batch flow decode
+  -> batch coils/field representation
+  -> batch strict-axis continuation
+  -> batch full-density s/psi PCGLS4
+  -> batch psi validation
+  -> batch surface roots/trace at fixed center level s0
+  -> batch flux calibration and volume points
+  -> batch alpha/iota PCGLS4
+  -> batch B, grad(B), volume-QS reductions
+  -> coordinate-omitted proxy score[600]
+  -> 300-D centered gradient
+```
+
+任何一次正式中心更新都会使这个 cache 失效。新中心必须先运行一次完整正式 score，再构建下一轮 cache；不能跨中心复用旧磁轴、旧 QR 或旧体点。
+
+### 各阶段的并行性
+
+| 阶段 | 600-query 实现 | 可并行性 | 主要风险 |
+|---|---|---|---|
+| Flow RK4-128 | 输入直接使用 `[600,n_coils,100]`，一次前向解码 | 已经是成熟的 batch；token 数很小，主要沿 batch 并行 | 当前约 3--5 s，可能成为批量 score 完成后的最大单项 |
+| 线圈离散化与工程量 | 一次 kernel 生成 `[query,coil,segment]`，长度、曲率和距离做 segmented reduction | 高；不同 query 和线圈完全独立 | 当前工程量部分仍含 CPU 实现，必须迁到 CUDA，不能只批量 field creation |
+| 场数据结构 | 用一组 SoA 数组保存 600 组线段和电流，不创建 600 个独立 field 对象 | 高；后续所有场 kernel 共用该布局 | 需要修改底层场接口，避免每次 `sgpu_create_field` 的分配和同步 |
+| 严格磁轴 continuation | 所有 query 从中心轴提示出发，批量执行映射、Newton 修正和拓扑轨道；固定最大轮数并用 active mask | 中高；轨道之间独立，积分步内顺序但 query/轨道维度充分并行 | 不得切换磁轴分支；任一端点越过 hint 距离或失败时标记无效，不运行全局搜索和 FP64 fallback |
+| $s/\psi$ 点与 PCGLS4 | full grid-48 行不变；矩阵自由计算 $A_qv$ 和 $A_q^Tr$，中心 $R_0$ 作为共享预条件器，600 列一起 TRSM | 高，但不能显式存 600 个稠密矩阵 | basis 生成和转置归约需要专门 kernel；必须复现当前动态 $s_q$，不能固定 $s$ 系数 |
+| $\psi$ 独立验证 | 固定同一组验证点，批量计算 $\boldsymbol B\cdot\nabla\psi$ 并做每-query reduction | 高 | 不能因为 coordinate 被忽略就删掉 psi 分量需要的验证 |
+| 磁面根与 surface | 固定中心选出的标量 level $s_0$，但用每个 query 的 $s_q$ 重新求射线根并追踪该面 | 中高；射线和 query 独立，根迭代/轨迹时间步顺序 | 只能固定 level 和拓扑，不能固定几何磁面；根越序或漂移过大直接使该端点无效 |
+| 磁通标定 | 固定截面和求积拓扑，600 组场值一起计算；每 query 的低阶多项式拟合用 batched 小矩阵或显式闭式解 | 高 | 不能冻结磁通尺度，否则电流和几何扰动会污染 QS 尺度 |
+| 体点生成 | 根据各 query 的移动后射线根生成 `[query,point]`，无需逐 query 分配 | 高 | 点数很大，必须预分配并避免重复坐标变换 |
+| $\alpha/\iota$ PCGLS4 | 与 $s$ 相同：矩阵自由 $A_qv/A_q^Tr$，共享中心 QR 预条件器，系数和 RHS 使用多右端项布局 | 高 | coordinate 导数虽删除，$\alpha/\iota$ 解仍是体 QS 的必要输入，不能跳过 |
+| $\boldsymbol B+\nabla\boldsymbol B$ 与体 QS | CUDA 网格覆盖 `(query,volume_point)`；场、QS 表达式和 partial reduction 尽量融合 | 很高，但计算量最大 | 不能为 600 组保存所有中间张量后再处理；应流式归约，预计成为 score batch 的主要算术瓶颈 |
+| 分量和门控 | 每 query 一个小 reduction，最后组合不含 coordinate 的 `gradient_proxy_score` | 极高且可忽略 | 正式中心/提议验收仍必须包含 coordinate |
+
+磁轴、PCGLS 和轨迹积分并不是“完全没有串行部分”：Newton 轮次、Krylov 轮次和积分时间步之间存在数据依赖。关键是每个顺序步骤都同时处理 600 个 query，从而把目前单候选严重不足的 GPU 占用率填满。
+
+### 两个最小二乘不能使用 600 份稠密矩阵
+
+当前 grid-48 的 $s$ 问题约有 82176 个物理行和 1574 列。若把 600 个 FP32 矩阵全部显式保存，容量约为
+
+$$
+82176\times1574\times600\times4\ \mathrm{bytes}
+\approx310\ \mathrm{GB}.
+$$
+
+$\alpha/\iota$ 问题约为 $32272\times2272$，同样做法约需
+
+$$
+32272\times2272\times600\times4\ \mathrm{bytes}
+\approx176\ \mathrm{GB}.
+$$
+
+因此“调用 600 次 batched dense QR”在 32 GB 显存上不可行，计算量也没有必要。可行结构是：
+
+1. 中心只做一次 Householder QR，保留小得多的 $R_0$；
+2. 端点的 basis 行在矩阵自由 kernel 中按需生成；
+3. 600 组残差可以整体保存：$s$ 约 197 MB，$\alpha$ 约 77 MB；
+4. 600 组系数只需数 MB；
+5. 每次 PCGLS 的多右端项三角求解使用一个共享 $R_0$ 和 600 列 RHS，而不是 600 次独立 TRSM。
+
+也就是说，query 维度必须进入 $A_qv$、$A_q^Tr$ 和 reduction kernel；仅把 600 个 RHS 交给 cuBLAS、而矩阵作用仍在 C++ 中逐 query 循环，不算完成。
+
+### 体点阶段如何在 32 GB 内保持 600-query 并行
+
+正式体 QS 若每个端点使用 10 万点，共有 6000 万个 query-point。单独保存坐标仍可接受，但若同时长期保存 $\boldsymbol B$ 的 3 个分量和 $\nabla\boldsymbol B$ 的 9 个分量，仅这部分就约为
+
+$$
+600\times100000\times12\times4
+=2.88\ \mathrm{GB}.
+$$
+
+它没有超过 32 GB，但继续叠加 basis、轨迹和求解临时量会带来不必要的显存流量。更合理的是：
+
+- kernel 网格始终覆盖全部 600 个 query；
+- 物理点按固定 tile 处理，GPU 调度线程块时自然分波次；
+- 场和场梯度计算后立即形成 $\alpha$ 方程作用或 QS partial sum；
+- 只保留每个 query 的系数、残差和少量 partial reduction，不落盘完整中间场张量；
+- 正负端点的 tile 顺序固定，保证差分可重复。
+
+这种“空间点流式、query 维度完整”满足单次 600-query batch；它不同于在主机端把 query 切成 600 个调用。
+
+### surface 阶段应有两个模式
+
+为了不把算法近似和并行实现错误混在一起，开发时保留两个模式：
+
+1. **等价性模式：** 对 600 个 query 同时评估当前全部候选 level 和一周期轨迹，目标是与逐端点当前代码数值一致。它较慢，但用于证明 batch kernel 没写错。
+2. **局部梯度模式：** 只固定中心已经选中的标量 $s_0$，每个端点仍用自己的 $s_q$ 重新求根、移动面并计算漂移和尺寸。它删除离散选面和多 level 成本，同时不会犯“固定整个磁面”的旧错误。
+
+局部梯度模式的提议点仍由完整正式 score 重新选面和验收。若固定 $s_0$ 后的梯度与等价性模式明显不同，应缩小差分步长或回到多 level batch，不能把差异归因于 CUDA 精度。
+
+### 预期时间与加速幅度
+
+当前 PCGLS4 端点 P50 为 $0.692\ \mathrm{s}$。单卡逐个执行 600 个端点约为
+
+$$
+600\times0.692\approx415\ \mathrm{s},
+$$
+
+再加 flow 后约 7 分钟。$s/\psi$ 只占每端点约 14 ms，因此仅批量 PCGLS 而保留其它阶段逐 query 调用，不可能得到大提速。
+
+对真正单卡 batch，建议使用分级目标，而不是预先承诺一个过于乐观的数字：
+
+| 版本 | 600-query score batch，不含 flow | 加 RK4-128 flow 后 | 相对当前单卡逐端点评分 |
+|---|---:|---:|---:|
+| 首个正确版本 | 12--20 s | 15--25 s | 约 17--28 倍 |
+| 完成 kernel 融合和固定-$s_0$ 后 | 5--10 s | 8--15 s | 约 28--52 倍 |
+| 激进目标 | 3--5 s | 6--10 s | 约 42--69 倍 |
+
+这些是工程预算，不是已经测得的结果。预期最终瓶颈将从 QR 变成两类：
+
+1. flow 的 RK4-128 推理；
+2. 轴/磁面轨迹和体点上的 Biot--Savart $\boldsymbol B+\nabla\boldsymbol B$。
+
+QR 在新结构中只对中心执行一次；端点侧是固定 4 步矩阵自由 PCGLS 和共享预条件器，不应继续占据主要墙钟。忽略 coordinate 也只减少少量 residual 归约，不会改变上述时间主项。
+
+### 正确性验收必须分两层
+
+**第一层验证批量实现本身。** 对同一批端点，比较“逐 query 串行运行同一算法”和“单次 600-query batch”：
+
+- 每个端点的状态和磁轴分支必须相同；
+- $s/\psi$、$\alpha/\iota$ 系数与物理 residual 必须在 FP32 可解释范围内；
+- coordinate-omitted 300 维梯度余弦目标应至少为 $0.999$；
+- batch 不得出现候选数相关的数值漂移或长尾 fallback。
+
+**第二层验证局部代理目标。** 再与当前端点 QR 的 coordinate-omitted 正式参考比较。现有 PCGLS4 已达到 $0.99990$，因此真正 batch 不应以“代理本来就不精确”为理由接受明显更低的结果。固定 $s_0$ 等进一步近似要单独消融，并在多个优化阶段中心上验证方向；不能只看一个高分中心。
+
+### 推荐实现顺序
+
+1. 先写统一的 `[query,...]` field 数据布局和 batch Biot--Savart benchmark；这是轴、验证、磁面和 QS 的共同底座。
+2. 把严格 axis-hint continuation 改成单次 batch，保留当前分支门控，不做近似轴公式。
+3. 实现 full-density $s/\psi$ matrix-free PCGLS4 和共享 $R_0$ 多 RHS 预条件。
+4. 实现等价性 surface batch，确认数值一致后再加固定-$s_0$ 快速模式。
+5. 批量磁通、体点、$\alpha/\iota$ PCGLS4 和融合 QS reduction。
+6. 最后用 CUDA Graph 或 persistent kernels 合并固定迭代和轨迹 kernel，减少 RK4/追踪中的 launch 开销。
+7. 达到数值门槛后，再接一轮“全维梯度产生方向、完整正式 score 验收”的短程优化；在此之前不改生产优化器。
+
+这条路线的最大风险不是算法无法并行，而是工程量：现有 field、追踪和 score 接口都以单 query 对象为边界，需要把底层数据布局改为 query-first。物理上各端点彼此独立，除共享中心预条件器外没有跨 query 依赖，因此不存在阻止 600-query 单卡批量化的理论障碍。

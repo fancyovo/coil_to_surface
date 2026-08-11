@@ -291,6 +291,7 @@ def main() -> None:
         component_names = ["axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil"]
         center_coordinate = float(center_capture["score_result"]["components"]["coordinate"])
         exact_scores = []
+        exact_scores_fixed_surface = []
         exact_component_rows = []
         for row in endpoint_rows[: args.query_count]:
             exact = exact_by_candidate[int(row["candidate_index"])]
@@ -302,7 +303,12 @@ def main() -> None:
                 center_coordinate - components[3]
             )
             exact_scores.append(before_no_coordinate * gate)
+            before_fixed_surface = before_no_coordinate + weights[2] / weights.sum() * (
+                float(center_capture["score_result"]["components"]["surface"]) - components[2]
+            )
+            exact_scores_fixed_surface.append(before_fixed_surface * gate)
         exact_scores = np.asarray(exact_scores)
+        exact_scores_fixed_surface = np.asarray(exact_scores_fixed_surface)
         exact_component_rows = np.asarray(exact_component_rows)
         local_component_rows = np.asarray([
             [result["components"][name] for name in component_names]
@@ -310,9 +316,18 @@ def main() -> None:
         ])
         local_directional = (local_scores[1::2] - local_scores[0::2]) / 0.01
         exact_directional = (exact_scores[1::2] - exact_scores[0::2]) / 0.01
+        exact_fixed_surface_directional = (
+            exact_scores_fixed_surface[1::2] - exact_scores_fixed_surface[0::2]
+        ) / 0.01
         cosine = float(np.dot(local_directional, exact_directional) / max(
             np.linalg.norm(local_directional) * np.linalg.norm(exact_directional), 1.0e-30
         ))
+        fixed_surface_cosine = float(
+            np.dot(local_directional, exact_fixed_surface_directional) / max(
+                np.linalg.norm(local_directional) *
+                np.linalg.norm(exact_fixed_surface_directional), 1.0e-30
+            )
+        )
         component_comparison = {}
         for index, name in enumerate(component_names):
             local_component_directional = (
@@ -336,6 +351,7 @@ def main() -> None:
             }
         gradient_comparison = {
             "coordinate_omitted_exact_cosine": cosine,
+            "coordinate_and_surface_selection_omitted_exact_cosine": fixed_surface_cosine,
             "local_directional_rms": float(np.sqrt(np.mean(local_directional ** 2))),
             "exact_directional_rms": float(np.sqrt(np.mean(exact_directional ** 2))),
             "local_directional": local_directional.tolist(),

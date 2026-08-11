@@ -49,15 +49,38 @@ def main() -> None:
         data_rows, norm = rhs_norm(Path(row["snapshot"]))
         baselines[label] = float(row["psi_train_rms"]) * math.sqrt(data_rows) / norm
 
-    rows = []
+    raw_rows = []
     with (args.run_root / "benchmark.jsonl").open(encoding="utf-8") as handle:
         for line in handle:
-            row = json.loads(line)
+            raw_rows.append(json.loads(line))
+
+    endpoint_order = [
+        path.stem
+        for pattern in ("direction_*_minus.bin", "direction_*_plus.bin")
+        for path in sorted((args.run_root / "snapshots").glob(pattern))
+    ]
+    if len(raw_rows) % len(endpoint_order) != 0:
+        raise ValueError(
+            f"{len(raw_rows)} benchmark rows cannot be assigned to "
+            f"{len(endpoint_order)} endpoints"
+        )
+    rows_per_endpoint = len(raw_rows) // len(endpoint_order)
+    reference_methods = [row["method"] for row in raw_rows[:rows_per_endpoint]]
+
+    rows = []
+    for endpoint_index, endpoint in enumerate(endpoint_order):
+        start = endpoint_index * rows_per_endpoint
+        block = raw_rows[start:start + rows_per_endpoint]
+        if [row["method"] for row in block] != reference_methods:
+            raise ValueError(f"inconsistent iteration order for {endpoint}")
+        if endpoint not in endpoint_metadata:
+            raise ValueError(f"benchmark endpoint missing from manifest: {endpoint}")
+        for row in block:
             iterations = int(row["method"].removeprefix("warmcgls"))
-            endpoint = row["endpoint"]
             physical = float(row["physical_residual_relative"])
             rows.append({
                 **row,
+                "endpoint": endpoint,
                 "iterations": iterations,
                 "qr_physical_residual_relative": baselines[endpoint],
                 "physical_residual_ratio": physical / baselines[endpoint],

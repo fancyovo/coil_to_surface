@@ -45,17 +45,21 @@ cmake -S "$PROJECT/gpu_backend" -B "$BUILD_DIR" \
 cmake --build "$BUILD_DIR" --target psi_qr_benchmark -j4
 
 BENCHMARK="$RUN_ROOT/benchmark.jsonl"
-: > "$BENCHMARK"
-for endpoint in "$RUN_ROOT"/snapshots/direction_*_minus.bin "$RUN_ROOT"/snapshots/direction_*_plus.bin; do
-    test -f "$endpoint"
-    for iteration in $ITERATIONS; do
-        "$BUILD_DIR/psi_qr_benchmark" \
-            --snapshot "$endpoint" \
-            --warm-snapshot "$RUN_ROOT/snapshots/center.bin" \
-            --method "warmcgls${iteration}" \
-            --repeats 1 >> "$BENCHMARK"
+if [[ "${REUSE_BENCHMARK:-0}" == "1" ]]; then
+    test -s "$BENCHMARK"
+else
+    : > "$BENCHMARK"
+    for endpoint in "$RUN_ROOT"/snapshots/direction_*_minus.bin "$RUN_ROOT"/snapshots/direction_*_plus.bin; do
+        test -f "$endpoint"
+        for iteration in $ITERATIONS; do
+            "$BUILD_DIR/psi_qr_benchmark" \
+                --snapshot "$endpoint" \
+                --warm-snapshot "$RUN_ROOT/snapshots/center.bin" \
+                --method "warmcgls${iteration}" \
+                --repeats 1 >> "$BENCHMARK"
+        done
     done
-done
+fi
 
 python "$PROJECT/scripts/analyze_local_psi_warm_start.py" \
     --run-root "$RUN_ROOT" \

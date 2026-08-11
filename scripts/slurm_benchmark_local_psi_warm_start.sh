@@ -18,7 +18,7 @@ project="${PROJECT:?PROJECT is required}"
 candidate_dir="${CANDIDATE_DIR:?CANDIDATE_DIR is required}"
 run_root="${RUN_ROOT:?RUN_ROOT is required}"
 direction_count="${DIRECTION_COUNT:-4}"
-build_dir="$project/gpu_backend/build_local_psi_warm"
+build_dir="$project/gpu_backend/build_local_psi_warm_cuda13"
 
 cleanup() {
   status=$?
@@ -41,8 +41,12 @@ mkdir -p "$run_root"
 source "$HOME/coil/.venv/bin/activate"
 export PYTHONPATH="$project/gpu_backend/python:$project${PYTHONPATH:+:$PYTHONPATH}"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+module load cuda/13.0 2>/dev/null || true
+export CUDA_HOME=/public/app/cuda/13.0
+export CUDACXX="$CUDA_HOME/bin/nvcc"
+export PATH="$CUDA_HOME/bin:$PATH"
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
-export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$cuda_wheel_lib:$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 idle_streak=0
 for _ in {1..60}; do
@@ -71,6 +75,8 @@ git rev-parse HEAD > "$run_root/git_head.txt"
 
 cmake -S gpu_backend -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CUDA_COMPILER="$CUDACXX" \
+  -DCUDAToolkit_ROOT="$CUDA_HOME" \
   -DCMAKE_CUDA_ARCHITECTURES=120 \
   -DSGPU_BUILD_QR_BENCHMARK=ON
 cmake --build "$build_dir" -j4

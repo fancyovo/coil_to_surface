@@ -133,9 +133,24 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--shard-index", type=int, required=True)
     parser.add_argument("--shard-count", type=int, required=True)
+    parser.add_argument(
+        "--variants",
+        default="axis_qr16k,axis_qr8k,axis_ne16k,axis_ne8k,fixed_qr16k,fixed_qr8k,fixed_ne8k",
+    )
     args = parser.parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid shard index")
+
+    requested_variants = {
+        value.strip() for value in args.variants.split(",") if value.strip()
+    }
+    available_variants = {
+        "axis_qr16k", "axis_qr8k", "axis_ne16k", "axis_ne8k",
+        "fixed_qr16k", "fixed_qr8k", "fixed_ne8k",
+    }
+    unknown_variants = requested_variants - available_variants
+    if unknown_variants:
+        raise ValueError(f"unknown variants: {sorted(unknown_variants)}")
 
     manifest = json.loads(
         (args.candidate_dir / "candidates.json").read_text(encoding="utf-8")
@@ -159,13 +174,16 @@ def main() -> None:
         index = int(metadata["candidate_index"])
         center = centers[int(metadata["center_index"])]
         row = {**metadata, "center_label": center["label"], "variants": {}}
-        for name, overrides in (
+        moving_variants = (
             ("exact", exact_config(center)),
             ("axis_qr16k", proxy_config(center, small=False, normal=False)),
             ("axis_qr8k", proxy_config(center, small=True, normal=False)),
             ("axis_ne16k", proxy_config(center, small=False, normal=True)),
             ("axis_ne8k", proxy_config(center, small=True, normal=True)),
-        ):
+        )
+        for name, overrides in moving_variants:
+            if name != "exact" and name not in requested_variants:
+                continue
             call_started = time.perf_counter()
             try:
                 result = score_coils_native(
@@ -197,6 +215,8 @@ def main() -> None:
             ("fixed_qr8k", True, False),
             ("fixed_ne8k", True, True),
         ):
+            if name not in requested_variants:
+                continue
             call_started = time.perf_counter()
             try:
                 payload = score_coils_g4_fixed_branch_batch_native(
@@ -229,6 +249,7 @@ def main() -> None:
         "shard_index": args.shard_index,
         "shard_count": args.shard_count,
         "candidate_count": len(rows),
+        "variants": sorted(requested_variants),
         "wall_s": time.perf_counter() - started,
     }
     args.output.with_suffix(".summary.json").write_text(

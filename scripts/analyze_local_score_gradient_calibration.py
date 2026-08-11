@@ -72,7 +72,13 @@ def main() -> None:
     parser.add_argument("--candidate-dir", type=Path, required=True)
     parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--variants", default=",".join(VARIANTS))
     args = parser.parse_args()
+
+    variants = tuple(value.strip() for value in args.variants.split(",") if value.strip())
+    unknown_variants = set(variants) - set(VARIANTS)
+    if unknown_variants:
+        raise ValueError(f"unknown variants: {sorted(unknown_variants)}")
 
     manifest = json.loads(
         (args.candidate_dir / "candidates.json").read_text(encoding="utf-8")
@@ -95,8 +101,8 @@ def main() -> None:
         label = str(center["label"])
         for scale in manifest["scales"]:
             exact_slopes = []
-            variant_slopes = {name: [] for name in VARIANTS}
-            valid = {name: [] for name in VARIANTS}
+            variant_slopes = {name: [] for name in variants}
+            valid = {name: [] for name in variants}
             for direction_index in range(int(manifest["direction_count"])):
                 minus = lookup[(center_index, direction_index, float(scale), -1)]
                 plus = lookup[(center_index, direction_index, float(scale), 1)]
@@ -108,7 +114,7 @@ def main() -> None:
                     (plus["variants"]["exact"]["score"] - minus["variants"]["exact"]["score"])
                     / (2.0 * float(scale)) if exact_ok else float("nan")
                 )
-                for name in VARIANTS:
+                for name in variants:
                     ok = exact_ok and all(
                         endpoint["variants"][name]["status"] == "ok"
                         for endpoint in (minus, plus)
@@ -120,7 +126,7 @@ def main() -> None:
                     )
             exact = np.asarray(exact_slopes, dtype=np.float64)
             slope_bank[(label, float(scale), "exact")] = exact
-            for name in VARIANTS:
+            for name in variants:
                 proxy = np.asarray(variant_slopes[name], dtype=np.float64)
                 mask = np.asarray(valid[name], dtype=bool) & np.isfinite(exact) & np.isfinite(proxy)
                 slope_bank[(label, float(scale), name)] = proxy
@@ -141,7 +147,7 @@ def main() -> None:
                 )
 
     timings = {}
-    for name in ("exact", *VARIANTS):
+    for name in ("exact", *variants):
         timings[name] = quantiles([
             float(row["variants"][name]["call_wall_s"])
             for row in rows if row["variants"][name]["status"] == "ok"
@@ -166,12 +172,12 @@ def main() -> None:
     ]
     aggregate = []
     for scale in scales:
-        for name in VARIANTS:
+        for name in variants:
             selected = [
                 row for row in finite_summaries
                 if row["scale"] == scale and row["variant"] == name
             ]
-            if selected:
+            if len(selected) == len(manifest["centers"]):
                 aggregate.append(
                     {
                         "scale": scale,
@@ -186,6 +192,7 @@ def main() -> None:
 
     output = {
         "format": "local_score_gradient_calibration_v1",
+        "variants": list(variants),
         "candidate_manifest": manifest,
         "timings": timings,
         "scale_consistency": scale_consistency,
@@ -217,7 +224,7 @@ def main() -> None:
     }
     for row_index, label in enumerate(center_labels):
         exact = slope_bank[(label, selected_scale, "exact")]
-        for name in VARIANTS:
+        for name in variants:
             proxy = slope_bank[(label, selected_scale, name)]
             mask = np.isfinite(exact) & np.isfinite(proxy)
             axes[row_index, 0].scatter(exact[mask], proxy[mask], s=20, alpha=0.75, color=colors[name], label=name)

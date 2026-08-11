@@ -3,21 +3,25 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-COMPONENTS = ("axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil")
-WEIGHTS = {
-    "axis": 10.0,
-    "psi": 10.0,
-    "surface": 10.0,
-    "coordinate": 10.0,
-    "volume_qs": 42.0,
-    "iota": 10.0,
-    "coil": 8.0,
-}
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.score_gradient_proxy import (
+    GRADIENT_OMITTED_COMPONENT,
+    SCORE_COMPONENTS,
+    SCORE_WEIGHTS,
+    coordinate_omitted_gradient_score,
+)
+
+
+COMPONENTS = SCORE_COMPONENTS
 
 
 def cosine(left: np.ndarray, right: np.ndarray) -> float:
@@ -55,28 +59,20 @@ def gradients(rows: list[dict], variant: str, field: str, scale: float) -> np.nd
     return np.asarray(output, dtype=np.float64)
 
 
-def score_without_component(result: dict, omitted: str) -> float:
-    full_weight = sum(WEIGHTS.values())
-    full_average = sum(
-        WEIGHTS[name] * result["components"][name] for name in COMPONENTS
-    ) / full_weight
-    gate = result["score"] / full_average if full_average > 0.0 else 0.0
-    retained_weight = full_weight - WEIGHTS[omitted]
-    retained_average = sum(
-        WEIGHTS[name] * result["components"][name]
-        for name in COMPONENTS
-        if name != omitted
-    ) / retained_weight
-    return gate * retained_average
+def gradient_proxy_score(result: dict) -> float:
+    return float(result.get(
+        "gradient_proxy_score",
+        coordinate_omitted_gradient_score(result["score"], result["components"]),
+    ))
 
 
 def component_contribution(result: dict, component: str) -> float:
-    full_weight = sum(WEIGHTS.values())
+    full_weight = sum(SCORE_WEIGHTS.values())
     full_average = sum(
-        WEIGHTS[name] * result["components"][name] for name in COMPONENTS
+        SCORE_WEIGHTS[name] * result["components"][name] for name in COMPONENTS
     ) / full_weight
     gate = result["score"] / full_average if full_average > 0.0 else 0.0
-    return gate * WEIGHTS[component] * result["components"][component] / full_weight
+    return gate * SCORE_WEIGHTS[component] * result["components"][component] / full_weight
 
 
 def derived_gradients(rows: list[dict], variant: str, evaluator, scale: float) -> np.ndarray:
@@ -123,7 +119,7 @@ def main() -> None:
     )
     exact_gradient = gradients(rows, "exact", "score", args.scale)
     exact_without_coordinate = derived_gradients(
-        rows, "exact", lambda result: score_without_component(result, "coordinate"), args.scale
+        rows, "exact", gradient_proxy_score, args.scale
     )
     exact_coordinate_contribution = derived_gradients(
         rows, "exact", lambda result: component_contribution(result, "coordinate"), args.scale
@@ -147,8 +143,7 @@ def main() -> None:
     for variant in variants:
         gradient = gradients(rows, variant, "score", args.scale)
         without_coordinate = derived_gradients(
-            rows, variant,
-            lambda result: score_without_component(result, "coordinate"), args.scale,
+            rows, variant, gradient_proxy_score, args.scale,
         )
         exact_scores = np.asarray([row["variants"]["exact"]["score"] for row in rows])
         scores = np.asarray([row["variants"][variant]["score"] for row in rows])
@@ -189,6 +184,9 @@ def main() -> None:
         summary.append({
             "variant": variant,
             "all_status_ok": all(row["variants"][variant]["status"] == "ok" for row in rows),
+            "gradient_proxy": gradient_comparison(
+                exact_without_coordinate, without_coordinate
+            ),
             "score_gradient": score_comparison,
             "score_gradient_sign_fraction": float(np.mean(np.sign(gradient) == np.sign(exact_gradient))),
             "score_rmse": float(np.sqrt(np.mean(np.square(scores - exact_scores)))),
@@ -242,7 +240,17 @@ def main() -> None:
             "subsets": subsets,
         }
     output = {
-        "format": "local_psi_pcgls_full300_v1",
+        "format": "local_psi_pcgls_full300_v2",
+        "gradient_objective": {
+            "formal_score_unchanged": True,
+            "omitted_endpoint_derivative": GRADIENT_OMITTED_COMPONENT,
+            "proxy_component_weights": {
+                name: weight
+                for name, weight in SCORE_WEIGHTS.items()
+                if name != GRADIENT_OMITTED_COMPONENT
+            },
+            "formal_center_and_proposal_acceptance_required": True,
+        },
         "scale": args.scale,
         "direction_count": 300,
         "endpoint_count": len(rows),

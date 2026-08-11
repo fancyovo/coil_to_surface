@@ -17,6 +17,7 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 from stellarator_gpu import score_coils_native, score_coils_psi_warm_batch_native
+from scripts.score_gradient_proxy import coordinate_omitted_gradient_score
 
 
 COMPONENTS = ("axis", "psi", "surface", "coordinate", "volume_qs", "iota", "coil")
@@ -44,10 +45,14 @@ def exact_config(center: dict[str, Any]) -> dict[str, Any]:
 
 def compact(result: dict[str, Any]) -> dict[str, Any]:
     diagnostics = result["diagnostics"]
+    components = {name: float(result["components"][name]) for name in COMPONENTS}
     return {
         "score": float(result["score"]),
+        "gradient_proxy_score": coordinate_omitted_gradient_score(
+            result["score"], components
+        ),
         "status": result["status"],
-        "components": {name: float(result["components"][name]) for name in COMPONENTS},
+        "components": components,
         "psi_angle_p95": float(diagnostics["psi_angle_p95"]),
         "surface_level": float(diagnostics["surface_level"]),
         "alpha_relative_l2": float(diagnostics["alpha_relative_l2"]),

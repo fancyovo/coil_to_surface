@@ -7404,6 +7404,7 @@ bool score_local_batch_impl(
     }
     sgpu_internal_set_error("");
     return true;
+}
 
 }  // namespace
 

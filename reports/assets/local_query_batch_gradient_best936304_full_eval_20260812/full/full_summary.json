@@ -1,0 +1,136 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/input/best.json",
+  "surface_npz": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+  "surface": {
+    "nfp": 4,
+    "order": 12,
+    "iota": 1.3755555016786463,
+    "G": -6.9435567223132875,
+    "rho": 1.0,
+    "s_edge": 0.49,
+    "s_level": 0.49
+  },
+  "desc_preflight": {
+    "jax_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "gpu_available": false
+  },
+  "visualization": {
+    "surface_meta": {
+      "iota": 1.3755555016786463,
+      "G": -6.9435567223132875,
+      "psi_level": null
+    },
+    "b_abs_min": 0.7017066966982236,
+    "b_abs_mean": 0.7812626948363173,
+    "b_abs_max": 0.8603721532920915,
+    "poincare": {
+      "hit_counts": [
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "seed_r_min": 1.3003809536440378,
+      "seed_r_max": 1.3409192256768092,
+      "surface_r_outer_phi0": 1.343052818941692,
+      "edge_fraction": 0.95,
+      "tmax_fl": 20000000.0,
+      "tol": 1e-11,
+      "psi_drift": null,
+      "save_path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/assets/poincare.png"
+    },
+    "boozer_b_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/assets/boozer_b.png",
+    "boozer_b_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/assets/boozer_b.html",
+    "coils_surface_html": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/assets/coils_surface.html",
+    "coils_surface_png": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/assets/coils_surface.png"
+  },
+  "visualization_time_s": 38.70042142202146,
+  "desc": {
+    "toroidal_flux": -0.005804951073396967,
+    "input": {
+      "mpol": 12,
+      "ntor": 12,
+      "stellsym": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/input.check"
+    },
+    "nested_initial": true,
+    "initial_force_compute_success": true,
+    "initial_force_compute_time_s": 6.118323482107371,
+    "initial_force_mean_abs_normalized": 1.112386042669742,
+    "initial_force_max_abs_normalized": 4.2523703291379755,
+    "initial_force_p95_abs_normalized": 1.8928949640951904,
+    "initial_force_vol_average_raw": 1753265.6013399102,
+    "plots_initial": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/boundary_initial.png",
+        "time_s": 2.380614517023787
+      }
+    },
+    "solve_call_success": true,
+    "solve_return": "(Equilibrium at 0x7d5e333c770 (L=8, M=8, N=8, NFP=4, sym=True, spectral_indexing=ansi),           message: Maximum number of iterations has been exceeded.\n          success: False\n              fun: [ 6.466e-06  1.008e-04 ... -5.126e-05 -1.495e-05]\n                x: [-5.589e-04 -3.412e-05 ... -3.370e-02 -2.297e-01]\n              nit: 50\n             cost: 4.373827390866172e-05\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 0.00014764997952181646\n             nfev: 57\n             njev: 51\n             allx: [Array([-8.638e-06, -6.643e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-1.297e-05, -1.118e-05, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-6.839e-06, -1.440e-05, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-7.279e-06, -9.667e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-7.873e-06, -7.904e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-7.447e-06, -6.402e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-6.425e-06, -5.863e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.546e-06, -5.465e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.254e-06, -5.408e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.027e-06, -5.335e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.783e-06, -5.260e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.614e-06, -5.241e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.518e-06, -5.250e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.472e-06, -5.278e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.456e-06, -5.317e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.458e-06, -5.352e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.464e-06, -5.390e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.478e-06, -5.441e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.496e-06, -5.494e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.517e-06, -5.550e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.538e-06, -5.608e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.563e-06, -5.672e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.592e-06, -5.743e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.627e-06, -5.824e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.670e-06, -5.916e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.724e-06, -6.024e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.793e-06, -6.148e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-4.883e-06, -6.295e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.001e-06, -6.468e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.151e-06, -6.669e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.310e-06, -6.863e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.387e-06, -6.944e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.359e-06, -6.853e-06, ..., -1.786e-06,\n                          -5.356e-06], dtype=float64), Array([-5.315e-06, -6.674e-06, ..., -1.786e-0",
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_cost": 4.373827390866172e-05,
+    "optimizer_nit": 50.0,
+    "optimizer_nfev": 57.0,
+    "optimizer_njev": 51.0,
+    "optimizer_optimality": 0.00014764997952181646,
+    "solve_time_s": 139.75570946908556,
+    "nested_final": true,
+    "final_force_compute_success": true,
+    "final_force_compute_time_s": 0.9972902690060437,
+    "final_force_mean_abs_normalized": 0.0004518464374817175,
+    "final_force_max_abs_normalized": 0.0026837121280898204,
+    "final_force_p95_abs_normalized": 0.0010496425676371486,
+    "final_force_vol_average_raw": 345.2182501475867,
+    "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/equilibrium.h5",
+    "plots_final": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/boundary.png",
+        "time_s": 0.8679616169538349
+      },
+      "boozer_modes": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/boozer_modes.png",
+        "time_s": 10.663772077066824
+      },
+      "boozer_B": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/boozer_B.png",
+        "time_s": 11.290915383026004
+      },
+      "qs_QA": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/qs_QA.png",
+        "time_s": 7.374543809797615
+      },
+      "qs_QH": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/qs_QH.png",
+        "time_s": 2.5322509079705924
+      },
+      "qs_QP": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/qs_QP.png",
+        "time_s": 2.177751329028979
+      },
+      "iota": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_fullgrad_best936304_full_eval_20260812/full/desc/iota.png",
+        "time_s": 4.033418772974983
+      }
+    }
+  },
+  "desc_time_s": 223.66478665405884,
+  "status": "completed",
+  "total_time_s": 298.3941037990153
+}

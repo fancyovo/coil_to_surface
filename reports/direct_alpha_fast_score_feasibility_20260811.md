@@ -1772,3 +1772,145 @@ DESC 使用 CPU-P107，输入和最终状态都保持嵌套。求解在 50 步�
 ![DESC iota 关于 rho 的变化](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/iota.png)
 
 完整机器可读结果见 `reports/assets/local_gradient_single_gpu_200_20260812/acceptance_summary.json`、`reports/assets/local_gradient_single_gpu_200_full_eval_20260812/native_score_recheck.json`、`selection.json`、`full/full_summary.json` 和 `full/desc/summary.json`。最佳输入 SHA-256 为 `820d7828d3e369e49254f9385c833c06dbbc53c88f4e280ad68359569b104b83`；独立 score 结果 SHA-256 为 `0fb9f94380b7ccd4043275aff756517f5a4ad5d07c66d543f6dda4641bdb46b4`。
+
+## 全维批量梯度历史最高分的完整物理评估
+
+本节评估的不是上一节只跑 200 步的 `K=64` 样本，而是同一个
+`start_10` 起点上，全 300 维批量中心差分 Adam 长跑的历史最高点：第
+1710 步在线 score 为 **93.63042**，输入 `best.json` 的 SHA-256 为
+`9daff76f3c6145e4d0737f0f281dca810c3357d5020e204765f3d29f12606974`。
+完整评估固定使用 query-batch score 库
+`7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3`，并与上一节
+`K=64`、200 步样本按同一流程比较。
+
+先给结论：**这个历史最高分样本同样通过了大磁面、庞加莱、标准
+Simsopt LS/Newton 和 DESC 的物理检查，并且最终磁面残差和 DESC 最终力都明显
+优于 200 步样本。** 但它不是所有量都更优：可行体积几乎不变，面上的 QH
+误差也几乎不变；旋转变换从 1.460 降到 1.376；`alpha+nu` 初值本身反而略差。
+因此更准确的表述是：长程全维优化找到了一个**体 QH 更好、最终标准面更精确、
+DESC 更容易压低力残差**的相邻位形，而不是把磁面做得更大或把外层面 QH 再降低
+一个数量级。
+
+![历史最高分与 200 步样本的完整物理对比](assets/local_query_batch_gradient_best936304_full_eval_20260812/comparison/physical_comparison.png)
+
+### 独立新 score 复评
+
+优化在线 score 使用磁轴和磁面续接；完整评估重新执行无历史的独立全局搜索。
+历史最高分样本的独立 score 是 **94.81168**，比 200 步样本的 94.62019 高
+0.19149。各分量如下：
+
+| 分量 | 全维历史最高分 | `K=64` 200 步 | 差值 |
+|---|---:|---:|---:|
+| 总 score | **94.81168** | 94.62019 | +0.19149 |
+| axis | 95.1943 | 95.3889 | -0.1947 |
+| $\psi$ | **99.3126** | 98.9528 | +0.3598 |
+| surface | 93.5635 | **97.5630** | -3.9995 |
+| coordinate | 90.0476 | 90.1820 | -0.1343 |
+| volume QS | **98.8592** | 97.5248 | +1.3344 |
+| $\iota$ | 100.0000 | 100.0000 | 0 |
+| coil | **68.4879** | 68.1390 | +0.3489 |
+
+这里不能只看总分。历史最高分样本的独立快速磁面漂移更大，所以 `surface`
+分量低约 4 分；真正的收益来自体 QH。体 QS 全局误差从
+$3.548\times10^{-3}$ 降到 $1.443\times10^{-3}$，按 QH 螺旋数归一化后从
+$8.605\times10^{-4}$ 降到 $3.501\times10^{-4}$。这与 `volume QS` 分量的提升
+一致，也说明总分的微小净增益是多个分量取舍后的结果，不是所有子目标同时上升。
+
+### 从源 $\psi$ 到最大已测可行面
+
+源拟合重新并行测试 $a=0.04,0.05,0.06,0.08$，仍选择覆盖最大的样本特定半径
+$a=0.08$。4000 个独立验证点上的 $\psi$ 归一化角残差 mean/P95/L2 为
+$1.320\times10^{-5}/4.615\times10^{-5}/1.106\times10^{-5}$；L2 是 200 步样本的
+0.724 倍。随后测试 $s=0.24,0.30,0.36,0.49,0.64$：
+
+| $s$ | 标准 LS/Newton | 体积 $\mathrm{m}^3$ | $\iota$ | 稠密相对 L2 | 法向场 P95 |
+|---:|---|---:|---:|---:|---:|
+| 0.24 | 通过 | 0.033065 | 1.37144 | $3.207\times10^{-6}$ | $3.120\times10^{-6}$ |
+| 0.30 | 通过 | 0.041565 | 1.37248 | $3.632\times10^{-6}$ | $3.576\times10^{-6}$ |
+| 0.36 | 通过 | 0.050152 | 1.37353 | $4.065\times10^{-6}$ | $4.000\times10^{-6}$ |
+| **0.49** | **通过并选中** | **0.066541** | **1.37556** | **$4.912\times10^{-6}$** | **$4.884\times10^{-6}$** |
+| 0.64 | GPU 固定预算失败 | -- | -- | -- | -- |
+
+$s=0.64$ 的 GPU-ray 采样得到 168808 个有效点，低于固定预算 180000；流程没有
+回退到慢 CPU 路径。选中的 $s=0.49$ 体积只比 200 步样本小
+$5.51\times10^{-5}\ \mathrm{m}^3$，即 0.083%，可视为相同大小。与此同时：
+
+- 稠密相对 L2 是 200 步样本的 0.353 倍，约低 2.83 倍；
+- 法向场 P95 是其 0.247 倍，约低 4.05 倍；
+- 面 QA/QH/QP error 为
+  $4.601\times10^{-3}/1.258\times10^{-6}/4.676\times10^{-3}$；
+- 200 步样本的面 QH 是 $1.246\times10^{-6}$，两者只差 0.96%，所以不能声称
+  外层面 QH 有实质提升；
+- $\iota$ 从 1.46030 降到 1.37556，下降 0.08474，即约 5.8%，但仍明显大于 1，
+  不是低旋转变换作弊解。
+
+还需区分初值和最终面。历史最高分样本的 `alpha+nu` 初值相对 L2 是 0.02179，
+比 200 步样本的 0.01518 更差，标准面相对初值的位移 P95 也从 4.30 mm 增至
+7.11 mm。标准 LS 分别将它们降到 $4.91\times10^{-6}$ 和
+$1.39\times10^{-5}$。因此最终面更精确不是因为这个样本的 `alpha+nu` 初值更准，
+而是因为它仍位于正确求解盆地，且对应的最终物理面条件更好。
+
+### 直接场线和 Boozer 诊断
+
+![历史最高分样本的最大可行面庞加莱截面](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/assets/poincare.png)
+
+8 条场线在四个截面中都得到 29 个命中点，轨迹连续、嵌套，没有逃逸、自交或
+分支跳转。与 200 步样本相比，截面中心和椭圆形状有可见变化，但两者的嵌套质量
+没有发生颠覆性区别。
+
+![历史最高分样本最大可行面上的彩色 |B| 等高线](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/assets/boozer_b.png)
+
+彩色等高线保持清晰的近斜直线 QH 结构。$|B|$ 范围为 0.7017--0.8604 T，
+200 步样本为 0.6822--0.8393 T；两者峰谷差相近，主要是整体场强上移。交互版本见
+[boozer_b.html](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/assets/boozer_b.html)。
+
+![历史最高分样本的全装置线圈和选中磁面](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/assets/coils_surface.png)
+
+交互式全装置视图见
+[coils_surface.html](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/assets/coils_surface.html)。
+
+### DESC 结果及与 200 步样本的差别
+
+两个样本都使用 CPU-P107、相同 `mpol=ntor=12` 和 50 步上限。历史最高分样本在
+DESC 前后都保持嵌套，但同样达到最大迭代数，所以
+`optimizer_success=false`，不能写成严格收敛。初始力并非全面更好：mean 从
+1.135 降到 1.112，但 P95 从 1.786 升到 1.893，max 从 3.581 升到 4.252。
+经过 50 步后，历史最高分样本的优势变得明确：
+
+| DESC 量 | 全维历史最高分 | `K=64` 200 步 | 历史最高分 / 200 步 |
+|---|---:|---:|---:|
+| 最终目标平方和 | $4.374\times10^{-5}$ | $4.393\times10^{-4}$ | 0.0996 |
+| 最终归一化力 mean | $4.518\times10^{-4}$ | $1.092\times10^{-3}$ | 0.414 |
+| 最终归一化力 P95 | $1.050\times10^{-3}$ | $2.476\times10^{-3}$ | 0.424 |
+| 最终归一化力 max | $2.684\times10^{-3}$ | $8.439\times10^{-3}$ | 0.318 |
+| 初始 / 最终嵌套 | 是 / 是 | 是 / 是 | -- |
+
+也就是说，历史最高分样本的最终目标平方和约低 10 倍，最终力 mean/P95/max
+分别约低 2.42/2.36/3.14 倍。它在 57 次函数调用后达到该结果，200 步样本用了
+75 次。这个差别支持“长程全维优化改善了 DESC 可精化性”，但鉴于两次都达到
+50 步上限，不能据此声称已经得到严格的 DESC 收敛解。
+
+![历史最高分样本的 DESC 初始边界](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/boundary_initial.png)
+
+![历史最高分样本的 DESC 最终边界](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/boundary.png)
+
+![历史最高分样本的 DESC Boozer 模态关于 rho 的变化](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/boozer_modes.png)
+
+![历史最高分样本的 DESC Boozer |B| 彩色等高线](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/boozer_B.png)
+
+![历史最高分样本的 DESC QA 诊断](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/qs_QA.png)
+
+![历史最高分样本的 DESC QH 诊断](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/qs_QH.png)
+
+![历史最高分样本的 DESC QP 诊断](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/qs_QP.png)
+
+![历史最高分样本的 DESC iota 关于 rho 的变化](assets/local_query_batch_gradient_best936304_full_eval_20260812/full/desc/iota.png)
+
+完整机器可读产物位于
+`reports/assets/local_query_batch_gradient_best936304_full_eval_20260812/`。核心文件为
+`native_score_recheck.json`、`selection.json`、`full/full_summary.json`、
+`full/desc/summary.json` 和 `comparison/physical_comparison.json`。第一次源拟合作业
+`36945/36947/36949/36951` 因远端 tracked launcher 脏工作树预检失败，实际没有运行
+物理计算，不参与任何结果；干净重提的 `36955/36957/36959/36961` 才是本节采用的
+源拟合。独立 score 复评作业为 `36953`，磁面候选为
+`36963/36965/36967/36969/36972`，下游完整评估为 `36975`。

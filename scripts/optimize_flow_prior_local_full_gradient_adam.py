@@ -915,6 +915,8 @@ def main() -> None:
                         previous_bfgs_step,
                         previous_bfgs_gradient - raw_gradient.reshape(-1),
                     )
+                    previous_bfgs_gradient = np.empty(0, dtype=np.float64)
+                    previous_bfgs_step = np.empty(0, dtype=np.float64)
                 direction = (inverse_hessian @ raw_gradient.reshape(-1)).reshape(
                     current_noise.shape
                 )
@@ -1018,17 +1020,21 @@ def main() -> None:
             current_result = previous_result
             first_moment = previous_first
             second_moment = previous_second
-            inverse_hessian = previous_inverse_hessian
-            previous_bfgs_gradient = previous_bfgs_gradient_state
-            previous_bfgs_step = previous_bfgs_step_state
-            bfgs_trust_rms = (
-                max(
+            if args.optimizer == "adam":
+                inverse_hessian = previous_inverse_hessian
+                previous_bfgs_gradient = previous_bfgs_gradient_state
+                previous_bfgs_step = previous_bfgs_step_state
+                bfgs_trust_rms = previous_bfgs_trust_rms
+            elif gradient_step_applied:
+                bfgs_trust_rms = max(
                     args.bfgs_min_trust_rms,
                     args.bfgs_trust_shrink * previous_bfgs_trust_rms,
                 )
-                if args.optimizer == "bfgs" and gradient_step_applied
-                else previous_bfgs_trust_rms
-            )
+            else:
+                inverse_hessian = previous_inverse_hessian
+                previous_bfgs_gradient = previous_bfgs_gradient_state
+                previous_bfgs_step = previous_bfgs_step_state
+                bfgs_trust_rms = previous_bfgs_trust_rms
             adam_step = previous_adam_step
 
         current_score = result_score(current_result)

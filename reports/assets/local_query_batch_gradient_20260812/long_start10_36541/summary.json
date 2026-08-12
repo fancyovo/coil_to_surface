@@ -1,0 +1,61 @@
+{
+  "status": "ok",
+  "stop_reason": "max_wall_s",
+  "initial_score": 85.50453562960844,
+  "final_score": 93.43037571171025,
+  "best_score": 93.63042181744808,
+  "best_iteration": 1710,
+  "completed_iterations": 1739,
+  "completed_adam_steps": 1739,
+  "total_wall_s": 27289.585201129317,
+  "initial_decode_wall_s": 2.6653624922037125,
+  "initial_score_wall_s": 3.1701629739254713,
+  "mean_iteration_wall_s": 15.352044668610949,
+  "manifest": {
+    "algorithm": "adam_with_query_batched_300d_coordinate_gradient",
+    "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+    "formal_objective": "complete native QH score for every accepted center",
+    "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+    "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+    "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+    "nfp": 4,
+    "n_base_coils": 3,
+    "iterations": 2000,
+    "max_wall_s": 27300.0,
+    "flow": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32"
+    },
+    "coordinate_gradient": {
+      "dimension": 300,
+      "endpoint_count": 600,
+      "perturbation": 0.005,
+      "difference": "centered",
+      "psi_grid": 48,
+      "psi_iterations": 4,
+      "alpha_iterations": 4,
+      "formal_surface_theta_count": 128,
+      "local_surface_theta_count": 64
+    },
+    "adam": {
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "epsilon": 1e-08,
+      "weight_decay": 0.0
+    },
+    "axis_policy": "initial global search, then strict mixed-precision continuation",
+    "devices": {
+      "flow": 0,
+      "score": 1
+    },
+    "initial_metadata_keys": [
+      "flow_prior_start",
+      "format"
+    ]
+  }
+}

@@ -1,0 +1,264 @@
+{
+  "format": "local_full_gradient_adam_acceptance_v1",
+  "checks": {
+    "contiguous_iterations": true,
+    "summary_iteration_matches": true,
+    "summary_best_matches_history": true,
+    "best_artifact_matches_history": true,
+    "all_formal_centers_ok": true,
+    "all_600_endpoints_ok": true,
+    "all_gradient_steps_applied": true,
+    "all_centers_accepted": true,
+    "all_updates_full_fraction": true,
+    "no_temporal_outliers": true,
+    "stderr_empty": true,
+    "clean_gpu_postflight": true
+  },
+  "all_checks_passed": true,
+  "run": {
+    "stop_reason": "max_wall_s",
+    "completed_iterations": 1739,
+    "completed_adam_steps": 1739,
+    "total_wall_s": 27289.585201129317,
+    "initial_score": 85.50453562960844,
+    "final_score": 93.43037571171025,
+    "best_score": 93.63042181744808,
+    "best_iteration": 1710,
+    "formal_score_gain": 8.12588618783964
+  },
+  "stability": {
+    "valid_endpoint_iterations": 1739,
+    "accepted_center_iterations": 1739,
+    "backtracked_iterations": 0,
+    "temporal_gradient_outliers": 0,
+    "temporal_update_outliers": 0
+  },
+  "timing_s": {
+    "iteration": {
+      "mean": 15.352044668610949,
+      "p50": 15.15065542794764,
+      "p95": 16.681795139797032,
+      "max": 18.071859024465084
+    },
+    "gradient": {
+      "mean": 13.1650429287001,
+      "p50": 13.071775475516915,
+      "p95": 13.644506556540728,
+      "max": 15.832016345113516
+    },
+    "endpoint_flow": {
+      "mean": 2.056771407753246,
+      "p50": 1.9932933077216148,
+      "p95": 2.276878386549652,
+      "max": 3.9102909453213215
+    },
+    "formal_proposal": {
+      "mean": 2.1447029777691666,
+      "p50": 2.0428426265716553,
+      "p95": 3.341012883931398,
+      "max": 4.050562998279929
+    }
+  },
+  "physics": {
+    "start_components": {
+      "axis": 97.42457029664567,
+      "psi": 97.55037186382626,
+      "surface": 78.9409867198208,
+      "coordinate": 86.36416205103788,
+      "volume_qs": 80.87511600240605,
+      "iota": 100.0,
+      "coil": 68.8622226933105
+    },
+    "best_components": {
+      "axis": 95.28906223108346,
+      "psi": 99.31255221207897,
+      "surface": 81.8198324458817,
+      "coordinate": 90.18752129459845,
+      "volume_qs": 98.78689632827577,
+      "iota": 100.0,
+      "coil": 68.48785676509989
+    },
+    "component_delta": {
+      "axis": -2.135508065562206,
+      "psi": 1.7621803482527127,
+      "surface": 2.878845726060902,
+      "coordinate": 3.8233592435605743,
+      "volume_qs": 17.911780325869728,
+      "iota": 0.0,
+      "coil": -0.374365928210608
+    },
+    "start_qh_error": 0.043843933560366546,
+    "best_qh_error": 0.001542698935171235,
+    "qh_error_reduction_factor": 28.420278617421875,
+    "best_qa_error": 0.11368369774149815,
+    "best_qp_error": 0.028420704235394636,
+    "best_iota_min": 1.2648304315625503,
+    "best_iota_max": 1.4065173864364624,
+    "best_surface_level": 0.39450363621341394,
+    "best_surface_inverse_aspect_ratio": 0.03205653298836908,
+    "best_one_period_drift_p95": 0.00033358602467962973
+  },
+  "spsa_comparison": {
+    "baseline_iterations": 1000,
+    "baseline_best_score": 92.68181369108366,
+    "baseline_total_wall_s": 4201.21484737657,
+    "same_iteration": [
+      {
+        "iteration": 50,
+        "full_gradient_best_score": 91.18912845795192,
+        "spsa_best_score": 89.0546358989449,
+        "full_minus_spsa": 2.134492559007029
+      },
+      {
+        "iteration": 100,
+        "full_gradient_best_score": 92.07124679424686,
+        "spsa_best_score": 90.1588819560846,
+        "full_minus_spsa": 1.9123648381622615
+      },
+      {
+        "iteration": 200,
+        "full_gradient_best_score": 92.70348147302768,
+        "spsa_best_score": 91.52793078597125,
+        "full_minus_spsa": 1.175550687056429
+      },
+      {
+        "iteration": 300,
+        "full_gradient_best_score": 92.93066276233968,
+        "spsa_best_score": 91.87594914292183,
+        "full_minus_spsa": 1.0547136194178535
+      },
+      {
+        "iteration": 500,
+        "full_gradient_best_score": 93.21186838590476,
+        "spsa_best_score": 92.38775233803219,
+        "full_minus_spsa": 0.8241160478725789
+      },
+      {
+        "iteration": 750,
+        "full_gradient_best_score": 93.36182092187413,
+        "spsa_best_score": 92.44123549150804,
+        "full_minus_spsa": 0.9205854303660885
+      },
+      {
+        "iteration": 1000,
+        "full_gradient_best_score": 93.47121883206988,
+        "spsa_best_score": 92.68181369108366,
+        "full_minus_spsa": 0.7894051409862186
+      }
+    ],
+    "same_wall_time": [
+      {
+        "wall_s": 848.8808079939336,
+        "baseline_iteration": 200,
+        "baseline_best_score": 91.52793078597125,
+        "full_gradient_iteration": 54,
+        "full_gradient_best_score": 91.38327027254344,
+        "full_minus_baseline": -0.14466051342780872
+      },
+      {
+        "wall_s": 2099.884483044967,
+        "baseline_iteration": 500,
+        "baseline_best_score": 92.38775233803219,
+        "full_gradient_iteration": 134,
+        "full_gradient_best_score": 92.36398226671955,
+        "full_minus_baseline": -0.023770071312640084
+      },
+      {
+        "wall_s": 3150.0378572121263,
+        "baseline_iteration": 750,
+        "baseline_best_score": 92.44123549150804,
+        "full_gradient_iteration": 201,
+        "full_gradient_best_score": 92.70348147302768,
+        "full_minus_baseline": 0.26224598151964074
+      },
+      {
+        "wall_s": 4201.21484737657,
+        "baseline_iteration": 1000,
+        "baseline_best_score": 92.68181369108366,
+        "full_gradient_iteration": 269,
+        "full_gradient_best_score": 92.90230192936303,
+        "full_minus_baseline": 0.2204882382793727
+      }
+    ],
+    "thresholds": {
+      "90.0": {
+        "full_gradient": {
+          "iteration": 22,
+          "best_score": 90.0082967353645,
+          "wall_s": 346.42992065660655
+        },
+        "spsa": {
+          "iteration": 87,
+          "best_score": 90.00431339274596,
+          "wall_s": 373.6509674657136
+        }
+      },
+      "91.0": {
+        "full_gradient": {
+          "iteration": 43,
+          "best_score": 91.05478942831422,
+          "wall_s": 669.5972762405872
+        },
+        "spsa": {
+          "iteration": 140,
+          "best_score": 91.02169835635698,
+          "wall_s": 595.3158983085304
+        }
+      },
+      "92.0": {
+        "full_gradient": {
+          "iteration": 94,
+          "best_score": 92.00241237787722,
+          "wall_s": 1464.4861349575222
+        },
+        "spsa": {
+          "iteration": 360,
+          "best_score": 92.00706945923612,
+          "wall_s": 1516.7424720544368
+        }
+      },
+      "92.5": {
+        "full_gradient": {
+          "iteration": 155,
+          "best_score": 92.50520051956339,
+          "wall_s": 2416.480096252635
+        },
+        "spsa": {
+          "iteration": 826,
+          "best_score": 92.5112205811557,
+          "wall_s": 3468.45624326542
+        }
+      },
+      "93.0": {
+        "full_gradient": {
+          "iteration": 334,
+          "best_score": 93.0234318951048,
+          "wall_s": 5216.013678450137
+        },
+        "spsa": null
+      },
+      "93.5": {
+        "full_gradient": {
+          "iteration": 1129,
+          "best_score": 93.51242713837314,
+          "wall_s": 17685.76339207776
+        },
+        "spsa": null
+      },
+      "93.6": {
+        "full_gradient": {
+          "iteration": 1689,
+          "best_score": 93.60838342138285,
+          "wall_s": 26503.650571536273
+        },
+        "spsa": null
+      }
+    }
+  },
+  "sha256": {
+    "best.json": "9daff76f3c6145e4d0737f0f281dca810c3357d5020e204765f3d29f12606974",
+    "history.jsonl": "3ff485720a7b410b0b8c20ccdd1ebc91d232a78503d08780fa1aa34d4a699c8a",
+    "state_latest.npz": "1a6de6898753e847467d8a70da8dfa2ee9ecb2454c7ae8a308e3c0bfe1d02e95",
+    "summary.json": "94cdef82b68ae8ec0da59c2d5e5fad6849b73a8b30b6dabd6232c7037167cbc2"
+  }
+}

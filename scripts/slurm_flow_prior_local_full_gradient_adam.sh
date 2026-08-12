@@ -104,6 +104,10 @@ python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --max-wall-s "$max_wall_s" \
   --flow-steps "${FLOW_STEPS:-128}" \
   --perturbation "${PERTURBATION:-0.005}" \
+  --gradient-mode "${GRADIENT_MODE:-coordinate}" \
+  --random-directions "${RANDOM_DIRECTIONS:-64}" \
+  --seed "${SEED:-20260812}" \
+  --optimizer "${OPTIMIZER:-adam}" \
   --learning-rate "${LEARNING_RATE:-0.01}" \
   --beta1 "${BETA1:-0.7}" \
   --beta2 "${BETA2:-0.999}" \
@@ -112,6 +116,12 @@ python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --formal-surface-theta-count "${FORMAL_SURFACE_THETA_COUNT:-128}" \
   --local-surface-theta-count "${LOCAL_SURFACE_THETA_COUNT:-64}" \
   --iota-degree "${IOTA_DEGREE:-3}" \
+  --bfgs-initial-trust-rms "${BFGS_INITIAL_TRUST_RMS:-0.01}" \
+  --bfgs-min-trust-rms "${BFGS_MIN_TRUST_RMS:-0.00001}" \
+  --bfgs-max-trust-rms "${BFGS_MAX_TRUST_RMS:-0.05}" \
+  --bfgs-trust-growth "${BFGS_TRUST_GROWTH:-1.2}" \
+  --bfgs-trust-shrink "${BFGS_TRUST_SHRINK:-0.5}" \
+  --bfgs-min-improvement "${BFGS_MIN_IMPROVEMENT:-0.0}" \
   --plot-every "${PLOT_EVERY:-5}" \
   "${resume_args[@]}" &
 child=$!

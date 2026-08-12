@@ -34,6 +34,7 @@ from scripts.optimize_flow_prior_zo_adam import (  # noqa: E402
     diagnostics_value,
     load_flow_checkpoint,
     load_initial_noise,
+    orthogonal_directions,
     result_score,
     result_valid,
     rms,
@@ -66,6 +67,81 @@ def coordinate_gradient(scores: np.ndarray, perturbation: float) -> np.ndarray:
     if values.size % 2:
         raise ValueError("coordinate endpoint count must be even")
     return (values[1::2] - values[0::2]) / (2.0 * perturbation)
+
+
+def random_direction_endpoints(
+    center: np.ndarray,
+    perturbation: float,
+    directions: np.ndarray,
+) -> np.ndarray:
+    center = np.asarray(center, dtype=np.float32)
+    directions = np.asarray(directions, dtype=np.float32)
+    if directions.ndim != center.ndim + 1 or directions.shape[1:] != center.shape:
+        raise ValueError("direction bank shape does not match center")
+    endpoints = np.repeat(center[None], 2 * len(directions), axis=0)
+    endpoints[0::2] -= np.float32(perturbation) * directions
+    endpoints[1::2] += np.float32(perturbation) * directions
+    return endpoints
+
+
+def random_direction_gradient(
+    scores: np.ndarray,
+    perturbation: float,
+    directions: np.ndarray,
+) -> np.ndarray:
+    directions = np.asarray(directions, dtype=np.float64)
+    slopes = coordinate_gradient(scores, perturbation)
+    if slopes.shape != (len(directions),):
+        raise ValueError("directional slope count does not match direction bank")
+    return np.mean(
+        slopes.reshape((-1,) + (1,) * (directions.ndim - 1)) * directions,
+        axis=0,
+    )
+
+
+def damped_inverse_bfgs(
+    inverse_hessian: np.ndarray,
+    step: np.ndarray,
+    objective_gradient_delta: np.ndarray,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    inverse = np.asarray(inverse_hessian, dtype=np.float64)
+    step = np.asarray(step, dtype=np.float64).reshape(-1)
+    delta = np.asarray(objective_gradient_delta, dtype=np.float64).reshape(-1)
+    if inverse.shape != (step.size, step.size) or delta.shape != step.shape:
+        raise ValueError("incompatible BFGS shapes")
+    try:
+        hessian_step = np.linalg.solve(inverse, step)
+    except np.linalg.LinAlgError:
+        return inverse.copy(), {"updated": False, "reason": "singular_inverse"}
+    step_hessian_step = float(np.dot(step, hessian_step))
+    step_delta = float(np.dot(step, delta))
+    if not math.isfinite(step_hessian_step) or step_hessian_step <= 1.0e-14:
+        return inverse.copy(), {"updated": False, "reason": "invalid_model"}
+    damped = False
+    if step_delta < 0.2 * step_hessian_step:
+        denominator = step_hessian_step - step_delta
+        if denominator <= 1.0e-14:
+            return inverse.copy(), {"updated": False, "reason": "invalid_damping"}
+        theta = 0.8 * step_hessian_step / denominator
+        delta = theta * delta + (1.0 - theta) * hessian_step
+        step_delta = float(np.dot(step, delta))
+        damped = True
+    if not math.isfinite(step_delta) or step_delta <= 1.0e-14:
+        return inverse.copy(), {"updated": False, "reason": "nonpositive_curvature"}
+    rho = 1.0 / step_delta
+    identity = np.eye(step.size)
+    transform = identity - rho * np.outer(step, delta)
+    updated = transform @ inverse @ transform.T + rho * np.outer(step, step)
+    updated = 0.5 * (updated + updated.T)
+    eigenvalues = np.linalg.eigvalsh(updated)
+    if not np.all(np.isfinite(eigenvalues)) or float(eigenvalues[0]) <= 0.0:
+        return inverse.copy(), {"updated": False, "reason": "non_spd_result"}
+    return updated, {
+        "updated": True,
+        "damped": damped,
+        "step_gradient_delta": step_delta,
+        "condition_number": float(eigenvalues[-1] / eigenvalues[0]),
+    }
 
 
 def score_config(
@@ -320,8 +396,13 @@ def make_case(
     manifest: dict[str, Any],
 ) -> dict[str, Any]:
     case = token_case(tokens, nfp=nfp, target="QH")
-    case["flow_prior_local_full_gradient_adam"] = {
-        "format": "flow_prior_local_full_gradient_adam_v1",
+    metadata_key = (
+        "flow_prior_local_full_gradient_bfgs"
+        if manifest["optimizer"] == "bfgs"
+        else "flow_prior_local_full_gradient_adam"
+    )
+    case[metadata_key] = {
+        "format": f"{metadata_key}_v1",
         "iteration": int(iteration),
         "best_score": float(best_score),
         "best_iteration": int(best_iteration),
@@ -381,7 +462,8 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
     figure, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
     axes[0, 0].plot(step, [row["current_score"] for row in rows], label="current")
     axes[0, 0].plot(step, [row["best_score"] for row in rows], label="best")
-    axes[0, 0].set(ylabel="formal score", title="Local full-gradient Adam")
+    optimizer = str(rows[-1].get("optimizer", "adam")).upper()
+    axes[0, 0].set(ylabel="formal score", title=f"Local-gradient {optimizer}")
     axes[0, 0].legend()
     axes[0, 1].plot(step, [row["current_qh_error"] for row in rows], label="QH")
     axes[0, 1].plot(step, [row["current_qa_error"] for row in rows], label="QA")
@@ -416,6 +498,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-wall-s", type=float, default=1500.0)
     parser.add_argument("--flow-steps", type=int, default=128)
     parser.add_argument("--perturbation", type=float, default=0.005)
+    parser.add_argument(
+        "--gradient-mode",
+        choices=("coordinate", "random-orthogonal"),
+        default="coordinate",
+    )
+    parser.add_argument("--random-directions", type=int, default=64)
+    parser.add_argument("--seed", type=int, default=20260812)
+    parser.add_argument("--optimizer", choices=("adam", "bfgs"), default="adam")
     parser.add_argument("--learning-rate", type=float, default=0.01)
     parser.add_argument("--beta1", type=float, default=0.7)
     parser.add_argument("--beta2", type=float, default=0.999)
@@ -434,6 +524,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--temporal-update-ratio", type=float, default=8.0)
     parser.add_argument("--temporal-guard-mad-factor", type=float, default=8.0)
     parser.add_argument("--backtracking", default="0.5,0.25,0.125")
+    parser.add_argument("--bfgs-initial-trust-rms", type=float, default=0.01)
+    parser.add_argument("--bfgs-min-trust-rms", type=float, default=1.0e-5)
+    parser.add_argument("--bfgs-max-trust-rms", type=float, default=0.05)
+    parser.add_argument("--bfgs-trust-growth", type=float, default=1.2)
+    parser.add_argument("--bfgs-trust-shrink", type=float, default=0.5)
+    parser.add_argument("--bfgs-min-improvement", type=float, default=0.0)
     parser.add_argument("--plot-every", type=int, default=5)
     parser.add_argument("--resume", action="store_true")
     return parser
@@ -453,6 +549,17 @@ def main() -> None:
         raise ValueError("Adam betas must be in (0, 1)")
     if args.perturbation <= 0.0 or args.learning_rate <= 0.0:
         raise ValueError("perturbation and learning rate must be positive")
+    dimension = args.n_base_coils * TOKEN_DIM
+    if not 1 <= args.random_directions <= dimension:
+        raise ValueError("random-directions must be in [1, latent dimension]")
+    if args.optimizer == "bfgs" and args.gradient_mode != "coordinate":
+        raise ValueError("BFGS requires the full coordinate gradient")
+    if not 0.0 < args.bfgs_min_trust_rms <= args.bfgs_initial_trust_rms:
+        raise ValueError("BFGS minimum trust RMS must not exceed its initial value")
+    if not args.bfgs_initial_trust_rms <= args.bfgs_max_trust_rms:
+        raise ValueError("BFGS initial trust RMS must not exceed its maximum")
+    if args.bfgs_trust_growth < 1.0 or not 0.0 < args.bfgs_trust_shrink < 1.0:
+        raise ValueError("invalid BFGS trust-radius factors")
     backtracking = tuple(float(value) for value in args.backtracking.split(","))
     if any(not 0.0 < value < 1.0 for value in backtracking):
         raise ValueError("backtracking fractions must be in (0, 1)")
@@ -482,6 +589,26 @@ def main() -> None:
         best_noise = np.asarray(state["best_noise"], dtype=np.float32)
         first_moment = np.asarray(state["first_moment"], dtype=np.float64)
         second_moment = np.asarray(state["second_moment"], dtype=np.float64)
+        inverse_hessian = (
+            np.asarray(state["inverse_hessian"], dtype=np.float64)
+            if "inverse_hessian" in state.files
+            else np.eye(dimension, dtype=np.float64)
+        )
+        previous_bfgs_gradient = (
+            np.asarray(state["previous_bfgs_gradient"], dtype=np.float64)
+            if "previous_bfgs_gradient" in state.files
+            else np.empty(0, dtype=np.float64)
+        )
+        previous_bfgs_step = (
+            np.asarray(state["previous_bfgs_step"], dtype=np.float64)
+            if "previous_bfgs_step" in state.files
+            else np.empty(0, dtype=np.float64)
+        )
+        bfgs_trust_rms = (
+            float(state["bfgs_trust_rms"])
+            if "bfgs_trust_rms" in state.files
+            else args.bfgs_initial_trust_rms
+        )
         start_iteration = int(state["iteration"])
         adam_step = int(state["adam_step"])
         history = [
@@ -495,6 +622,14 @@ def main() -> None:
         best_iteration = int(progress["best_iteration"])
         prior_wall_s = float(history[-1]["total_wall_s"])
         manifest = json.loads(paths["manifest.json"].read_text(encoding="utf-8"))
+        manifest.setdefault("optimizer", "adam")
+        direction_rng = np.random.default_rng(args.seed)
+        if "direction_rng_state" in state.files:
+            direction_rng.bit_generator.state = json.loads(
+                str(state["direction_rng_state"])
+            )
+        elif args.gradient_mode == "random-orthogonal":
+            raise ValueError("random-direction resume state is missing its RNG state")
     else:
         if any(path.exists() for path in paths.values()) or trajectory_dir.exists():
             raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
@@ -504,6 +639,11 @@ def main() -> None:
         best_noise = current_noise.copy()
         first_moment = np.zeros_like(current_noise, dtype=np.float64)
         second_moment = np.zeros_like(current_noise, dtype=np.float64)
+        inverse_hessian = np.eye(dimension, dtype=np.float64)
+        previous_bfgs_gradient = np.empty(0, dtype=np.float64)
+        previous_bfgs_step = np.empty(0, dtype=np.float64)
+        bfgs_trust_rms = args.bfgs_initial_trust_rms
+        direction_rng = np.random.default_rng(args.seed)
         start_iteration = 0
         adam_step = 0
         history = []
@@ -512,7 +652,8 @@ def main() -> None:
         best_iteration = 0
         prior_wall_s = 0.0
         manifest = {
-            "algorithm": "adam_with_query_batched_300d_coordinate_gradient",
+            "algorithm": f"{args.optimizer}_with_query_batched_local_gradient",
+            "optimizer": args.optimizer,
             "gradient_objective": (
                 "dynamic local full-density score with coordinate and maximum-surface-selection "
                 "derivatives omitted"
@@ -531,7 +672,17 @@ def main() -> None:
             "flow": {"method": "rk4", "steps": args.flow_steps, "dtype": "fp32"},
             "coordinate_gradient": {
                 "dimension": args.n_base_coils * TOKEN_DIM,
-                "endpoint_count": 2 * args.n_base_coils * TOKEN_DIM,
+                "mode": args.gradient_mode,
+                "random_directions": (
+                    args.random_directions
+                    if args.gradient_mode == "random-orthogonal"
+                    else None
+                ),
+                "endpoint_count": 2 * (
+                    args.random_directions
+                    if args.gradient_mode == "random-orthogonal"
+                    else args.n_base_coils * TOKEN_DIM
+                ),
                 "perturbation": args.perturbation,
                 "difference": "centered",
                 "psi_grid": 48,
@@ -547,6 +698,15 @@ def main() -> None:
                 "epsilon": args.adam_epsilon,
                 "weight_decay": 0.0,
             },
+            "bfgs": {
+                "initial_trust_rms": args.bfgs_initial_trust_rms,
+                "min_trust_rms": args.bfgs_min_trust_rms,
+                "max_trust_rms": args.bfgs_max_trust_rms,
+                "trust_growth": args.bfgs_trust_growth,
+                "trust_shrink": args.bfgs_trust_shrink,
+                "min_improvement": args.bfgs_min_improvement,
+            },
+            "seed": args.seed,
             "axis_policy": "initial global search, then strict mixed-precision continuation",
             "devices": {"flow": args.flow_device, "score": args.score_device},
             "initial_metadata_keys": sorted(initial_payload.keys()),
@@ -630,7 +790,12 @@ def main() -> None:
                 np.asarray(best_payload["raw"]["current"]),
             )
         )
-        best_result = best_payload["flow_prior_local_full_gradient_adam"]["native_score"]
+        best_metadata_key = (
+            "flow_prior_local_full_gradient_bfgs"
+            if manifest["optimizer"] == "bfgs"
+            else "flow_prior_local_full_gradient_adam"
+        )
+        best_result = best_payload[best_metadata_key]["native_score"]
 
     accepted_gradient_scales = [
         float(row["gradient_rms"])
@@ -654,7 +819,16 @@ def main() -> None:
             break
         iteration_started = time.perf_counter()
 
-        endpoints = endpoint_latents(current_noise, args.perturbation)
+        if args.gradient_mode == "coordinate":
+            directions = None
+            endpoints = endpoint_latents(current_noise, args.perturbation)
+        else:
+            directions = orthogonal_directions(
+                direction_rng, current_noise.shape, args.random_directions
+            )
+            endpoints = random_direction_endpoints(
+                current_noise, args.perturbation, directions
+            )
         torch.cuda.set_device(args.flow_device)
         endpoint_tokens, endpoint_decode_wall_s = decode_noise_rk4(
             model,
@@ -672,9 +846,14 @@ def main() -> None:
         current_result = captured_result
         statuses = gradient_details["status_counts"]
         all_endpoints_valid = statuses == {"ok": len(endpoints)}
-        raw_gradient = coordinate_gradient(local_scores, args.perturbation).reshape(
-            current_noise.shape
-        )
+        if directions is None:
+            raw_gradient = coordinate_gradient(local_scores, args.perturbation).reshape(
+                current_noise.shape
+            )
+        else:
+            raw_gradient = random_direction_gradient(
+                local_scores, args.perturbation, directions
+            )
         raw_gradient_rms = rms(raw_gradient)
         temporal_gradient_limit = rolling_robust_limit(
             accepted_gradient_scales,
@@ -691,20 +870,43 @@ def main() -> None:
 
         previous_first = first_moment.copy()
         previous_second = second_moment.copy()
+        previous_inverse_hessian = inverse_hessian.copy()
+        previous_bfgs_gradient_state = previous_bfgs_gradient.copy()
+        previous_bfgs_step_state = previous_bfgs_step.copy()
+        previous_bfgs_trust_rms = bfgs_trust_rms
         previous_adam_step = adam_step
+        bfgs_update = {"updated": False, "reason": "not_applicable"}
         if gradient_step_applied:
-            candidate_step = adam_step + 1
-            candidate_first = (
-                args.beta1 * first_moment + (1.0 - args.beta1) * raw_gradient
-            )
-            candidate_second = (
-                args.beta2 * second_moment + (1.0 - args.beta2) * raw_gradient**2
-            )
-            first_hat = candidate_first / (1.0 - args.beta1**candidate_step)
-            second_hat = candidate_second / (1.0 - args.beta2**candidate_step)
-            proposed_update = args.learning_rate * first_hat / (
-                np.sqrt(second_hat) + args.adam_epsilon
-            )
+            if args.optimizer == "adam":
+                candidate_step = adam_step + 1
+                candidate_first = (
+                    args.beta1 * first_moment + (1.0 - args.beta1) * raw_gradient
+                )
+                candidate_second = (
+                    args.beta2 * second_moment + (1.0 - args.beta2) * raw_gradient**2
+                )
+                first_hat = candidate_first / (1.0 - args.beta1**candidate_step)
+                second_hat = candidate_second / (1.0 - args.beta2**candidate_step)
+                proposed_update = args.learning_rate * first_hat / (
+                    np.sqrt(second_hat) + args.adam_epsilon
+                )
+            else:
+                candidate_step = adam_step + 1
+                candidate_first = first_moment
+                candidate_second = second_moment
+                if previous_bfgs_gradient.size:
+                    inverse_hessian, bfgs_update = damped_inverse_bfgs(
+                        inverse_hessian,
+                        previous_bfgs_step,
+                        previous_bfgs_gradient - raw_gradient.reshape(-1),
+                    )
+                direction = (inverse_hessian @ raw_gradient.reshape(-1)).reshape(
+                    current_noise.shape
+                )
+                direction_rms = rms(direction)
+                proposed_update = direction * (
+                    bfgs_trust_rms / max(direction_rms, np.finfo(np.float64).eps)
+                )
             temporal_update_limit = rolling_robust_limit(
                 accepted_update_scales,
                 window=args.temporal_guard_window,
@@ -767,7 +969,12 @@ def main() -> None:
                         "score": result_score(trial_result),
                     }
                 )
-                if result_valid(trial_result):
+                score_acceptable = (
+                    args.optimizer == "adam"
+                    or result_score(trial_result)
+                    >= result_score(previous_result) + args.bfgs_min_improvement
+                )
+                if result_valid(trial_result) and score_acceptable:
                     current_noise = trial_noise
                     current_tokens = trial_tokens_batch[0]
                     current_result = trial_result
@@ -775,6 +982,18 @@ def main() -> None:
                     second_moment = candidate_second
                     adam_step = candidate_step
                     applied_update = fraction * proposed_update
+                    if args.optimizer == "bfgs":
+                        previous_bfgs_gradient = raw_gradient.reshape(-1).copy()
+                        previous_bfgs_step = applied_update.reshape(-1).copy()
+                        if fraction == 1.0:
+                            bfgs_trust_rms = min(
+                                args.bfgs_max_trust_rms,
+                                args.bfgs_trust_growth * bfgs_trust_rms,
+                            )
+                        else:
+                            bfgs_trust_rms = max(
+                                args.bfgs_min_trust_rms, fraction * bfgs_trust_rms
+                            )
                     center_update_accepted = True
                     center_acceptance_fraction = fraction
                     break
@@ -784,6 +1003,17 @@ def main() -> None:
             current_result = previous_result
             first_moment = previous_first
             second_moment = previous_second
+            inverse_hessian = previous_inverse_hessian
+            previous_bfgs_gradient = previous_bfgs_gradient_state
+            previous_bfgs_step = previous_bfgs_step_state
+            bfgs_trust_rms = (
+                max(
+                    args.bfgs_min_trust_rms,
+                    args.bfgs_trust_shrink * previous_bfgs_trust_rms,
+                )
+                if args.optimizer == "bfgs" and gradient_step_applied
+                else previous_bfgs_trust_rms
+            )
             adam_step = previous_adam_step
 
         current_score = result_score(current_result)
@@ -825,12 +1055,17 @@ def main() -> None:
             "current_qp_error": diagnostics_value(current_result, "qs_qp_global_error"),
             "current_iota": diagnostics_value(current_result, "iota_min"),
             "gradient_endpoint_count": len(endpoints),
+            "gradient_mode": args.gradient_mode,
+            "random_direction_count": 0 if directions is None else len(directions),
             "gradient_endpoint_statuses": statuses,
             "gradient_step_applied": gradient_step_applied,
             "center_update_accepted": center_update_accepted,
             "center_acceptance_fraction": center_acceptance_fraction,
             "proposal_attempts": proposal_attempts,
             "adam_step": adam_step,
+            "optimizer": args.optimizer,
+            "bfgs_update": bfgs_update,
+            "bfgs_trust_rms": bfgs_trust_rms,
             "raw_gradient_rms": raw_gradient_rms,
             "gradient_rms": raw_gradient_rms if gradient_step_applied else 0.0,
             "first_moment_rms": rms(first_moment),
@@ -886,6 +1121,13 @@ def main() -> None:
             best_noise=best_noise,
             first_moment=first_moment,
             second_moment=second_moment,
+            inverse_hessian=inverse_hessian,
+            previous_bfgs_gradient=previous_bfgs_gradient,
+            previous_bfgs_step=previous_bfgs_step,
+            bfgs_trust_rms=np.asarray(bfgs_trust_rms, dtype=np.float64),
+            direction_rng_state=np.asarray(
+                json.dumps(direction_rng.bit_generator.state)
+            ),
             iteration=np.asarray(iteration, dtype=np.int64),
             adam_step=np.asarray(adam_step, dtype=np.int64),
         )
@@ -918,7 +1160,8 @@ def main() -> None:
         "best_score": best_score,
         "best_iteration": best_iteration,
         "completed_iterations": completed_iterations,
-        "completed_adam_steps": adam_step,
+        "completed_adam_steps": adam_step if args.optimizer == "adam" else 0,
+        "completed_optimizer_steps": adam_step,
         "total_wall_s": total_wall_s,
         "initial_decode_wall_s": initial_decode_wall_s,
         "initial_score_wall_s": initial_score_wall_s,

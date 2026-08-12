@@ -99,6 +99,20 @@ def random_direction_gradient(
     )
 
 
+def gradient_probe(
+    center: np.ndarray,
+    *,
+    mode: str,
+    perturbation: float,
+    random_direction_count: int,
+    rng: np.random.Generator,
+) -> tuple[np.ndarray | None, np.ndarray]:
+    if mode == "coordinate":
+        return None, endpoint_latents(center, perturbation)
+    directions = orthogonal_directions(rng, center.shape, random_direction_count)
+    return directions, random_direction_endpoints(center, perturbation, directions)
+
+
 def damped_inverse_bfgs(
     inverse_hessian: np.ndarray,
     step: np.ndarray,
@@ -525,7 +539,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument("--flow-device", type=int, default=0)
-    parser.add_argument("--score-device", type=int, default=1)
+    parser.add_argument("--score-device", type=int, default=0)
+    parser.add_argument(
+        "--flow-pipeline",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Decode an accepted center together with the next iteration's gradient "
+            "endpoints. This removes the separate one-sample flow call."
+        ),
+    )
     parser.add_argument("--segments-per-coil", type=int, default=256)
     parser.add_argument("--psi-iterations", type=int, default=4)
     parser.add_argument("--alpha-iterations", type=int, default=4)
@@ -551,10 +574,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    if args.flow_device == args.score_device:
-        raise ValueError("flow and score devices must be distinct")
     if torch.cuda.device_count() <= max(args.flow_device, args.score_device):
-        raise RuntimeError("two visible CUDA devices are required")
+        raise RuntimeError("requested CUDA device is unavailable")
     if args.n_base_coils * TOKEN_DIM != 300:
         raise ValueError("this experiment currently requires three 100-D coil tokens")
     if args.iterations < 1 or args.max_wall_s <= 0.0:
@@ -637,6 +658,7 @@ def main() -> None:
         prior_wall_s = float(history[-1]["total_wall_s"])
         manifest = json.loads(paths["manifest.json"].read_text(encoding="utf-8"))
         manifest.setdefault("optimizer", "adam")
+        manifest.setdefault("flow_pipeline", False)
         direction_rng = np.random.default_rng(args.seed)
         if "direction_rng_state" in state.files:
             direction_rng.bit_generator.state = json.loads(
@@ -644,6 +666,22 @@ def main() -> None:
             )
         elif args.gradient_mode == "random-orthogonal":
             raise ValueError("random-direction resume state is missing its RNG state")
+        prefetched_gradient = None
+        if (
+            "prefetched_gradient_present" in state.files
+            and bool(state["prefetched_gradient_present"].item())
+        ):
+            saved_directions = np.asarray(
+                state["prefetched_gradient_directions"], dtype=np.float32
+            )
+            prefetched_gradient = {
+                "directions": None if saved_directions.size == 0 else saved_directions,
+                "tokens": np.asarray(
+                    state["prefetched_gradient_tokens"], dtype=np.float64
+                ),
+                "decode_wall_s": float(state["prefetched_gradient_decode_wall_s"]),
+                "source_iteration": int(state["prefetched_gradient_source_iteration"]),
+            }
     else:
         if any(path.exists() for path in paths.values()) or trajectory_dir.exists():
             raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
@@ -665,6 +703,7 @@ def main() -> None:
         best_score = float("-inf")
         best_iteration = 0
         prior_wall_s = 0.0
+        prefetched_gradient = None
         manifest = {
             "algorithm": f"{args.optimizer}_with_query_batched_local_gradient",
             "optimizer": args.optimizer,
@@ -684,6 +723,7 @@ def main() -> None:
             "iterations": args.iterations,
             "max_wall_s": args.max_wall_s,
             "flow": {"method": "rk4", "steps": args.flow_steps, "dtype": "fp32"},
+            "flow_pipeline": bool(args.flow_pipeline),
             "coordinate_gradient": {
                 "dimension": args.n_base_coils * TOKEN_DIM,
                 "mode": args.gradient_mode,
@@ -826,6 +866,20 @@ def main() -> None:
     run_started = time.perf_counter()
     stop_reason = "completed_iterations"
 
+    def decode_flow(states: np.ndarray) -> tuple[np.ndarray, float]:
+        torch.cuda.set_device(args.flow_device)
+        decoded, wall_s = decode_noise_rk4(
+            model,
+            normalizer,
+            states,
+            nfp=args.nfp,
+            steps=args.flow_steps,
+            device=flow_device,
+        )
+        if args.flow_device == args.score_device:
+            torch.cuda.empty_cache()
+        return decoded, wall_s
+
     for iteration in range(start_iteration + 1, args.iterations + 1):
         elapsed_total = prior_wall_s + time.perf_counter() - run_started
         reserve = 1.25 * max(recent_walls, default=30.0)
@@ -834,25 +888,29 @@ def main() -> None:
             break
         iteration_started = time.perf_counter()
 
-        if args.gradient_mode == "coordinate":
-            directions = None
-            endpoints = endpoint_latents(current_noise, args.perturbation)
+        endpoint_decode_cache_hit = prefetched_gradient is not None
+        prefetched_endpoint_decode_wall_s = 0.0
+        if prefetched_gradient is not None:
+            if int(prefetched_gradient["source_iteration"]) != iteration - 1:
+                raise RuntimeError("prefetched gradient endpoints do not match iteration")
+            directions = prefetched_gradient["directions"]
+            endpoint_tokens = prefetched_gradient["tokens"]
+            prefetched_endpoint_decode_wall_s = float(
+                prefetched_gradient["decode_wall_s"]
+            )
+            endpoint_decode_wall_s = 0.0
+            endpoint_count = len(endpoint_tokens)
+            prefetched_gradient = None
         else:
-            directions = orthogonal_directions(
-                direction_rng, current_noise.shape, args.random_directions
+            directions, endpoints = gradient_probe(
+                current_noise,
+                mode=args.gradient_mode,
+                perturbation=args.perturbation,
+                random_direction_count=args.random_directions,
+                rng=direction_rng,
             )
-            endpoints = random_direction_endpoints(
-                current_noise, args.perturbation, directions
-            )
-        torch.cuda.set_device(args.flow_device)
-        endpoint_tokens, endpoint_decode_wall_s = decode_noise_rk4(
-            model,
-            normalizer,
-            endpoints,
-            nfp=args.nfp,
-            steps=args.flow_steps,
-            device=flow_device,
-        )
+            endpoint_tokens, endpoint_decode_wall_s = decode_flow(endpoints)
+            endpoint_count = len(endpoints)
         local_scores, captured_result, gradient_details = estimator.evaluate(
             current_tokens,
             endpoint_tokens,
@@ -860,7 +918,7 @@ def main() -> None:
         )
         current_result = captured_result
         statuses = gradient_details["status_counts"]
-        all_endpoints_valid = statuses == {"ok": len(endpoints)}
+        all_endpoints_valid = statuses == {"ok": endpoint_count}
         if directions is None:
             raw_gradient = coordinate_gradient(local_scores, args.perturbation).reshape(
                 current_noise.shape
@@ -952,22 +1010,43 @@ def main() -> None:
         center_acceptance_fraction = 0.0
         proposal_score_wall_s = 0.0
         proposal_decode_wall_s = 0.0
+        pipeline_decode_wall_s = 0.0
+        pipeline_decode_batch_sizes: list[int] = []
+        pipeline_wasted_endpoint_count = 0
         proposal_attempts: list[dict[str, Any]] = []
         applied_update = np.zeros_like(proposed_update)
+        next_directions: np.ndarray | None = None
+        if args.flow_pipeline and iteration < args.iterations:
+            next_directions, next_endpoints_template = gradient_probe(
+                current_noise,
+                mode=args.gradient_mode,
+                perturbation=args.perturbation,
+                random_direction_count=args.random_directions,
+                rng=direction_rng,
+            )
+        else:
+            next_endpoints_template = None
         if gradient_step_applied:
             for fraction in (1.0,) + backtracking:
                 trial_noise = (
                     previous_noise.astype(np.float64) + fraction * proposed_update
                 ).astype(np.float32)
-                torch.cuda.set_device(args.flow_device)
-                trial_tokens_batch, decode_wall_s = decode_noise_rk4(
-                    model,
-                    normalizer,
-                    trial_noise[None],
-                    nfp=args.nfp,
-                    steps=args.flow_steps,
-                    device=flow_device,
-                )
+                if args.flow_pipeline and iteration < args.iterations:
+                    if next_directions is None:
+                        trial_endpoints = endpoint_latents(
+                            trial_noise, args.perturbation
+                        )
+                    else:
+                        trial_endpoints = random_direction_endpoints(
+                            trial_noise, args.perturbation, next_directions
+                        )
+                    trial_states = np.concatenate(
+                        (trial_noise[None], trial_endpoints), axis=0
+                    )
+                else:
+                    trial_endpoints = None
+                    trial_states = trial_noise[None]
+                trial_tokens_batch, decode_wall_s = decode_flow(trial_states)
                 trial_result, score_wall_s = score_center(
                     args.lib,
                     trial_tokens_batch[0],
@@ -978,6 +1057,8 @@ def main() -> None:
                     previous_result=previous_result,
                 )
                 proposal_decode_wall_s += decode_wall_s
+                pipeline_decode_wall_s += decode_wall_s
+                pipeline_decode_batch_sizes.append(len(trial_states))
                 proposal_score_wall_s += score_wall_s
                 proposal_attempts.append(
                     {
@@ -1013,7 +1094,16 @@ def main() -> None:
                             )
                     center_update_accepted = True
                     center_acceptance_fraction = fraction
+                    if trial_endpoints is not None:
+                        prefetched_gradient = {
+                            "directions": next_directions,
+                            "tokens": trial_tokens_batch[1:],
+                            "decode_wall_s": decode_wall_s,
+                            "source_iteration": iteration,
+                        }
                     break
+                if trial_endpoints is not None:
+                    pipeline_wasted_endpoint_count += len(trial_endpoints)
         if not center_update_accepted:
             current_noise = previous_noise
             current_tokens = previous_tokens
@@ -1036,6 +1126,26 @@ def main() -> None:
                 previous_bfgs_step = previous_bfgs_step_state
                 bfgs_trust_rms = previous_bfgs_trust_rms
             adam_step = previous_adam_step
+
+        if args.flow_pipeline and iteration < args.iterations and prefetched_gradient is None:
+            if next_directions is None:
+                if next_endpoints_template is None:
+                    raise RuntimeError("next coordinate endpoints were not prepared")
+                next_endpoints = endpoint_latents(current_noise, args.perturbation)
+            else:
+                next_endpoints = random_direction_endpoints(
+                    current_noise, args.perturbation, next_directions
+                )
+            next_tokens, refill_wall_s = decode_flow(next_endpoints)
+            proposal_decode_wall_s += refill_wall_s
+            pipeline_decode_wall_s += refill_wall_s
+            pipeline_decode_batch_sizes.append(len(next_endpoints))
+            prefetched_gradient = {
+                "directions": next_directions,
+                "tokens": next_tokens,
+                "decode_wall_s": refill_wall_s,
+                "source_iteration": iteration,
+            }
 
         current_score = result_score(current_result)
         if current_score > best_score:
@@ -1075,7 +1185,7 @@ def main() -> None:
             "current_qa_error": diagnostics_value(current_result, "qs_qa_global_error"),
             "current_qp_error": diagnostics_value(current_result, "qs_qp_global_error"),
             "current_iota": diagnostics_value(current_result, "iota_min"),
-            "gradient_endpoint_count": len(endpoints),
+            "gradient_endpoint_count": endpoint_count,
             "gradient_mode": args.gradient_mode,
             "random_direction_count": 0 if directions is None else len(directions),
             "gradient_endpoint_statuses": statuses,
@@ -1104,10 +1214,15 @@ def main() -> None:
             "noise_rms": rms(current_noise),
             "noise_abs_max": float(np.max(np.abs(current_noise))),
             "endpoint_decode_wall_s": endpoint_decode_wall_s,
+            "endpoint_decode_cache_hit": endpoint_decode_cache_hit,
+            "prefetched_endpoint_decode_wall_s": prefetched_endpoint_decode_wall_s,
             "gradient_pipeline": gradient_details,
             "gradient_wall_s": endpoint_decode_wall_s
             + gradient_details["timing_s"]["total"],
             "proposal_decode_wall_s": proposal_decode_wall_s,
+            "flow_pipeline_decode_wall_s": pipeline_decode_wall_s,
+            "flow_pipeline_decode_batch_sizes": pipeline_decode_batch_sizes,
+            "flow_pipeline_wasted_endpoint_count": pipeline_wasted_endpoint_count,
             "proposal_score_wall_s": proposal_score_wall_s,
             "iteration_wall_s": iteration_wall_s,
             "total_wall_s": prior_wall_s + time.perf_counter() - run_started,
@@ -1136,6 +1251,16 @@ def main() -> None:
                 "iterations": history,
             },
         )
+        prefetched_directions = (
+            np.empty((0,), dtype=np.float32)
+            if prefetched_gradient is None or prefetched_gradient["directions"] is None
+            else np.asarray(prefetched_gradient["directions"], dtype=np.float32)
+        )
+        prefetched_tokens = (
+            np.empty((0, args.n_base_coils, TOKEN_DIM), dtype=np.float64)
+            if prefetched_gradient is None
+            else np.asarray(prefetched_gradient["tokens"], dtype=np.float64)
+        )
         np.savez_compressed(
             paths["state_latest.npz"],
             current_noise=current_noise,
@@ -1148,6 +1273,17 @@ def main() -> None:
             bfgs_trust_rms=np.asarray(bfgs_trust_rms, dtype=np.float64),
             direction_rng_state=np.asarray(
                 json.dumps(direction_rng.bit_generator.state)
+            ),
+            prefetched_gradient_present=np.asarray(prefetched_gradient is not None),
+            prefetched_gradient_directions=prefetched_directions,
+            prefetched_gradient_tokens=prefetched_tokens,
+            prefetched_gradient_decode_wall_s=np.asarray(
+                0.0 if prefetched_gradient is None else prefetched_gradient["decode_wall_s"],
+                dtype=np.float64,
+            ),
+            prefetched_gradient_source_iteration=np.asarray(
+                -1 if prefetched_gradient is None else prefetched_gradient["source_iteration"],
+                dtype=np.int64,
             ),
             iteration=np.asarray(iteration, dtype=np.int64),
             adam_step=np.asarray(adam_step, dtype=np.int64),

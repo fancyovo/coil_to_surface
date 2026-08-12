@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:RTX5090:2
+#SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=96G
 #SBATCH --time=07:50:00
 #SBATCH --output=logs/%x-%j.out
@@ -94,6 +94,8 @@ nvidia-smi --id="$gpu_selector" \
 
 resume_args=()
 if [[ "$resume" == "1" ]]; then resume_args+=(--resume); fi
+pipeline_args=(--flow-pipeline)
+if [[ "${FLOW_PIPELINE:-1}" != "1" ]]; then pipeline_args=(--no-flow-pipeline); fi
 
 python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --checkpoint "$checkpoint" \
@@ -111,6 +113,8 @@ python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --learning-rate "${LEARNING_RATE:-0.01}" \
   --beta1 "${BETA1:-0.7}" \
   --beta2 "${BETA2:-0.999}" \
+  --flow-device 0 \
+  --score-device 0 \
   --psi-iterations "${PSI_ITERATIONS:-4}" \
   --alpha-iterations "${ALPHA_ITERATIONS:-4}" \
   --formal-surface-theta-count "${FORMAL_SURFACE_THETA_COUNT:-128}" \
@@ -123,6 +127,7 @@ python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --bfgs-trust-shrink "${BFGS_TRUST_SHRINK:-0.5}" \
   --bfgs-min-improvement "${BFGS_MIN_IMPROVEMENT:-0.0}" \
   --plot-every "${PLOT_EVERY:-5}" \
+  "${pipeline_args[@]}" \
   "${resume_args[@]}" &
 child=$!
 wait "$child"

@@ -45,6 +45,7 @@ from scripts.optimize_native_score_cem import (  # noqa: E402
     token_case,
     write_json,
 )
+from flow_matching.trajectory_dataset import OptimizationTraceRecorder  # noqa: E402
 
 
 def score_arguments(tokens: np.ndarray) -> tuple[np.ndarray, ...]:
@@ -194,6 +195,7 @@ def axis_hint(result: dict[str, Any]) -> tuple[float, float]:
 
 def recorded_native_result(payload: dict[str, Any]) -> dict[str, Any] | None:
     for key in (
+        "flow_prior_screening",
         "flow_prior_local_full_gradient_adam",
         "flow_prior_local_full_gradient_bfgs",
         "flow_prior_standard_adam",
@@ -272,7 +274,7 @@ class LocalFullGradientEstimator:
         center_tokens: np.ndarray,
         endpoint_tokens: np.ndarray,
         center_result: dict[str, Any],
-    ) -> tuple[np.ndarray, dict[str, Any], dict[str, Any]]:
+    ) -> tuple[np.ndarray, dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
         center_x, center_y, center_z, center_current = score_arguments(center_tokens)
         x, y, z, current = score_arguments(endpoint_tokens)
         query_count = len(endpoint_tokens)
@@ -409,7 +411,7 @@ class LocalFullGradientEstimator:
                 result_score(captured_result) - result_score(center_result)
             ),
         }
-        return scores, captured_result, details
+        return scores, captured_result, details, local_results
 
 
 def make_case(
@@ -514,7 +516,7 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Adam with a 300-D coordinate gradient from one local CUDA score batch."
+        description="Adam with a query-batched local CUDA score gradient."
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--initial-case", type=Path, required=True)
@@ -568,6 +570,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bfgs-trust-shrink", type=float, default=0.5)
     parser.add_argument("--bfgs-min-improvement", type=float, default=0.0)
     parser.add_argument("--plot-every", type=int, default=5)
+    parser.add_argument("--progress-every", type=int, default=1)
+    parser.add_argument("--trajectory-every", type=int, default=1)
+    parser.add_argument("--state-every", type=int, default=1)
+    parser.add_argument("--save-training-trace", action="store_true")
     parser.add_argument("--resume", action="store_true")
     return parser
 
@@ -576,14 +582,18 @@ def main() -> None:
     args = build_parser().parse_args()
     if torch.cuda.device_count() <= max(args.flow_device, args.score_device):
         raise RuntimeError("requested CUDA device is unavailable")
-    if args.n_base_coils * TOKEN_DIM != 300:
-        raise ValueError("this experiment currently requires three 100-D coil tokens")
+    if args.n_base_coils < 1:
+        raise ValueError("n-base-coils must be positive")
     if args.iterations < 1 or args.max_wall_s <= 0.0:
         raise ValueError("iterations and max-wall-s must be positive")
     if not 0.0 < args.beta1 < 1.0 or not 0.0 < args.beta2 < 1.0:
         raise ValueError("Adam betas must be in (0, 1)")
     if args.perturbation <= 0.0 or args.learning_rate <= 0.0:
         raise ValueError("perturbation and learning rate must be positive")
+    if args.state_every < 1 or args.progress_every < 1:
+        raise ValueError("state-every and progress-every must be positive")
+    if args.plot_every < 0 or args.trajectory_every < 0:
+        raise ValueError("plot-every and trajectory-every must be nonnegative")
     dimension = args.n_base_coils * TOKEN_DIM
     if not 1 <= args.random_directions <= dimension:
         raise ValueError("random-directions must be in [1, latent dimension]")
@@ -601,6 +611,9 @@ def main() -> None:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.out_dir / "trajectory"
+    trace_recorder = (
+        OptimizationTraceRecorder(args.out_dir) if args.save_training_trace else None
+    )
     paths = {
         name: args.out_dir / name
         for name in (
@@ -811,17 +824,18 @@ def main() -> None:
         best_score = initial_score
         best_tokens = current_tokens.copy()
         best_result = current_result
-        write_trajectory(
-            trajectory_dir,
-            current_tokens,
-            current_noise,
-            current_result,
-            nfp=args.nfp,
-            iteration=0,
-            best_score=best_score,
-            best_iteration=0,
-            manifest=manifest,
-        )
+        if args.trajectory_every > 0:
+            write_trajectory(
+                trajectory_dir,
+                current_tokens,
+                current_noise,
+                current_result,
+                nfp=args.nfp,
+                iteration=0,
+                best_score=best_score,
+                best_iteration=0,
+                manifest=manifest,
+            )
         write_json(
             paths["best.json"],
             make_case(
@@ -835,6 +849,8 @@ def main() -> None:
                 manifest=manifest,
             ),
         )
+        if trace_recorder is not None:
+            trace_recorder.record_initial(current_noise, current_tokens, current_result)
     else:
         best_payload = json.loads(paths["best.json"].read_text(encoding="utf-8"))
         best_tokens = np.column_stack(
@@ -887,6 +903,10 @@ def main() -> None:
             stop_reason = "max_wall_s"
             break
         iteration_started = time.perf_counter()
+        probe_noise = current_noise.copy()
+        probe_tokens = current_tokens.copy()
+        trace_first_moment_before = first_moment.copy()
+        trace_second_moment_before = second_moment.copy()
 
         endpoint_decode_cache_hit = prefetched_gradient is not None
         prefetched_endpoint_decode_wall_s = 0.0
@@ -911,7 +931,7 @@ def main() -> None:
             )
             endpoint_tokens, endpoint_decode_wall_s = decode_flow(endpoints)
             endpoint_count = len(endpoints)
-        local_scores, captured_result, gradient_details = estimator.evaluate(
+        local_scores, captured_result, gradient_details, local_results = estimator.evaluate(
             current_tokens,
             endpoint_tokens,
             current_result,
@@ -1227,30 +1247,62 @@ def main() -> None:
             "iteration_wall_s": iteration_wall_s,
             "total_wall_s": prior_wall_s + time.perf_counter() - run_started,
         }
-        trajectory_path = write_trajectory(
-            trajectory_dir,
-            current_tokens,
-            current_noise,
-            current_result,
-            nfp=args.nfp,
-            iteration=iteration,
-            best_score=best_score,
-            best_iteration=best_iteration,
-            manifest=manifest,
-        )
-        row["trajectory_case"] = str(trajectory_path.relative_to(args.out_dir))
+        if trace_recorder is not None:
+            trace_recorder.record_step(
+                iteration=iteration,
+                probe_noise=probe_noise,
+                probe_tokens=probe_tokens,
+                directions=(
+                    np.empty((0,) + current_noise.shape, dtype=np.float32)
+                    if directions is None
+                    else np.asarray(directions, dtype=np.float32)
+                ),
+                endpoint_tokens=np.asarray(endpoint_tokens, dtype=np.float32),
+                local_results=local_results,
+                probe_result=captured_result,
+                raw_gradient=np.asarray(raw_gradient, dtype=np.float32),
+                first_moment_before=np.asarray(trace_first_moment_before, dtype=np.float32),
+                second_moment_before=np.asarray(trace_second_moment_before, dtype=np.float32),
+                first_moment_after=np.asarray(first_moment, dtype=np.float32),
+                second_moment_after=np.asarray(second_moment, dtype=np.float32),
+                proposed_update=np.asarray(proposed_update, dtype=np.float32),
+                applied_update=np.asarray(applied_update, dtype=np.float32),
+                center_after_noise=np.asarray(current_noise, dtype=np.float32),
+                center_after_tokens=np.asarray(current_tokens, dtype=np.float32),
+                center_result=current_result,
+                gradient_step_applied=gradient_step_applied,
+                center_update_accepted=center_update_accepted,
+                center_acceptance_fraction=center_acceptance_fraction,
+                adam_step=adam_step,
+            )
+        if args.trajectory_every > 0 and (
+            iteration % args.trajectory_every == 0 or iteration == args.iterations
+        ):
+            trajectory_path = write_trajectory(
+                trajectory_dir,
+                current_tokens,
+                current_noise,
+                current_result,
+                nfp=args.nfp,
+                iteration=iteration,
+                best_score=best_score,
+                best_iteration=best_iteration,
+                manifest=manifest,
+            )
+            row["trajectory_case"] = str(trajectory_path.relative_to(args.out_dir))
         history.append(row)
         append_jsonl(paths["history.jsonl"], row)
-        write_json(
-            paths["progress.json"],
-            {
-                "manifest": manifest,
-                "initial_score": initial_score,
-                "best_score": best_score,
-                "best_iteration": best_iteration,
-                "iterations": history,
-            },
-        )
+        if iteration % args.progress_every == 0 or iteration == args.iterations:
+            write_json(
+                paths["progress.json"],
+                {
+                    "manifest": manifest,
+                    "initial_score": initial_score,
+                    "best_score": best_score,
+                    "best_iteration": best_iteration,
+                    "iterations": history,
+                },
+            )
         prefetched_directions = (
             np.empty((0,), dtype=np.float32)
             if prefetched_gradient is None or prefetched_gradient["directions"] is None
@@ -1261,34 +1313,39 @@ def main() -> None:
             if prefetched_gradient is None
             else np.asarray(prefetched_gradient["tokens"], dtype=np.float64)
         )
-        np.savez_compressed(
-            paths["state_latest.npz"],
-            current_noise=current_noise,
-            best_noise=best_noise,
-            first_moment=first_moment,
-            second_moment=second_moment,
-            inverse_hessian=inverse_hessian,
-            previous_bfgs_gradient=previous_bfgs_gradient,
-            previous_bfgs_step=previous_bfgs_step,
-            bfgs_trust_rms=np.asarray(bfgs_trust_rms, dtype=np.float64),
-            direction_rng_state=np.asarray(
-                json.dumps(direction_rng.bit_generator.state)
-            ),
-            prefetched_gradient_present=np.asarray(prefetched_gradient is not None),
-            prefetched_gradient_directions=prefetched_directions,
-            prefetched_gradient_tokens=prefetched_tokens,
-            prefetched_gradient_decode_wall_s=np.asarray(
-                0.0 if prefetched_gradient is None else prefetched_gradient["decode_wall_s"],
-                dtype=np.float64,
-            ),
-            prefetched_gradient_source_iteration=np.asarray(
-                -1 if prefetched_gradient is None else prefetched_gradient["source_iteration"],
-                dtype=np.int64,
-            ),
-            iteration=np.asarray(iteration, dtype=np.int64),
-            adam_step=np.asarray(adam_step, dtype=np.int64),
-        )
-        if iteration == 1 or iteration % args.plot_every == 0:
+        if iteration % args.state_every == 0 or iteration == args.iterations:
+            np.savez_compressed(
+                paths["state_latest.npz"],
+                current_noise=current_noise,
+                best_noise=best_noise,
+                first_moment=first_moment,
+                second_moment=second_moment,
+                inverse_hessian=inverse_hessian,
+                previous_bfgs_gradient=previous_bfgs_gradient,
+                previous_bfgs_step=previous_bfgs_step,
+                bfgs_trust_rms=np.asarray(bfgs_trust_rms, dtype=np.float64),
+                direction_rng_state=np.asarray(
+                    json.dumps(direction_rng.bit_generator.state)
+                ),
+                prefetched_gradient_present=np.asarray(prefetched_gradient is not None),
+                prefetched_gradient_directions=prefetched_directions,
+                prefetched_gradient_tokens=prefetched_tokens,
+                prefetched_gradient_decode_wall_s=np.asarray(
+                    0.0
+                    if prefetched_gradient is None
+                    else prefetched_gradient["decode_wall_s"],
+                    dtype=np.float64,
+                ),
+                prefetched_gradient_source_iteration=np.asarray(
+                    -1
+                    if prefetched_gradient is None
+                    else prefetched_gradient["source_iteration"],
+                    dtype=np.int64,
+                ),
+                iteration=np.asarray(iteration, dtype=np.int64),
+                adam_step=np.asarray(adam_step, dtype=np.int64),
+            )
+        if args.plot_every > 0 and (iteration == 1 or iteration % args.plot_every == 0):
             plot_progress(history, args.out_dir / "progress.png")
         print(
             json.dumps(
@@ -1307,7 +1364,8 @@ def main() -> None:
         )
 
     total_wall_s = prior_wall_s + time.perf_counter() - run_started
-    plot_progress(history, args.out_dir / "progress.png")
+    if args.plot_every > 0:
+        plot_progress(history, args.out_dir / "progress.png")
     completed_iterations = history[-1]["iteration"] if history else start_iteration
     summary = {
         "status": "ok",
@@ -1329,6 +1387,8 @@ def main() -> None:
         ),
         "manifest": manifest,
     }
+    if trace_recorder is not None:
+        summary["training_trace"] = trace_recorder.finalize()
     write_json(paths["summary.json"], summary)
     print(json.dumps(summary, indent=2), flush=True)
 

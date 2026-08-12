@@ -118,3 +118,10 @@ def test_recorded_native_result_preserves_anchor_branch() -> None:
 
     assert recorded_native_result(payload) is result
     assert recorded_native_result({"flow_prior_start": {"noise": []}}) is None
+
+
+def test_recorded_native_result_accepts_screened_start() -> None:
+    result = {"status": "ok", "diagnostics": {"axis_R": 1.0, "axis_Z": 0.0}}
+    payload = {"flow_prior_screening": {"native_score": result}}
+
+    assert recorded_native_result(payload) is result

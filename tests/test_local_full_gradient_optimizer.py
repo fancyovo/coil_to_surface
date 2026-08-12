@@ -8,6 +8,7 @@ from scripts.optimize_flow_prior_local_full_gradient_adam import (
     endpoint_latents,
     random_direction_endpoints,
     random_direction_gradient,
+    recorded_native_result,
 )
 
 
@@ -63,3 +64,11 @@ def test_inverse_bfgs_damps_bad_curvature_without_losing_spd() -> None:
     assert details["updated"]
     assert details["damped"]
     assert np.all(np.linalg.eigvalsh(inverse) > 0.0)
+
+
+def test_recorded_native_result_preserves_anchor_branch() -> None:
+    result = {"status": "ok", "diagnostics": {"axis_R": 1.0, "axis_Z": 0.0}}
+    payload = {"flow_prior_local_full_gradient_adam": {"native_score": result}}
+
+    assert recorded_native_result(payload) is result
+    assert recorded_native_result({"flow_prior_start": {"noise": []}}) is None

@@ -178,6 +178,20 @@ def axis_hint(result: dict[str, Any]) -> tuple[float, float]:
     return value
 
 
+def recorded_native_result(payload: dict[str, Any]) -> dict[str, Any] | None:
+    for key in (
+        "flow_prior_local_full_gradient_adam",
+        "flow_prior_local_full_gradient_bfgs",
+        "flow_prior_standard_adam",
+        "flow_prior_zo_adam",
+        "flow_prior_cem",
+    ):
+        metadata = payload.get(key)
+        if isinstance(metadata, dict) and isinstance(metadata.get("native_score"), dict):
+            return metadata["native_score"]
+    return None
+
+
 def score_center(
     lib: Path,
     tokens: np.ndarray,
@@ -740,6 +754,7 @@ def main() -> None:
         device=flow_device,
     )
     current_tokens = current_tokens_batch[0]
+    initial_previous_result = recorded_native_result(initial_payload)
     current_result, initial_score_wall_s = score_center(
         args.lib,
         current_tokens,
@@ -747,7 +762,7 @@ def main() -> None:
         score_device=args.score_device,
         iota_degree=args.iota_degree,
         surface_theta_count=args.formal_surface_theta_count,
-        previous_result=None,
+        previous_result=initial_previous_result,
     )
     if not result_valid(current_result):
         raise RuntimeError(f"initial center is invalid: {current_result.get('status')}")

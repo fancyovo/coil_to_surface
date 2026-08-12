@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-project=/home/scc/pb24511935/local_surface_evaluator
+project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
+score_lib=${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}
 default_case=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/cases/id_0206752.json
 default_metadata=/home/scc/pb24511935/local_surface_evaluator_data/volume_score_2000/metadata_selected.json
 case_file=${CASE_FILE:-$default_case}
@@ -58,4 +59,5 @@ if [[ -n ${METADATA:-} ]]; then
 elif [[ -z ${CASE_FILE:-} ]]; then
     metadata_args=(--metadata "$default_metadata")
 fi
-python scripts/smoke_native_score.py "$case_file" "${metadata_args[@]}" --device 0 --output "$output"
+python scripts/smoke_native_score.py "$case_file" "${metadata_args[@]}" \
+    --lib "$score_lib" --device 0 --output "$output"

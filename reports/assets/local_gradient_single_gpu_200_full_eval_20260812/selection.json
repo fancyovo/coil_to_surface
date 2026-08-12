@@ -1,0 +1,280 @@
+{
+  "selected": {
+    "target_s": 0.49,
+    "solver_accepted": true,
+    "accepted": true,
+    "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p49/standard_rho_1/summary.json",
+    "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+    "final_abs_volume_m3": 0.0665961720921358,
+    "acceptance_checks": {
+      "newton_converged": true,
+      "dense_relative_l2": true,
+      "dense_normal_field_p95": true,
+      "toroidal_winding": true,
+      "normal_nonzero": true
+    },
+    "branch_diagnostics": {
+      "distance_from_initial": {
+        "candidate_to_reference_m": {
+          "min": 2.9200895000011763e-05,
+          "mean": 0.001367929739021249,
+          "rms": 0.0018398614884497996,
+          "p95": 0.004303147486785289,
+          "max": 0.00788590331139139
+        },
+        "reference_to_candidate_m": {
+          "min": 2.9200895000011763e-05,
+          "mean": 0.0011861579878395653,
+          "rms": 0.0014259026021799252,
+          "p95": 0.0023149182397712866,
+          "max": 0.007242027030307839
+        }
+      },
+      "psi_identity": {
+        "target_s": 0.49,
+        "s": {
+          "min": 0.478937995180444,
+          "mean": 0.47989890814668007,
+          "rms": 0.47989936336766736,
+          "p95": 0.480930895394727,
+          "max": 0.48168762232176915
+        },
+        "absolute_s_error": {
+          "min": 0.008312377678230842,
+          "mean": 0.010101091853319978,
+          "rms": 0.010122696130280624,
+          "p95": 0.010952474789754408,
+          "max": 0.011062004819555993
+        },
+        "linearized_normal_distance_m": {
+          "min": 0.00029346606596180865,
+          "mean": 0.0005094784911362321,
+          "rms": 0.0005298049011693237,
+          "p95": 0.0007845930278246099,
+          "max": 0.0008717391836977401
+        }
+      },
+      "distance_p95_over_radius": 0.07673279410117421
+    },
+    "branch_consistency": {
+      "nested_volume_increasing": true,
+      "previous_largest_abs_volume_m3": 0.04905380706081571
+    }
+  },
+  "nearest_outer_failure": {
+    "target_s": 0.64,
+    "solver_accepted": false,
+    "accepted": false,
+    "summary": null,
+    "surface": null,
+    "final_abs_volume_m3": null,
+    "acceptance_checks": {},
+    "branch_diagnostics": {},
+    "failure_stage": "completed_before_standard_acceptance",
+    "branch_consistency": {
+      "nested_volume_increasing": null
+    }
+  },
+  "candidates": [
+    {
+      "target_s": 0.24,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p24/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p24/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.0322675361704654,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 2.0537096160968757e-06,
+            "mean": 0.0006078579722984842,
+            "rms": 0.0007092650595335605,
+            "p95": 0.0012605334890110457,
+            "max": 0.0017338956340410966
+          },
+          "reference_to_candidate_m": {
+            "min": 2.0537096160968757e-06,
+            "mean": 0.0006135438537801755,
+            "rms": 0.0007185892352845662,
+            "p95": 0.0012861653258862257,
+            "max": 0.0017821206982040743
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.24,
+          "s": {
+            "min": 0.2381854265700602,
+            "mean": 0.2387614562685004,
+            "rms": 0.23876152847169618,
+            "p95": 0.23896101103937237,
+            "max": 0.23900271279608476
+          },
+          "absolute_s_error": {
+            "min": 0.0009972872039152314,
+            "mean": 0.001238543731499569,
+            "rms": 0.0012523854280458208,
+            "p95": 0.0016732037637489042,
+            "max": 0.001814573429939792
+          },
+          "linearized_normal_distance_m": {
+            "min": 4.875074057058188e-05,
+            "mean": 8.468412402837708e-05,
+            "rms": 8.76154822176244e-05,
+            "p95": 0.00012907176386685266,
+            "max": 0.00016993946052128747
+          }
+        },
+        "distance_p95_over_radius": 0.03301683445635145
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": null
+      }
+    },
+    {
+      "target_s": 0.36,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p36/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p36/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.04905380706081571,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 5.89094529481635e-06,
+            "mean": 0.000750001166489289,
+            "rms": 0.0008764996404343078,
+            "p95": 0.0015434051714648058,
+            "max": 0.002154908361168646
+          },
+          "reference_to_candidate_m": {
+            "min": 5.89094529481635e-06,
+            "mean": 0.0007571987432413816,
+            "rms": 0.0008883545304458864,
+            "p95": 0.0015744700957222794,
+            "max": 0.0022351659186640596
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.36,
+          "s": {
+            "min": 0.35770088477497614,
+            "mean": 0.35816664585823016,
+            "rms": 0.35816673103127605,
+            "p95": 0.35864921162604,
+            "max": 0.35878957479485646
+          },
+          "absolute_s_error": {
+            "min": 0.0012104252051435282,
+            "mean": 0.001833354141769833,
+            "rms": 0.00184991883734222,
+            "p95": 0.0021631608261456934,
+            "max": 0.002299115225023851
+          },
+          "linearized_normal_distance_m": {
+            "min": 4.848435020298315e-05,
+            "mean": 0.00010551188386006317,
+            "rms": 0.00011051206144735856,
+            "p95": 0.00016669218278511197,
+            "max": 0.00018940917995655465
+          }
+        },
+        "distance_p95_over_radius": 0.03277801213327773
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.0322675361704654
+      }
+    },
+    {
+      "target_s": 0.49,
+      "solver_accepted": true,
+      "accepted": true,
+      "summary": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p49/standard_rho_1/summary.json",
+      "surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+      "final_abs_volume_m3": 0.0665961720921358,
+      "acceptance_checks": {
+        "newton_converged": true,
+        "dense_relative_l2": true,
+        "dense_normal_field_p95": true,
+        "toroidal_winding": true,
+        "normal_nonzero": true
+      },
+      "branch_diagnostics": {
+        "distance_from_initial": {
+          "candidate_to_reference_m": {
+            "min": 2.9200895000011763e-05,
+            "mean": 0.001367929739021249,
+            "rms": 0.0018398614884497996,
+            "p95": 0.004303147486785289,
+            "max": 0.00788590331139139
+          },
+          "reference_to_candidate_m": {
+            "min": 2.9200895000011763e-05,
+            "mean": 0.0011861579878395653,
+            "rms": 0.0014259026021799252,
+            "p95": 0.0023149182397712866,
+            "max": 0.007242027030307839
+          }
+        },
+        "psi_identity": {
+          "target_s": 0.49,
+          "s": {
+            "min": 0.478937995180444,
+            "mean": 0.47989890814668007,
+            "rms": 0.47989936336766736,
+            "p95": 0.480930895394727,
+            "max": 0.48168762232176915
+          },
+          "absolute_s_error": {
+            "min": 0.008312377678230842,
+            "mean": 0.010101091853319978,
+            "rms": 0.010122696130280624,
+            "p95": 0.010952474789754408,
+            "max": 0.011062004819555993
+          },
+          "linearized_normal_distance_m": {
+            "min": 0.00029346606596180865,
+            "mean": 0.0005094784911362321,
+            "rms": 0.0005298049011693237,
+            "p95": 0.0007845930278246099,
+            "max": 0.0008717391836977401
+          }
+        },
+        "distance_p95_over_radius": 0.07673279410117421
+      },
+      "branch_consistency": {
+        "nested_volume_increasing": true,
+        "previous_largest_abs_volume_m3": 0.04905380706081571
+      }
+    },
+    {
+      "target_s": 0.64,
+      "solver_accepted": false,
+      "accepted": false,
+      "summary": null,
+      "surface": null,
+      "final_abs_volume_m3": null,
+      "acceptance_checks": {},
+      "branch_diagnostics": {},
+      "failure_stage": "completed_before_standard_acceptance",
+      "branch_consistency": {
+        "nested_volume_increasing": null
+      }
+    }
+  ]
+}

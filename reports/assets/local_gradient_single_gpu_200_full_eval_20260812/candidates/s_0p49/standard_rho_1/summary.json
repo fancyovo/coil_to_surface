@@ -1,0 +1,441 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_20260812/best.json",
+  "source_surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p49/alpha_nu/surfaces/rho_1_alpha_nu.npz",
+  "nfp": 4,
+  "order": 12,
+  "target_s": 0.49,
+  "target_volume_m3": -0.06659617210008906,
+  "initial": {
+    "iota": 1.4288698434829712,
+    "G": -6.9435571462141095,
+    "grids": [
+      {
+        "size": 25,
+        "offset": 0.0,
+        "iota": 1.4288698434829712,
+        "G": -6.9435571462141095,
+        "simsopt_residual_norm": 2.0038879272015695,
+        "relative_l2": 0.015189503332609605,
+        "point_relative_mean": 0.011666196053537371,
+        "point_relative_p95": 0.03044766150518642,
+        "point_relative_max": 0.05906097285380921,
+        "direction_sine_l2": 0.015256770921657068,
+        "direction_angle_p95_deg": 1.7410920340209546,
+        "local_G_mean": -6.9435579202841025,
+        "local_G_relative_std": 0.0016308627763673936,
+        "local_G_relative_deviation_p95": 0.0037941754891292487,
+        "normal_B_sine_mean": 0.0025164193392138486,
+        "normal_B_sine_p95": 0.010460787845407198
+      },
+      {
+        "size": 49,
+        "offset": 0.371,
+        "iota": 1.4288698434829712,
+        "G": -6.9435571462141095,
+        "simsopt_residual_norm": 3.9204950409871944,
+        "relative_l2": 0.015176130610630357,
+        "point_relative_mean": 0.011590103463647037,
+        "point_relative_p95": 0.030704364681781754,
+        "point_relative_max": 0.07135591438560931,
+        "direction_sine_l2": 0.015288227313326375,
+        "direction_angle_p95_deg": 1.7583174302851545,
+        "local_G_mean": -6.9435571198136445,
+        "local_G_relative_std": 0.0013101901519717149,
+        "local_G_relative_deviation_p95": 0.0030408954315752574,
+        "normal_B_sine_mean": 0.002390265014139952,
+        "normal_B_sine_p95": 0.0108745019630101
+      },
+      {
+        "size": 97,
+        "offset": 0.371,
+        "iota": 1.4288698434829712,
+        "G": -6.9435571462141095,
+        "simsopt_residual_norm": 7.760978876394177,
+        "relative_l2": 0.015176128727592034,
+        "point_relative_mean": 0.011589301631175209,
+        "point_relative_p95": 0.030589573352535798,
+        "point_relative_max": 0.07138716898314305,
+        "direction_sine_l2": 0.015288225774744906,
+        "direction_angle_p95_deg": 1.749771534834031,
+        "local_G_mean": -6.943557132852164,
+        "local_G_relative_std": 0.0013101887406187492,
+        "local_G_relative_deviation_p95": 0.003086626227821191,
+        "normal_B_sine_mean": 0.0023821157195168803,
+        "normal_B_sine_p95": 0.010686331525495965
+      }
+    ],
+    "psi_identity": {
+      "target_s": 0.49,
+      "s": {
+        "min": 0.39104353732980873,
+        "mean": 0.4844953790834376,
+        "rms": 0.48469593243431774,
+        "p95": 0.4970758930365243,
+        "max": 0.513025554398395
+      },
+      "absolute_s_error": {
+        "min": 1.4731467816719857e-06,
+        "mean": 0.007718534308348559,
+        "rms": 0.014989176648627145,
+        "p95": 0.03464564878128306,
+        "max": 0.09895646267019126
+      },
+      "linearized_normal_distance_m": {
+        "min": 6.707612289115533e-08,
+        "mean": 0.0004588113765673944,
+        "rms": 0.0011011889834105241,
+        "p95": 0.0024046443928136332,
+        "max": 0.0086214695691938
+      }
+    },
+    "geometry": {
+      "signed_volume_m3": -0.06659617210008906,
+      "normal_norm": {
+        "min": 1.3204593532335396,
+        "mean": 3.0636347693129538,
+        "rms": 3.1779025644877494,
+        "p95": 4.229595000438584,
+        "max": 6.84438610806586
+      },
+      "geometric_toroidal_winding": {
+        "min": 1.001696251878624,
+        "mean": 1.0024227723482797,
+        "rms": 1.0024229326021723,
+        "p95": 1.0031700884446677,
+        "max": 1.0031780312614793
+      }
+    },
+    "distance_from_initial": {
+      "candidate_to_reference_m": {
+        "min": 0.0,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "reference_to_candidate_m": {
+        "min": 0.0,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      }
+    }
+  },
+  "least_squares": {
+    "success": true,
+    "iter": -1,
+    "iota": 1.4602969261462353,
+    "G": -6.9435570367622965,
+    "residual_norm": 1.7232227038153893e-13,
+    "time_s": 7.081001318991184,
+    "state": {
+      "iota": 1.4602969261462353,
+      "G": -6.9435570367622965,
+      "grids": [
+        {
+          "size": 25,
+          "offset": 0.0,
+          "iota": 1.4602969261462353,
+          "G": -6.9435570367622965,
+          "simsopt_residual_norm": 1.5609827323601773e-05,
+          "relative_l2": 1.1775229305163554e-07,
+          "point_relative_mean": 1.0552431037768187e-07,
+          "point_relative_p95": 2.0016963223739063e-07,
+          "point_relative_max": 3.2001588621235437e-07,
+          "direction_sine_l2": 7.963484433007516e-08,
+          "direction_angle_p95_deg": 7.909601457901609e-06,
+          "local_G_mean": -6.943557091701114,
+          "local_G_relative_std": 8.630868753788164e-08,
+          "local_G_relative_deviation_p95": 1.7204046447682392e-07,
+          "normal_B_sine_mean": 4.494254139976037e-08,
+          "normal_B_sine_p95": 1.2458519767088104e-07
+        },
+        {
+          "size": 49,
+          "offset": 0.371,
+          "iota": 1.4602969261462353,
+          "G": -6.9435570367622965,
+          "simsopt_residual_norm": 0.0035206582897001097,
+          "relative_l2": 1.3913018476055696e-05,
+          "point_relative_mean": 1.1699014101000863e-05,
+          "point_relative_p95": 2.6318394474993887e-05,
+          "point_relative_max": 3.494354583651809e-05,
+          "direction_sine_l2": 1.2283799654221025e-05,
+          "direction_angle_p95_deg": 0.0012859440467050114,
+          "local_G_mean": -6.943557126644342,
+          "local_G_relative_std": 7.159816467796382e-06,
+          "local_G_relative_deviation_p95": 1.7666764905439718e-05,
+          "normal_B_sine_mean": 6.630953340274937e-06,
+          "normal_B_sine_p95": 1.9603270725642264e-05
+        },
+        {
+          "size": 97,
+          "offset": 0.371,
+          "iota": 1.4602969261462353,
+          "G": -6.9435570367622965,
+          "simsopt_residual_norm": 0.006970366621212372,
+          "relative_l2": 1.391504695446145e-05,
+          "point_relative_mean": 1.1725047006409258e-05,
+          "point_relative_p95": 2.6098111150929718e-05,
+          "point_relative_max": 3.5837671214899345e-05,
+          "direction_sine_l2": 1.2285096974960643e-05,
+          "direction_angle_p95_deg": 0.0013038502718685457,
+          "local_G_mean": -6.943557129237347,
+          "local_G_relative_std": 7.161856024541191e-06,
+          "local_G_relative_deviation_p95": 1.6849222884947234e-05,
+          "normal_B_sine_mean": 6.579843778778922e-06,
+          "normal_B_sine_p95": 1.9790123848184185e-05
+        }
+      ],
+      "psi_identity": {
+        "target_s": 0.49,
+        "s": {
+          "min": 0.478937995180444,
+          "mean": 0.47989890814668007,
+          "rms": 0.47989936336766736,
+          "p95": 0.480930895394727,
+          "max": 0.48168762232176915
+        },
+        "absolute_s_error": {
+          "min": 0.008312377678230842,
+          "mean": 0.010101091853319978,
+          "rms": 0.010122696130280624,
+          "p95": 0.010952474789754408,
+          "max": 0.011062004819555993
+        },
+        "linearized_normal_distance_m": {
+          "min": 0.00029346606596180865,
+          "mean": 0.0005094784911362321,
+          "rms": 0.0005298049011693237,
+          "p95": 0.0007845930278246099,
+          "max": 0.0008717391836977401
+        }
+      },
+      "geometry": {
+        "signed_volume_m3": -0.0665961720921358,
+        "normal_norm": {
+          "min": 1.479631790059013,
+          "mean": 3.081463599110921,
+          "rms": 3.184091412283194,
+          "p95": 4.4629867422752785,
+          "max": 4.670707460008945
+        },
+        "geometric_toroidal_winding": {
+          "min": 1.0016954814542933,
+          "mean": 1.0024616356483835,
+          "rms": 1.0024618048334257,
+          "p95": 1.0033172941017832,
+          "max": 1.0033342144467017
+        }
+      },
+      "distance_from_initial": {
+        "candidate_to_reference_m": {
+          "min": 2.9200895000011763e-05,
+          "mean": 0.001367929739021249,
+          "rms": 0.0018398614884497996,
+          "p95": 0.004303147486785289,
+          "max": 0.00788590331139139
+        },
+        "reference_to_candidate_m": {
+          "min": 2.9200895000011763e-05,
+          "mean": 0.0011861579878395653,
+          "rms": 0.0014259026021799252,
+          "p95": 0.0023149182397712866,
+          "max": 0.007242027030307839
+        }
+      }
+    }
+  },
+  "newton": {
+    "success": true,
+    "iter": 0,
+    "iota": 1.4602969261462353,
+    "G": -6.9435570367622965,
+    "residual_norm": 1.7232227038153893e-13,
+    "time_s": 0.3348677512258291,
+    "state": {
+      "iota": 1.4602969261462353,
+      "G": -6.9435570367622965,
+      "grids": [
+        {
+          "size": 25,
+          "offset": 0.0,
+          "iota": 1.4602969261462353,
+          "G": -6.9435570367622965,
+          "simsopt_residual_norm": 1.5609827323601773e-05,
+          "relative_l2": 1.1775229305163554e-07,
+          "point_relative_mean": 1.0552431037768187e-07,
+          "point_relative_p95": 2.0016963223739063e-07,
+          "point_relative_max": 3.2001588621235437e-07,
+          "direction_sine_l2": 7.963484433007516e-08,
+          "direction_angle_p95_deg": 7.909601457901609e-06,
+          "local_G_mean": -6.943557091701114,
+          "local_G_relative_std": 8.630868753788164e-08,
+          "local_G_relative_deviation_p95": 1.7204046447682392e-07,
+          "normal_B_sine_mean": 4.494254139976037e-08,
+          "normal_B_sine_p95": 1.2458519767088104e-07
+        },
+        {
+          "size": 49,
+          "offset": 0.371,
+          "iota": 1.4602969261462353,
+          "G": -6.9435570367622965,
+          "simsopt_residual_norm": 0.0035206582897001097,
+          "relative_l2": 1.3913018476055696e-05,
+          "point_relative_mean": 1.1699014101000863e-05,
+          "point_relative_p95": 2.6318394474993887e-05,
+          "point_relative_max": 3.494354583651809e-05,
+          "direction_sine_l2": 1.2283799654221025e-05,
+          "direction_angle_p95_deg": 0.0012859440467050114,
+          "local_G_mean": -6.943557126644342,
+          "local_G_relative_std": 7.159816467796382e-06,
+          "local_G_relative_deviation_p95": 1.7666764905439718e-05,
+          "normal_B_sine_mean": 6.630953340274937e-06,
+          "normal_B_sine_p95": 1.9603270725642264e-05
+        },
+        {
+          "size": 97,
+          "offset": 0.371,
+          "iota": 1.4602969261462353,
+          "G": -6.9435570367622965,
+          "simsopt_residual_norm": 0.006970366621212372,
+          "relative_l2": 1.391504695446145e-05,
+          "point_relative_mean": 1.1725047006409258e-05,
+          "point_relative_p95": 2.6098111150929718e-05,
+          "point_relative_max": 3.5837671214899345e-05,
+          "direction_sine_l2": 1.2285096974960643e-05,
+          "direction_angle_p95_deg": 0.0013038502718685457,
+          "local_G_mean": -6.943557129237347,
+          "local_G_relative_std": 7.161856024541191e-06,
+          "local_G_relative_deviation_p95": 1.6849222884947234e-05,
+          "normal_B_sine_mean": 6.579843778778922e-06,
+          "normal_B_sine_p95": 1.9790123848184185e-05
+        }
+      ],
+      "psi_identity": {
+        "target_s": 0.49,
+        "s": {
+          "min": 0.478937995180444,
+          "mean": 0.47989890814668007,
+          "rms": 0.47989936336766736,
+          "p95": 0.480930895394727,
+          "max": 0.48168762232176915
+        },
+        "absolute_s_error": {
+          "min": 0.008312377678230842,
+          "mean": 0.010101091853319978,
+          "rms": 0.010122696130280624,
+          "p95": 0.010952474789754408,
+          "max": 0.011062004819555993
+        },
+        "linearized_normal_distance_m": {
+          "min": 0.00029346606596180865,
+          "mean": 0.0005094784911362321,
+          "rms": 0.0005298049011693237,
+          "p95": 0.0007845930278246099,
+          "max": 0.0008717391836977401
+        }
+      },
+      "geometry": {
+        "signed_volume_m3": -0.0665961720921358,
+        "normal_norm": {
+          "min": 1.479631790059013,
+          "mean": 3.081463599110921,
+          "rms": 3.184091412283194,
+          "p95": 4.4629867422752785,
+          "max": 4.670707460008945
+        },
+        "geometric_toroidal_winding": {
+          "min": 1.0016954814542933,
+          "mean": 1.0024616356483835,
+          "rms": 1.0024618048334257,
+          "p95": 1.0033172941017832,
+          "max": 1.0033342144467017
+        }
+      },
+      "distance_from_initial": {
+        "candidate_to_reference_m": {
+          "min": 2.9200895000011763e-05,
+          "mean": 0.001367929739021249,
+          "rms": 0.0018398614884497996,
+          "p95": 0.004303147486785289,
+          "max": 0.00788590331139139
+        },
+        "reference_to_candidate_m": {
+          "min": 2.9200895000011763e-05,
+          "mean": 0.0011861579878395653,
+          "rms": 0.0014259026021799252,
+          "p95": 0.0023149182397712866,
+          "max": 0.007242027030307839
+        }
+      }
+    }
+  },
+  "acceptance_thresholds": {
+    "max_newton_residual_norm": 1e-08,
+    "max_final_relative_l2": 0.0001,
+    "max_final_normal_p95": 0.0001
+  },
+  "acceptance_checks": {
+    "newton_converged": true,
+    "dense_relative_l2": true,
+    "dense_normal_field_p95": true,
+    "toroidal_winding": true,
+    "normal_nonzero": true
+  },
+  "accepted_for_downstream": true,
+  "branch_diagnostics": {
+    "distance_from_initial": {
+      "candidate_to_reference_m": {
+        "min": 2.9200895000011763e-05,
+        "mean": 0.001367929739021249,
+        "rms": 0.0018398614884497996,
+        "p95": 0.004303147486785289,
+        "max": 0.00788590331139139
+      },
+      "reference_to_candidate_m": {
+        "min": 2.9200895000011763e-05,
+        "mean": 0.0011861579878395653,
+        "rms": 0.0014259026021799252,
+        "p95": 0.0023149182397712866,
+        "max": 0.007242027030307839
+      }
+    },
+    "psi_identity": {
+      "target_s": 0.49,
+      "s": {
+        "min": 0.478937995180444,
+        "mean": 0.47989890814668007,
+        "rms": 0.47989936336766736,
+        "p95": 0.480930895394727,
+        "max": 0.48168762232176915
+      },
+      "absolute_s_error": {
+        "min": 0.008312377678230842,
+        "mean": 0.010101091853319978,
+        "rms": 0.010122696130280624,
+        "p95": 0.010952474789754408,
+        "max": 0.011062004819555993
+      },
+      "linearized_normal_distance_m": {
+        "min": 0.00029346606596180865,
+        "mean": 0.0005094784911362321,
+        "rms": 0.0005298049011693237,
+        "p95": 0.0007845930278246099,
+        "max": 0.0008717391836977401
+      }
+    },
+    "distance_p95_over_radius": 0.07673279410117421
+  },
+  "surface_qs_error": {
+    "QA_1_0": 0.004745411292615016,
+    "QH_1_1": 1.2464955068439994e-06,
+    "QP_0_1": 0.004813750589852368
+  },
+  "backends": {
+    "ls_newton": "Simsopt CPU",
+    "dense_validation": "C++/CUDA eval_B fp32"
+  },
+  "output_surface": "/home/scc/pb24511935/local_surface_evaluator_worktrees/direct-alpha-single-gpu/runs/qh_local_gradient_k64_lr020_single_gpu_200_full_eval_v2_20260812/candidates/s_0p49/standard_rho_1/boozer_standard.npz"
+}

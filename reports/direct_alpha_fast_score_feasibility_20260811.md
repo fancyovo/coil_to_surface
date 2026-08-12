@@ -1671,3 +1671,104 @@ BFGS 在两个锚点上分别只有 7.5% 和 5% 的更新被正式 score 接受�
 - **生产状态不变：** 原两方向中心差分 SPSA 仍是主线默认值。本节没有完成跨起点/跨随机种子的复验，也没有对 93.29798 样本做完整 Simsopt/DESC 评估，因此不在本轮替换生产配置或宣布新的物理最优。
 
 机器可读汇总、完整历史和三张图位于 `reports/assets/local_gradient_optimizer_sweep_20260812/`。三条组合实验 Slurm job `36605/36606/36607` 均完整运行 300 步，所有中心和差分端点状态为 `ok`，stderr 为 0；六张分配到的 RTX 5090 在任务前后均为 0% 利用率、2 MiB 显存占用，未遗留优化进程。
+
+## 单卡流水线的 200 步典型案例与完整物理评估
+
+本节回答两个问题：能否把每步的 128 个差分端点和更新后中心的 flow 解码合并提速；只用一张 RTX 5090 跑 200 步后，得到的高分线圈是否通过独立磁面与 DESC 检查。
+
+### 流水线到底做了什么
+
+同一步内不能一开始就同时解码 128 个差分端点和更新后中心，因为中心更新依赖前者的 score。实现采用跨步流水线：第 $t$ 步正式中心通过后，立刻生成第 $t+1$ 步的 64 个正交方向，把新中心和对应 128 个正负端点组成一个 129 样本 batch，一次完成 FP32 RK4-128 flow 解码。下一步直接复用这 128 个端点，只评估本地 score、更新 Adam，再进入下一个 129 样本 batch。
+
+因此它不是两张卡上两个串行阶段的伪并行，也不是两个有依赖 kernel 的并发执行，而是把跨迭代的两次 Transformer ODE 调用合成一次大 batch。匹配的单卡短跑中，无流水线平均为 $7.105$ s/step，流水线稳态两步为 $5.565/5.476$ s，单独得到 $1.287\times$ 加速；旧的两卡串行角色拆分平均为 $6.514$ s/step，仍慢于新的单卡路径。
+
+### 200 步优化结果
+
+正式作业只分配一张 RTX 5090，flow 和 native score 都在逻辑设备 0 上运行。配置为 64 个新鲜随机正交方向、128 个中心差分端点、$h=0.005$、Adam 学习率 0.02、$\beta=(0.7,0.999)$、FP32 RK4-128。200 次中心更新全部接受，预取缓存命中率 100%，没有因回退而浪费端点。
+
+| 指标 | 结果 |
+|---|---:|
+| 初始在线 score | 85.50454 |
+| 最终在线 score | 93.03198 |
+| 最佳在线 score | **93.09607（step 197）** |
+| 200 步总墙钟 | 1147.79 s（19.13 min） |
+| 平均单步 | 5.497 s |
+| 稳态单步 P50 / P95 / P99 | 5.463 / 5.878 / 6.854 s |
+| 接受率 / 缓存命中率 | 100% / 100% |
+
+![单卡 200 步优化和分阶段计时](assets/local_gradient_single_gpu_200_20260812/analysis/optimization_and_timing.png)
+
+稳态单步的主要部分如下。`flow pipeline` 已经同时包含新中心和下一步 128 个端点的批解码。
+
+| 阶段 | P50 | P95 | 单步平均占比 |
+|---|---:|---:|---:|
+| 129 样本 flow pipeline | 1.273 s | 1.426 s | 23.5% |
+| 128 端点本地 native score | 1.723 s | 1.768 s | 31.6% |
+| 更新后中心正式 native score | 0.991 s | 1.027 s | 17.2% |
+| 端点磁轴 continuation | 0.573 s | 0.573 s | 10.4% |
+| 端点 $\psi$ 更新 | 0.293 s | 0.307 s | 5.4% |
+
+本次在线 score 使用严格磁轴 continuation 和局部连续面，适合优化，但不应替代独立验收。对相同 `best.json` 重新执行无历史、全局磁轴/磁面搜索后，独立 score 为 **94.62019**，七个分量如下。
+
+| 分量 | 在线 continuation | 独立全局复评 |
+|---|---:|---:|
+| axis | 95.552 | 95.389 |
+| $\psi$ | 98.953 | 98.953 |
+| surface | 82.589 | **97.563** |
+| coordinate | 90.217 | 90.182 |
+| volume QS | 97.414 | 97.525 |
+| iota | 100.000 | 100.000 |
+| coil | 68.139 | 68.139 |
+
+两者差异几乎全部来自 surface：独立搜索找到一周期漂移 P95 为 $2.44\times10^{-4}$、完整漂移 P95 为 $7.46\times10^{-4}$ 的稳定面；在线 continuation 为保证分支连续性，沿用的局部面漂移 P95 为 $3.27\times10^{-2}$。因此独立复评并没有推翻优化结果，而是说明在线目标对该终点偏保守。后续报告高质量候选时必须区分“在线 continuation score”和“独立全局 score”。
+
+### 从 $\psi$ 到最大已测可行面
+
+源 $\psi$ 对 $a=0.04,0.05,0.06,0.08$ 并行拟合。选择覆盖最大的 $a=0.08$；它在 4000 个独立验证点上的归一化角残差 mean/P95/L2 为 $1.71\times10^{-5}/5.29\times10^{-5}/1.53\times10^{-5}$，仍是小量。随后并行测试 $s=0.24,0.36,0.49,0.64$：前三个都通过标准 Simsopt LS/Newton 和独立密网格验证，体积按 $0.03227,0.04905,0.06660\ \mathrm{m}^3$ 单调增大；$s=0.64$ 的 GPU-ray 只提供 170732 个有效点，小于固定预算 180000，因此作为邻近外侧失败，不回退到慢 CPU Cartesian 路径。
+
+最终选择 $a=0.08,s=0.49$：
+
+| 量 | 结果 |
+|---|---:|
+| 体积 | $0.066596\ \mathrm{m}^3$ |
+| $\iota$ | 1.46030 |
+| 标准 LS/Newton 最终相对 L2 | $1.392\times10^{-5}$ |
+| 法向场 P95 | $1.979\times10^{-5}$ |
+| 面 QA / QH / QP error | $4.745\times10^{-3}$ / **$1.246\times10^{-6}$** / $4.814\times10^{-3}$ |
+| $|B|$ 范围 | 0.6822--0.8393 T |
+
+这里需要准确区分初值与最终解。alpha 使用 12/12/16 阶、12 万训练点和 6 万验证点，单次 FP32 GPU `gels` 拟合只用 1.72 s，但完整采样和诊断共 108.3 s；其验证相对 L2 为 0.101，不能单独宣称已经得到高精度 Boozer 面。$\nu$ 三个半径的完整处理共 85.1 s，在外面把 Simsopt 初始相对 L2 降到 0.0152。标准 LS 用 7.08 s、Newton 用 0.33 s，最终再降到 $1.39\times10^{-5}$。也就是说，本链路给出稳定且处于正确盆地的初值，最后机器精度附近的面仍来自标准求解。
+
+![最大可行面内的 Poincare 截面](assets/local_gradient_single_gpu_200_full_eval_20260812/full/assets/poincare.png)
+
+八条场线在四个截面都得到 29 个命中点，形成连续嵌套轨迹，没有分支跳转或自交。
+
+![最大可行面上的彩色 |B| 等高线](assets/local_gradient_single_gpu_200_full_eval_20260812/full/assets/boozer_b.png)
+
+彩色等高线接近斜直线，直接显示 QH 结构；对应交互版本见 [boozer_b.html](assets/local_gradient_single_gpu_200_full_eval_20260812/full/assets/boozer_b.html)。
+
+![全装置线圈和选中磁面](assets/local_gradient_single_gpu_200_full_eval_20260812/full/assets/coils_surface.png)
+
+交互式全装置视图见 [coils_surface.html](assets/local_gradient_single_gpu_200_full_eval_20260812/full/assets/coils_surface.html)。
+
+### DESC 结果
+
+DESC 使用 CPU-P107，输入和最终状态都保持嵌套。求解在 50 步上限停止，因此 `optimizer_success=false`，不能报告为严格收敛；但目标平方和从 $1.637\times10^3$ 降到 $4.393\times10^{-4}$，归一化力 mean/P95/max 从 $1.135/1.786/3.581$ 降到 $1.092\times10^{-3}/2.476\times10^{-3}/8.439\times10^{-3}$，边界误差保持约 $10^{-18}$ m。物理上这是有效且嵌套的显著改进，但仍保留“达到迭代上限”的限制。
+
+![DESC 初始边界](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/boundary_initial.png)
+
+![DESC 最终边界](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/boundary.png)
+
+![DESC Boozer 模态关于 rho 的变化](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/boozer_modes.png)
+
+![DESC Boozer |B| 彩色等高线](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/boozer_B.png)
+
+![DESC QA 诊断](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/qs_QA.png)
+
+![DESC QH 诊断](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/qs_QH.png)
+
+![DESC QP 诊断](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/qs_QP.png)
+
+![DESC iota 关于 rho 的变化](assets/local_gradient_single_gpu_200_full_eval_20260812/full/desc/iota.png)
+
+完整机器可读结果见 `reports/assets/local_gradient_single_gpu_200_20260812/acceptance_summary.json`、`reports/assets/local_gradient_single_gpu_200_full_eval_20260812/native_score_recheck.json`、`selection.json`、`full/full_summary.json` 和 `full/desc/summary.json`。最佳输入 SHA-256 为 `820d7828d3e369e49254f9385c833c06dbbc53c88f4e280ad68359569b104b83`；独立 score 结果 SHA-256 为 `0fb9f94380b7ccd4043275aff756517f5a4ad5d07c66d543f6dda4641bdb46b4`。

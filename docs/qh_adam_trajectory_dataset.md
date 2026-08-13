@@ -1,5 +1,9 @@
 # QH Adam 合成轨迹数据集
 
+首轮六卡、21 小时试产已完成 309 条完整轨迹且没有失败或半成品。
+当前 ABI 的独立全局重评分、QUASR 对照、产能和存储统计见
+[`reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`](../reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md)。
+
 数据集的一条数据对应一次完整的搜索：先按 QUASR QH 训练集的
 `(nfp, n_base_coils)` 联合经验分布抽一个条件，从标准高斯潜空间抽
 32 个起点，用无历史的全局磁轴搜索评分后选取最高的有效起点，再运行

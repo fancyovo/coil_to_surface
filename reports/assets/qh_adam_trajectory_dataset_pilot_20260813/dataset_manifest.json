@@ -1,0 +1,261 @@
+{
+  "format": "qh_screen32_adam200_trajectory_v1",
+  "unit": "one joint-empirical condition, 32 global starts, then 200 Adam steps",
+  "trajectory_glob": "trajectories/*/trajectory_manifest.json",
+  "condition_prior": {
+    "definition": "empirical_joint_distribution_over_quasr_qh_training_samples",
+    "source_path": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/run_manifest.json",
+    "source_sha256": "e28db10ce3c4d6157f549cb85e9b44c9b850ecd80a8da19644383b217e0db99b",
+    "source_kind": "flow_training_run_manifest.train_counts",
+    "total_train_samples": 153747,
+    "groups": [
+      {
+        "label": "nfp2_nc2",
+        "nfp": 2,
+        "n_coils": 2,
+        "train_count": 1439,
+        "probability": 0.009359532218514833
+      },
+      {
+        "label": "nfp2_nc3",
+        "nfp": 2,
+        "n_coils": 3,
+        "train_count": 2425,
+        "probability": 0.015772665482903733
+      },
+      {
+        "label": "nfp2_nc4",
+        "nfp": 2,
+        "n_coils": 4,
+        "train_count": 3270,
+        "probability": 0.021268707682101113
+      },
+      {
+        "label": "nfp2_nc5",
+        "nfp": 2,
+        "n_coils": 5,
+        "train_count": 3709,
+        "probability": 0.024124047948903066
+      },
+      {
+        "label": "nfp3_nc2",
+        "nfp": 3,
+        "n_coils": 2,
+        "train_count": 3976,
+        "probability": 0.025860667200010408
+      },
+      {
+        "label": "nfp3_nc3",
+        "nfp": 3,
+        "n_coils": 3,
+        "train_count": 11475,
+        "probability": 0.07463560264590528
+      },
+      {
+        "label": "nfp3_nc4",
+        "nfp": 3,
+        "n_coils": 4,
+        "train_count": 14701,
+        "probability": 0.09561812588213103
+      },
+      {
+        "label": "nfp3_nc5",
+        "nfp": 3,
+        "n_coils": 5,
+        "train_count": 10451,
+        "probability": 0.0679753100873513
+      },
+      {
+        "label": "nfp4_nc1",
+        "nfp": 4,
+        "n_coils": 1,
+        "train_count": 57,
+        "probability": 0.0003707389412476341
+      },
+      {
+        "label": "nfp4_nc2",
+        "nfp": 4,
+        "n_coils": 2,
+        "train_count": 15643,
+        "probability": 0.10174507470064456
+      },
+      {
+        "label": "nfp4_nc3",
+        "nfp": 4,
+        "n_coils": 3,
+        "train_count": 18976,
+        "probability": 0.1234235464757036
+      },
+      {
+        "label": "nfp4_nc4",
+        "nfp": 4,
+        "n_coils": 4,
+        "train_count": 11310,
+        "probability": 0.07356241097387266
+      },
+      {
+        "label": "nfp4_nc5",
+        "nfp": 4,
+        "n_coils": 5,
+        "train_count": 6138,
+        "probability": 0.03992273019961365
+      },
+      {
+        "label": "nfp5_nc1",
+        "nfp": 5,
+        "n_coils": 1,
+        "train_count": 478,
+        "probability": 0.003109003752918756
+      },
+      {
+        "label": "nfp5_nc2",
+        "nfp": 5,
+        "n_coils": 2,
+        "train_count": 16513,
+        "probability": 0.10740372169863477
+      },
+      {
+        "label": "nfp5_nc3",
+        "nfp": 5,
+        "n_coils": 3,
+        "train_count": 12910,
+        "probability": 0.08396911809661327
+      },
+      {
+        "label": "nfp5_nc4",
+        "nfp": 5,
+        "n_coils": 4,
+        "train_count": 5785,
+        "probability": 0.037626750440659
+      },
+      {
+        "label": "nfp5_nc5",
+        "nfp": 5,
+        "n_coils": 5,
+        "train_count": 2086,
+        "probability": 0.013567744411273066
+      },
+      {
+        "label": "nfp6_nc1",
+        "nfp": 6,
+        "n_coils": 1,
+        "train_count": 244,
+        "probability": 0.0015870228362179425
+      },
+      {
+        "label": "nfp6_nc2",
+        "nfp": 6,
+        "n_coils": 2,
+        "train_count": 2040,
+        "probability": 0.013268551581494273
+      },
+      {
+        "label": "nfp6_nc3",
+        "nfp": 6,
+        "n_coils": 3,
+        "train_count": 1279,
+        "probability": 0.008318861506240772
+      },
+      {
+        "label": "nfp6_nc4",
+        "nfp": 6,
+        "n_coils": 4,
+        "train_count": 960,
+        "probability": 0.006244024273644364
+      },
+      {
+        "label": "nfp6_nc5",
+        "nfp": 6,
+        "n_coils": 5,
+        "train_count": 537,
+        "probability": 0.003492751078069816
+      },
+      {
+        "label": "nfp7_nc1",
+        "nfp": 7,
+        "n_coils": 1,
+        "train_count": 678,
+        "probability": 0.004409842143261332
+      },
+      {
+        "label": "nfp7_nc2",
+        "nfp": 7,
+        "n_coils": 2,
+        "train_count": 1990,
+        "probability": 0.012943341983908629
+      },
+      {
+        "label": "nfp7_nc3",
+        "nfp": 7,
+        "n_coils": 3,
+        "train_count": 1222,
+        "probability": 0.007948122564993138
+      },
+      {
+        "label": "nfp7_nc4",
+        "nfp": 7,
+        "n_coils": 4,
+        "train_count": 679,
+        "probability": 0.004416346335213045
+      },
+      {
+        "label": "nfp7_nc5",
+        "nfp": 7,
+        "n_coils": 5,
+        "train_count": 244,
+        "probability": 0.0015870228362179425
+      },
+      {
+        "label": "nfp8_nc1",
+        "nfp": 8,
+        "n_coils": 1,
+        "train_count": 724,
+        "probability": 0.004709034973040124
+      },
+      {
+        "label": "nfp8_nc2",
+        "nfp": 8,
+        "n_coils": 2,
+        "train_count": 1037,
+        "probability": 0.006744847053926256
+      },
+      {
+        "label": "nfp8_nc3",
+        "nfp": 8,
+        "n_coils": 3,
+        "train_count": 497,
+        "probability": 0.003232583400001301
+      },
+      {
+        "label": "nfp8_nc4",
+        "nfp": 8,
+        "n_coils": 4,
+        "train_count": 224,
+        "probability": 0.0014569389971836849
+      },
+      {
+        "label": "nfp8_nc5",
+        "nfp": 8,
+        "n_coils": 5,
+        "train_count": 50,
+        "probability": 0.00032520959758564397
+      }
+    ]
+  },
+  "flow_checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "score_library_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+  "optimizer": {
+    "gradient": "64 fresh orthogonal random directions, centered difference",
+    "perturbation": 0.005,
+    "adam": {
+      "lr": 0.02,
+      "beta1": 0.7,
+      "beta2": 0.999
+    },
+    "flow": "FP32 RK4-128",
+    "formal_center_score": true,
+    "local_endpoint_score_omits_coordinate_gradient": true
+  },
+  "code_commit": "3f083339884ef3398d0b29be50b8a0f11f988fda",
+  "created_unix_s": 1786551135.522313
+}

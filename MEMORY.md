@@ -427,51 +427,26 @@ errors. That combination is not credible evidence of new physics by itself.
 
 ## 8. Historical Milestones
 
-These are intentionally summaries. Detailed job IDs, parameter sweeps, failed
-attempts, and numerical tables remain in `MEMORY_archive_20260808.md` and the
-linked reports.
+Only current decisions are retained here; exact history is in
+`MEMORY_archive_20260808.md` and the linked reports.
 
-- **DESC initial-guess exploration:** dense linear LS for $\psi$, then
-  $\alpha/\iota$ and $\nu$, produced useful near-Boozer volume coordinates and
-  robust surface initial guesses. It did not make DESC convergence automatic.
-  See `reports/project_progress_recap_20260726.md`.
-- **Native GPU score:** the coils-to-volume-QS path was moved to bounded
-  C++/CUDA ABI 9 and corrected for current sign, $G$ scale, volume weights,
-  valid-point count, low-iota cheating, and helicity competition. See
-  `reports/gpu_native_volume_qs_score_report.md` and
+- Dense linear $\psi\rightarrow\alpha/\iota\rightarrow\nu$ fitting produced
+  useful near-Boozer volume coordinates but did not make DESC automatic. See
+  `reports/project_progress_recap_20260726.md`.
+- The bounded native GPU score was corrected for current sign, $G$, volume
+  weights, valid counts, low-iota cheating, and helicity competition. See
   `reports/qh_differential_qs_metric_investigation.md`.
-- **Flow model:** direct generation remained poor, but high-accuracy inversion
-  and landscape tests showed that the learned latent coordinates broaden useful
-  search basins. See `reports/qh_flow_matching_first_generation_report.md` and
-  `reports/qh_flow_landscape_report.md`.
-- **CEM and finite-difference Adam:** latent-space CEM produced the first clear
-  optimization breakthrough; standard finite-difference Adam then surpassed it
-  and became the maintained optimizer. See
-  `reports/qh_flow_standard_adam_acceptance_report.md` and
-  `reports/qh_score_throughput_and_continuous_surface_plan.md`.
-- **Proxy experiments:** inverse-latent classification was possible, but neither
-  classifier nor score-regression proxy reliably ranked physical score; routine
-  corpus collection was stopped. See
-  `reports/qh_latent_proxy_active_optimization_report.md` and
-  `reports/qh_latent_score_regression_proxy_report.md`.
-- **Analytic/reference-gradient exploration:** frozen-front G2/G3 directions
-  were internally correct but systematically biased for the full score because
-  geometry, surface, and branch responses were omitted. G4/G5 were judged too
-  difficult relative to benefit; production returned to score-only finite
-  differences. See `reports/qh_blackbox_gradient_exploration_report.md`.
-- **Throughput/continuity work:** continuous surface confidence, strict axis
-  continuation, flow pipelining, central two-direction differences, and robust
-  update guards reduced the standard optimizer to roughly `5.3 s/step` on two
-  RTX 5090 GPUs while preserving high-score ranking and physical acceptance.
-- **Long-run result:** the same $N_{\mathrm{FP}}=4$, three-coil trajectory rose
-  from score `92.3826` at 600 steps to `93.0409` at 2000 and `93.3673` at 4341;
-  the best passed complete physical evaluation. Exact continuation to 10000
-  produced no further best update, providing strong evidence that the current
-  fixed optimizer configuration had exhausted this trajectory.
-- **Reduced-latent flow:** exact-zero source tails at $k=16\ldots80$ failed
-  geometry reconstruction (best median relative curve RMS `47.24%`); manifold
-  flow was then rejected. Do not use those checkpoints. See
-  `reports/qh_reduced_latent_flow_plan.md` for the complete experiment.
+- Flow is useful as an invertible search reparameterization, not as a direct
+  high-quality generator. Latent CEM and then finite-difference Adam established
+  this route; proxy and G2--G5 analytic-gradient attempts were rejected. See
+  `reports/qh_flow_landscape_report.md`,
+  `reports/qh_latent_score_regression_proxy_report.md`, and
+  `reports/qh_blackbox_gradient_exploration_report.md`.
+- The validated $N_{\rm FP}=4$, three-coil long run reached score 93.367 at step
+  4341 and passed complete evaluation; exact continuation to 10000 found no new
+  best. See `reports/qh_score_throughput_and_continuous_surface_plan.md`.
+- Exact-zero reduced latent tails $k=16\ldots80$ failed reconstruction and must
+  not be used. See `reports/qh_reduced_latent_flow_plan.md`.
 
 ## 9. Important Files
 
@@ -494,6 +469,31 @@ linked reports.
 
 ## 10. Active Next Action
 
-- 2026-08-12 completed branch `codex/direct-alpha-fast-score`: single-GPU query-batched local gradients, pipeline, optimizer sweeps, and two complete physical evaluations. `K=64`, LR `0.02` is the best tested price/performance local-gradient Adam; the 200-step sample passed Simsopt/DESC. Full-coordinate Adam's step-1710 maximum independently scored `94.81168` and also passed at sample-specific `a=0.08,s=0.49`; DESC stayed nested and ended force mean/P95/max `4.518e-4/1.050e-3/2.684e-3` at its 50-step cap. Evidence commit `cc1b853`, report `reports/direct_alpha_fast_score_feasibility_20260811.md`, and its linked assets. Production main SPSA remains unchanged.
-- 2026-08-13 active branch `codex/trajectory-dataset-pilot`, implementation commit `3f08333`, generates one corpus trajectory by drawing joint `(nfp,n_coils)` from the exact QUASR QH train prior, globally scoring 32 IID flow latents, then running 200-step K64 Adam (`h=0.005`, LR `0.02`, beta `(0.7,0.999)`, FP32 RK4-128) from the best valid start. It atomically preserves all screened latents/tokens/full scores, centers, 64 directions/128 endpoint tokens and score components, raw gradients, Adam states/updates, timings, hashes, and seeds. Six empty-RTX5090 one-GPU streams are running as P107 array `37034_[0-3]` and Students array `37035_[0-1]` for 21 h, unified under `~/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/`; no failures occurred in the first six trajectories. First-batch wall mean/P50/P95 was `1399/1447/1603 s`, projecting `370.4 trajectories/day` across six GPUs and about 320 for this pilot; start/best means were `77.36/89.71` (mean gain `12.35`), and storage was 318 MiB total (about 53 MiB/trajectory). Documentation: `docs/qh_adam_trajectory_dataset.md`; frozen first-batch statistics: dataset-root `first_batch_summary.json`.
-- Query-batch work must pin score-library hash `7834a88d...`; shared `build_mixed` is stale. Historical no-physics failures and valid replacements are recorded in the current direct-alpha report.
+- 2026-08-12 completed branch `codex/direct-alpha-fast-score`; `K=64`, LR
+  `0.02` was the best tested single-GPU local-gradient Adam configuration. Its
+  200-step sample and independent score-94.812 step-1710 maximum both passed
+  full Simsopt/DESC evaluation. Evidence commit `cc1b853` and report
+  `reports/direct_alpha_fast_score_feasibility_20260811.md`.
+- 2026-08-13 branch `codex/trajectory-dataset-pilot` completed the six-GPU,
+  21-hour pilot at implementation commit `3f08333`. Arrays `37034_[0-3]` and
+  `37035_[0-1]` stopped normally at `max_wall_s` and produced 309 complete
+  200-step trajectories, 9,888 global screening candidates, 61,800 formal
+  center steps, 3,955,200 stored random directions, and 7,910,400 local
+  endpoints, with zero failed/incomplete trajectories. The 16.89-GiB corpus is
+  at `~/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/`;
+  observed throughput was 355.3 trajectories/day across six RTX 5090 GPUs and
+  per-trajectory wall P50/P95 was 21.59/40.79 minutes.
+- 2026-08-13 acceptance used the exact corpus ABI-10 score-library hash
+  `7834a88d...` to rescore all 309 Adam best cases and 1,024 no-replacement
+  QUASR QH test cases without axis history. Best-of-32 start P50 was 75.996;
+  global Adam-best P50/P90/max was `90.214/92.669/93.521`, with 50.8% at least
+  90 and 23.0% at least 92. Same-version QUASR rates were 12.9%/7.0%, but QUASR
+  retained the stronger maximum 94.349. Online/global best Spearman was
+  0.999882 and all 157 online bests at least 90 remained globally `ok`. Since
+  64.1% of trajectories first reached best in the last 50 steps, 200 steps is a
+  trajectory budget, not a convergence claim. Local endpoints omit the
+  coordinate-gradient contribution and must never be treated as millions of
+  independent formal score samples. Full evidence:
+  `reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`.
+- Query-batch work must pin score-library hash `7834a88d...`; shared
+  `build_mixed` is stale.

@@ -23,7 +23,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 def parse_run(value: str) -> tuple[str, Path]:
     if "=" not in value:
         raise ValueError("run must be LABEL=PATH")
-    label, path = value.split("=", maxsplit=1)
+    label, path = value.rsplit("=", maxsplit=1)
     return label, Path(path)
 
 

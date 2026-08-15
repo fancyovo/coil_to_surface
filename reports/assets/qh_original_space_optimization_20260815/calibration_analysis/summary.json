@@ -1,0 +1,1393 @@
+{
+  "format": "original_space_optimization_analysis_v1",
+  "runs": [
+    {
+      "label": "h=.001 lr=.02",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\cal_h001",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966115999,
+        "final_score": 86.66081549322294,
+        "best_score": 88.96073426654152,
+        "best_iteration": 27,
+        "completed_iterations": 40,
+        "completed_adam_steps": 40,
+        "completed_optimizer_steps": 40,
+        "total_wall_s": 167.31903167627752,
+        "initial_decode_wall_s": 2.0548963770270348,
+        "initial_score_wall_s": 2.5125540625303984,
+        "mean_iteration_wall_s": 4.162211369676515,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 40,
+          "max_wall_s": 1800.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.001,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.02,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 3.525214605381535,
+      "mean_iteration_wall_s": 4.162211369676515,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.0025 lr=.02",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\cal_h0025",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966115999,
+        "final_score": 88.27215865003956,
+        "best_score": 90.55218805298611,
+        "best_iteration": 25,
+        "completed_iterations": 40,
+        "completed_adam_steps": 40,
+        "completed_optimizer_steps": 40,
+        "total_wall_s": 167.32167137041688,
+        "initial_decode_wall_s": 2.0705673564225435,
+        "initial_score_wall_s": 2.522964781150222,
+        "mean_iteration_wall_s": 4.163344815513119,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 40,
+          "max_wall_s": 1800.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.0025,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.02,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 5.116668391826124,
+      "mean_iteration_wall_s": 4.163344815513119,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.005 lr=.02",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\cal_h005",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966115996,
+        "final_score": 88.46697557797289,
+        "best_score": 89.66890074882862,
+        "best_iteration": 26,
+        "completed_iterations": 40,
+        "completed_adam_steps": 40,
+        "completed_optimizer_steps": 40,
+        "total_wall_s": 165.9570446740836,
+        "initial_decode_wall_s": 1.6303479466587305,
+        "initial_score_wall_s": 2.8488680832087994,
+        "mean_iteration_wall_s": 4.131072737276554,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 40,
+          "max_wall_s": 1800.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.005,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.02,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 4.233381087668661,
+      "mean_iteration_wall_s": 4.131072737276554,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.01 lr=.02",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\cal_h010",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966116001,
+        "final_score": 88.40400673078777,
+        "best_score": 90.2629135487463,
+        "best_iteration": 27,
+        "completed_iterations": 40,
+        "completed_adam_steps": 40,
+        "completed_optimizer_steps": 40,
+        "total_wall_s": 174.65460987202823,
+        "initial_decode_wall_s": 1.6477908249944448,
+        "initial_score_wall_s": 2.858031742274761,
+        "mean_iteration_wall_s": 4.34650039342232,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 40,
+          "max_wall_s": 1800.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.01,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.02,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 4.8273938875862825,
+      "mean_iteration_wall_s": 4.34650039342232,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.0025 lr=.005",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\lr_h0025_lr0005",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966115999,
+        "final_score": 91.38929332527275,
+        "best_score": 91.39876191790944,
+        "best_iteration": 55,
+        "completed_iterations": 60,
+        "completed_adam_steps": 60,
+        "completed_optimizer_steps": 60,
+        "total_wall_s": 247.55800813995302,
+        "initial_decode_wall_s": 1.8549459036439657,
+        "initial_score_wall_s": 3.039620840921998,
+        "mean_iteration_wall_s": 4.106384625099599,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 60,
+          "max_wall_s": 2400.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.0025,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.005,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 5.963242256749453,
+      "mean_iteration_wall_s": 4.106384625099599,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.0025 lr=.01",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\lr_h0025_lr001",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966115999,
+        "final_score": 91.58486605542505,
+        "best_score": 91.58486605542505,
+        "best_iteration": 60,
+        "completed_iterations": 60,
+        "completed_adam_steps": 60,
+        "completed_optimizer_steps": 60,
+        "total_wall_s": 251.57734902389348,
+        "initial_decode_wall_s": 1.899530677124858,
+        "initial_score_wall_s": 3.012457212433219,
+        "mean_iteration_wall_s": 4.172833574997882,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 60,
+          "max_wall_s": 2400.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.0025,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.01,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 6.149346394265066,
+      "mean_iteration_wall_s": 4.172833574997882,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.01 lr=.005",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\lr_h010_lr0005",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966116001,
+        "final_score": 90.4651150750015,
+        "best_score": 90.4651150750015,
+        "best_iteration": 60,
+        "completed_iterations": 60,
+        "completed_adam_steps": 60,
+        "completed_optimizer_steps": 60,
+        "total_wall_s": 257.5989167687949,
+        "initial_decode_wall_s": 2.6315194009803236,
+        "initial_score_wall_s": 3.0320388949476182,
+        "mean_iteration_wall_s": 4.277193334551217,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 60,
+          "max_wall_s": 2400.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.01,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.005,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 5.029595413841491,
+      "mean_iteration_wall_s": 4.277193334551217,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 1.0
+    },
+    {
+      "label": "h=.01 lr=.01",
+      "directory": "D:\\Typora\\Typ\\\u5b66\u4e60\\stellarator\\programs\\local_surface_evaluator\\reports\\assets\\qh_original_space_optimization_20260815\\lr_h010_lr001",
+      "summary": {
+        "status": "ok",
+        "stop_reason": "completed_iterations",
+        "initial_score": 85.43551966116001,
+        "final_score": 90.05541243694444,
+        "best_score": 90.34798354553095,
+        "best_iteration": 50,
+        "completed_iterations": 60,
+        "completed_adam_steps": 59,
+        "completed_optimizer_steps": 59,
+        "total_wall_s": 258.82818459160626,
+        "initial_decode_wall_s": 1.8595757447183132,
+        "initial_score_wall_s": 3.0313539430499077,
+        "mean_iteration_wall_s": 4.292972042380522,
+        "manifest": {
+          "algorithm": "adam_with_query_batched_local_gradient",
+          "optimizer": "adam",
+          "parameter_space": "data",
+          "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+          "formal_objective": "complete native QH score for every accepted center",
+          "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+          "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+          "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+          "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+          "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+          "native_lib_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+          "nfp": 4,
+          "n_base_coils": 3,
+          "iterations": 60,
+          "max_wall_s": 2400.0,
+          "flow": {
+            "method": "rk4",
+            "steps": 128,
+            "dtype": "fp32",
+            "use": "initial latent-to-coil decode only"
+          },
+          "flow_pipeline": false,
+          "coordinate_gradient": {
+            "dimension": 300,
+            "mode": "random-orthogonal",
+            "random_directions": 64,
+            "endpoint_count": 128,
+            "perturbation": 0.01,
+            "difference": "centered",
+            "psi_grid": 48,
+            "psi_iterations": 4,
+            "alpha_iterations": 4,
+            "formal_surface_theta_count": 128,
+            "local_surface_theta_count": 64
+          },
+          "adam": {
+            "learning_rate": 0.01,
+            "beta1": 0.7,
+            "beta2": 0.999,
+            "epsilon": 1e-08,
+            "weight_decay": 0.0
+          },
+          "bfgs": {
+            "initial_trust_rms": 0.01,
+            "min_trust_rms": 1e-05,
+            "max_trust_rms": 0.05,
+            "trust_growth": 1.2,
+            "trust_shrink": 0.5,
+            "min_improvement": 0.0
+          },
+          "seed": 20260812,
+          "axis_policy": "initial global search, then strict mixed-precision continuation",
+          "devices": {
+            "flow": 0,
+            "score": 0
+          },
+          "initial_metadata_keys": [
+            "flow_prior_start",
+            "format"
+          ],
+          "data_parameterization": {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": 0.0,
+            "initial_roundtrip_relative_rms": 1.14628257616176e-15,
+            "flow_calls_after_initialization": 0
+          }
+        }
+      },
+      "score_gain": 4.912463884370936,
+      "mean_iteration_wall_s": 4.292972042380522,
+      "valid_center_fraction": 1.0,
+      "applied_fraction": 0.9833333333333333
+    }
+  ],
+  "benchmark": {
+    "format": "local_gradient_batch_scaling_v1",
+    "precision": {
+      "query_batch_field_and_iterative_fits": "fp32",
+      "formal_center_and_axis_control": "mixed fp32/fp64"
+    },
+    "hardware_counter_tflops_available": false,
+    "tflops_note": "Reported flux and psi TFLOPS use explicit operation models. They are not Nsight hardware counters and must not be compared as exact achieved FLOPS.",
+    "checkpoint_step": 30000,
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "library_sha256": "7834a88d5437ba9910c78bb0eb5483efc71134579624ee2cc74100297a5799a3",
+    "initial_case_sha256": "33bd263c737d712ccf4d7f6376dc6c8009e3b308bd7d04d0ec30cc3a9c11d7e9",
+    "initial_flow_s": 2.407182028517127,
+    "initial_formal_score_s": 2.840384179726243,
+    "center_score": 85.43551966116001,
+    "initial_clipped_fraction": 0.0,
+    "configuration": {
+      "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+      "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/reports/assets/qh_score_adam_start_panel_29960/start_10.json",
+      "lib": "/home/scc/pb24511935/local_surface_evaluator/runtimes/local_score_d1b140f/gpu_backend/build_query_batch/libstellarator_gpu.so",
+      "output": "/home/scc/pb24511935/local_surface_evaluator_data/original_space_20260815/batch_scaling/summary.json",
+      "endpoint_counts": [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        600
+      ],
+      "repeats": 3,
+      "flow_steps": 128,
+      "perturbation": 0.005,
+      "seed": 2026081501,
+      "nfp": 4,
+      "n_base_coils": 3,
+      "device": 0,
+      "segments_per_coil": 256,
+      "psi_iterations": 4,
+      "alpha_iterations": 4,
+      "formal_surface_theta_count": 128,
+      "local_surface_theta_count": 64,
+      "iota_degree": 3
+    },
+    "rows": [
+      {
+        "endpoint_count": 2,
+        "direction_count": 1,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 2
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.2815204691141844,
+            "p95_s": 0.28152971938252447
+          },
+          "axis_samples": {
+            "median_s": 0.04545465670526028,
+            "p95_s": 0.04569252505898476
+          },
+          "center_capture": {
+            "median_s": 0.5331389121711254,
+            "p95_s": 0.534679920040071
+          },
+          "coil_linear": {
+            "median_s": 0.04498489014804363,
+            "p95_s": 0.04506317880004644
+          },
+          "field_create": {
+            "median_s": 0.0004987586289644241,
+            "p95_s": 0.0007063465192914008
+          },
+          "local_score": {
+            "median_s": 0.050164343789219856,
+            "p95_s": 0.0539493078365922
+          },
+          "psi": {
+            "median_s": 0.02740238793194294,
+            "p95_s": 0.031118018552660942
+          },
+          "total": {
+            "median_s": 0.9809880573302507,
+            "p95_s": 0.9925121298059821
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000965838,
+          "feature_s": 0.003506193,
+          "solve_s": 0.015120474,
+          "total_s": 0.022706815,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 2,
+          "surface_s": 0.02159741,
+          "flux_s": 0.008523435,
+          "volume_s": 0.005364202,
+          "alpha_s": 0.011665715,
+          "qs_s": 0.001342207,
+          "total_s": 0.048786712,
+          "alpha_tile_size": 2,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 2.038760803513735,
+        "amortized_ms_per_endpoint": 490.49402866512537,
+        "flux_nominal_tflops": 10.612919696317983,
+        "flux_segment_point_giga_per_s": 379.0328462970708,
+        "psi_matvec_equivalent_tflops": 0.15104671820134055
+      },
+      {
+        "endpoint_count": 4,
+        "direction_count": 2,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 4
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.282241303473711,
+            "p95_s": 0.28271085266023877
+          },
+          "axis_samples": {
+            "median_s": 0.04594830609858036,
+            "p95_s": 0.04601985570043325
+          },
+          "center_capture": {
+            "median_s": 0.5215905085206032,
+            "p95_s": 0.5221272051334381
+          },
+          "coil_linear": {
+            "median_s": 0.04493515565991402,
+            "p95_s": 0.04499457497149706
+          },
+          "field_create": {
+            "median_s": 0.0004880782216787338,
+            "p95_s": 0.015629808604717254
+          },
+          "local_score": {
+            "median_s": 0.0680566355586052,
+            "p95_s": 0.06948688328266144
+          },
+          "psi": {
+            "median_s": 0.0333829578012228,
+            "p95_s": 0.03352213092148304
+          },
+          "total": {
+            "median_s": 0.9973933454602957,
+            "p95_s": 1.0138860793784261
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.00096575,
+          "feature_s": 0.007656907,
+          "solve_s": 0.015957985,
+          "total_s": 0.028062384,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 4,
+          "surface_s": 0.025775459,
+          "flux_s": 0.015508547,
+          "volume_s": 0.006467034,
+          "alpha_s": 0.016018166,
+          "qs_s": 0.001963346,
+          "total_s": 0.066025121,
+          "alpha_tile_size": 4,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 4.0104538677807255,
+        "amortized_ms_per_endpoint": 249.34833636507392,
+        "flux_nominal_tflops": 11.636991923030221,
+        "flux_segment_point_giga_per_s": 415.6068543939365,
+        "psi_matvec_equivalent_tflops": 0.24797327981814654
+      },
+      {
+        "endpoint_count": 8,
+        "direction_count": 4,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 8
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.28279934264719486,
+            "p95_s": 0.2830302070826292
+          },
+          "axis_samples": {
+            "median_s": 0.04601154290139675,
+            "p95_s": 0.046031275577843186
+          },
+          "center_capture": {
+            "median_s": 0.522765327244997,
+            "p95_s": 0.5256705954670906
+          },
+          "coil_linear": {
+            "median_s": 0.044882599264383316,
+            "p95_s": 0.04500852059572935
+          },
+          "field_create": {
+            "median_s": 0.00057944655418396,
+            "p95_s": 0.0005838403478264809
+          },
+          "local_score": {
+            "median_s": 0.12454701587557793,
+            "p95_s": 0.12707937825471163
+          },
+          "psi": {
+            "median_s": 0.043136607855558395,
+            "p95_s": 0.04404926970601082
+          },
+          "total": {
+            "median_s": 1.0673838295042515,
+            "p95_s": 1.0684554424136876
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000960796,
+          "feature_s": 0.015453927,
+          "solve_s": 0.017759604,
+          "total_s": 0.037977214,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 8,
+          "surface_s": 0.049849572,
+          "flux_s": 0.030390357,
+          "volume_s": 0.011864095,
+          "alpha_s": 0.026053252,
+          "qs_s": 0.003368207,
+          "total_s": 0.121870984,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 7.494960836830005,
+        "amortized_ms_per_endpoint": 133.42297868803144,
+        "flux_nominal_tflops": 11.979378810664452,
+        "flux_segment_point_giga_per_s": 427.8349575237304,
+        "psi_matvec_equivalent_tflops": 0.38380771912890793
+      },
+      {
+        "endpoint_count": 16,
+        "direction_count": 8,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 16
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.28245471231639385,
+            "p95_s": 0.2825001372024417
+          },
+          "axis_samples": {
+            "median_s": 0.04616978205740452,
+            "p95_s": 0.04621476102620363
+          },
+          "center_capture": {
+            "median_s": 0.5220237579196692,
+            "p95_s": 0.5230543145909905
+          },
+          "coil_linear": {
+            "median_s": 0.04479794204235077,
+            "p95_s": 0.04499963913112879
+          },
+          "field_create": {
+            "median_s": 0.0011765789240598679,
+            "p95_s": 0.001262490078806877
+          },
+          "local_score": {
+            "median_s": 0.22448920086026192,
+            "p95_s": 0.22512867972254752
+          },
+          "psi": {
+            "median_s": 0.05886620283126831,
+            "p95_s": 0.059611295349895954
+          },
+          "total": {
+            "median_s": 1.1796993911266327,
+            "p95_s": 1.1819983460009098
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000964641,
+          "feature_s": 0.030390515,
+          "solve_s": 0.018654938,
+          "total_s": 0.053705804,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 16,
+          "surface_s": 0.081026885,
+          "flux_s": 0.060845405,
+          "volume_s": 0.021941396,
+          "alpha_s": 0.05083227,
+          "qs_s": 0.00618283,
+          "total_s": 0.221293527,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 13.562777195908978,
+        "amortized_ms_per_endpoint": 73.73121194541454,
+        "flux_nominal_tflops": 12.055315340907098,
+        "flux_segment_point_giga_per_s": 430.54697646096776,
+        "psi_matvec_equivalent_tflops": 0.5625014788012033
+      },
+      {
+        "endpoint_count": 32,
+        "direction_count": 16,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 32
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.2835543043911457,
+            "p95_s": 0.28367989379912617
+          },
+          "axis_samples": {
+            "median_s": 0.04623823240399361,
+            "p95_s": 0.046350551582872865
+          },
+          "center_capture": {
+            "median_s": 0.5208466555923223,
+            "p95_s": 0.5219754230231046
+          },
+          "coil_linear": {
+            "median_s": 0.044839153066277504,
+            "p95_s": 0.044858929328620435
+          },
+          "field_create": {
+            "median_s": 0.0011879168450832367,
+            "p95_s": 0.0012587321922183036
+          },
+          "local_score": {
+            "median_s": 0.4304528050124645,
+            "p95_s": 0.437428942322731
+          },
+          "psi": {
+            "median_s": 0.08785978332161903,
+            "p95_s": 0.09050041642040015
+          },
+          "total": {
+            "median_s": 1.4148564152419567,
+            "p95_s": 1.4260208688676357
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.00096751,
+          "feature_s": 0.059722967,
+          "solve_s": 0.017827343,
+          "total_s": 0.082378606,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 32,
+          "surface_s": 0.144092996,
+          "flux_s": 0.123221298,
+          "volume_s": 0.043282056,
+          "alpha_s": 0.103376695,
+          "qs_s": 0.011973709,
+          "total_s": 0.42663728,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 22.617136025444413,
+        "amortized_ms_per_endpoint": 44.21426297631115,
+        "flux_nominal_tflops": 11.970452855479502,
+        "flux_segment_point_giga_per_s": 427.5161734099822,
+        "psi_matvec_equivalent_tflops": 0.7537538767376469
+      },
+      {
+        "endpoint_count": 64,
+        "direction_count": 32,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 64
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.31241495348513126,
+            "p95_s": 0.3124738045036793
+          },
+          "axis_samples": {
+            "median_s": 0.04655700922012329,
+            "p95_s": 0.046564661897718906
+          },
+          "center_capture": {
+            "median_s": 0.5204016305506229,
+            "p95_s": 0.5212231123819947
+          },
+          "coil_linear": {
+            "median_s": 0.04499511234462261,
+            "p95_s": 0.045124614425003526
+          },
+          "field_create": {
+            "median_s": 0.001996031031012535,
+            "p95_s": 0.0021470192819833755
+          },
+          "local_score": {
+            "median_s": 0.8484232872724533,
+            "p95_s": 0.851588392816484
+          },
+          "psi": {
+            "median_s": 0.15037240460515022,
+            "p95_s": 0.1507156401872635
+          },
+          "total": {
+            "median_s": 1.9260656591504812,
+            "p95_s": 1.9288687855005264
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000966775,
+          "feature_s": 0.118583264,
+          "solve_s": 0.021212471,
+          "total_s": 0.144611036,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 64,
+          "surface_s": 0.272046405,
+          "flux_s": 0.248274004,
+          "volume_s": 0.086795944,
+          "alpha_s": 0.204694625,
+          "qs_s": 0.023873112,
+          "total_s": 0.836743888,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 33.22835838744361,
+        "amortized_ms_per_endpoint": 30.09477592422627,
+        "flux_nominal_tflops": 11.823384573216227,
+        "flux_segment_point_giga_per_s": 422.26373475772243,
+        "psi_matvec_equivalent_tflops": 0.8808085826903352
+      },
+      {
+        "endpoint_count": 128,
+        "direction_count": 64,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 128
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.5618699099868536,
+            "p95_s": 0.5621599171310663
+          },
+          "axis_samples": {
+            "median_s": 0.04677324742078781,
+            "p95_s": 0.04679697491228581
+          },
+          "center_capture": {
+            "median_s": 0.5223821401596069,
+            "p95_s": 0.5239442117512226
+          },
+          "coil_linear": {
+            "median_s": 0.04514816030859947,
+            "p95_s": 0.04517892356961965
+          },
+          "field_create": {
+            "median_s": 0.0028580091893672943,
+            "p95_s": 0.003135971538722515
+          },
+          "local_score": {
+            "median_s": 1.6992336716502905,
+            "p95_s": 1.7020953321829437
+          },
+          "psi": {
+            "median_s": 0.2904054522514343,
+            "p95_s": 0.29282110165804626
+          },
+          "total": {
+            "median_s": 3.1699506789445877,
+            "p95_s": 3.1709327563643455
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000978393,
+          "feature_s": 0.251950057,
+          "solve_s": 0.026311202,
+          "total_s": 0.287250978,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 128,
+          "surface_s": 0.52744328,
+          "flux_s": 0.520093109,
+          "volume_s": 0.178602243,
+          "alpha_s": 0.412780132,
+          "qs_s": 0.047356492,
+          "total_s": 1.688816504,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 40.37917714310201,
+        "amortized_ms_per_endpoint": 24.76523967925459,
+        "flux_nominal_tflops": 11.375522427581826,
+        "flux_segment_point_giga_per_s": 406.2686581279224,
+        "psi_matvec_equivalent_tflops": 0.912168167292705
+      },
+      {
+        "endpoint_count": 256,
+        "direction_count": 128,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 256
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 0.859096122905612,
+            "p95_s": 0.8598820051178336
+          },
+          "axis_samples": {
+            "median_s": 0.052757566794753075,
+            "p95_s": 0.052853836305439474
+          },
+          "center_capture": {
+            "median_s": 0.5207228437066078,
+            "p95_s": 0.5219656117260456
+          },
+          "coil_linear": {
+            "median_s": 0.04535972513258457,
+            "p95_s": 0.045426889322698116
+          },
+          "field_create": {
+            "median_s": 0.004504360258579254,
+            "p95_s": 0.004673654586076737
+          },
+          "local_score": {
+            "median_s": 3.4205735493451357,
+            "p95_s": 3.4232734089717267
+          },
+          "psi": {
+            "median_s": 0.579864026978612,
+            "p95_s": 0.5819396594539284
+          },
+          "total": {
+            "median_s": 5.485645968466997,
+            "p95_s": 5.485666328109801
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000970869,
+          "feature_s": 0.521330546,
+          "solve_s": 0.045238919,
+          "total_s": 0.572730118,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 256,
+          "surface_s": 1.056319853,
+          "flux_s": 1.084434644,
+          "volume_s": 0.361185882,
+          "alpha_s": 0.808817482,
+          "qs_s": 0.094589505,
+          "total_s": 3.409250644,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 46.667247844931744,
+        "amortized_ms_per_endpoint": 21.428304564324208,
+        "flux_nominal_tflops": 10.942327324519159,
+        "flux_segment_point_giga_per_s": 390.7974044471128,
+        "psi_matvec_equivalent_tflops": 0.9136576743077414
+      },
+      {
+        "endpoint_count": 600,
+        "direction_count": 300,
+        "repeat_count": 3,
+        "status_counts": {
+          "ok": 600
+        },
+        "timing": {
+          "axis_refine": {
+            "median_s": 1.6459865756332874,
+            "p95_s": 1.6505011977627873
+          },
+          "axis_samples": {
+            "median_s": 0.10483894497156143,
+            "p95_s": 0.1057783568277955
+          },
+          "center_capture": {
+            "median_s": 0.5180837213993073,
+            "p95_s": 0.5186335826292634
+          },
+          "coil_linear": {
+            "median_s": 0.045803677290678024,
+            "p95_s": 0.04620803203433752
+          },
+          "field_create": {
+            "median_s": 0.009097179397940636,
+            "p95_s": 0.14521760884672402
+          },
+          "local_score": {
+            "median_s": 7.999983916059136,
+            "p95_s": 8.014305130206049
+          },
+          "psi": {
+            "median_s": 1.3521606270223856,
+            "p95_s": 1.540934343263507
+          },
+          "total": {
+            "median_s": 11.688610231503844,
+            "p95_s": 11.997815781272948
+          }
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000978448,
+          "feature_s": 1.228858258,
+          "solve_s": 0.106439497,
+          "total_s": 1.34315035,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 600,
+          "surface_s": 2.466778647,
+          "flux_s": 2.55329705,
+          "volume_s": 0.862662151,
+          "alpha_s": 1.851368794,
+          "qs_s": 0.222195502,
+          "total_s": 7.965171032,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "endpoints_per_s": 51.332022209350775,
+        "amortized_ms_per_endpoint": 19.481017052506406,
+        "flux_nominal_tflops": 10.881005268112965,
+        "flux_segment_point_giga_per_s": 388.6073310040345,
+        "psi_matvec_equivalent_tflops": 0.9183171034453164
+      }
+    ]
+  }
+}

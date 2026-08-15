@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-12 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-15 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -93,68 +93,27 @@
   plus one random direction reached only `92.5087` and then suffered 77 repeated
   temporal-gradient rejections at steps 924--1000. Keep fresh random directions
   as default; full evidence is section 17 of the current compression report.
-- 2026-08-10 fixed-matrix result: the exact augmented FP32 problem is
-  `391014 x 1574`, with 389440 physical rows and 1574 ridge rows. The frozen
-  QUASR case-1739363 snapshot is 2463400872 bytes with SHA-256
-  `e8878c17a3d6b7c64f5459391c8d98cbc9eccb9b52410acc5c7d2ca90f3dd6b2`;
-  it remains under `~/local_surface_evaluator_data/qr_bench_20260810/`.
-- Standalone single-RTX5090 cuSOLVER Householder least squares is stable at
-  P50 `181.933 ms` (`10.635` Householder-equivalent TFLOP/s). LDA-256 padding
-  is exactly equivalent at `179.639 ms`, only `1.26%` faster. Generic API,
-  nondeterministic mode, BF16x9 mode, stable TSQR/block-GS, and mixed-precision
-  iterative refinement do not improve latency. MAGMA 2.10 Householder is
-  accurate but about 14.5x slower (`2.632 s`) because of its hybrid panel path.
-- The fixed-matrix field named `physical_residual_relative` is actually the
-  unnormalized training-equation residual
-  `||A_data x-b_data||/||b_data||`; it is not the independent normalized
-  `|B.grad(psi)|/(|B||grad(psi)|)` angle. Same-matrix solver screening uses the
-  former plus coefficient/normal residuals; production acceptance uses the
-  latter, downstream score, status, and ranking.
-- Fusing the RHS as the last column of `[A|b]` removes the standalone `Sormqr`
-  pass: single-RTX5090 P50/P95 became `162.428/162.492 ms` (1.120x), coefficient
-  relative difference `8.91e-6`, and training-equation residual ratio
-  `0.999999`. This is a useful exact-form candidate but is not integrated into
-  production after only one frozen-matrix test.
-- Shifted Gram and short PCGLS reach actual estimated `35--45 TFLOP/s`, proving
-  the GEMM throughput is available, but their training-equation residuals are
-  6--24x the Householder baseline and their coefficient errors are order one. FP32
-  unshifted Gram/CholeskyQR2 loses positive definiteness at pivot 579; TF32
-  fails earlier. LSQR does not converge before losing its speed advantage.
-- No tested method is both at least 1.5x faster and reference-accurate, so no
-  alternative was connected to the score path and no misleading end-to-end
-  timing was run. Full methods, raw JSON, figures, and acceptance definitions
-  are in sections 12--13 of `reports/qh_score_evaluation_compression_20260810.md`
-  and `reports/assets/qh_psi_qr_benchmark_20260810/`. The fixed-matrix
-  implementation is complete through `31d17f1`; the accepted report/result
-  snapshot is commit `30f79a4`.
+- 2026-08-10 fixed-matrix screening used the exact augmented FP32 problem
+  `391014 x 1574`. The best accurate single-RTX5090 result fused RHS into
+  Householder QR at P50/P95 `162.428/162.492 ms` (1.120x over the baseline),
+  but no tested QR, TSQR, Gram, PCGLS, LSQR, BF16, or refinement method was both
+  at least 1.5x faster and reference-accurate. Nothing replaced production QR.
+  `physical_residual_relative` in those artifacts is a training-equation
+  residual, not the independent normalized physical angle. Frozen inputs,
+  exact solver evidence, and rejected alternatives are in sections 12--13 of
+  `reports/qh_score_evaluation_compression_20260810.md` and
+  `reports/assets/qh_psi_qr_benchmark_20260810/`.
 
 ### Completed 10000-step optimization continuation
 
-- P107 job `33799` completed the exact 5000-to-10000 continuation with
-  `status=ok`, `stop_reason=completed_iterations`, 10000 contiguous history
-  rows, 9822 cumulative Adam steps, zero-byte stderr, and idle pre/postflight
-  RTX 5090 states. The state restored current/best latents, both Adam moments,
-  Adam step, both RNGs, and flow prefetch state; it was not a restart from best.
-- The additional 5000 steps produced no new best. Their maximum current score
-  was `93.3271797` at iteration 5064, below the unchanged `93.3672653` best at
-  iteration 4341. The best remained unchanged for 5659 consecutive iterations;
-  final current score was `92.3147119`. Under the fixed LR `0.01`, beta
-  `(0.7,0.999)`, perturbation `0.005`, two-direction central difference, and
-  FP32 RK4-128 configuration, mechanically adding more steps is no longer the
-  default next action. This is evidence of optimizer stagnation, not proof of
-  global optimality.
-- Added wall time was `30648.96 s` (8 h 30 min 49 s), or `6.130 s/step`
-  including periodic serialization/plotting. Iteration compute averaged
-  `5.299 s` with P95 `5.530 s` and max `6.914 s`; score, flow, and iteration-
-  external artifact work used 68.0%, 18.4%, and 13.6% of added wall time.
-  There were 4903 applied updates, 97 safe skips, 12 temporal rejections, 28
-  backtracked centers, and no non-`ok` final center.
-- The frozen best SHA-256 remains
-  `d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29`,
-  exactly the already fully evaluated iteration-4341 sample. No duplicate full
-  physical evaluation is required. Evidence is section 22 of
-  `reports/qh_score_throughput_and_continuous_surface_plan.md` and
-  `reports/assets/qh_score_fast_beta1_0p7_continue10000_20260808/`.
+- Exact continuation restored all optimizer/RNG/prefetch state and completed
+  10000 contiguous iterations cleanly, but steps 5001--10000 found no new best.
+  Score `93.3672653` at iteration 4341 remained unchanged for 5659 iterations;
+  this is strong stagnation evidence under that fixed Adam configuration, not
+  proof of global optimality. The already fully evaluated best SHA-256 remains
+  `d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29`.
+  Timing, resume proof, and diagnostics are in section 22 of
+  `reports/qh_score_throughput_and_continuous_surface_plan.md`.
 
 ### Current physically accepted best (historical score definition)
 
@@ -469,18 +428,36 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-15 active branch is `codex/original-space-optimization`, forked
-  directly in the repository root from accepted trajectory-pilot commit
-  `5df12bd`; no worktree is used. The experiment tests whether the historical
-  QH `start_10` can be optimized without the flow ODE after one initial decode.
-  “Original/data space” means the fixed per-coordinate standardized coil-token
-  coordinates mapped to physical Fourier coefficients and canonical currents
-  only by `CoilNormalizer.inverse`; it is not raw mixed-unit Euclidean space and
-  it makes zero flow calls after initialization. The matched method remains
-  single-RTX5090, 64 fresh orthogonal directions/128 centered endpoints,
-  query-batched local score, formal-center acceptance, and Adam beta
-  `(0.7,0.999)`. Active report:
-  `reports/qh_original_space_optimization_20260815.md`.
+- 2026-08-15 branch `codex/original-space-optimization` completed directly in
+  the repository root; no worktree was used. Implementation commit `8a628f2`
+  adds an explicit `--parameter-space data` mode. It decodes historical QH
+  `start_10` once, then optimizes fixed per-coordinate standardized coil-token
+  coordinates through `CoilNormalizer.inverse`; no flow ODE is evaluated after
+  initialization. This is a diagonal scaling of original Fourier/current data,
+  not raw mixed-unit Euclidean space and not a learned nonlinear map.
+- On one idle RTX 5090, 64 fresh orthogonal directions/128 centered endpoints,
+  Adam beta `(0.7,0.999)`, calibrated data-space `h=0.0025` and LR `0.01`
+  reached best `91.7831404` at step 106 from `85.4355197` in 200 steps. Mean
+  iteration time was `4.13254 s`; every formal center and all 25,600 endpoints
+  were `ok`, with no rejected update. Best-case SHA-256 is
+  `96a48e5a2eb350f06ca96af39b90da15e9dce08ee48e3d97660e58bc54027679`.
+- A matched current-code latent run with `h=0.005`, LR `0.02` reached
+  `93.1763815` at step 167 and mean `5.45501 s/step`. At the data run's wall
+  budget it had already reached `93.0644871`; its best volume QH residual
+  `0.00315623` was 3.91x lower than the data-space best `0.01235496`.
+  Independent no-history continuous rescoring preserved the ordering at
+  `91.7814748` versus `93.1413258`. Therefore flow is not required for local
+  improvability or reaching score 90, but remains a materially better nonlinear
+  search preconditioner for high-QH optimization under the tested setup.
+- Single-GPU endpoint scaling from 2 to 600 reduced amortized local-gradient
+  endpoint cost from `490.49` to `19.48 ms` (25.18x). The production-like 128
+  endpoints cost `3.170 s` total or `24.77 ms/endpoint`; modeled flux throughput
+  was `11.38 TFLOP/s` and psi matvec-equivalent throughput `0.91 TFLOP/s`.
+  These are explicit algorithmic operation models, not hardware counters.
+  All experiment jobs completed with zero-byte stderr and idle postflight GPUs.
+  Full tables, definitions, raw compact results, and figures are in
+  `reports/qh_original_space_optimization_20260815.md` and its asset directory.
+  No remote job from this experiment remains active.
 
 - 2026-08-12 completed branch `codex/direct-alpha-fast-score`; `K=64`, LR
   `0.02` was the best tested single-GPU local-gradient Adam configuration. Its

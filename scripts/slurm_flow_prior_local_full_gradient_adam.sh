@@ -5,7 +5,7 @@
 #SBATCH --job-name=qh-local-fullgrad-adam
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=96G
 #SBATCH --time=07:50:00

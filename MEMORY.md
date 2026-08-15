@@ -469,6 +469,19 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
+- 2026-08-15 active branch is `codex/original-space-optimization`, forked
+  directly in the repository root from accepted trajectory-pilot commit
+  `5df12bd`; no worktree is used. The experiment tests whether the historical
+  QH `start_10` can be optimized without the flow ODE after one initial decode.
+  “Original/data space” means the fixed per-coordinate standardized coil-token
+  coordinates mapped to physical Fourier coefficients and canonical currents
+  only by `CoilNormalizer.inverse`; it is not raw mixed-unit Euclidean space and
+  it makes zero flow calls after initialization. The matched method remains
+  single-RTX5090, 64 fresh orthogonal directions/128 centered endpoints,
+  query-batched local score, formal-center acceptance, and Adam beta
+  `(0.7,0.999)`. Active report:
+  `reports/qh_original_space_optimization_20260815.md`.
+
 - 2026-08-12 completed branch `codex/direct-alpha-fast-score`; `K=64`, LR
   `0.02` was the best tested single-GPU local-gradient Adam configuration. Its
   200-step sample and independent score-94.812 step-1710 maximum both passed

@@ -195,6 +195,7 @@ def axis_hint(result: dict[str, Any]) -> tuple[float, float]:
 
 def recorded_native_result(payload: dict[str, Any]) -> dict[str, Any] | None:
     for key in (
+        "original_space_local_gradient_adam",
         "flow_prior_screening",
         "flow_prior_local_full_gradient_adam",
         "flow_prior_local_full_gradient_bfgs",
@@ -426,17 +427,26 @@ def make_case(
     manifest: dict[str, Any],
 ) -> dict[str, Any]:
     case = token_case(tokens, nfp=nfp, target="QH")
-    metadata_key = (
-        "flow_prior_local_full_gradient_bfgs"
-        if manifest["optimizer"] == "bfgs"
-        else "flow_prior_local_full_gradient_adam"
+    if manifest.get("parameter_space", "latent") == "data":
+        metadata_key = "original_space_local_gradient_adam"
+    else:
+        metadata_key = (
+            "flow_prior_local_full_gradient_bfgs"
+            if manifest["optimizer"] == "bfgs"
+            else "flow_prior_local_full_gradient_adam"
+        )
+    parameter_name = (
+        "normalized_coil_tokens"
+        if manifest.get("parameter_space", "latent") == "data"
+        else "noise"
     )
     case[metadata_key] = {
         "format": f"{metadata_key}_v1",
         "iteration": int(iteration),
         "best_score": float(best_score),
         "best_iteration": int(best_iteration),
-        "noise": np.asarray(noise, dtype=np.float32).tolist(),
+        "parameter_space": manifest.get("parameter_space", "latent"),
+        parameter_name: np.asarray(noise, dtype=np.float32).tolist(),
         "native_score": result,
         "manifest": manifest,
     }
@@ -502,7 +512,7 @@ def plot_progress(rows: list[dict[str, Any]], path: Path) -> None:
     axes[0, 1].legend()
     axes[1, 0].plot(step, [row["gradient_rms"] for row in rows], label="gradient")
     axes[1, 0].plot(step, [row["update_rms"] for row in rows], label="update")
-    axes[1, 0].set(yscale="log", xlabel="iteration", ylabel="latent RMS")
+    axes[1, 0].set(yscale="log", xlabel="iteration", ylabel="parameter RMS")
     axes[1, 0].legend()
     axes[1, 1].plot(step, [row["gradient_wall_s"] for row in rows], label="gradient")
     axes[1, 1].plot(step, [row["iteration_wall_s"] for row in rows], label="iteration")
@@ -527,6 +537,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--iterations", type=int, default=10)
     parser.add_argument("--max-wall-s", type=float, default=1500.0)
     parser.add_argument("--flow-steps", type=int, default=128)
+    parser.add_argument(
+        "--parameter-space",
+        choices=("latent", "data"),
+        default="latent",
+        help=(
+            "Optimize flow noise, or optimize normalized coil tokens directly after "
+            "one initial flow decode. The data mode never evaluates the flow again."
+        ),
+    )
     parser.add_argument("--perturbation", type=float, default=0.005)
     parser.add_argument(
         "--gradient-mode",
@@ -580,6 +599,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
+    if args.parameter_space == "data":
+        args.flow_pipeline = False
     if torch.cuda.device_count() <= max(args.flow_device, args.score_device):
         raise RuntimeError("requested CUDA device is unavailable")
     if args.n_base_coils < 1:
@@ -720,6 +741,7 @@ def main() -> None:
         manifest = {
             "algorithm": f"{args.optimizer}_with_query_batched_local_gradient",
             "optimizer": args.optimizer,
+            "parameter_space": args.parameter_space,
             "gradient_objective": (
                 "dynamic local full-density score with coordinate and maximum-surface-selection "
                 "derivatives omitted"
@@ -735,8 +757,19 @@ def main() -> None:
             "n_base_coils": args.n_base_coils,
             "iterations": args.iterations,
             "max_wall_s": args.max_wall_s,
-            "flow": {"method": "rk4", "steps": args.flow_steps, "dtype": "fp32"},
-            "flow_pipeline": bool(args.flow_pipeline),
+            "flow": {
+                "method": "rk4",
+                "steps": args.flow_steps,
+                "dtype": "fp32",
+                "use": (
+                    "every gradient endpoint and accepted center"
+                    if args.parameter_space == "latent"
+                    else "initial latent-to-coil decode only"
+                ),
+            },
+            "flow_pipeline": bool(
+                args.flow_pipeline and args.parameter_space == "latent"
+            ),
             "coordinate_gradient": {
                 "dimension": args.n_base_coils * TOKEN_DIM,
                 "mode": args.gradient_mode,
@@ -780,6 +813,14 @@ def main() -> None:
         }
         write_json(paths["manifest.json"], manifest)
 
+    if args.resume:
+        initial_payload = json.loads(args.initial_case.read_text(encoding="utf-8"))
+        saved_space = manifest.get("parameter_space", "latent")
+        if saved_space != args.parameter_space:
+            raise ValueError(
+                f"resume parameter space {saved_space!r} != requested {args.parameter_space!r}"
+            )
+
     torch.cuda.set_device(args.flow_device)
     flow_device = torch.device("cuda", args.flow_device)
     model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, flow_device)
@@ -798,15 +839,44 @@ def main() -> None:
     )
 
     torch.cuda.set_device(args.flow_device)
-    current_tokens_batch, initial_decode_wall_s = decode_noise_rk4(
-        model,
-        normalizer,
-        current_noise[None],
-        nfp=args.nfp,
-        steps=args.flow_steps,
-        device=flow_device,
-    )
+    if args.resume and args.parameter_space == "data":
+        started = time.perf_counter()
+        current_tokens_batch = normalizer.inverse(
+            current_noise[None], (args.nfp, args.n_base_coils)
+        ).astype(np.float64, copy=False)
+        initial_decode_wall_s = time.perf_counter() - started
+    else:
+        current_tokens_batch, initial_decode_wall_s = decode_noise_rk4(
+            model,
+            normalizer,
+            current_noise[None],
+            nfp=args.nfp,
+            steps=args.flow_steps,
+            device=flow_device,
+        )
     current_tokens = current_tokens_batch[0]
+    if not args.resume and args.parameter_space == "data":
+        normalized, clipped_fraction = normalizer.transform(
+            current_tokens[None], (args.nfp, args.n_base_coils)
+        )
+        current_noise = normalized[0]
+        best_noise = current_noise.copy()
+        reconstructed = normalizer.inverse(
+            current_noise[None], (args.nfp, args.n_base_coils)
+        )[0]
+        reconstruction_relative_rms = float(
+            np.linalg.norm(reconstructed - current_tokens)
+            / max(np.linalg.norm(current_tokens), 1.0e-30)
+        )
+        current_tokens = reconstructed.astype(np.float64, copy=False)
+        manifest["data_parameterization"] = {
+            "definition": "per-coordinate training-set standardization",
+            "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_clipped_fraction": float(clipped_fraction),
+            "initial_roundtrip_relative_rms": reconstruction_relative_rms,
+            "flow_calls_after_initialization": 0,
+        }
+        write_json(paths["manifest.json"], manifest)
     initial_previous_result = recorded_native_result(initial_payload)
     current_result, initial_score_wall_s = score_center(
         args.lib,
@@ -861,11 +931,14 @@ def main() -> None:
                 np.asarray(best_payload["raw"]["current"]),
             )
         )
-        best_metadata_key = (
-            "flow_prior_local_full_gradient_bfgs"
-            if manifest["optimizer"] == "bfgs"
-            else "flow_prior_local_full_gradient_adam"
-        )
+        if manifest.get("parameter_space", "latent") == "data":
+            best_metadata_key = "original_space_local_gradient_adam"
+        else:
+            best_metadata_key = (
+                "flow_prior_local_full_gradient_bfgs"
+                if manifest["optimizer"] == "bfgs"
+                else "flow_prior_local_full_gradient_adam"
+            )
         best_result = best_payload[best_metadata_key]["native_score"]
 
     accepted_gradient_scales = [
@@ -883,6 +956,12 @@ def main() -> None:
     stop_reason = "completed_iterations"
 
     def decode_flow(states: np.ndarray) -> tuple[np.ndarray, float]:
+        if args.parameter_space == "data":
+            started = time.perf_counter()
+            decoded = normalizer.inverse(
+                states, (args.nfp, args.n_base_coils)
+            ).astype(np.float64, copy=False)
+            return decoded, time.perf_counter() - started
         torch.cuda.set_device(args.flow_device)
         decoded, wall_s = decode_noise_rk4(
             model,

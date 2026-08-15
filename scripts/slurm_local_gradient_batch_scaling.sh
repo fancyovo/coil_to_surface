@@ -2,13 +2,13 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=qh-local-fullgrad-adam
+#SBATCH --job-name=qh-gradient-scaling
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:RTX5090:1
-#SBATCH --mem=96G
-#SBATCH --time=07:50:00
+#SBATCH --mem=64G
+#SBATCH --time=00:30:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -17,12 +17,9 @@ set -euo pipefail
 project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
-lib="${SCORE_LIB:?SCORE_LIB must name the validated experimental score library}"
+lib="${SCORE_LIB:?SCORE_LIB must name the validated query-batch score library}"
 initial_case="${INITIAL_CASE:-$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json}"
-run_root="${RUN_ROOT:-$project/runs/qh_local_full_gradient_adam/${SLURM_JOB_ID}}"
-iterations="${ITERATIONS:-2000}"
-max_wall_s="${MAX_WALL_S:-27300}"
-resume="${RESUME:-0}"
+run_root="${RUN_ROOT:?RUN_ROOT is required}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 child=""
 
@@ -56,9 +53,7 @@ export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
-export MPLBACKEND=Agg
 cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
-test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 idle_streak=0
@@ -85,51 +80,35 @@ for _ in {1..60}; do
   sleep 2
 done
 if (( idle_streak < 3 )); then
-  echo "allocated GPUs did not reach three consecutive idle probes" >&2
+  echo "allocated GPU did not reach three consecutive idle probes" >&2
   exit 42
 fi
 nvidia-smi --id="$gpu_selector" \
   --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
   --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"
 
-resume_args=()
-if [[ "$resume" == "1" ]]; then resume_args+=(--resume); fi
-pipeline_args=(--flow-pipeline)
-if [[ "${FLOW_PIPELINE:-1}" != "1" ]]; then pipeline_args=(--no-flow-pipeline); fi
-
-python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
+python "$project/scripts/benchmark_local_gradient_batch_scaling.py" \
   --checkpoint "$checkpoint" \
   --initial-case "$initial_case" \
   --lib "$lib" \
-  --out-dir "$run_root" \
-  --iterations "$iterations" \
-  --max-wall-s "$max_wall_s" \
-  --flow-steps "${FLOW_STEPS:-128}" \
-  --parameter-space "${PARAMETER_SPACE:-latent}" \
+  --output "$run_root/summary.json" \
+  --endpoint-counts "${ENDPOINT_COUNTS:-2,4,8,16,32,64,128,256,600}" \
+  --repeats "${REPEATS:-3}" \
   --perturbation "${PERTURBATION:-0.005}" \
-  --gradient-mode "${GRADIENT_MODE:-coordinate}" \
-  --random-directions "${RANDOM_DIRECTIONS:-64}" \
-  --seed "${SEED:-20260812}" \
-  --optimizer "${OPTIMIZER:-adam}" \
-  --learning-rate "${LEARNING_RATE:-0.01}" \
-  --beta1 "${BETA1:-0.7}" \
-  --beta2 "${BETA2:-0.999}" \
-  --flow-device 0 \
-  --score-device 0 \
-  --psi-iterations "${PSI_ITERATIONS:-4}" \
-  --alpha-iterations "${ALPHA_ITERATIONS:-4}" \
-  --formal-surface-theta-count "${FORMAL_SURFACE_THETA_COUNT:-128}" \
-  --local-surface-theta-count "${LOCAL_SURFACE_THETA_COUNT:-64}" \
-  --iota-degree "${IOTA_DEGREE:-3}" \
-  --bfgs-initial-trust-rms "${BFGS_INITIAL_TRUST_RMS:-0.01}" \
-  --bfgs-min-trust-rms "${BFGS_MIN_TRUST_RMS:-0.00001}" \
-  --bfgs-max-trust-rms "${BFGS_MAX_TRUST_RMS:-0.05}" \
-  --bfgs-trust-growth "${BFGS_TRUST_GROWTH:-1.2}" \
-  --bfgs-trust-shrink "${BFGS_TRUST_SHRINK:-0.5}" \
-  --bfgs-min-improvement "${BFGS_MIN_IMPROVEMENT:-0.0}" \
-  --plot-every "${PLOT_EVERY:-5}" \
-  "${pipeline_args[@]}" \
-  "${resume_args[@]}" &
+  --seed "${SEED:-2026081501}" \
+  --device 0 &
 child=$!
 wait "$child"
 child=""
+
+if nvidia-smi --id="$gpu_selector" \
+    --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq '[0-9]'; then
+  echo "GPU compute process remains after benchmark" >&2
+  exit 3
+fi
+if ps -u "$USER" -o stat=,pid=,ppid=,comm= | \
+    awk '$1 ~ /^Z/ {found=1} END {exit !found}'; then
+  echo "Zombie process remains after benchmark" >&2
+  exit 4
+fi
+touch "$run_root/completed.ok"

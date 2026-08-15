@@ -125,3 +125,10 @@ def test_recorded_native_result_accepts_screened_start() -> None:
     payload = {"flow_prior_screening": {"native_score": result}}
 
     assert recorded_native_result(payload) is result
+
+
+def test_recorded_native_result_accepts_original_space_state() -> None:
+    result = {"status": "ok", "diagnostics": {"axis_R": 1.0, "axis_Z": 0.0}}
+    payload = {"original_space_local_gradient_adam": {"native_score": result}}
+
+    assert recorded_native_result(payload) is result

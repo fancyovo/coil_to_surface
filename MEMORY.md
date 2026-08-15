@@ -430,7 +430,8 @@ Only current decisions are retained here; exact history is in
 
 - 2026-08-15 branch `codex/original-space-optimization` completed directly in
   the repository root; no worktree was used. Implementation commit `8a628f2`
-  adds an explicit `--parameter-space data` mode. It decodes historical QH
+  adds an explicit `--parameter-space data` mode; accepted result/report commit
+  `298c5cf` contains the experiment evidence. The mode decodes historical QH
   `start_10` once, then optimizes fixed per-coordinate standardized coil-token
   coordinates through `CoilNormalizer.inverse`; no flow ODE is evaluated after
   initialization. This is a diagonal scaling of original Fourier/current data,

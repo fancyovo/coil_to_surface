@@ -428,6 +428,19 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
+- 2026-08-19 complete evaluation of the accepted minimum positive face-QH
+  record (`p107_37034_3_000018_step0150`, $N_{\rm FP}=4$, three base coils)
+  passed. Its fixed-probe face QH is `6.687032119376034e-08`; current native
+  score replay is `94.6368681663`. Sample-specific outward search selected
+  `a=0.08, s=0.49`: volume `0.0660699552 m^3`, iota `1.45637457`, dense L2
+  `1.603e-5`, normal P95 `1.601e-5`, and face QA/QH/QP
+  `4.633e-3/5.171e-7/4.693e-3`. `s=0.56` jumped to a smaller-volume branch and
+  `s=0.64` failed the fixed point budget. Poincare, direct/DESC contours, and
+  nested DESC passed; DESC force mean/P95/max fell to
+  `5.920e-4/1.465e-3/3.709e-3`, but hit the 50-step cap. Exact jobs, hashes,
+  all figures, and 22 MiB of artifacts are in
+  `reports/qh_min_face_qh_full_evaluation_20260819.md` and its matching asset
+  directory. Fixed delivery validation passed with all eight DESC PNGs cited.
 - 2026-08-19 active branch is `codex/trajectory-face-qs-calibration`, checked
   out directly in the repository root with no worktree. The formal experiment
   is complete; there are no remaining project Slurm jobs. Full methods,

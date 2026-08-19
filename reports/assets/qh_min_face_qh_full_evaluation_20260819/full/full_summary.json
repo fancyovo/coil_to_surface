@@ -1,0 +1,136 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator_data/qh_trajectory_face_qs_formal_20260819/cases/p107_37034_3_000018_step0150/case.json",
+  "surface_npz": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/candidates/s_0p49/standard_rho_1/boozer_standard.npz",
+  "surface": {
+    "nfp": 4,
+    "order": 12,
+    "iota": 1.456374566938386,
+    "G": -6.94355750725196,
+    "rho": 1.0,
+    "s_edge": 0.49,
+    "s_level": 0.49
+  },
+  "desc_preflight": {
+    "jax_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "gpu_available": false
+  },
+  "visualization": {
+    "surface_meta": {
+      "iota": 1.456374566938386,
+      "G": -6.94355750725196,
+      "psi_level": null
+    },
+    "b_abs_min": 0.6837129313323261,
+    "b_abs_mean": 0.7613393278311253,
+    "b_abs_max": 0.8392178686409208,
+    "poincare": {
+      "hit_counts": [
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "seed_r_min": 1.314644252785236,
+      "seed_r_max": 1.3547980257242525,
+      "surface_r_outer_phi0": 1.356911382194727,
+      "edge_fraction": 0.95,
+      "tmax_fl": 20000000.0,
+      "tol": 1e-11,
+      "psi_drift": null,
+      "save_path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/assets/poincare.png"
+    },
+    "boozer_b_png": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/assets/boozer_b.png",
+    "boozer_b_html": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/assets/boozer_b.html",
+    "coils_surface_html": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/assets/coils_surface.html",
+    "coils_surface_png": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/assets/coils_surface.png"
+  },
+  "visualization_time_s": 37.70274047902785,
+  "desc": {
+    "toroidal_flux": -0.0054769485478345925,
+    "input": {
+      "mpol": 12,
+      "ntor": 12,
+      "stellsym": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/input.check"
+    },
+    "nested_initial": true,
+    "initial_force_compute_success": true,
+    "initial_force_compute_time_s": 6.4243880088906735,
+    "initial_force_mean_abs_normalized": 1.1195895022387985,
+    "initial_force_max_abs_normalized": 3.3990282277483077,
+    "initial_force_p95_abs_normalized": 1.7692611948847046,
+    "initial_force_vol_average_raw": 1399222.810041164,
+    "plots_initial": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/boundary_initial.png",
+        "time_s": 2.432729540159926
+      }
+    },
+    "solve_call_success": true,
+    "solve_return": "(Equilibrium at 0xe9ca8317860 (L=8, M=8, N=8, NFP=4, sym=True, spectral_indexing=ansi),           message: Maximum number of iterations has been exceeded.\n          success: False\n              fun: [-4.559e-06  1.297e-04 ...  6.218e-05  9.046e-05]\n                x: [-8.489e-04  2.157e-04 ... -3.864e-02 -2.428e-01]\n              nit: 50\n             cost: 0.00013250359118223147\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 0.00012285669121264728\n             nfev: 59\n             njev: 51\n             allx: [Array([ 5.918e-07, -1.457e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-1.090e-05, -2.734e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([ 5.862e-06, -1.500e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([ 2.884e-06, -1.353e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([ 1.112e-06, -1.229e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([ 7.069e-07, -1.234e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([ 9.227e-08, -1.298e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([ 1.477e-08, -1.326e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.311e-08, -1.355e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-1.899e-07, -1.362e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-2.761e-07, -1.378e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-3.256e-07, -1.384e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-3.995e-07, -1.395e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-4.427e-07, -1.401e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-4.981e-07, -1.409e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-5.301e-07, -1.414e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-5.711e-07, -1.420e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-6.054e-07, -1.426e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-6.247e-07, -1.429e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-6.496e-07, -1.434e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-6.701e-07, -1.438e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-6.873e-07, -1.441e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.011e-07, -1.445e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.124e-07, -1.447e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.214e-07, -1.450e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.287e-07, -1.452e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.342e-07, -1.454e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.383e-07, -1.455e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.411e-07, -1.457e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.428e-07, -1.458e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.436e-07, -1.459e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.438e-07, -1.460e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.434e-07, -1.461e-05, ..., -6.687e-06,\n                          -8.131e-07], dtype=float64), Array([-7.428e-07, -1.462e-05, ..., -6.687e-",
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_cost": 0.00013250359118223147,
+    "optimizer_nit": 50.0,
+    "optimizer_nfev": 59.0,
+    "optimizer_njev": 51.0,
+    "optimizer_optimality": 0.00012285669121264728,
+    "solve_time_s": 149.24586203298531,
+    "nested_final": true,
+    "final_force_compute_success": true,
+    "final_force_compute_time_s": 1.008300842018798,
+    "final_force_mean_abs_normalized": 0.0005920443137027929,
+    "final_force_max_abs_normalized": 0.0037092548528801584,
+    "final_force_p95_abs_normalized": 0.0014648658407581947,
+    "final_force_vol_average_raw": 464.4645818323268,
+    "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/equilibrium.h5",
+    "plots_final": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/boundary.png",
+        "time_s": 0.6452543928753585
+      },
+      "boozer_modes": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/boozer_modes.png",
+        "time_s": 10.875081724021584
+      },
+      "boozer_B": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/boozer_B.png",
+        "time_s": 10.498860054882243
+      },
+      "qs_QA": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/qs_QA.png",
+        "time_s": 7.767697784118354
+      },
+      "qs_QH": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/qs_QH.png",
+        "time_s": 2.755551564041525
+      },
+      "qs_QP": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/qs_QP.png",
+        "time_s": 2.289769168011844
+      },
+      "iota": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_data/full_eval_min_face_qh_step0150_20260819/full/desc/iota.png",
+        "time_s": 4.207022137008607
+      }
+    }
+  },
+  "desc_time_s": 232.58107306994498,
+  "status": "completed",
+  "total_time_s": 306.229853420984
+}

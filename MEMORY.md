@@ -473,7 +473,8 @@ Only current decisions are retained here; exact history is in
   `~/local_surface_evaluator_data/qh_trajectory_face_qs_formal_20260819`.
   Jobs are select `39468`, prepare `39470/39472`, CPU solve `39474/39476`, GPU
   validate `39478/39480`, and analysis `39482`. All six RTX 5090 preflights
-  were idle. Expected end-to-end wall time is about 6--7 h; monitor with
+  were idle; the first six preparations all passed in 158.4--161.1 s each.
+  Expected end-to-end wall time is about 6 h; monitor with
   `squeue -j 39470,39472,39474,39476,39478,39480,39482`.
 - Completed original-space evidence remains in
   `reports/qh_original_space_optimization_20260815.md`: direct standardized

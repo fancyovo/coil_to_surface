@@ -462,6 +462,13 @@ Only current decisions are retained here; exact history is in
   psi stages but are also invalid physics evidence: all alpha commands used the
   nonexistent `--gpu-device 0` option. The branch now passes the actual Torch
   interface `--device cuda`; rerun in a new root before scaling out.
+- 2026-08-19 pilot jobs `39440--39454` ran the full chain. GPU preparation was
+  16/18; the two misses were one trajectory's later fixed probe with only
+  169964 valid candidates versus the fixed 180000-point budget. CPU Simsopt
+  solved all 32 prepared surfaces in about 4.8--8.1 s each; 30 passed strict
+  97x97 validation, while two solver-converged surfaces narrowly missed the
+  normal-field P95 threshold. Formal preparation uses bounded oversampling 1.5
+  instead of 1.25 and reports both solved-regular and strict-accepted cohorts.
 - Completed original-space evidence remains in
   `reports/qh_original_space_optimization_20260815.md`: direct standardized
   data-space Adam is locally viable, but the matched flow-latent run reached a

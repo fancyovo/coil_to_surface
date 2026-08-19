@@ -157,7 +157,7 @@ def prepare_case(case_dir: Path, *, gpu_lib: Path, device: int) -> dict[str, Any
             "--validation-points",
             "60000",
             "--ray-candidate-oversampling",
-            "1.25",
+            "1.5",
             "--minimum-candidate-valid-fraction",
             "0.0",
             "--sampling-backend",

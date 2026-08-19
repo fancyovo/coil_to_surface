@@ -55,11 +55,27 @@ def distribution(values: Iterable[float]) -> dict[str, float | int | None]:
     }
 
 
-def correlations(rows: list[dict[str, Any]], *, seed: int = 20260819, bootstrap: int = 1000) -> dict[str, Any]:
+def correlation_statistic(x: np.ndarray, y: np.ndarray, *, kind: str) -> float:
+    if x.size < 3 or np.ptp(x) == 0.0 or np.ptp(y) == 0.0:
+        return float("nan")
+    if kind == "spearman":
+        return float(spearmanr(x, y).statistic)
+    if kind == "pearson":
+        return float(pearsonr(x, y).statistic)
+    raise ValueError(kind)
+
+
+def correlations(
+    rows: list[dict[str, Any]],
+    *,
+    acceptance_key: str = "accepted",
+    seed: int = 20260819,
+    bootstrap: int = 1000,
+) -> dict[str, Any]:
     usable = [
         row
         for row in rows
-        if row["accepted"]
+        if row[acceptance_key]
         and row["native_qh"] > 0.0
         and row["face_qh"] > 0.0
         and math.isfinite(row["native_qh"])
@@ -74,20 +90,38 @@ def correlations(rows: list[dict[str, Any]], *, seed: int = 20260819, bootstrap:
         by_trajectory[row["trajectory_id"]].append(row)
     identifiers = sorted(by_trajectory)
     rng = np.random.default_rng(seed)
-    samples = []
+    samples: list[float] = []
     for _ in range(bootstrap):
         draw = rng.choice(identifiers, size=len(identifiers), replace=True)
         bootstrap_rows = [row for identifier in draw for row in by_trajectory[identifier]]
         bx = np.log10([row["native_qh"] for row in bootstrap_rows])
         by = np.log10([row["face_qh"] for row in bootstrap_rows])
-        samples.append(float(spearmanr(bx, by).statistic))
+        statistic = correlation_statistic(bx, by, kind="spearman")
+        if math.isfinite(statistic):
+            samples.append(statistic)
+    spearman = correlation_statistic(x, y, kind="spearman")
+    log_pearson = correlation_statistic(x, y, kind="pearson")
     return {
         "count": len(usable),
         "trajectory_count": len(identifiers),
-        "spearman": float(spearmanr(x, y).statistic),
-        "log_pearson": float(pearsonr(x, y).statistic),
-        "cluster_bootstrap_95": [float(np.percentile(samples, 2.5)), float(np.percentile(samples, 97.5))],
+        "spearman": spearman if math.isfinite(spearman) else None,
+        "log_pearson": log_pearson if math.isfinite(log_pearson) else None,
+        "cluster_bootstrap_95": (
+            [float(np.percentile(samples, 2.5)), float(np.percentile(samples, 97.5))]
+            if samples
+            else None
+        ),
     }
+
+
+def prepare_failure_stage(prepare: dict[str, Any]) -> str:
+    if prepare.get("status") == "ok":
+        return "none"
+    error = str(prepare.get("error", ""))
+    for stage in ("source_psi", "alpha_nu", "alpha"):
+        if f"/{stage}.log" in error:
+            return stage
+    return "unknown"
 
 
 def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
@@ -135,10 +169,11 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
                 "native_psi_train_rms": nested(diagnostics, "psi_train_rms"),
                 "native_psi_angle_l2": nested(diagnostics, "psi_angle_l2"),
                 "native_psi_angle_p95": nested(diagnostics, "psi_angle_p95"),
-                "source_psi_train_rms": nested(source_summary, "psi", "fit", "train_rms"),
-                "source_psi_validation_rms": nested(source_summary, "psi", "fit", "validation_rms"),
-                "source_psi_angle_l2": nested(source_summary, "psi", "fit", "validation_angle_l2"),
-                "source_psi_angle_p95": nested(source_summary, "psi", "fit", "validation_angle_p95"),
+                "prepare_failure_stage": prepare_failure_stage(prepare),
+                "source_psi_train_rms": nested(source_summary, "psi", "fit_info", "train_rms"),
+                "source_psi_validation_rms": nested(source_summary, "psi", "fit_info", "validation_rms"),
+                "source_psi_angle_l2": nested(source_summary, "psi", "fit_info", "validation_angle_l2"),
+                "source_psi_angle_p95": nested(source_summary, "psi", "fit_info", "validation_angle_p95"),
                 "alpha_validation_l2": nested(alpha_order, "validation", "relative_l2"),
                 "alpha_normal_floor_l2": nested(alpha_order, "validation", "normal_floor_relative_l2"),
                 "initial_boozer_l2": nested(surface, "initial", "grids", default=float("nan")),
@@ -154,6 +189,7 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
                 "prepare_wall_s": nested(prepare, "total_wall_s"),
                 "cpu_solve_wall_s": nested(surface, "cpu_solve", "total_wall_s"),
                 "validation_wall_s": nested(surface, "validation_wall_s"),
+                "cpu_solve_status": surface.get("cpu_solve", {}).get("status", "missing"),
                 "final_dense_l2": nested(surface, "final", "grids", default=float("nan")),
                 "final_normal_p95": nested(surface, "final", "grids", default=float("nan")),
             }
@@ -164,6 +200,14 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
             rows[-1]["final_boozer_l2"] = float(surface["final"]["grids"][-1]["relative_l2"])
             rows[-1]["final_dense_l2"] = float(surface["final"]["grids"][-1]["relative_l2"])
             rows[-1]["final_normal_p95"] = float(surface["final"]["grids"][-1]["normal_B_sine_p95"])
+        checks = surface.get("acceptance_checks", {})
+        rows[-1]["solved_regular"] = bool(
+            checks.get("solver_converged", False)
+            and checks.get("toroidal_winding", False)
+            and checks.get("normal_nonzero", False)
+            and math.isfinite(rows[-1]["face_qh"])
+            and rows[-1]["face_qh"] > 0.0
+        )
     return rows
 
 
@@ -291,7 +335,10 @@ def main() -> None:
             "count": len(subset),
             "accepted": sum(row["accepted"] for row in subset),
             "acceptance_fraction": sum(row["accepted"] for row in subset) / max(len(subset), 1),
-            "correlation": correlations(subset),
+            "solved_regular": sum(row["solved_regular"] for row in subset),
+            "solved_regular_fraction": sum(row["solved_regular"] for row in subset) / max(len(subset), 1),
+            "strict_correlation": correlations(subset),
+            "solved_regular_correlation": correlations(subset, acceptance_key="solved_regular"),
             "face_qh": distribution(row["face_qh"] for row in subset if row["accepted"]),
             "inverse_aspect_ratio": distribution(row["inverse_aspect_ratio"] for row in subset if row["accepted"]),
         }
@@ -335,6 +382,8 @@ def main() -> None:
         "case_count": len(rows) // 2,
         "trajectory_count": len({row["trajectory_id"] for row in rows}),
         "prepare_status_counts": dict(Counter(row["prepare_status"] for row in rows[::2])),
+        "prepare_failure_stage_counts": dict(Counter(row["prepare_failure_stage"] for row in rows[::2])),
+        "cpu_solve_status_counts": dict(Counter(row["cpu_solve_status"] for row in rows)),
         "validation_status_counts": dict(Counter(row["validation_status"] for row in rows)),
         "by_surface": by_surface,
         "by_iteration_fixed_probe": by_iteration,

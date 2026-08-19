@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import math
 import os
@@ -13,6 +14,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_GPU_SYMBOLS = (
+    "sgpu_trace_axis_samples",
+    "sgpu_fit_psi_fullgpu",
+)
 
 
 def read_json(path: Path) -> Any:
@@ -41,6 +46,15 @@ def run_logged(command: list[str], log_path: Path) -> float:
     if completed.returncode != 0:
         raise RuntimeError(f"command exited {completed.returncode}; see {log_path}")
     return elapsed
+
+
+def validate_gpu_library(path: Path) -> None:
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    library = ctypes.CDLL(str(path.resolve()))
+    missing = [symbol for symbol in REQUIRED_GPU_SYMBOLS if not hasattr(library, symbol)]
+    if missing:
+        raise RuntimeError(f"GPU library is missing required ABI symbols: {', '.join(missing)}")
 
 
 def prepare_case(case_dir: Path, *, gpu_lib: Path, device: int) -> dict[str, Any]:
@@ -233,6 +247,7 @@ def main() -> None:
     args = parser.parse_args()
     if not 0 <= args.shard_index < args.shard_count:
         raise ValueError("invalid shard index")
+    validate_gpu_library(args.gpu_lib)
     records = read_json(args.experiment_root / "cases.json")
     selected = [row for index, row in enumerate(records) if index % args.shard_count == args.shard_index]
     if args.limit > 0:

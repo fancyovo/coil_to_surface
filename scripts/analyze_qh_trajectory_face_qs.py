@@ -178,15 +178,25 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 def plot_face_vs_volume(rows: list[dict[str, Any]], path: Path) -> None:
     figure, axes = plt.subplots(1, 2, figsize=(12.5, 5.2), constrained_layout=True)
     colors = {"fixed_probe": "#176b87", "adaptive_edge": "#b64b3b"}
+    plotted = 0
     for name in colors:
         subset = [row for row in rows if row["surface_name"] == name and row["accepted"] and row["native_qh"] > 0 and row["face_qh"] > 0]
+        plotted += len(subset)
         axes[0].scatter([row["native_qh"] for row in subset], [row["face_qh"] for row in subset], s=14, alpha=0.42, color=colors[name], label=f"{name} (n={len(subset)})")
-    axes[0].set(xscale="log", yscale="log", xlabel="volume differential QH error / helicity", ylabel="surface QH relative variance", title="Volume vs surface QH")
+    if plotted:
+        axes[0].set(xscale="log", yscale="log")
+    else:
+        axes[0].text(0.5, 0.5, "No accepted surfaces", ha="center", va="center", transform=axes[0].transAxes)
+    axes[0].set(xlabel="volume differential QH error / helicity", ylabel="surface QH relative variance", title="Volume vs surface QH")
     axes[0].legend(frameon=False)
     accepted = [row for row in rows if row["accepted"] and row["face_qh"] > 0]
     scatter = axes[1].scatter([row["inverse_aspect_ratio"] for row in accepted], [row["face_qh"] for row in accepted], c=[row["iteration"] for row in accepted], s=15, alpha=0.5, cmap="viridis")
-    axes[1].set(yscale="log", xlabel="surface inverse aspect ratio", ylabel="surface QH relative variance", title="Surface size as a covariate")
-    figure.colorbar(scatter, ax=axes[1], label="Adam iteration")
+    if accepted:
+        axes[1].set_yscale("log")
+        figure.colorbar(scatter, ax=axes[1], label="Adam iteration")
+    else:
+        axes[1].text(0.5, 0.5, "No accepted surfaces", ha="center", va="center", transform=axes[1].transAxes)
+    axes[1].set(xlabel="surface inverse aspect ratio", ylabel="surface QH relative variance", title="Surface size as a covariate")
     figure.savefig(path, dpi=190)
     plt.close(figure)
 
@@ -211,7 +221,11 @@ def plot_time_evolution(rows: list[dict[str, Any]], path: Path) -> None:
         high.append(float(np.percentile(values, 90)))
     axes[0].fill_between(x, low, high, color="#176b87", alpha=0.2, label="P10-P90")
     axes[0].plot(x, median, "o-", color="#176b87", linewidth=2, label="median")
-    axes[0].set(yscale="log", xlabel="optimizer wall time [min]", ylabel="fixed-probe surface QH", title="Face QH during optimization")
+    if subset:
+        axes[0].set_yscale("log")
+    else:
+        axes[0].text(0.5, 0.5, "No accepted fixed-probe surfaces", ha="center", va="center", transform=axes[0].transAxes)
+    axes[0].set(xlabel="optimizer wall time [min]", ylabel="fixed-probe surface QH", title="Face QH during optimization")
     axes[0].legend(frameon=False)
     for threshold, color in ((1e-3, "#d18b2c"), (1e-4, "#b64b3b"), (1e-5, "#6d3f8c")):
         fractions = []

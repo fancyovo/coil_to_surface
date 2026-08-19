@@ -448,6 +448,16 @@ Only current decisions are retained here; exact history is in
   preparation failure rate, CPU-solve P50/P95, dense acceptance, actual surface
   size, and end-to-end estimate. Long jobs may be left running after stability
   is verified, with job IDs and a monitor command recorded here.
+- 2026-08-19 pilot jobs `39389--39403` are invalid infrastructure evidence:
+  all 18 cases stopped before axis search because the supplied historical
+  `build_mixed` library lacked `sgpu_trace_axis_samples`. No psi, alpha, surface,
+  or face-QS calculation ran, so do not treat this as a physical failure rate.
+  The branch now checks required GPU ABI symbols before processing a shard and
+  handles an empty accepted set without crashing the analyzer.
+- Current branch-local CUDA library was built by RTX 5090 job `39413` at
+  `gpu_backend/build_face_qs/libstellarator_gpu.so`; SHA-256 is
+  `7e0f28dc34286d90a3ff0d99ade88055c702870f659bed524e5d7aada8ff9d00`.
+  A corrected pilot must use this exact library and a fresh experiment root.
 - Completed original-space evidence remains in
   `reports/qh_original_space_optimization_20260815.md`: direct standardized
   data-space Adam is locally viable, but the matched flow-latent run reached a

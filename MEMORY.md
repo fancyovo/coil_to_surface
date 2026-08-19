@@ -469,6 +469,12 @@ Only current decisions are retained here; exact history is in
   97x97 validation, while two solver-converged surfaces narrowly missed the
   normal-field P95 threshold. Formal preparation uses bounded oversampling 1.5
   instead of 1.25 and reports both solved-regular and strict-accepted cohorts.
+- 2026-08-19 formal 96-trajectory x 8-stage batch is active under
+  `~/local_surface_evaluator_data/qh_trajectory_face_qs_formal_20260819`.
+  Jobs are select `39468`, prepare `39470/39472`, CPU solve `39474/39476`, GPU
+  validate `39478/39480`, and analysis `39482`. All six RTX 5090 preflights
+  were idle. Expected end-to-end wall time is about 6--7 h; monitor with
+  `squeue -j 39470,39472,39474,39476,39478,39480,39482`.
 - Completed original-space evidence remains in
   `reports/qh_original_space_optimization_20260815.md`: direct standardized
   data-space Adam is locally viable, but the matched flow-latent run reached a

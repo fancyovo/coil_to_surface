@@ -46,7 +46,8 @@ def main() -> None:
         "total_wall_s": time.perf_counter() - started,
         "rows": rows,
     }
-    write_json(args.experiment_root / f"equal_s_qs_shard_{args.shard_index:02d}.json", summary)
+    output_stem = Path(args.output_name).stem
+    write_json(args.experiment_root / f"equal_s_qs_shard_{args.shard_index:02d}_{output_stem}.json", summary)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ PREDICTORS = {
     "native_edge_shell_qh": "outer-shell differential QH",
     "equal_s_area_qh": "strict equal-s differential QH",
 }
+ROOT_RESIDUAL_TOLERANCE = 1.0e-8
 
 
 def read_json(path: Path) -> Any:
@@ -89,6 +90,10 @@ def flatten_case(case_dir: Path, output_name: str) -> list[dict[str, Any]]:
                 "equal_s_normal_p95": nested(metrics, "normal_B_sine_p95"),
                 "equal_s_s_residual_rms": nested(metrics, "s_residual_rms"),
                 "equal_s_root_residual_max": nested(metrics, "root_residual_max"),
+                "equal_s_root_valid": bool(
+                    math.isfinite(nested(metrics, "root_residual_max"))
+                    and nested(metrics, "root_residual_max") <= ROOT_RESIDUAL_TOLERANCE
+                ),
                 "equal_s_area_ess": nested(metrics, "area_weight_effective_fraction"),
                 "equal_s_wall_s": nested(strict, "wall_s"),
                 "face_qh": nested(surface, "surface_qs_error", "QH_1_1"),
@@ -99,11 +104,22 @@ def flatten_case(case_dir: Path, output_name: str) -> list[dict[str, Any]]:
     return rows
 
 
-def valid_pairs(rows: list[dict[str, Any]], predictor: str, acceptance_key: str) -> list[dict[str, Any]]:
+def valid_pairs(
+    rows: list[dict[str, Any]],
+    predictor: str,
+    acceptance_key: str,
+    *,
+    require_equal_s_root: bool = True,
+) -> list[dict[str, Any]]:
     return [
         row
         for row in rows
         if row[acceptance_key]
+        and (
+            predictor != "equal_s_area_qh"
+            or not require_equal_s_root
+            or row["equal_s_root_valid"]
+        )
         and row[predictor] > 0.0
         and row["face_qh"] > 0.0
         and math.isfinite(row[predictor])
@@ -111,8 +127,20 @@ def valid_pairs(rows: list[dict[str, Any]], predictor: str, acceptance_key: str)
     ]
 
 
-def correlation(rows: list[dict[str, Any]], predictor: str, *, acceptance_key: str, seed: int) -> dict[str, Any]:
-    usable = valid_pairs(rows, predictor, acceptance_key)
+def correlation(
+    rows: list[dict[str, Any]],
+    predictor: str,
+    *,
+    acceptance_key: str,
+    seed: int,
+    require_equal_s_root: bool = True,
+) -> dict[str, Any]:
+    usable = valid_pairs(
+        rows,
+        predictor,
+        acceptance_key,
+        require_equal_s_root=require_equal_s_root,
+    )
     if len(usable) < 3:
         return {"count": len(usable), "spearman": None, "log_pearson": None, "cluster_bootstrap_95": None}
     x = np.log10([row[predictor] for row in usable])
@@ -185,6 +213,28 @@ def build_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "solved_regular_correlations": {
                 predictor: correlation(subset, predictor, acceptance_key="solved_regular", seed=20260919 + 10 * surface_index + index)
                 for index, predictor in enumerate(predictors)
+            },
+            "equal_s_root_valid": {
+                "all": sum(row["equal_s_root_valid"] for row in subset),
+                "strict_accepted": sum(row["accepted"] and row["equal_s_root_valid"] for row in subset),
+                "solved_regular": sum(row["solved_regular"] and row["equal_s_root_valid"] for row in subset),
+                "tolerance": ROOT_RESIDUAL_TOLERANCE,
+            },
+            "equal_s_unfiltered_strict_correlation": correlation(
+                subset,
+                "equal_s_area_qh",
+                acceptance_key="accepted",
+                seed=20261019 + surface_index,
+                require_equal_s_root=False,
+            ),
+            "equal_s_quality_strata": {
+                f"normal_rms_le_{threshold:.0e}": correlation(
+                    [row for row in subset if row["equal_s_normal_rms"] <= threshold],
+                    "equal_s_area_qh",
+                    acceptance_key="accepted",
+                    seed=20261119 + 10 * surface_index + index,
+                )
+                for index, threshold in enumerate((1.0e-4, 3.0e-5, 1.0e-5))
             },
             "equal_s_diagnostics": {
                 "normal_B_sine_area_rms": distribution(row["equal_s_normal_rms"] for row in subset),

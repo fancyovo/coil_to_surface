@@ -1,0 +1,88 @@
+# 轨迹体 QS 与面 QS 的批量标定
+
+日期：2026-08-19
+分支：`codex/trajectory-face-qs-calibration`
+
+## 研究问题
+
+当前原生 C++/CUDA score 使用体内微分 QH 误差作为快速优化目标。它已经能在几秒内稳定评估一个位形，但真正的磁面验收仍由 Simsopt 的标准 LS/Newton 决定，并在收敛面上计算面 QH 误差。本实验要定量回答：
+
+1. 快速体 QH 与标准面 QH 是否具有稳定的排序相关性，相关性在哪个误差区间开始饱和或失真；
+2. Adam 优化过程中，固定物理区域上的面 QH 随真实优化墙钟时间下降多快；
+3. 原生 score 给出的 $\psi$ 拟合误差是否始终足够小，面求解失败是否主要由 $\psi$ 质量解释；
+4. GPU 体坐标拟合给出的 $\iota$ 与标准面求解得到的 $\iota$ 相差多少；
+5. 对不同 $N_{\mathrm{FP}}$、基线圈数和优化阶段，以上结论是否仍成立。
+
+这里不运行 DESC，也不逐样本搜索严格最大磁面。目标是形成可批量、可复现的统计证据，而不是重复数百次完整线圈验收。
+
+## 数据与抽样
+
+数据源是已经验收的 309 条 QH 轨迹：每条包含 32 选 1 起点、200 个正式 Adam 中心和完整体 QS、$\psi$、$\iota$ 诊断。原始轨迹固定使用 ABI-10 score 动态库 SHA-256 `7834a88d...`。
+
+正式协议计划按 $(N_{\mathrm{FP}},N_{\mathrm{coils}})$ 经验频率分层抽取 96 条轨迹，并在每条轨迹的第
+
+$$
+0,\ 10,\ 25,\ 50,\ 75,\ 100,\ 150,\ 200
+$$
+
+步取中心，共 768 个位形。每个阶段约有 96 个统计样本，不需要重跑优化，也不把 791 万个省略 coordinate 项的局部端点误当成正式 score。
+
+每个位形测两个面：
+
+- **固定探针面**：每条轨迹以第 0 步 soft boundary 的 $\rho=0.8$ 内层为基准，后续阶段保持同一个 $s$ 目标。它用于判断同一物理区域随优化如何改善。
+- **自适应边界面**：使用该阶段 score 给出的 `surface_effective_level`。它用于判断体 QS 与当前有效区域边界面 QS 的关系。
+
+两者都会记录最终实际体积、有效小半径和逆长宽比。相关性分析除总体结果外，还会按面尺寸分层，避免“不同样本实际测了不同大小的面”成为伪相关来源。
+
+## 计算流程
+
+每个稀疏快照执行：
+
+$$
+\text{stored coil center}
+\rightarrow \text{source }\psi
+\rightarrow (\alpha,\iota(\rho))
+\rightarrow \nu
+\rightarrow \text{standard Simsopt LS/Newton}
+\rightarrow \text{independent dense validation}.
+$$
+
+具体约束如下：
+
+1. source $\psi$ 复用生产方法，固定 `a=0.05 m` 和 `48^3` 物理拟合网格；保存训练 RMS、独立角度 L2/P95 和该阶段原生 score 已记录的同类指标。
+2. $\alpha$ 使用 120000 个训练点、60000 个验证点、FP32 GPU QR 和三次 $\iota(\rho)$；$\nu$ 与面谱均使用现有 12 阶实现。
+3. Simsopt LS/Newton 是明确允许的 CPU 阶段。GPU 准备完成后，P107 的 16 个 CPU 核与 Students 的 24 个 CPU 核按“一核一面”并行，不让一个 Python 进程独占几十个空闲核心。
+4. 最终验收在与求解网格错开的 $97\times97$ 网格上执行。必须同时满足 Newton 收敛、稠密相对残差、法向场误差、绕轴方向和非退化法向量要求。
+5. 面 QS 沿用项目既有面积加权定义：
+
+$$
+\epsilon_{\mathrm{face}}^{M,N}
+=
+\frac{\left\langle |\partial_\phi\boldsymbol x\times\partial_\theta\boldsymbol x|
+\left(|B|-\Pi_{M,N}|B|\right)^2\right\rangle}
+{\left\langle |\partial_\phi\boldsymbol x\times\partial_\theta\boldsymbol x|
+\left(\Pi_{M,N}|B|\right)^2\right\rangle}.
+$$
+
+这里报告的是相对方差，不再额外开平方；因此数值口径与既有完整评估中的 $10^{-6}$ 量级面 QH 完全一致。
+
+## 统计口径
+
+主图和表至少包括：
+
+- 面 QH 对体 QH 的 log-log 散点、Spearman、log-Pearson 与按轨迹聚类 bootstrap 置信区间；
+- 面 QH 随优化步数和真实墙钟分钟的中位数/P10/P90，以及达到 $10^{-3}$、$10^{-4}$、$10^{-5}$ 的比例和首次时间；
+- $\psi$ 训练误差、独立角度 L2/P95、alpha 验证残差的分布；
+- GPU $\iota(\rho)$ 对最终面 $\iota$ 的散点、绝对误差和相对误差分布；
+- 两类面的成功率、失败类型和实际逆长宽比分布；
+- 按 $N_{\mathrm{FP}}$、线圈数、优化阶段和面尺寸分层的相关性及成功率。
+
+重复阶段属于同一条优化轨迹，不能当作完全独立样本。因此置信区间以轨迹为 cluster 重采样；总体散点只用于展示，不用普通逐点 bootstrap 夸大样本量。
+
+## 当前进度
+
+- 已从当前已验收提交直接创建独立分支，没有使用 worktree。
+- 已确认 309 条远端轨迹完整存在，当前 Slurm 队列无本项目作业。
+- 已冻结上述稀疏抽样和双探针协议；正在实现 GPU 准备、40 核 Simsopt 求面、GPU 离网格验收和统计出图的三段式批处理。
+
+正式数值结果、图和作业耗时将在批量作业完成后追加到本报告。

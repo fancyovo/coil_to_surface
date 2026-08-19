@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-15 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-19 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -428,63 +428,28 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-15 branch `codex/original-space-optimization` completed directly in
-  the repository root; no worktree was used. Implementation commit `8a628f2`
-  adds an explicit `--parameter-space data` mode; accepted result/report commit
-  `298c5cf` contains the experiment evidence. The mode decodes historical QH
-  `start_10` once, then optimizes fixed per-coordinate standardized coil-token
-  coordinates through `CoilNormalizer.inverse`; no flow ODE is evaluated after
-  initialization. This is a diagonal scaling of original Fourier/current data,
-  not raw mixed-unit Euclidean space and not a learned nonlinear map.
-- On one idle RTX 5090, 64 fresh orthogonal directions/128 centered endpoints,
-  Adam beta `(0.7,0.999)`, calibrated data-space `h=0.0025` and LR `0.01`
-  reached best `91.7831404` at step 106 from `85.4355197` in 200 steps. Mean
-  iteration time was `4.13254 s`; every formal center and all 25,600 endpoints
-  were `ok`, with no rejected update. Best-case SHA-256 is
-  `96a48e5a2eb350f06ca96af39b90da15e9dce08ee48e3d97660e58bc54027679`.
-- A matched current-code latent run with `h=0.005`, LR `0.02` reached
-  `93.1763815` at step 167 and mean `5.45501 s/step`. At the data run's wall
-  budget it had already reached `93.0644871`; its best volume QH residual
-  `0.00315623` was 3.91x lower than the data-space best `0.01235496`.
-  Independent no-history continuous rescoring preserved the ordering at
-  `91.7814748` versus `93.1413258`. Therefore flow is not required for local
-  improvability or reaching score 90, but remains a materially better nonlinear
-  search preconditioner for high-QH optimization under the tested setup.
-- Single-GPU endpoint scaling from 2 to 600 reduced amortized local-gradient
-  endpoint cost from `490.49` to `19.48 ms` (25.18x). The production-like 128
-  endpoints cost `3.170 s` total or `24.77 ms/endpoint`; modeled flux throughput
-  was `11.38 TFLOP/s` and psi matvec-equivalent throughput `0.91 TFLOP/s`.
-  These are explicit algorithmic operation models, not hardware counters.
-  All experiment jobs completed with zero-byte stderr and idle postflight GPUs.
-  Full tables, definitions, raw compact results, and figures are in
-  `reports/qh_original_space_optimization_20260815.md` and its asset directory.
-  No remote job from this experiment remains active.
-
-- 2026-08-12 completed branch `codex/direct-alpha-fast-score`; `K=64`, LR
-  `0.02` was the best tested single-GPU local-gradient Adam configuration. Its
-  200-step sample and independent score-94.812 step-1710 maximum both passed
-  full Simsopt/DESC evaluation. Evidence commit `cc1b853` and report
-  `reports/direct_alpha_fast_score_feasibility_20260811.md`.
-- 2026-08-13 branch `codex/trajectory-dataset-pilot` completed the six-GPU,
-  21-hour pilot at implementation commit `3f08333`. Arrays `37034_[0-3]` and
-  `37035_[0-1]` stopped normally at `max_wall_s` and produced 309 complete
-  200-step trajectories, 9,888 global screening candidates, 61,800 formal
-  center steps, 3,955,200 stored random directions, and 7,910,400 local
-  endpoints, with zero failed/incomplete trajectories. The 16.89-GiB corpus is
-  at `~/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/`;
-  observed throughput was 355.3 trajectories/day across six RTX 5090 GPUs and
-  per-trajectory wall P50/P95 was 21.59/40.79 minutes.
-- 2026-08-13 acceptance used the exact corpus ABI-10 score-library hash
-  `7834a88d...` to rescore all 309 Adam best cases and 1,024 no-replacement
-  QUASR QH test cases without axis history. Best-of-32 start P50 was 75.996;
-  global Adam-best P50/P90/max was `90.214/92.669/93.521`, with 50.8% at least
-  90 and 23.0% at least 92. Same-version QUASR rates were 12.9%/7.0%, but QUASR
-  retained the stronger maximum 94.349. Online/global best Spearman was
-  0.999882 and all 157 online bests at least 90 remained globally `ok`. Since
-  64.1% of trajectories first reached best in the last 50 steps, 200 steps is a
-  trajectory budget, not a convergence claim. Local endpoints omit the
-  coordinate-gradient contribution and must never be treated as millions of
-  independent formal score samples. Full evidence:
-  `reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`.
-- Query-batch work must pin score-library hash `7834a88d...`; shared
-  `build_mixed` is stale.
+- 2026-08-19 active branch is `codex/trajectory-face-qs-calibration`, checked
+  out directly in the repository root with no worktree. Its new report is
+  `reports/qh_trajectory_face_qs_calibration_20260819.md`.
+- The experiment reuses the accepted 309-trajectory corpus under
+  `~/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/`.
+  Formal trajectory centers use score-library hash `7834a88d...`; the millions
+  of local endpoints omit coordinate-gradient work and are excluded.
+- Planned formal sample is 96 condition-stratified trajectories at iterations
+  `0,10,25,50,75,100,150,200` (768 cases). Each trajectory's fixed probe is
+  `0.64 * initial surface_effective_level`; it is sample-specific, not a global
+  `s` constant. A second surface uses each stage's current effective level.
+- The frozen batch route is GPU source-psi/alpha+nu preparation, 40-way CPU
+  Simsopt LS/Newton (16 P107 plus 24 Students), then six-way GPU 97x97 off-grid
+  validation and face QA/QH/QP. Source psi uses `a=0.05 m`, grid 48; alpha uses
+  120k/60k points, order 12/12/16, cubic iota, and FP32 GPU QR. No DESC or
+  maximum-surface search belongs in this statistical experiment.
+- Before the formal run, submit a small multi-condition pilot to measure
+  preparation failure rate, CPU-solve P50/P95, dense acceptance, actual surface
+  size, and end-to-end estimate. Long jobs may be left running after stability
+  is verified, with job IDs and a monitor command recorded here.
+- Completed original-space evidence remains in
+  `reports/qh_original_space_optimization_20260815.md`: direct standardized
+  data-space Adam is locally viable, but the matched flow-latent run reached a
+  materially better QH result. The completed trajectory-corpus statistics and
+  invariants remain in `reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`.

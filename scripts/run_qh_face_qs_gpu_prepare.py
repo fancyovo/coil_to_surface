@@ -166,8 +166,8 @@ def prepare_case(case_dir: Path, *, gpu_lib: Path, device: int) -> dict[str, Any
             "fp32",
             "--gpu-lib",
             str(gpu_lib),
-            "--gpu-device",
-            str(device),
+            "--device",
+            "cuda",
             "--skip-fieldline-plot",
         ]
         timings["alpha_s"] = run_logged(alpha_command, output / "alpha.log")

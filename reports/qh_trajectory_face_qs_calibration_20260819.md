@@ -92,3 +92,5 @@ $$
 首个 6 轨迹、18 快照 pilot 越过了调度链，但 18 个快照全部在进入磁轴搜索时立即失败。共同错误为实验误用了旧的 `build_mixed/libstellarator_gpu.so`；当前 Python 绑定要求 `sgpu_trace_axis_samples`，该旧库没有导出此符号。因此这轮 pilot 没有执行 source $\psi$、$\alpha+\nu$ 或面求解，其失败率和单案例时间都不具有物理意义。
 
 修正方式是为当前分支单独构建 CUDA 动态库，并在每个 GPU shard 开始时一次性检查所需 ABI 符号。ABI 不匹配现在会让整个 shard 直接失败，而不会再被记成一批样本的物理失败。统计器也已允许在零验收面时输出空结果和明确状态，避免错误处理本身掩盖首个根因。修正后的 pilot 将使用新的实验目录重新提交；旧 pilot 保留为基础设施反例，不进入正式统计。
+
+第二轮 pilot 验证了新动态库和 source $\psi$ 链路，但暴露了准备脚本的 CLI 参数错误：alpha 程序接受的是 Torch 设备字符串 `--device cuda`，不是整数 GPU 参数 `--gpu-device 0`。18 个案例因此都在 alpha 的参数解析阶段退出，仍未进入 alpha 拟合或面求解。这一轮同样只作为接口核验，不进入物理统计；代表案例的 source $\psi$ 已成功产出，墙钟时间约为 4.8--9.6 秒。

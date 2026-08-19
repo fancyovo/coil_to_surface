@@ -458,6 +458,10 @@ Only current decisions are retained here; exact history is in
   `gpu_backend/build_face_qs/libstellarator_gpu.so`; SHA-256 is
   `7e0f28dc34286d90a3ff0d99ade88055c702870f659bed524e5d7aada8ff9d00`.
   A corrected pilot must use this exact library and a fresh experiment root.
+- 2026-08-19 corrected pilot jobs `39416--39430` passed the CUDA ABI and source
+  psi stages but are also invalid physics evidence: all alpha commands used the
+  nonexistent `--gpu-device 0` option. The branch now passes the actual Torch
+  interface `--device cuda`; rerun in a new root before scaling out.
 - Completed original-space evidence remains in
   `reports/qh_original_space_optimization_20260815.md`: direct standardized
   data-space Adam is locally viable, but the matched flow-latent run reached a

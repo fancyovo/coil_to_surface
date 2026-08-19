@@ -486,10 +486,10 @@ Only current decisions are retained here; exact history is in
 - Earlier failed pilot jobs are retained only as infrastructure history in the
   report. The accepted branch-local CUDA library SHA-256 is
   `7e0f28dc34286d90a3ff0d99ade88055c702870f659bed524e5d7aada8ff9d00`.
-- 2026-08-19 audit: the formal trajectory analysis compared global differential
-  volume QH only with solved Simsopt face QH. The native evaluator also records
-  an outer-shell QH over $\rho\ge0.908$, but no shell-to-face correlation was
-  analyzed; it is volume-weighted shell RMS, not a strict equal-$s$ area mean.
+- 2026-08-19 equal-$s$/shell addendum: adaptive outer-shell QH versus Simsopt
+  face QH reached Spearman `0.96708`, above whole-volume `0.95754`, with no
+  coverage loss. Strict single-$s$ area QH was less robust (`0.62557`, 391
+  accepted/root-valid) and remains diagnostic only; production score unchanged.
 - Next action is not yet selected. Completed original-space evidence remains in
   `reports/qh_original_space_optimization_20260815.md`; trajectory-corpus
   statistics remain in

@@ -232,3 +232,122 @@ $\alpha$ 的全向量 validation relative L2 为 P50 0.099、P95 0.602。它远�
 - 本实验没有运行 DESC；它衡量的是体拟合、Simsopt 标准面和面 QH 之间的误差链条。
 
 可复现数据位于 `reports/assets/qh_trajectory_face_qs_calibration_20260819/`：`experiment_manifest.json` 固定抽样，`surface_records.csv` 保存全部 1536 个面，`summary.json` 保存汇总与聚类置信区间。最终 `summary.json` SHA-256 为 `f8462084d6d8adcac2b4a397e095f1b279cc656171dc70cec084f08733c49fff`。
+
+## 补充实验：同一径向区域上的 GPU QH 与标准面 QH
+
+上面的正式实验比较了“整个有效体积内的微分 QH”与“某一张标准磁面上的面 QH”。这已经能回答体指标能否指导优化，但还没有排除一个更直接的问题：如果只在标准面附近计算 GPU 微分 QH，它和该标准面 QH 的关系是否更紧密？本节补做三种口径的并列比较：
+
+1. **全体积微分 QH**：原生 score 使用的整个有效体积 RMS。
+2. **外层壳层微分 QH**：只保留原生 100000 点体采样中 $\rho\geq0.908$ 的点，再做带物理体积权重的 RMS。它不是一张严格的面，但覆盖了自适应边界面附近的一小段径向区域。
+3. **严格等 $s$ 面微分 QH**：在三维拟合得到的 $s(R,Z,\phi)$ 上逐射线求解 $s=s_0$，构造一张单面，并用真实面积元做 RMS。
+
+三种 GPU 口径都使用与生产 score 相同的 QH 微分量：
+
+$$
+q_{\mathrm{QH}}
+=
+\frac{\left(\iota-N_{\mathrm{FP}}\right)
+(\boldsymbol B\times\nabla\psi)\cdot\nabla|B|
+-G\,\boldsymbol B\cdot\nabla|B|}
+{\sqrt{1+N_{\mathrm{FP}}^2}\,|B|^3}.
+$$
+
+其中 $G$、$\iota$ 和 $\nabla\psi$ 均来自该位形已经保存的 GPU $\psi\rightarrow\alpha/\iota$ 路径。外层壳层使用
+
+$$
+\epsilon_{\mathrm{shell}}
+=
+\sqrt{\frac{\sum_{\rho_i\geq0.908} w_iq_i^2}
+{\sum_{\rho_i\geq0.908}w_i}},
+$$
+
+而严格等 $s$ 面使用
+
+$$
+\epsilon_{s_0}
+=
+\sqrt{\frac{\int_{s=s_0}q_{\mathrm{QH}}^2\,\mathrm dA}
+{\int_{s=s_0}\mathrm dA}}.
+$$
+
+最后的 Simsopt 面 QH 仍是前文定义的 $|B|$ 非目标模相对方差。因此微分量是 RMS，而面 QH 是方差，两者仍不应期待数值上一比一相等；本实验关注排序相关性和 log 尺度散布。
+
+### 数值实现和网格核验
+
+严格等 $s$ 面在一个场周期内使用均匀的 $(\phi,\theta)$ 网格。每条从磁轴出发的射线都在 source-$s$ 拟合域内求 $s=s_0$，随后用周期中心差分计算
+
+$$
+\left|\frac{\partial\boldsymbol x}{\partial\theta}
+\times
+\frac{\partial\boldsymbol x}{\partial\phi}\right|
+$$
+
+作为面积权重；$\boldsymbol B$ 和 $\nabla\boldsymbol B$ 由当前 CUDA 场计算器以 FP32 批量求值。面积权重实现另用解析圆环面积做了单元测试。
+
+先在跨 $N_{\mathrm{FP}}$、线圈数和优化阶段的 12 个位形、24 张面上比较 $64\times64$、$96\times96$ 和 $128\times128$。以 $128\times128$ 为参考，结果为：
+
+| 网格 | 相对差 P50 | 相对差 P95 | 最大相对差 |
+|---:|---:|---:|---:|
+| $64\times64$ | 0.0124% | 0.0943% | 0.1445% |
+| $96\times96$ | 0.00327% | 0.0250% | 0.0412% |
+
+$64\times64$ 的最大离散化差已经低于 0.15%，远小于跨位形的物理散布，正式 768 位形批量因此采用该网格。
+
+![严格等 s 面的网格收敛](assets/qh_trajectory_face_qs_calibration_20260819/equal_s_grid_convergence.png)
+
+### 相关性结果
+
+正式批量沿用前文完全相同的 768 个位形。766 个已有完整 GPU 准备结果，两个准备失败保持原状态，没有补算或降低门槛。下表只统计原 Simsopt 面已经严格验收的样本；严格等 $s$ 面还额外要求所有射线满足
+
+$$
+\max|s(R,Z,\phi)-s_0|\leq10^{-8},
+$$
+
+以排除射线在 source-$s$ 域内找不到根、被截到半径边界的情况。
+
+| 目标面 | GPU 指标 | 有效样本 | Spearman | log-Pearson | 轨迹聚类 95% CI | log 残差标准差/decade |
+|---|---|---:|---:|---:|---:|---:|
+| 固定探针面 | 全体积微分 QH | 606 | 0.944 | 0.948 | $[0.918,0.961]$ | 0.344 |
+| 固定探针面 | 严格等 $s$ 面微分 QH | 550 | 0.758 | 0.759 | $[0.681,0.822]$ | 0.703 |
+| 自适应边界面 | 全体积微分 QH | 625 | 0.958 | 0.960 | $[0.943,0.967]$ | 0.290 |
+| 自适应边界面 | **外层壳层微分 QH** | **625** | **0.967** | **0.967** | **$[0.958,0.974]$** | **0.262** |
+| 自适应边界面 | 严格等 $s$ 面微分 QH | 391 | 0.626 | 0.515 | $[0.459,0.745]$ | 0.850 |
+
+结果支持用户提出的核心判断：**与标准面处于同一外层径向区域的 GPU 指标，确实比整个体积平均更接近该面 QH。**在自适应边界面上，Spearman 从 0.958 提高到 0.967，log 残差从 0.290 降到 0.262 decade。提升不大但稳定，且使用的是完全相同的 625 个严格验收面，不是样本筛选造成的。
+
+固定探针面没有填写壳层结果，是因为原生记录只保存了一层与当前自适应有效边界对齐的外层壳层；把它硬配给固定探针面会重新引入径向错位，不能算公平的“同一区域”比较。
+
+![全体积、外层壳层和严格等 s 面与标准面 QH 的散点](assets/qh_trajectory_face_qs_calibration_20260819/equal_s_vs_face_qh.png)
+
+![不同 GPU QH 口径的排序相关性](assets/qh_trajectory_face_qs_calibration_20260819/equal_s_correlation_summary.png)
+
+### 为什么严格单面反而较差
+
+这个结果不是“越接近标准面越差”的物理矛盾，而是暴露了三维拟合面直接取导数时的两个数值限制。
+
+第一，source-$s$ 拟合域的半径固定为 $a=0.05$。在全部 766 个已准备位形中，固定探针面只有 588 张能在所有射线上以 $10^{-8}$ 精度闭合，覆盖率 76.8%；自适应边界面只有 508 张，覆盖率 66.3%。其余目标面在部分角度超出该拟合域，求根只能落到半径边界。若不加这个求根门，固定面相关性会从 0.758 被污染到 0.672；因此“求出一组点”不能被当作“确实得到严格等 $s$ 面”。
+
+第二，$q_{\mathrm{QH}}$ 同时依赖 $\nabla s$、$\mathrm d\psi/\mathrm ds$、$\iota$ 和 $\nabla|B|$。单张面没有径向平均，有限阶 $s$ 拟合中的局部导数误差和少量角向尖峰都会直接进入 RMS。外层壳层则在 100000 个均匀体点中跨一个窄径向区间平均，对这些局部误差更鲁棒。数据也支持这一解释：对自适应面的严格等 $s$ 样本再要求面积加权法向误差 RMS 不超过 $3\times10^{-5}$，样本数为 273，Spearman 提高到 0.828；放宽到 $10^{-4}$ 时为 0.744。它随 source 面质量改善而明显变好，但仍没有超过壳层指标。
+
+因此后续应采用以下结论边界：
+
+- 原生全体积微分 QH 仍是稳定的优化指标。
+- 若要解释某张外层标准面，优先报告与该面径向位置对齐的**窄壳层微分 QH**；本批数据中它是相关性最高、覆盖率不下降的桥梁指标。
+- 从有限域三维 $s$ 拟合直接抽出的严格单面微分 QH 只适合作为诊断量，必须同时报告求根闭合和法向误差，不能替代壳层或 Simsopt 面 QH。
+- 本补充实验没有修改生产 score。它说明了怎样更准确地解释现有体指标，而不是为优化主线引入一个覆盖率更低的新目标。
+
+### 批处理耗时和可复现文件
+
+四张空闲 RTX 5090 各处理 192 个位形，每个位形同时计算固定探针和自适应边界两张面。四个 shard 的墙钟分别为 309.4、310.4、311.7 和 312.4 秒，即正式批量约 5.2 分钟；单面计算时间 P50 约 0.77 秒、P95 约 0.79 秒。每张卡运行前利用率均为 0，运行后利用率仍为 0、显存占用 2 MiB，队列中没有遗留项目作业。
+
+正式批量作业为 `40236`，最终带求根门的分析作业为 `40247`；网格核验作业为 `40223`--`40231`。实现入口为 `scripts/evaluate_qh_equal_s_surface_qs_gpu.py`，批量与分析入口为 `scripts/run_qh_equal_s_surface_qs_shard.py` 和 `scripts/analyze_qh_equal_s_surface_qs.py`。
+
+全部结果保存在 `reports/assets/qh_trajectory_face_qs_calibration_20260819/`：
+
+- `equal_s_surface_records.csv`：1536 张面的逐面数据；
+- `equal_s_summary.json`：求根门、质量分层、相关性与聚类置信区间；
+- `equal_s_grid_convergence.json`：24 张面的网格收敛数据；
+- `equal_s_qs_shard_*_summary.json`：四卡分片状态和逐位形耗时；
+- `equal_s_qs_preflight_*.csv`、`equal_s_qs_postflight_*.csv`：GPU 空闲与收尾证据。
+
+最终 `equal_s_summary.json`、`equal_s_surface_records.csv` 和 `equal_s_grid_convergence.json` 的 SHA-256 分别为 `3bbb75a17d663db900b45222b57f5581d4e2cd918a9164197afc7cb9b3d3bab5`、`0d0a026c4563e36de6c8970be134943c5b77f2f88f526f66e5e3a42bf2958b50` 和 `33f001ede8d61e8a0df7d62e6525c9504bf32d422d10c2e27344ac6001c401e1`。

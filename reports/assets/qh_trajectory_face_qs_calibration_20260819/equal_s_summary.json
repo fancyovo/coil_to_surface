@@ -1,0 +1,391 @@
+{
+  "format": "qh_equal_s_face_qs_analysis_v1",
+  "row_count": 1536,
+  "case_count": 768,
+  "equal_s_status_counts": {
+    "ok": 766,
+    "prepare_skipped": 2
+  },
+  "surface_types": {
+    "fixed_probe": {
+      "row_count": 768,
+      "strict_accepted": 606,
+      "solved_regular": 721,
+      "strict_correlations": {
+        "native_global_qh": {
+          "count": 606,
+          "trajectory_count": 89,
+          "spearman": 0.9443672889228003,
+          "log_pearson": 0.947531726412234,
+          "cluster_bootstrap_95": [
+            0.9181260099415287,
+            0.9612897638973636
+          ],
+          "log_fit": {
+            "slope": 2.14804902936179,
+            "intercept": -0.19255676341207772,
+            "residual_std_decades": 0.3440864310976256
+          }
+        },
+        "equal_s_area_qh": {
+          "count": 550,
+          "trajectory_count": 85,
+          "spearman": 0.7584256706480161,
+          "log_pearson": 0.7585208694993841,
+          "cluster_bootstrap_95": [
+            0.6809329220327632,
+            0.8218879736152875
+          ],
+          "log_fit": {
+            "slope": 4.071139650364148,
+            "intercept": -1.475322410573741,
+            "residual_std_decades": 0.7027754703684159
+          }
+        }
+      },
+      "solved_regular_correlations": {
+        "native_global_qh": {
+          "count": 721,
+          "trajectory_count": 96,
+          "spearman": 0.9454143521161593,
+          "log_pearson": 0.9500729491344853,
+          "cluster_bootstrap_95": [
+            0.9163994022379599,
+            0.9633797544231312
+          ],
+          "log_fit": {
+            "slope": 2.120298644214266,
+            "intercept": -0.24328577596913767,
+            "residual_std_decades": 0.360503628355445
+          }
+        },
+        "equal_s_area_qh": {
+          "count": 585,
+          "trajectory_count": 95,
+          "spearman": 0.7764233507120881,
+          "log_pearson": 0.7787218354741878,
+          "cluster_bootstrap_95": [
+            0.7092986415530913,
+            0.8307618219307684
+          ],
+          "log_fit": {
+            "slope": 4.025523280899163,
+            "intercept": -1.4856442191840111,
+            "residual_std_decades": 0.7008289814314974
+          }
+        }
+      },
+      "equal_s_root_valid": {
+        "all": 588,
+        "strict_accepted": 550,
+        "solved_regular": 585,
+        "tolerance": 1e-08
+      },
+      "equal_s_unfiltered_strict_correlation": {
+        "count": 606,
+        "trajectory_count": 89,
+        "spearman": 0.6722713288422955,
+        "log_pearson": 0.6908569341464721,
+        "cluster_bootstrap_95": [
+          0.5596498327654121,
+          0.7634344219326893
+        ],
+        "log_fit": {
+          "slope": 3.7759457014991766,
+          "intercept": -1.6339189213672467,
+          "residual_std_decades": 0.7782337750843292
+        }
+      },
+      "equal_s_quality_strata": {
+        "normal_rms_le_1e-04": {
+          "count": 537,
+          "trajectory_count": 82,
+          "spearman": 0.7583075767244724,
+          "log_pearson": 0.7590064664900077,
+          "cluster_bootstrap_95": [
+            0.6854239145169176,
+            0.8243686502066087
+          ],
+          "log_fit": {
+            "slope": 4.0595651253727,
+            "intercept": -1.5056308641351308,
+            "residual_std_decades": 0.6968577624418747
+          }
+        },
+        "normal_rms_le_3e-05": {
+          "count": 444,
+          "trajectory_count": 66,
+          "spearman": 0.7743589321745697,
+          "log_pearson": 0.7748650548033869,
+          "cluster_bootstrap_95": [
+            0.6864534039350568,
+            0.8410694658930237
+          ],
+          "log_fit": {
+            "slope": 4.471250657326654,
+            "intercept": -1.276028275584579,
+            "residual_std_decades": 0.6675380744669971
+          }
+        },
+        "normal_rms_le_1e-05": {
+          "count": 196,
+          "trajectory_count": 35,
+          "spearman": 0.7559364715070088,
+          "log_pearson": 0.7390691996303429,
+          "cluster_bootstrap_95": [
+            0.5743861546306098,
+            0.8793680054564342
+          ],
+          "log_fit": {
+            "slope": 4.763140770102686,
+            "intercept": -1.1458099894226712,
+            "residual_std_decades": 0.6820329523041341
+          }
+        }
+      },
+      "equal_s_diagnostics": {
+        "normal_B_sine_area_rms": {
+          "count": 766,
+          "p50": 1.9757889043364278e-05,
+          "p95": 0.0005711015833841508,
+          "max": 0.002050688822858345
+        },
+        "normal_B_sine_p95": {
+          "count": 766,
+          "p50": 3.7451294013000365e-05,
+          "p95": 0.0005356669422410835,
+          "max": 0.0023098005086873968
+        },
+        "s_residual_rms": {
+          "count": 766,
+          "p50": 1.9783887160313076e-14,
+          "p95": 0.04822717100681895,
+          "max": 0.1118187112130908
+        },
+        "root_residual_max": {
+          "count": 766,
+          "p50": 1.3600232051658168e-13,
+          "p95": 0.1898860292159665,
+          "max": 0.27371687768009745
+        },
+        "area_weight_effective_fraction": {
+          "count": 766,
+          "p50": 0.8810947565621261,
+          "p95": 0.9616482273415419,
+          "max": 0.9916244603618032
+        },
+        "wall_s": {
+          "count": 766,
+          "p50": 0.7717392351478338,
+          "p95": 0.7886343048885465,
+          "max": 0.8207224197685719
+        }
+      }
+    },
+    "adaptive_edge": {
+      "row_count": 768,
+      "strict_accepted": 625,
+      "solved_regular": 720,
+      "strict_correlations": {
+        "native_global_qh": {
+          "count": 625,
+          "trajectory_count": 88,
+          "spearman": 0.95754017431022,
+          "log_pearson": 0.9599785046489284,
+          "cluster_bootstrap_95": [
+            0.9428755179165316,
+            0.9666487292380718
+          ],
+          "log_fit": {
+            "slope": 2.065824071821415,
+            "intercept": -0.2108984950835847,
+            "residual_std_decades": 0.2897633363676927
+          }
+        },
+        "native_edge_shell_qh": {
+          "count": 625,
+          "trajectory_count": 88,
+          "spearman": 0.9670763042233422,
+          "log_pearson": 0.967375060036479,
+          "cluster_bootstrap_95": [
+            0.9578071909799405,
+            0.9739529166602872
+          ],
+          "log_fit": {
+            "slope": 2.203277091723308,
+            "intercept": -0.09715881930080665,
+            "residual_std_decades": 0.2621136058461052
+          }
+        },
+        "equal_s_area_qh": {
+          "count": 391,
+          "trajectory_count": 81,
+          "spearman": 0.6255661635005608,
+          "log_pearson": 0.5147956065540409,
+          "cluster_bootstrap_95": [
+            0.45945395008175316,
+            0.7453195828456698
+          ],
+          "log_fit": {
+            "slope": 2.0967530508286254,
+            "intercept": -2.8619345287335096,
+            "residual_std_decades": 0.8495722346893753
+          }
+        }
+      },
+      "solved_regular_correlations": {
+        "native_global_qh": {
+          "count": 720,
+          "trajectory_count": 96,
+          "spearman": 0.9559176334282272,
+          "log_pearson": 0.9590995779932538,
+          "cluster_bootstrap_95": [
+            0.9400609382945221,
+            0.9660770847969384
+          ],
+          "log_fit": {
+            "slope": 2.005568461493328,
+            "intercept": -0.35648961698215925,
+            "residual_std_decades": 0.3117539943972748
+          }
+        },
+        "native_edge_shell_qh": {
+          "count": 720,
+          "trajectory_count": 96,
+          "spearman": 0.9649244850415722,
+          "log_pearson": 0.9662363194879271,
+          "cluster_bootstrap_95": [
+            0.9525654565268169,
+            0.9733686615647935
+          ],
+          "log_fit": {
+            "slope": 2.1510642890827167,
+            "intercept": -0.2181483218191453,
+            "residual_std_decades": 0.2837674807712132
+          }
+        },
+        "equal_s_area_qh": {
+          "count": 470,
+          "trajectory_count": 93,
+          "spearman": 0.7057887829687801,
+          "log_pearson": 0.6348289581687885,
+          "cluster_bootstrap_95": [
+            0.5736618769702159,
+            0.7945037368293676
+          ],
+          "log_fit": {
+            "slope": 2.496216460392171,
+            "intercept": -2.461542561844046,
+            "residual_std_decades": 0.8243443286037961
+          }
+        }
+      },
+      "equal_s_root_valid": {
+        "all": 508,
+        "strict_accepted": 391,
+        "solved_regular": 470,
+        "tolerance": 1e-08
+      },
+      "equal_s_unfiltered_strict_correlation": {
+        "count": 625,
+        "trajectory_count": 88,
+        "spearman": 0.6359859402457001,
+        "log_pearson": 0.5583840675716628,
+        "cluster_bootstrap_95": [
+          0.4898695186918886,
+          0.7442409203118467
+        ],
+        "log_fit": {
+          "slope": 2.591511091518945,
+          "intercept": -2.6270286865727766,
+          "residual_std_decades": 0.8582834533865297
+        }
+      },
+      "equal_s_quality_strata": {
+        "normal_rms_le_1e-04": {
+          "count": 336,
+          "trajectory_count": 73,
+          "spearman": 0.7438238432038748,
+          "log_pearson": 0.7003731548589658,
+          "cluster_bootstrap_95": [
+            0.6059772182606724,
+            0.8342120266690262
+          ],
+          "log_fit": {
+            "slope": 3.4954738814166153,
+            "intercept": -2.0601578357664514,
+            "residual_std_decades": 0.7082389039723672
+          }
+        },
+        "normal_rms_le_3e-05": {
+          "count": 273,
+          "trajectory_count": 59,
+          "spearman": 0.8278442429502338,
+          "log_pearson": 0.8046492975026395,
+          "cluster_bootstrap_95": [
+            0.7497499969675467,
+            0.8824125919153105
+          ],
+          "log_fit": {
+            "slope": 4.586597006679931,
+            "intercept": -1.4481706929435751,
+            "residual_std_decades": 0.5941191384415154
+          }
+        },
+        "normal_rms_le_1e-05": {
+          "count": 151,
+          "trajectory_count": 37,
+          "spearman": 0.8205755177516081,
+          "log_pearson": 0.7986632511863598,
+          "cluster_bootstrap_95": [
+            0.6548493876126109,
+            0.9111808274183252
+          ],
+          "log_fit": {
+            "slope": 4.706440809943926,
+            "intercept": -1.437778978062119,
+            "residual_std_decades": 0.5988512119985572
+          }
+        }
+      },
+      "equal_s_diagnostics": {
+        "normal_B_sine_area_rms": {
+          "count": 766,
+          "p50": 2.128579524219046e-05,
+          "p95": 0.00048291958725727894,
+          "max": 0.0010116809602325526
+        },
+        "normal_B_sine_p95": {
+          "count": 766,
+          "p50": 3.890443561319443e-05,
+          "p95": 0.000612176233560906,
+          "max": 0.0014095703759526871
+        },
+        "s_residual_rms": {
+          "count": 766,
+          "p50": 7.944367217469861e-15,
+          "p95": 0.00032261433923751545,
+          "max": 0.0018098091947248102
+        },
+        "root_residual_max": {
+          "count": 766,
+          "p50": 6.949302244763089e-14,
+          "p95": 0.008692362305947526,
+          "max": 0.03079621529015919
+        },
+        "area_weight_effective_fraction": {
+          "count": 766,
+          "p50": 0.8807066405740845,
+          "p95": 0.9594514869224678,
+          "max": 0.9885974865212073
+        },
+        "wall_s": {
+          "count": 766,
+          "p50": 0.770223205909133,
+          "p95": 0.7867091447114944,
+          "max": 0.8040536418557167
+        }
+      }
+    }
+  }
+}

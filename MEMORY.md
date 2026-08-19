@@ -429,55 +429,50 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-19 active branch is `codex/trajectory-face-qs-calibration`, checked
-  out directly in the repository root with no worktree. Its new report is
+  out directly in the repository root with no worktree. The formal experiment
+  is complete; there are no remaining project Slurm jobs. Full methods,
+  acceptance details, figures, and limitations are in
   `reports/qh_trajectory_face_qs_calibration_20260819.md`.
-- The experiment reuses the accepted 309-trajectory corpus under
-  `~/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/`.
-  Formal trajectory centers use score-library hash `7834a88d...`; the millions
-  of local endpoints omit coordinate-gradient work and are excluded.
-- Planned formal sample is 96 condition-stratified trajectories at iterations
-  `0,10,25,50,75,100,150,200` (768 cases). Each trajectory's fixed probe is
-  `0.64 * initial surface_effective_level`; it is sample-specific, not a global
-  `s` constant. A second surface uses each stage's current effective level.
-- The frozen batch route is GPU source-psi/alpha+nu preparation, 40-way CPU
-  Simsopt LS/Newton (16 P107 plus 24 Students), then six-way GPU 97x97 off-grid
-  validation and face QA/QH/QP. Source psi uses `a=0.05 m`, grid 48; alpha uses
-  120k/60k points, order 12/12/16, cubic iota, and FP32 GPU QR. No DESC or
-  maximum-surface search belongs in this statistical experiment.
-- Before the formal run, submit a small multi-condition pilot to measure
-  preparation failure rate, CPU-solve P50/P95, dense acceptance, actual surface
-  size, and end-to-end estimate. Long jobs may be left running after stability
-  is verified, with job IDs and a monitor command recorded here.
-- 2026-08-19 pilot jobs `39389--39403` are invalid infrastructure evidence:
-  all 18 cases stopped before axis search because the supplied historical
-  `build_mixed` library lacked `sgpu_trace_axis_samples`. No psi, alpha, surface,
-  or face-QS calculation ran, so do not treat this as a physical failure rate.
-  The branch now checks required GPU ABI symbols before processing a shard and
-  handles an empty accepted set without crashing the analyzer.
-- Current branch-local CUDA library was built by RTX 5090 job `39413` at
-  `gpu_backend/build_face_qs/libstellarator_gpu.so`; SHA-256 is
+- The accepted formal sample is 96 condition-stratified trajectories at Adam
+  iterations `0,10,25,50,75,100,150,200`: 768 coil cases and 1536 surfaces.
+  The route was six-GPU source-psi/alpha+nu preparation, 40-way CPU Simsopt
+  LS/Newton, and six-GPU 97x97 independent validation. It intentionally did not
+  search maximum surfaces or run DESC. Exact results are preserved under
+  `reports/assets/qh_trajectory_face_qs_calibration_20260819/`; final
+  `summary.json` SHA-256 is
+  `f8462084d6d8adcac2b4a397e095f1b279cc656171dc70cec084f08733c49fff`.
+- Formal preparation succeeded for 766/768 cases. One alpha sampler produced
+  only 148800 valid points against the fixed 180000 budget; one low-score case
+  lost its magnetic axis during independent source-psi replay. Of 1532 prepared
+  surfaces, 1441 (94.1%) were solver-converged and regular and 1231 (80.4%)
+  passed every dense gate. Keep both cohorts distinct; strict rejection does
+  not by itself prove absence of a physical surface.
+- Fixed-probe volume/face QH Spearman is `0.94437`, with trajectory-clustered
+  95% interval `[0.91813,0.96129]`; adaptive-edge Spearman is `0.95754`.
+  Fixed-probe median face QH fell from `3.662e-4` at step 0 to `1.789e-6` at
+  step 200. Among 67 trajectories strictly accepted at both endpoints, 65
+  improved and the median end/start ratio was `0.005291` (189x improvement).
+  This validates native volume QH as a strong ranking/optimization proxy, not
+  as a numerically interchangeable face-QH value.
+- Source-psi independent angle-L2 P50/P95 was `1.325e-5/1.297e-4`, but full
+  volume alpha validation relative-L2 remained `0.0991/0.602`. The fixed-face
+  alpha+nu initial Boozer residual P50 was `7.58e-4`, versus `5.65e-6` after
+  accepted Simsopt solves. Do not claim machine-precision volume Boozer
+  coordinates; the validated role is stable proxy plus strong initializer.
+- Fixed-probe GPU/surface iota Spearman/Pearson was `0.9913/0.9959`, with
+  relative-error P50/P95 `0.157%/2.65%`. Adaptive-edge outliers occur when the
+  current effective surface collapses too close to the axis; do not trust
+  unconstrained rho=1 iota extrapolation in that regime.
+- Per-case P50 timings were source psi `9.51 s`, alpha `110.15 s`, nu/surface
+  initialization `72.92 s`, and total GPU preparation `193.76 s`. CPU Simsopt
+  was `7.85 s` P50 per surface with a long tail, and GPU validation was `1.16 s`
+  P50. Six-GPU preparation took about 6 h 49 min; the 40-core solve pool about
+  15 min; six-GPU validation about 5 min 40 s. Dense alpha+nu is the batch
+  bottleneck.
+- Earlier failed pilot jobs are retained only as infrastructure history in the
+  report. The accepted branch-local CUDA library SHA-256 is
   `7e0f28dc34286d90a3ff0d99ade88055c702870f659bed524e5d7aada8ff9d00`.
-  A corrected pilot must use this exact library and a fresh experiment root.
-- 2026-08-19 corrected pilot jobs `39416--39430` passed the CUDA ABI and source
-  psi stages but are also invalid physics evidence: all alpha commands used the
-  nonexistent `--gpu-device 0` option. The branch now passes the actual Torch
-  interface `--device cuda`; rerun in a new root before scaling out.
-- 2026-08-19 pilot jobs `39440--39454` ran the full chain. GPU preparation was
-  16/18; the two misses were one trajectory's later fixed probe with only
-  169964 valid candidates versus the fixed 180000-point budget. CPU Simsopt
-  solved all 32 prepared surfaces in about 4.8--8.1 s each; 30 passed strict
-  97x97 validation, while two solver-converged surfaces narrowly missed the
-  normal-field P95 threshold. Formal preparation uses bounded oversampling 1.5
-  instead of 1.25 and reports both solved-regular and strict-accepted cohorts.
-- 2026-08-19 formal 96-trajectory x 8-stage batch is active under
-  `~/local_surface_evaluator_data/qh_trajectory_face_qs_formal_20260819`.
-  Jobs are select `39468`, prepare `39470/39472`, CPU solve `39474/39476`, GPU
-  validate `39478/39480`, and analysis `39482`. All six RTX 5090 preflights
-  were idle; the first six preparations all passed in 158.4--161.1 s each.
-  Expected end-to-end wall time is about 6 h; monitor with
-  `squeue -j 39470,39472,39474,39476,39478,39480,39482`.
-- Completed original-space evidence remains in
-  `reports/qh_original_space_optimization_20260815.md`: direct standardized
-  data-space Adam is locally viable, but the matched flow-latent run reached a
-  materially better QH result. The completed trajectory-corpus statistics and
-  invariants remain in `reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`.
+- Next action is not yet selected. Completed original-space evidence remains in
+  `reports/qh_original_space_optimization_20260815.md`; trajectory-corpus
+  statistics remain in
+  `reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`.

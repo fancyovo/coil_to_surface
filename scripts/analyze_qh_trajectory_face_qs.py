@@ -114,6 +114,79 @@ def correlations(
     }
 
 
+def paired_correlations(
+    rows: list[dict[str, Any]],
+    *,
+    x_key: str,
+    y_key: str,
+    acceptance_key: str = "accepted",
+) -> dict[str, float | int | None]:
+    usable = [
+        row
+        for row in rows
+        if row[acceptance_key]
+        and math.isfinite(row[x_key])
+        and math.isfinite(row[y_key])
+    ]
+    if len(usable) < 3:
+        return {"count": len(usable), "spearman": None, "pearson": None}
+    x = np.asarray([row[x_key] for row in usable], dtype=float)
+    y = np.asarray([row[y_key] for row in usable], dtype=float)
+    spearman = correlation_statistic(x, y, kind="spearman")
+    pearson = correlation_statistic(x, y, kind="pearson")
+    return {
+        "count": len(usable),
+        "spearman": spearman if math.isfinite(spearman) else None,
+        "pearson": pearson if math.isfinite(pearson) else None,
+    }
+
+
+def log_linear_relation(rows: list[dict[str, Any]]) -> dict[str, float | int | None]:
+    usable = [
+        row
+        for row in rows
+        if row["accepted"] and row["native_qh"] > 0.0 and row["face_qh"] > 0.0
+    ]
+    if len(usable) < 3:
+        return {"count": len(usable), "slope": None, "intercept": None, "residual_std_decades": None}
+    x = np.log10([row["native_qh"] for row in usable])
+    y = np.log10([row["face_qh"] for row in usable])
+    slope, intercept = np.polyfit(x, y, 1)
+    residual = y - (slope * x + intercept)
+    return {
+        "count": len(usable),
+        "slope": float(slope),
+        "intercept": float(intercept),
+        "residual_std_decades": float(np.std(residual)),
+    }
+
+
+def endpoint_pair_summary(rows: list[dict[str, Any]], *, acceptance_key: str) -> dict[str, Any]:
+    fixed = [row for row in rows if row["surface_name"] == "fixed_probe"]
+    by_key = {(row["trajectory_id"], row["iteration"]): row for row in fixed}
+    pairs = []
+    for trajectory_id in sorted({row["trajectory_id"] for row in fixed}):
+        start = by_key.get((trajectory_id, 0))
+        end = by_key.get((trajectory_id, 200))
+        if (
+            start is not None
+            and end is not None
+            and start[acceptance_key]
+            and end[acceptance_key]
+            and start["face_qh"] > 0.0
+            and end["face_qh"] > 0.0
+        ):
+            pairs.append((start["face_qh"], end["face_qh"]))
+    return {
+        "count": len(pairs),
+        "start_face_qh": distribution(start for start, _ in pairs),
+        "end_face_qh": distribution(end for _, end in pairs),
+        "end_over_start": distribution(end / start for start, end in pairs),
+        "improved_count": sum(end < start for start, end in pairs),
+        "improved_fraction": sum(end < start for start, end in pairs) / max(len(pairs), 1),
+    }
+
+
 def prepare_failure_stage(prepare: dict[str, Any]) -> str:
     if prepare.get("status") == "ok":
         return "none"
@@ -148,6 +221,10 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
     for target in metadata["surface_targets"]:
         surface = surface_by_name.get(target["name"], {})
         accepted = bool(surface.get("accepted", False))
+        initial_iota = nested(surface, "initial_iota")
+        face_iota = nested(surface, "final_iota")
+        iota_abs_error = abs(nested(surface, "iota_error"))
+        checks = surface.get("acceptance_checks", {})
         rows.append(
             {
                 "case_id": metadata["case_id"],
@@ -178,20 +255,32 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
                 "alpha_normal_floor_l2": nested(alpha_order, "validation", "normal_floor_relative_l2"),
                 "initial_boozer_l2": nested(surface, "initial", "grids", default=float("nan")),
                 "final_boozer_l2": nested(surface, "final", "grids", default=float("nan")),
-                "initial_iota": nested(surface, "initial_iota"),
-                "face_iota": nested(surface, "final_iota"),
-                "iota_abs_error": abs(nested(surface, "iota_error")),
+                "initial_iota": initial_iota,
+                "face_iota": face_iota,
+                "iota_abs_error": iota_abs_error,
+                "iota_relative_error": iota_abs_error / max(abs(face_iota), 1.0e-12),
                 "face_qa": nested(surface, "surface_qs_error", "QA_1_0"),
                 "face_qh": nested(surface, "surface_qs_error", "QH_1_1"),
                 "face_qp": nested(surface, "surface_qs_error", "QP_0_1"),
                 "inverse_aspect_ratio": nested(surface, "geometry", "inverse_aspect_ratio"),
                 "volume_m3": nested(surface, "geometry", "volume_m3"),
                 "prepare_wall_s": nested(prepare, "total_wall_s"),
+                "source_psi_wall_s": nested(prepare, "timing_s", "source_psi_s"),
+                "alpha_wall_s": nested(prepare, "timing_s", "alpha_s"),
+                "alpha_nu_wall_s": nested(prepare, "timing_s", "alpha_nu_s"),
                 "cpu_solve_wall_s": nested(surface, "cpu_solve", "total_wall_s"),
                 "validation_wall_s": nested(surface, "validation_wall_s"),
                 "cpu_solve_status": surface.get("cpu_solve", {}).get("status", "missing"),
                 "final_dense_l2": nested(surface, "final", "grids", default=float("nan")),
                 "final_normal_p95": nested(surface, "final", "grids", default=float("nan")),
+                "has_acceptance_checks": bool(checks),
+                **{f"check_{key}": bool(checks.get(key, False)) for key in (
+                    "solver_converged",
+                    "dense_relative_l2",
+                    "dense_normal_field_p95",
+                    "toroidal_winding",
+                    "normal_nonzero",
+                )},
             }
         )
         if surface.get("initial", {}).get("grids"):
@@ -200,7 +289,6 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
             rows[-1]["final_boozer_l2"] = float(surface["final"]["grids"][-1]["relative_l2"])
             rows[-1]["final_dense_l2"] = float(surface["final"]["grids"][-1]["relative_l2"])
             rows[-1]["final_normal_p95"] = float(surface["final"]["grids"][-1]["normal_B_sine_p95"])
-        checks = surface.get("acceptance_checks", {})
         rows[-1]["solved_regular"] = bool(
             checks.get("solver_converged", False)
             and checks.get("toroidal_winding", False)
@@ -274,10 +362,10 @@ def plot_time_evolution(rows: list[dict[str, Any]], path: Path) -> None:
     for threshold, color in ((1e-3, "#d18b2c"), (1e-4, "#b64b3b"), (1e-5, "#6d3f8c")):
         fractions = []
         for iteration in iterations:
-            stage = [row for row in subset if row["iteration"] == iteration]
-            fractions.append(sum(row["face_qh"] <= threshold for row in stage) / max(len(stage), 1))
+            stage = [row for row in rows if row["surface_name"] == "fixed_probe" and row["iteration"] == iteration]
+            fractions.append(sum(row["accepted"] and row["face_qh"] <= threshold for row in stage) / max(len(stage), 1))
         axes[1].plot(x, fractions, "o-", color=color, label=f"QH <= {threshold:.0e}")
-    axes[1].set(xlabel="optimizer wall time [min]", ylabel="accepted fraction below threshold", title="Threshold attainment", ylim=(-0.02, 1.02))
+    axes[1].set(xlabel="optimizer wall time [min]", ylabel="fraction of all trajectories", title="Strict threshold attainment", ylim=(-0.02, 1.02))
     axes[1].legend(frameon=False)
     figure.savefig(path, dpi=190)
     plt.close(figure)
@@ -304,7 +392,7 @@ def plot_accuracy(rows: list[dict[str, Any]], path: Path) -> None:
 
 def plot_iota(rows: list[dict[str, Any]], path: Path) -> None:
     subset = [row for row in rows if row["accepted"] and math.isfinite(row["initial_iota"]) and math.isfinite(row["face_iota"])]
-    figure, axes = plt.subplots(1, 2, figsize=(12.0, 5.0), constrained_layout=True)
+    figure, axes = plt.subplots(1, 3, figsize=(16.0, 5.0), constrained_layout=True)
     axes[0].scatter([row["initial_iota"] for row in subset], [row["face_iota"] for row in subset], c=[row["iteration"] for row in subset], s=15, alpha=0.48, cmap="viridis")
     if subset:
         limits = [min(min(row["initial_iota"], row["face_iota"]) for row in subset), max(max(row["initial_iota"], row["face_iota"]) for row in subset)]
@@ -313,6 +401,42 @@ def plot_iota(rows: list[dict[str, Any]], path: Path) -> None:
     errors = finite(row["iota_abs_error"] for row in subset)
     axes[1].hist(errors, bins=35, color="#b64b3b", alpha=0.82)
     axes[1].set(xlabel="absolute iota error", ylabel="count", title="Absolute iota mismatch")
+    relative_errors = finite(row["iota_relative_error"] for row in subset)
+    if relative_errors.size:
+        axes[2].hist(np.log10(np.maximum(relative_errors, np.finfo(float).tiny)), bins=35, color="#6d3f8c", alpha=0.82)
+    axes[2].set(xlabel="log10(relative iota error)", ylabel="count", title="Relative iota mismatch")
+    figure.savefig(path, dpi=190)
+    plt.close(figure)
+
+
+def plot_condition_summary(rows: list[dict[str, Any]], path: Path) -> None:
+    fixed = [row for row in rows if row["surface_name"] == "fixed_probe"]
+    nfps = sorted({row["nfp"] for row in fixed})
+    coil_counts = sorted({row["n_base_coils"] for row in fixed})
+    count = np.full((len(nfps), len(coil_counts)), np.nan)
+    acceptance = np.full_like(count, np.nan)
+    rank_correlation = np.full_like(count, np.nan)
+    for i, nfp in enumerate(nfps):
+        for j, n_coils in enumerate(coil_counts):
+            subset = [row for row in fixed if row["nfp"] == nfp and row["n_base_coils"] == n_coils]
+            if not subset:
+                continue
+            count[i, j] = len(subset)
+            acceptance[i, j] = sum(row["accepted"] for row in subset) / len(subset)
+            statistic = correlations(subset, bootstrap=0)["spearman"]
+            if statistic is not None:
+                rank_correlation[i, j] = statistic
+    figure, axes = plt.subplots(1, 3, figsize=(15.5, 4.8), constrained_layout=True)
+    panels = ((count, "sampled snapshots", None, None), (acceptance, "strict acceptance", 0.0, 1.0), (rank_correlation, "volume/face Spearman", 0.0, 1.0))
+    for axis, (values, title, vmin, vmax) in zip(axes, panels):
+        image = axis.imshow(values, origin="lower", aspect="auto", cmap="viridis", vmin=vmin, vmax=vmax)
+        for i in range(values.shape[0]):
+            for j in range(values.shape[1]):
+                if math.isfinite(values[i, j]):
+                    label = f"{int(values[i, j])}" if title == "sampled snapshots" else f"{values[i, j]:.2f}"
+                    axis.text(j, i, label, ha="center", va="center", color="white" if values[i, j] < np.nanmax(values) * 0.65 else "black", fontsize=8)
+        axis.set(xticks=range(len(coil_counts)), xticklabels=coil_counts, yticks=range(len(nfps)), yticklabels=nfps, xlabel="base coils", ylabel="NFP", title=title)
+        figure.colorbar(image, ax=axis, fraction=0.046)
     figure.savefig(path, dpi=190)
     plt.close(figure)
 
@@ -341,6 +465,12 @@ def main() -> None:
             "solved_regular_correlation": correlations(subset, acceptance_key="solved_regular"),
             "face_qh": distribution(row["face_qh"] for row in subset if row["accepted"]),
             "inverse_aspect_ratio": distribution(row["inverse_aspect_ratio"] for row in subset if row["accepted"]),
+            "iota": {
+                "absolute_error": distribution(row["iota_abs_error"] for row in subset if row["accepted"]),
+                "relative_error": distribution(row["iota_relative_error"] for row in subset if row["accepted"]),
+                "correlation": paired_correlations(subset, x_key="initial_iota", y_key="face_iota"),
+            },
+            "log10_face_from_log10_volume": log_linear_relation(subset),
         }
     by_iteration = {}
     for iteration in sorted({row["iteration"] for row in rows}):
@@ -353,7 +483,14 @@ def main() -> None:
             "optimizer_wall_minutes": distribution(row["optimizer_wall_s"] / 60.0 for row in subset),
             "face_qh": distribution(row["face_qh"] for row in accepted),
             "native_qh": distribution(row["native_qh"] for row in accepted),
-            "below": {f"{threshold:.0e}": sum(row["face_qh"] <= threshold for row in accepted) / max(len(accepted), 1) for threshold in (1e-3, 1e-4, 1e-5)},
+            "below": {
+                f"{threshold:.0e}": {
+                    "count": sum(row["face_qh"] <= threshold for row in accepted),
+                    "fraction_of_strict_accepted": sum(row["face_qh"] <= threshold for row in accepted) / max(len(accepted), 1),
+                    "fraction_of_all_trajectories": sum(row["face_qh"] <= threshold for row in accepted) / max(len(subset), 1),
+                }
+                for threshold in (1e-3, 1e-4, 1e-5)
+            },
             "correlation": correlations(subset, seed=20260819 + iteration, bootstrap=500),
         }
     by_condition = {}
@@ -363,6 +500,15 @@ def main() -> None:
             "count": len(subset),
             "accepted": sum(row["accepted"] for row in subset),
             "correlation": correlations(subset, seed=20260819 + 10 * nfp + n_base_coils, bootstrap=500),
+        }
+    by_condition_fixed_probe = {}
+    for nfp, n_base_coils in sorted({(row["nfp"], row["n_base_coils"]) for row in rows}):
+        subset = [row for row in rows if row["surface_name"] == "fixed_probe" and row["nfp"] == nfp and row["n_base_coils"] == n_base_coils]
+        by_condition_fixed_probe[f"nfp{nfp}_nc{n_base_coils}"] = {
+            "count": len(subset),
+            "accepted": sum(row["accepted"] for row in subset),
+            "acceptance_fraction": sum(row["accepted"] for row in subset) / max(len(subset), 1),
+            "correlation": correlations(subset, seed=20261819 + 10 * nfp + n_base_coils, bootstrap=500),
         }
     threshold_times = {}
     fixed_rows = [row for row in rows if row["surface_name"] == "fixed_probe" and row["accepted"]]
@@ -388,18 +534,38 @@ def main() -> None:
         "by_surface": by_surface,
         "by_iteration_fixed_probe": by_iteration,
         "by_condition": by_condition,
+        "by_condition_fixed_probe": by_condition_fixed_probe,
         "threshold_times": threshold_times,
+        "paired_endpoints_fixed_probe": {
+            "strict_accepted": endpoint_pair_summary(rows, acceptance_key="accepted"),
+            "solved_regular": endpoint_pair_summary(rows, acceptance_key="solved_regular"),
+        },
         "psi_accuracy": {
             key: distribution(row[key] for row in rows if row["surface_name"] == "fixed_probe")
-            for key in ("native_psi_train_rms", "native_psi_angle_l2", "native_psi_angle_p95", "source_psi_train_rms", "source_psi_validation_rms", "source_psi_angle_l2", "source_psi_angle_p95", "alpha_validation_l2")
+            for key in ("native_psi_train_rms", "native_psi_angle_l2", "native_psi_angle_p95", "source_psi_train_rms", "source_psi_validation_rms", "source_psi_angle_l2", "source_psi_angle_p95", "alpha_validation_l2", "alpha_normal_floor_l2")
         },
         "iota": {
             "absolute_error": distribution(row["iota_abs_error"] for row in rows if row["accepted"]),
+            "relative_error": distribution(row["iota_relative_error"] for row in rows if row["accepted"]),
             "gpu_initial": distribution(row["initial_iota"] for row in rows if row["accepted"]),
             "surface_final": distribution(row["face_iota"] for row in rows if row["accepted"]),
+            "correlation": paired_correlations(rows, x_key="initial_iota", y_key="face_iota"),
+        },
+        "acceptance_check_failures": {
+            key: sum(row["has_acceptance_checks"] and not row[f"check_{key}"] for row in rows)
+            for key in (
+                "solver_converged",
+                "dense_relative_l2",
+                "dense_normal_field_p95",
+                "toroidal_winding",
+                "normal_nonzero",
+            )
         },
         "timing_s": {
             "gpu_prepare_per_case": distribution(row["prepare_wall_s"] for row in rows[::2]),
+            "source_psi_per_case": distribution(row["source_psi_wall_s"] for row in rows[::2]),
+            "alpha_per_case": distribution(row["alpha_wall_s"] for row in rows[::2]),
+            "alpha_nu_per_case": distribution(row["alpha_nu_wall_s"] for row in rows[::2]),
             "cpu_solve_per_surface": distribution(row["cpu_solve_wall_s"] for row in rows),
             "gpu_validation_per_surface": distribution(row["validation_wall_s"] for row in rows),
         },
@@ -409,6 +575,7 @@ def main() -> None:
     plot_time_evolution(rows, args.output_dir / "face_qs_over_time.png")
     plot_accuracy(rows, args.output_dir / "psi_and_coordinate_accuracy.png")
     plot_iota(rows, args.output_dir / "iota_comparison.png")
+    plot_condition_summary(rows, args.output_dir / "condition_summary.png")
     print(json.dumps({"rows": len(rows), "accepted": sum(row["accepted"] for row in rows), "output": str(args.output_dir)}))
 
 

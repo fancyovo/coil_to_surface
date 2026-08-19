@@ -440,7 +440,8 @@ Only current decisions are retained here; exact history is in
   `5.920e-4/1.465e-3/3.709e-3`, but hit the 50-step cap. Exact jobs, hashes,
   all figures, and 22 MiB of artifacts are in
   `reports/qh_min_face_qh_full_evaluation_20260819.md` and its matching asset
-  directory. Fixed delivery validation passed with all eight DESC PNGs cited.
+  directory at commit `d530326`. Fixed delivery validation passed with all
+  eight DESC PNGs cited.
 - 2026-08-19 active branch is `codex/trajectory-face-qs-calibration`, checked
   out directly in the repository root with no worktree. The formal experiment
   is complete; there are no remaining project Slurm jobs. Full methods,

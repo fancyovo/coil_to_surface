@@ -1,0 +1,250 @@
+{
+  "format": "summary1_evaluator_modes_benchmark_aggregate_v1",
+  "record_count": 562,
+  "case_count": 12,
+  "mode_summary": {
+    "center_independent": {
+      "count": 12,
+      "status_counts": {
+        "ok": 11,
+        "flux_rejected": 1
+      },
+      "wall_s": {
+        "count": 12,
+        "p50": 3.665218621492386,
+        "p95": 5.353541886247694,
+        "mean": 3.4757431152587137
+      },
+      "native_total_s": {
+        "count": 12,
+        "p50": 3.4678724115,
+        "p95": 4.904589817799999,
+        "mean": 3.303988840083333
+      }
+    },
+    "independent": {
+      "count": 176,
+      "status_counts": {
+        "ok": 160,
+        "no_surface": 8,
+        "flux_rejected": 6,
+        "no_axis": 2
+      },
+      "wall_s": {
+        "count": 176,
+        "p50": 2.848056897521019,
+        "p95": 4.651849846355617,
+        "mean": 2.798319583314217
+      },
+      "native_total_s": {
+        "count": 176,
+        "p50": 2.8474740405,
+        "p95": 4.65132846225,
+        "mean": 2.796972386153409
+      }
+    },
+    "neighborhood_proxy": {
+      "count": 88,
+      "status_counts": {
+        "ok": 88
+      },
+      "wall_s": {
+        "count": 88,
+        "p50": 0.023974813375389203,
+        "p95": 0.035120357177220285,
+        "mean": 0.024379342085343193
+      },
+      "native_total_s": {
+        "count": 88,
+        "p50": 1.661659896,
+        "p95": 2.33034549,
+        "mean": 1.692071929272727
+      }
+    },
+    "strict_continuation": {
+      "count": 176,
+      "status_counts": {
+        "ok": 160,
+        "no_surface": 8,
+        "flux_rejected": 6,
+        "branch_lost": 2
+      },
+      "wall_s": {
+        "count": 176,
+        "p50": 0.8447387740015984,
+        "p95": 1.1518484177067876,
+        "mean": 0.8488715370609001
+      },
+      "native_total_s": {
+        "count": 176,
+        "p50": 0.8423775785000001,
+        "p95": 1.1510640155,
+        "mean": 0.8466524991193183
+      }
+    }
+  },
+  "batch_scaling": {
+    "2": {
+      "batch_wall_s": {
+        "count": 22,
+        "p50": 0.9610033500939608,
+        "p95": 1.3595057383179665,
+        "mean": 0.9687473992393776
+      },
+      "per_candidate_wall_s": {
+        "count": 22,
+        "p50": 0.4805016750469804,
+        "p95": 0.6797528691589833,
+        "mean": 0.4843736996196888
+      },
+      "ok_fraction": {
+        "count": 22,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "8": {
+      "batch_wall_s": {
+        "count": 22,
+        "p50": 0.9994374364614487,
+        "p95": 1.4785152846947311,
+        "mean": 1.0331898534839803
+      },
+      "per_candidate_wall_s": {
+        "count": 22,
+        "p50": 0.12492967955768108,
+        "p95": 0.1848144105868414,
+        "mean": 0.12914873168549754
+      },
+      "ok_fraction": {
+        "count": 22,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "32": {
+      "batch_wall_s": {
+        "count": 22,
+        "p50": 1.3471749294549227,
+        "p95": 1.9769354093819855,
+        "mean": 1.398409820923751
+      },
+      "per_candidate_wall_s": {
+        "count": 22,
+        "p50": 0.042099216545466334,
+        "p95": 0.06177923154318705,
+        "mean": 0.04370030690386722
+      },
+      "ok_fraction": {
+        "count": 22,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "64": {
+      "batch_wall_s": {
+        "count": 22,
+        "p50": 1.8514874894171953,
+        "p95": 2.6918285841122267,
+        "mean": 1.8917793194678696
+      },
+      "per_candidate_wall_s": {
+        "count": 22,
+        "p50": 0.028929492022143677,
+        "p95": 0.04205982162675354,
+        "mean": 0.029559051866685462
+      },
+      "ok_fraction": {
+        "count": 22,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "128": {
+      "batch_wall_s": {
+        "count": 22,
+        "p50": 3.068510513752699,
+        "p95": 4.460184744186699,
+        "mean": 3.1227169499139893
+      },
+      "per_candidate_wall_s": {
+        "count": 22,
+        "p50": 0.02397273838869296,
+        "p95": 0.034845193313958585,
+        "mean": 0.02439622617120304
+      },
+      "ok_fraction": {
+        "count": 22,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    }
+  },
+  "comparisons": {
+    "independent_vs_strict": {
+      "count": 80,
+      "spearman": 0.9987810595405532,
+      "mae": 0.046364772839677125,
+      "status_pair_count": 88,
+      "status_agreement": 0.9886363636363636
+    },
+    "strict_vs_proxy": {
+      "count": 80,
+      "spearman": 0.9851383028598221,
+      "mae": 0.7459939706539136,
+      "status_pair_count": 88,
+      "status_agreement": 0.9090909090909091
+    }
+  },
+  "formal_stage_timing": {
+    "independent": {
+      "count": 176,
+      "total_mean_s": 2.796972386153409,
+      "stage_mean_s": {
+        "Input and coil geometry": 0.025512105562499998,
+        "Magnetic axis": 2.4517360218863633,
+        "$s$ fit and validation": 0.10775646211931816,
+        "Surface and flux": 0.15240261980113637,
+        "$\\alpha/\\iota$ fit": 0.05598677596590909,
+        "QS and score": 0.0007625586988636364,
+        "Other and synchronization": 0.002815842119318202
+      },
+      "stage_fraction": {
+        "Input and coil geometry": 0.009121329080258107,
+        "Magnetic axis": 0.8765678324261761,
+        "$s$ fit and validation": 0.03852610867836001,
+        "Surface and flux": 0.05448842489672594,
+        "$\\alpha/\\iota$ fit": 0.020016921240651218,
+        "QS and score": 0.00027263719250098146,
+        "Other and synchronization": 0.0010067464853275665
+      }
+    },
+    "strict_continuation": {
+      "count": 176,
+      "total_mean_s": 0.8466524991193183,
+      "stage_mean_s": {
+        "Input and coil geometry": 0.02553701481818182,
+        "Magnetic axis": 0.5011543381363637,
+        "$s$ fit and validation": 0.10815218453977272,
+        "Surface and flux": 0.15224231116477274,
+        "$\\alpha/\\iota$ fit": 0.05599276013636363,
+        "QS and score": 0.0007587791647727272,
+        "Other and synchronization": 0.0028151111590909135
+      },
+      "stage_fraction": {
+        "Input and coil geometry": 0.030162333241495462,
+        "Magnetic axis": 0.5919244774658561,
+        "$s$ fit and validation": 0.12774093816798726,
+        "Surface and flux": 0.1798167622762988,
+        "$\\alpha/\\iota$ fit": 0.06613428790986489,
+        "QS and score": 0.000896210860491174,
+        "Other and synchronization": 0.003324990078006232
+      }
+    }
+  }
+}

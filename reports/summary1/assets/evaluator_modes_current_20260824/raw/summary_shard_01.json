@@ -1,0 +1,268 @@
+{
+  "format": "summary1_evaluator_modes_benchmark_v1",
+  "shard_index": 1,
+  "shard_count": 4,
+  "library": "/home/scc/pb24511935/local_surface_evaluator/runs/summary1_20260824_r2/build_native/libstellarator_gpu.so",
+  "trajectory_root": "/home/scc/pb24511935/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813",
+  "selection": [
+    {
+      "case_id": "student_37035_0_000043_probe0050",
+      "trajectory_id": "student_37035_0_000043",
+      "probe_iteration": 50,
+      "nfp": 4,
+      "n_base_coils": 3,
+      "endpoint_count": 128,
+      "reference_indices": [
+        0,
+        18,
+        36,
+        54,
+        72,
+        90,
+        108,
+        127
+      ],
+      "source_manifest": "/home/scc/pb24511935/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/trajectories/student_37035_0_000043/trajectory_manifest.json",
+      "status": "ok"
+    },
+    {
+      "case_id": "student_37035_1_000050_probe0050",
+      "trajectory_id": "student_37035_1_000050",
+      "probe_iteration": 50,
+      "nfp": 3,
+      "n_base_coils": 3,
+      "endpoint_count": 128,
+      "reference_indices": [
+        0,
+        18,
+        36,
+        54,
+        72,
+        90,
+        108,
+        127
+      ],
+      "source_manifest": "/home/scc/pb24511935/local_surface_evaluator_data/qh_screen32_adam200_v1_pilot_20260813/trajectories/student_37035_1_000050/trajectory_manifest.json",
+      "status": "ok"
+    },
+    {
+      "case_id": "p107_37034_1_000014_probe0050",
+      "status": "center_failed",
+      "center_status": "flux_rejected"
+    }
+  ],
+  "protocol": {
+    "case_count_total": 12,
+    "case_count_shard": 3,
+    "probe_iterations": [
+      1,
+      50,
+      150,
+      200
+    ],
+    "formal_reference_count": 8,
+    "formal_repeats": 2,
+    "batch_sizes": [
+      2,
+      8,
+      32,
+      64,
+      128
+    ],
+    "batch_repeats": 2,
+    "selection_seed": 2026082401
+  },
+  "mode_summary": {
+    "center_independent": {
+      "count": 3,
+      "status_counts": {
+        "ok": 2,
+        "flux_rejected": 1
+      },
+      "wall_s": {
+        "count": 3,
+        "p50": 4.043175850063562,
+        "p95": 4.183470536023378,
+        "mean": 3.433628591398398
+      },
+      "native_total_s": {
+        "count": 3,
+        "p50": 3.530237515,
+        "p95": 4.1312361733000005,
+        "mean": 3.262105876
+      }
+    },
+    "independent": {
+      "count": 32,
+      "status_counts": {
+        "ok": 32
+      },
+      "wall_s": {
+        "count": 32,
+        "p50": 2.2565336357802153,
+        "p95": 2.4576446527615188,
+        "mean": 2.25466290442273
+      },
+      "native_total_s": {
+        "count": 32,
+        "p50": 2.2557088949999997,
+        "p95": 2.44863010065,
+        "mean": 2.25328505375
+      }
+    },
+    "neighborhood_proxy": {
+      "count": 16,
+      "status_counts": {
+        "ok": 16
+      },
+      "wall_s": {
+        "count": 16,
+        "p50": 0.02259066425904166,
+        "p95": 0.024291905283462256,
+        "mean": 0.02259066425904166
+      },
+      "native_total_s": {
+        "count": 16,
+        "p50": 1.556844394,
+        "p95": 1.661659896,
+        "mean": 1.556844394
+      }
+    },
+    "strict_continuation": {
+      "count": 32,
+      "status_counts": {
+        "ok": 32
+      },
+      "wall_s": {
+        "count": 32,
+        "p50": 0.8266232796013355,
+        "p95": 0.9587116416543722,
+        "mean": 0.8054531195666641
+      },
+      "native_total_s": {
+        "count": 32,
+        "p50": 0.825977521,
+        "p95": 0.9576450628,
+        "mean": 0.804091568125
+      }
+    }
+  },
+  "batch_scaling": {
+    "2": {
+      "batch_wall_s": {
+        "count": 4,
+        "p50": 0.9610033500939608,
+        "p95": 1.1098625166341662,
+        "mean": 0.9486261643469334
+      },
+      "per_candidate_wall_s": {
+        "count": 4,
+        "p50": 0.4805016750469804,
+        "p95": 0.5549312583170831,
+        "mean": 0.4743130821734667
+      },
+      "ok_fraction": {
+        "count": 4,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "8": {
+      "batch_wall_s": {
+        "count": 4,
+        "p50": 0.9697171188890934,
+        "p95": 1.0471798293292522,
+        "mean": 0.9701339974999428
+      },
+      "per_candidate_wall_s": {
+        "count": 4,
+        "p50": 0.12121463986113667,
+        "p95": 0.13089747866615653,
+        "mean": 0.12126674968749285
+      },
+      "ok_fraction": {
+        "count": 4,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "32": {
+      "batch_wall_s": {
+        "count": 4,
+        "p50": 1.2970330119132996,
+        "p95": 1.3958593804389239,
+        "mean": 1.2978272708132863
+      },
+      "per_candidate_wall_s": {
+        "count": 4,
+        "p50": 0.04053228162229061,
+        "p95": 0.04362060563871637,
+        "mean": 0.0405571022129152
+      },
+      "ok_fraction": {
+        "count": 4,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "64": {
+      "batch_wall_s": {
+        "count": 4,
+        "p50": 1.7698151376098394,
+        "p95": 1.9025016648694872,
+        "mean": 1.7677817605435848
+      },
+      "per_candidate_wall_s": {
+        "count": 4,
+        "p50": 0.02765336152515374,
+        "p95": 0.029726588513585738,
+        "mean": 0.027621590008493513
+      },
+      "ok_fraction": {
+        "count": 4,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    },
+    "128": {
+      "batch_wall_s": {
+        "count": 4,
+        "p50": 2.900230860337615,
+        "p95": 3.1257503336295485,
+        "mean": 2.901652880012989
+      },
+      "per_candidate_wall_s": {
+        "count": 4,
+        "p50": 0.022658053596387617,
+        "p95": 0.024419924481480847,
+        "mean": 0.022669163125101477
+      },
+      "ok_fraction": {
+        "count": 4,
+        "p50": 1.0,
+        "p95": 1.0,
+        "mean": 1.0
+      }
+    }
+  },
+  "comparisons": {
+    "independent_vs_strict": {
+      "count": 16,
+      "spearman": 0.9411764705882352,
+      "mae": 0.06917356751411496,
+      "status_pair_count": 16,
+      "status_agreement": 1.0
+    },
+    "strict_vs_proxy": {
+      "count": 16,
+      "spearman": 0.8176470588235294,
+      "mae": 0.22466220613105836,
+      "status_pair_count": 16,
+      "status_agreement": 1.0
+    }
+  }
+}

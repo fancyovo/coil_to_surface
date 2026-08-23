@@ -160,9 +160,11 @@ def _json_ready(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_json_ready(item) for item in value]
     if isinstance(value, np.ndarray):
-        return value.tolist()
+        return _json_ready(value.tolist())
     if isinstance(value, np.generic):
-        return value.item()
+        return _json_ready(value.item())
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
     if isinstance(value, Path):
         return str(value)
     return value

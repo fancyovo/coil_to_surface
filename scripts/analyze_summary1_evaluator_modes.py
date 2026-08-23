@@ -63,7 +63,11 @@ def plot_overview(records: list[dict], destination: Path) -> None:
         [row["wall_s"] for row in records if row["mode"] == mode]
         for mode in formal
     ]
-    boxes = axes[0].boxplot(values, labels=["Independent", "Strict continuation"], patch_artist=True)
+    boxes = axes[0].boxplot(
+        values,
+        tick_labels=["Independent", "Strict continuation"],
+        patch_artist=True,
+    )
     for patch, mode in zip(boxes["boxes"], formal, strict=True):
         patch.set_facecolor(COLORS[mode])
         patch.set_alpha(0.78)
@@ -108,36 +112,77 @@ def plot_overview(records: list[dict], destination: Path) -> None:
     plt.close(fig)
 
 
-def plot_stage_timing(records: list[dict], destination: Path) -> None:
-    ignored = {"total_s", "score_s"}
-    medians: dict[str, dict[str, float]] = {}
-    for mode in ("independent", "strict_continuation"):
+def plot_stage_timing(records: list[dict], destination: Path) -> dict[str, dict]:
+    groups = (
+        ("Input and coil geometry", ("field_create_s", "coil_geometry_s")),
+        ("Magnetic axis", ("axis_search_s", "axis_trace_s")),
+        ("$s$ fit and validation", ("psi_points_s", "psi_fit_s", "psi_validate_s")),
+        ("Surface and flux", ("surface_screen_s", "flux_s")),
+        (
+            "$\\alpha/\\iota$ fit",
+            ("volume_points_s", "field_volume_s", "alpha_assemble_s", "alpha_solve_s"),
+        ),
+        ("QS and score", ("qs_metrics_s", "score_s")),
+    )
+    modes = ("independent", "strict_continuation")
+    grouped_means: dict[str, dict[str, float]] = {}
+    total_means: dict[str, float] = {}
+    for mode in modes:
         rows = [row for row in records if row["mode"] == mode]
-        keys = sorted({key for row in rows for key in row.get("timing", {}) if key not in ignored})
-        medians[mode] = {
-            key: float(np.median([float(row["timing"].get(key, 0.0)) for row in rows]))
-            for key in keys
+        per_call: dict[str, list[float]] = {label: [] for label, _ in groups}
+        per_call["Other and synchronization"] = []
+        totals: list[float] = []
+        for row in rows:
+            timing = row.get("timing", {})
+            measured = 0.0
+            for label, keys in groups:
+                value = sum(float(timing.get(key, 0.0)) for key in keys)
+                per_call[label].append(value)
+                measured += value
+            total = float(timing.get("total_s", row["wall_s"]))
+            totals.append(total)
+            per_call["Other and synchronization"].append(max(total - measured, 0.0))
+        grouped_means[mode] = {
+            label: float(np.mean(values)) for label, values in per_call.items()
         }
-    totals = defaultdict(float)
-    for mode in medians:
-        for key, value in medians[mode].items():
-            totals[key] += value
-    selected = [key for key, _ in sorted(totals.items(), key=lambda item: item[1], reverse=True)[:8]]
+        total_means[mode] = float(np.mean(totals))
+
+    labels = [label for label, _ in groups] + ["Other and synchronization"]
     fig, ax = plt.subplots(figsize=(9.2, 4.3), constrained_layout=True)
     left = np.zeros(2)
     palette = plt.get_cmap("tab20c")
-    for index, key in enumerate(selected):
-        values = np.asarray([medians[mode].get(key, 0.0) for mode in ("independent", "strict_continuation")])
-        ax.barh([0, 1], values, left=left, label=key.removesuffix("_s"), color=palette(index))
+    for index, label in enumerate(labels):
+        values = np.asarray([grouped_means[mode][label] for mode in modes])
+        ax.barh([0, 1], values, left=left, label=label, color=palette(index))
         left += values
     ax.set_yticks([0, 1], ["Independent", "Strict continuation"])
     ax.invert_yaxis()
-    ax.set_xlabel("Median native stage time [s]")
-    ax.set_title("Where the formal evaluator spends time")
+    for row, mode in enumerate(modes):
+        ax.text(
+            total_means[mode] + 0.03,
+            row,
+            f"{total_means[mode]:.2f} s mean",
+            va="center",
+            fontsize=9,
+        )
+    ax.set_xlabel("Mean non-overlapping native stage time [s]")
+    ax.set_title("Formal evaluator time decomposition")
     ax.legend(ncol=4, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.16), frameon=False)
     ax.grid(axis="x", alpha=0.2)
     fig.savefig(destination, dpi=220, facecolor="white")
     plt.close(fig)
+    return {
+        mode: {
+            "count": len([row for row in records if row["mode"] == mode]),
+            "total_mean_s": total_means[mode],
+            "stage_mean_s": grouped_means[mode],
+            "stage_fraction": {
+                label: value / total_means[mode]
+                for label, value in grouped_means[mode].items()
+            },
+        }
+        for mode in modes
+    }
 
 
 def main() -> None:
@@ -153,11 +198,13 @@ def main() -> None:
         "case_count": len({row["case_id"] for row in records}),
         **summarize(records),
     }
+    plot_overview(records, args.output_dir / "evaluator_modes_overview.png")
+    summary["formal_stage_timing"] = plot_stage_timing(
+        records, args.output_dir / "formal_stage_timing.png"
+    )
     (args.output_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
     )
-    plot_overview(records, args.output_dir / "evaluator_modes_overview.png")
-    plot_stage_timing(records, args.output_dir / "formal_stage_timing.png")
     print(json.dumps({"record_count": len(records), "case_count": summary["case_count"]}))
 
 

@@ -134,6 +134,27 @@ def test_result_json_is_finite_and_self_describing(tmp_path) -> None:
     assert payload["diagnostics"]["axis_R"] == 1.2
 
 
+def test_result_json_maps_unavailable_native_values_to_null(tmp_path) -> None:
+    raw = native_result()
+    raw["diagnostics"]["psi_angle_mean"] = float("nan")
+    raw["diagnostics"]["nested"] = {
+        "positive_infinity": float("inf"),
+        "array": np.asarray([1.0, np.nan]),
+    }
+    class NonfiniteBackend:
+        def __call__(self, *args, **kwargs):
+            return raw
+
+    result = Evaluator("unused.so", backend=NonfiniteBackend()).evaluate(coils())
+    path = tmp_path / "result_with_unavailable_values.json"
+    result.write_json(path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert payload["diagnostics"]["psi_angle_mean"] is None
+    assert payload["diagnostics"]["nested"]["positive_infinity"] is None
+    assert payload["diagnostics"]["nested"]["array"] == [1.0, None]
+
+
 def test_coil_set_rejects_nonfinite_values() -> None:
     values = np.zeros((1, 3))
     values[0, 0] = np.nan

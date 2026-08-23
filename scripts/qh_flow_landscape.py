@@ -22,8 +22,8 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 DEFAULT_IDS = (1446077, 1826200, 2419096)
-SCORE_DEFINITION = "corrected_abi9_g_over_2pi_per_helicity"
-SCORE_LABEL = "corrected ABI-9 score"
+SCORE_DEFINITION = "abi10_production_continuous_surface_cubic_iota"
+SCORE_LABEL = "current ABI-10 production score"
 _POSITIVE_ALPHAS = (
     0.001,
     0.002,
@@ -611,6 +611,7 @@ def prepare_cases(args: argparse.Namespace) -> None:
 def score_partition(args: argparse.Namespace) -> None:
     from stellarator_gpu import score_coils_native
     from scripts.optimize_native_score_cem import token_case
+    from stellarator_eval.native_evaluator import PRODUCTION_SCORE_CONFIG
 
     cases = [
         row
@@ -642,6 +643,7 @@ def score_partition(args: argparse.Namespace) -> None:
                     int(row["nfp"]),
                     device_id=args.rank,
                     target_helicity=(1, int(row["nfp"])),
+                    config_overrides=dict(PRODUCTION_SCORE_CONFIG),
                 )
             except Exception as exc:
                 error = f"{type(exc).__name__}: {exc}"

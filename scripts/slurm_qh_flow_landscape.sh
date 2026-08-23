@@ -37,6 +37,8 @@ cleanup() {
   fi
   nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu \
     --format=csv,noheader > "$output/gpu_postflight.csv" 2>/dev/null || true
+  ps -u "$USER" -o pid=,ppid=,stat=,comm= | awk '$3 ~ /^Z/ {print}' \
+    > "$output/zombies_postflight.txt" 2>/dev/null || true
   exit "$status"
 }
 trap cleanup EXIT INT TERM

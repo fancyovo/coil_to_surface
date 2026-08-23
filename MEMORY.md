@@ -429,45 +429,27 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-24 active branch is `codex/summary1-project-report-qh`, checked out
-  directly in the repository root with no worktree. The user approved
-  `reports/summary1/计划_v1.md`; the current task is to organize the project interface
-  and write the technical report. Public-release README work is explicitly
-  deferred until the user has reviewed the completed project and report.
-- 2026-08-24 added a thin project-level interface in
-  `stellarator_eval/native_evaluator.py`: typed coil input, independent and
-  strict-continuation modes, branch-bound axis state, structured JSON output,
-  native/default score preservation, and user-supplied score policies. Strict
-  continuation always sets mixed same-branch mode 2 and rejects caller-provided
-  axis control fields. The query-major CUDA route is exposed separately under
-  `stellarator_eval.experimental.neighborhood`; it is labeled a local proxy and
-  cannot anchor another proxy batch. Eight pure-Python interface tests pass.
-- The 2026-08-19 formal calibration is complete and frozen. Across 768 cases
-  and 1536 standard surfaces, fixed-probe volume/face QH Spearman was `0.94437`,
-  adaptive-edge `0.95754`, outer-shell `0.96708`, and GPU/surface iota Spearman
-  `0.9913`. Source-psi angle-L2 P50/P95 was `1.325e-5/1.297e-4`; alpha+nu is a
-  useful initializer but not machine-precision Boozer coordinates. Exact
-  cohorts, timings, hashes, and limitations are in
-  `reports/qh_trajectory_face_qs_calibration_20260819.md`.
-- The minimum face-QH sample complete evaluation and all DESC artifacts remain
-  accepted in `reports/qh_min_face_qh_full_evaluation_20260819.md`. The current
-  report should reuse this evidence rather than rerun it.
-- 2026-08-24 commit `fc1be50` added the readable six-part draft
-  `reports/summary1/技术报告.md`, four method SVGs, same-version three-mode
-  benchmark scripts, and an eight-start Flow/data-space paired protocol. It
-  also corrected `docs/QH原生评分与潜空间优化方法.md` from the obsolete grid-80,
-  constant-iota, 16-period score description to current grid-48, cubic-iota,
-  continuous-surface behavior. The draft deliberately leaves new benchmark
-  numbers blank rather than combining old snapshots.
-- The stable `Evaluator` now defaults to the exact production score overrides:
-  continuous surface mode, one confidence period, 128 angles, 400 trace steps,
-  six flux bisections, and cubic `iota(rho^2)`. Raw ABI defaults require
-  explicit `use_production_defaults=False`. This distinction is mandatory:
-  the C ABI's bare defaults still describe the legacy surface path. Nine
-  interface tests, Python compilation, report-link checks, and Slurm Bash
-  syntax checks pass.
-- No summary1 remote job has been submitted. On 2026-08-24 the mandatory WSL
-  preflight passed, but `ssh -O check ustc107` failed because the master control
-  socket did not exist. Resume only after the user restores the documented SSH
-  master connection; then build commit `fc1be50`, run the three-mode benchmark
-  and paired experiment on empty allocated RTX 5090 GPUs, collect figures, and
-  replace the report's explicit pending-result paragraph.
+  directly in the repository root with no worktree. Public README/release work
+  remains deferred until the user reviews the completed project and report.
+- Commit `f435d1a` contains the typed production evaluator, strict same-axis
+  continuation, separately labeled neighborhood proxy, user score policies,
+  readable six-part `reports/summary1/技术报告.md`, method figures, benchmark
+  protocols, and dependency-light remote interface smoke checks. Both the
+  smoke script and the full local pytest suite pass 9/9.
+- The report reuses the accepted 2026-08-19 calibration and complete-evaluation
+  evidence; it must not rerun them or mix their old timing snapshots into the
+  new same-version benchmark. The remaining blanks are current three-mode
+  timing/ranking results and eight matched latent/data optimization pairs.
+- 2026-08-24 remote connection and full preflight recovered. Valid run root is
+  `~/local_surface_evaluator/runs/summary1_20260824_r2`; bundle commit is
+  `f435d1ab71a902033406affebbcca6ff28401759`, SHA-256
+  `9233227dc15c5188eaa1b3360265bf52189a50964b7d2dc7ef57d9dae74c6a7e`.
+- Preparation job `42155` completed: bundle/commit verified, CUDA 13 sm120
+  library built, 9 smoke checks passed, and eight paired cases prepared. The
+  earlier `42144` failed only because the shared venv lacked pytest; its
+  dependent arrays `42147/42152` were cancelled and have no numerical result.
+- Active jobs are three-mode array `42158_[0-3]`, then packed latent/data pair
+  array `42159_[0-3]`, followed by analysis job `42164`. All four timing GPUs
+  passed the empty-GPU gate (`0%`, `2 MiB`). After completion, collect the two
+  analysis summaries/figures, update the report, verify postflight GPU/zombie
+  records, and copy only final artifacts back into the root checkout.

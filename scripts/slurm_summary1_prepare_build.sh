@@ -53,7 +53,8 @@ cmake -S "$project/gpu_backend" -B "$build_dir" \
   -DCUDAToolkit_ROOT="$CUDA_HOME" \
   -DCMAKE_CUDA_ARCHITECTURES=120
 cmake --build "$build_dir" --target stellarator_gpu --parallel 4
-python -m pytest "$project/tests/test_native_evaluator.py" -q
+PYTHONPATH="$project${PYTHONPATH:+:$PYTHONPATH}" \
+  python "$project/scripts/smoke_summary1_interfaces.py"
 python "$project/scripts/prepare_summary1_flow_pairs.py" \
   --trajectory-root "$trajectory_root" \
   --output-dir "$run_root/flow_pairs" \

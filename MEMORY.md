@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-19 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-24 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -451,7 +451,23 @@ Only current decisions are retained here; exact history is in
 - The minimum face-QH sample complete evaluation and all DESC artifacts remain
   accepted in `reports/qh_min_face_qh_full_evaluation_20260819.md`. The current
   report should reuse this evidence rather than rerun it.
-- No summary1 remote benchmark has been submitted yet. Next: freeze the report
-  skeleton, implement one same-version three-mode benchmark and a small paired
-  current-score Flow/data-space comparison, then write results into
-  `reports/summary1/技术报告.md`.
+- 2026-08-24 commit `fc1be50` added the readable six-part draft
+  `reports/summary1/技术报告.md`, four method SVGs, same-version three-mode
+  benchmark scripts, and an eight-start Flow/data-space paired protocol. It
+  also corrected `docs/QH原生评分与潜空间优化方法.md` from the obsolete grid-80,
+  constant-iota, 16-period score description to current grid-48, cubic-iota,
+  continuous-surface behavior. The draft deliberately leaves new benchmark
+  numbers blank rather than combining old snapshots.
+- The stable `Evaluator` now defaults to the exact production score overrides:
+  continuous surface mode, one confidence period, 128 angles, 400 trace steps,
+  six flux bisections, and cubic `iota(rho^2)`. Raw ABI defaults require
+  explicit `use_production_defaults=False`. This distinction is mandatory:
+  the C ABI's bare defaults still describe the legacy surface path. Nine
+  interface tests, Python compilation, report-link checks, and Slurm Bash
+  syntax checks pass.
+- No summary1 remote job has been submitted. On 2026-08-24 the mandatory WSL
+  preflight passed, but `ssh -O check ustc107` failed because the master control
+  socket did not exist. Resume only after the user restores the documented SSH
+  master connection; then build commit `fc1be50`, run the three-mode benchmark
+  and paired experiment on empty allocated RTX 5090 GPUs, collect figures, and
+  replace the report's explicit pending-result paragraph.

@@ -432,6 +432,7 @@ Only current decisions are retained here; exact history is in
   directly in the repository root. The user rejected the first report and
   supplied `reports/summary1/技术报告第一版审阅.md`; the report was rewritten from
   the implementation and current evidence as `reports/summary1/技术报告.md`.
+  Review-ready report and evidence commit is `c3d7428`.
   Public README/release synchronization remains explicitly deferred until the
   user accepts the technical report.
 - The rewritten report has five paper-style sections and three evidence

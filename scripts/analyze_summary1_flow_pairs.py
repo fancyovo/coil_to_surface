@@ -66,6 +66,29 @@ def main() -> None:
             }
         )
     difference = [row["best_difference"] for row in paired]
+    common_wall_budget_s = min(
+        float(history[-1]["total_wall_s"])
+        for history in histories.values()
+    )
+    gain_at_common_wall: dict[str, list[float]] = {"latent": [], "data": []}
+    for case in manifest["cases"]:
+        for parameter_space in ("latent", "data"):
+            history = histories[(case["case_id"], parameter_space)]
+            initial = next(
+                row["initial_score"]
+                for row in rows
+                if row["case_id"] == case["case_id"]
+                and row["parameter_space"] == parameter_space
+            )
+            wall = np.asarray(
+                [0.0] + [float(item["total_wall_s"]) for item in history]
+            )
+            gain = np.maximum.accumulate(
+                [initial] + [float(item["best_score"]) for item in history]
+            ) - initial
+            gain_at_common_wall[parameter_space].append(
+                float(np.interp(common_wall_budget_s, wall, gain))
+            )
     summary = {
         "format": "summary1_flow_parameterization_pairs_analysis_v1",
         "case_count": len(manifest["cases"]),
@@ -106,6 +129,30 @@ def main() -> None:
                 ],
                 0.50,
             ),
+            "common_wall_budget_s": common_wall_budget_s,
+            "latent_gain_at_common_wall_p50": q(
+                gain_at_common_wall["latent"], 0.50
+            ),
+            "data_gain_at_common_wall_p50": q(
+                gain_at_common_wall["data"], 0.50
+            ),
+            "initial_score_abs_difference_max": max(
+                abs(
+                    next(
+                        row["initial_score"]
+                        for row in rows
+                        if row["case_id"] == case["case_id"]
+                        and row["parameter_space"] == "latent"
+                    )
+                    - next(
+                        row["initial_score"]
+                        for row in rows
+                        if row["case_id"] == case["case_id"]
+                        and row["parameter_space"] == "data"
+                    )
+                )
+                for case in manifest["cases"]
+            ),
         },
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -119,10 +166,7 @@ def main() -> None:
         "latent": [],
         "data": [],
     }
-    common_wall_limit = min(
-        float(history[-1]["total_wall_s"])
-        for history in histories.values()
-    ) / 60.0
+    common_wall_limit = common_wall_budget_s / 60.0
     for parameter_space in ("latent", "data"):
         for case in manifest["cases"]:
             history = histories[(case["case_id"], parameter_space)]

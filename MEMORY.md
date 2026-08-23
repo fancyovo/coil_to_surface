@@ -429,27 +429,36 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-24 active branch is `codex/summary1-project-report-qh`, checked out
-  directly in the repository root with no worktree. Public README/release work
-  remains deferred until the user reviews the completed project and report.
-- Commit `f435d1a` contains the typed production evaluator, strict same-axis
-  continuation, separately labeled neighborhood proxy, user score policies,
-  readable six-part `reports/summary1/技术报告.md`, method figures, benchmark
-  protocols, and dependency-light remote interface smoke checks. Both the
-  smoke script and the full local pytest suite pass 9/9.
-- The report reuses the accepted 2026-08-19 calibration and complete-evaluation
-  evidence; it must not rerun them or mix their old timing snapshots into the
-  new same-version benchmark. The remaining blanks are current three-mode
-  timing/ranking results and eight matched latent/data optimization pairs.
-- 2026-08-24 remote connection and full preflight recovered. Valid run root is
-  `~/local_surface_evaluator/runs/summary1_20260824_r2`; bundle commit is
-  `f435d1ab71a902033406affebbcca6ff28401759`, SHA-256
-  `9233227dc15c5188eaa1b3360265bf52189a50964b7d2dc7ef57d9dae74c6a7e`.
-- Preparation job `42155` completed: bundle/commit verified, CUDA 13 sm120
-  library built, 9 smoke checks passed, and eight paired cases prepared. The
-  earlier `42144` failed only because the shared venv lacked pytest; its
-  dependent arrays `42147/42152` were cancelled and have no numerical result.
-- Active jobs are three-mode array `42158_[0-3]`, then packed latent/data pair
-  array `42159_[0-3]`, followed by analysis job `42164`. All four timing GPUs
-  passed the empty-GPU gate (`0%`, `2 MiB`). After completion, collect the two
-  analysis summaries/figures, update the report, verify postflight GPU/zombie
-  records, and copy only final artifacts back into the root checkout.
+  directly in the repository root. The user rejected the first report and
+  supplied `reports/summary1/技术报告第一版审阅.md`; the report was rewritten from
+  the implementation and current evidence as `reports/summary1/技术报告.md`.
+  Public README/release synchronization remains explicitly deferred until the
+  user accepts the technical report.
+- The rewritten report has five paper-style sections and three evidence
+  appendices. It defines the complete physical chain, current ABI-10 score,
+  all 82 native result fields and 32 timing fields, three evaluator modes and
+  their credibility boundaries, the actual 64-direction trajectory optimizer,
+  quantitative calibration, performance, and complete physical acceptance.
+- Same-library evaluator results: independent/strict P50 are `2.848/0.845 s`;
+  neighborhood batch-128 P50 is `3.069 s` total and `0.02397 s` per candidate.
+  Strict versus independent common-`ok` score Spearman is `0.99878`; proxy
+  versus strict is `0.98514`. Evidence is under
+  `reports/summary1/assets/evaluator_modes_current_20260824/`.
+- Eight matched 100-step cases gave Flow/data median gain `1.872/0.000`; Flow
+  won 6/8 but cost 1.57x wall time at fixed steps. A common 158.1-second budget
+  retained median gain `1.831/0.000`. Evidence is under
+  `reports/summary1/assets/flow_pairs_current_20260824/`.
+- Current-score landscape job `42189` completed cleanly on four RTX 5090s in
+  13m32s: 3 centers, 12 matched directions, and 1095 independent scores. Flow
+  paths are comparable to their transported local tangents and substantially
+  wider/smoother than matched random data-space directions; this supports
+  learned direction transport, not universal nonlinear smoothing. Evidence is
+  under `reports/summary1/assets/landscape_current_20260824/`.
+- Current report dynamic-library SHA-256 is
+  `50877cdb7afa79433b2c337ac02953ac288b772a5c0cfc4658ec688a1d1791f5`;
+  Flow checkpoint SHA-256 remains
+  `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
+  All benchmark GPUs ended at `0%`, `2 MiB`; postflight zombie count was zero.
+- Final local verification on 2026-08-24: 199 pytest tests passed, analysis
+  regeneration was byte-identical, all report links resolved, and native field
+  coverage was complete. The next action is user review of the report itself.

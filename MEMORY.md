@@ -428,69 +428,30 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-19 complete evaluation of the accepted minimum positive face-QH
-  record (`p107_37034_3_000018_step0150`, $N_{\rm FP}=4$, three base coils)
-  passed. Its fixed-probe face QH is `6.687032119376034e-08`; current native
-  score replay is `94.6368681663`. Sample-specific outward search selected
-  `a=0.08, s=0.49`: volume `0.0660699552 m^3`, iota `1.45637457`, dense L2
-  `1.603e-5`, normal P95 `1.601e-5`, and face QA/QH/QP
-  `4.633e-3/5.171e-7/4.693e-3`. `s=0.56` jumped to a smaller-volume branch and
-  `s=0.64` failed the fixed point budget. Poincare, direct/DESC contours, and
-  nested DESC passed; DESC force mean/P95/max fell to
-  `5.920e-4/1.465e-3/3.709e-3`, but hit the 50-step cap. Exact jobs, hashes,
-  all figures, and 22 MiB of artifacts are in
-  `reports/qh_min_face_qh_full_evaluation_20260819.md` and its matching asset
-  directory at commit `d530326`. Fixed delivery validation passed with all
-  eight DESC PNGs cited.
-- 2026-08-19 active branch is `codex/trajectory-face-qs-calibration`, checked
-  out directly in the repository root with no worktree. The formal experiment
-  is complete; there are no remaining project Slurm jobs. Full methods,
-  acceptance details, figures, and limitations are in
+- 2026-08-24 active branch is `codex/summary1-project-report-qh`, checked out
+  directly in the repository root with no worktree. The user approved
+  `reports/summary1/计划_v1.md`; the current task is to organize the project interface
+  and write the technical report. Public-release README work is explicitly
+  deferred until the user has reviewed the completed project and report.
+- 2026-08-24 added a thin project-level interface in
+  `stellarator_eval/native_evaluator.py`: typed coil input, independent and
+  strict-continuation modes, branch-bound axis state, structured JSON output,
+  native/default score preservation, and user-supplied score policies. Strict
+  continuation always sets mixed same-branch mode 2 and rejects caller-provided
+  axis control fields. The query-major CUDA route is exposed separately under
+  `stellarator_eval.experimental.neighborhood`; it is labeled a local proxy and
+  cannot anchor another proxy batch. Eight pure-Python interface tests pass.
+- The 2026-08-19 formal calibration is complete and frozen. Across 768 cases
+  and 1536 standard surfaces, fixed-probe volume/face QH Spearman was `0.94437`,
+  adaptive-edge `0.95754`, outer-shell `0.96708`, and GPU/surface iota Spearman
+  `0.9913`. Source-psi angle-L2 P50/P95 was `1.325e-5/1.297e-4`; alpha+nu is a
+  useful initializer but not machine-precision Boozer coordinates. Exact
+  cohorts, timings, hashes, and limitations are in
   `reports/qh_trajectory_face_qs_calibration_20260819.md`.
-- The accepted formal sample is 96 condition-stratified trajectories at Adam
-  iterations `0,10,25,50,75,100,150,200`: 768 coil cases and 1536 surfaces.
-  The route was six-GPU source-psi/alpha+nu preparation, 40-way CPU Simsopt
-  LS/Newton, and six-GPU 97x97 independent validation. It intentionally did not
-  search maximum surfaces or run DESC. Exact results are preserved under
-  `reports/assets/qh_trajectory_face_qs_calibration_20260819/`; final
-  `summary.json` SHA-256 is
-  `f8462084d6d8adcac2b4a397e095f1b279cc656171dc70cec084f08733c49fff`.
-- Formal preparation succeeded for 766/768 cases. One alpha sampler produced
-  only 148800 valid points against the fixed 180000 budget; one low-score case
-  lost its magnetic axis during independent source-psi replay. Of 1532 prepared
-  surfaces, 1441 (94.1%) were solver-converged and regular and 1231 (80.4%)
-  passed every dense gate. Keep both cohorts distinct; strict rejection does
-  not by itself prove absence of a physical surface.
-- Fixed-probe volume/face QH Spearman is `0.94437`, with trajectory-clustered
-  95% interval `[0.91813,0.96129]`; adaptive-edge Spearman is `0.95754`.
-  Fixed-probe median face QH fell from `3.662e-4` at step 0 to `1.789e-6` at
-  step 200. Among 67 trajectories strictly accepted at both endpoints, 65
-  improved and the median end/start ratio was `0.005291` (189x improvement).
-  This validates native volume QH as a strong ranking/optimization proxy, not
-  as a numerically interchangeable face-QH value.
-- Source-psi independent angle-L2 P50/P95 was `1.325e-5/1.297e-4`, but full
-  volume alpha validation relative-L2 remained `0.0991/0.602`. The fixed-face
-  alpha+nu initial Boozer residual P50 was `7.58e-4`, versus `5.65e-6` after
-  accepted Simsopt solves. Do not claim machine-precision volume Boozer
-  coordinates; the validated role is stable proxy plus strong initializer.
-- Fixed-probe GPU/surface iota Spearman/Pearson was `0.9913/0.9959`, with
-  relative-error P50/P95 `0.157%/2.65%`. Adaptive-edge outliers occur when the
-  current effective surface collapses too close to the axis; do not trust
-  unconstrained rho=1 iota extrapolation in that regime.
-- Per-case P50 timings were source psi `9.51 s`, alpha `110.15 s`, nu/surface
-  initialization `72.92 s`, and total GPU preparation `193.76 s`. CPU Simsopt
-  was `7.85 s` P50 per surface with a long tail, and GPU validation was `1.16 s`
-  P50. Six-GPU preparation took about 6 h 49 min; the 40-core solve pool about
-  15 min; six-GPU validation about 5 min 40 s. Dense alpha+nu is the batch
-  bottleneck.
-- Earlier failed pilot jobs are retained only as infrastructure history in the
-  report. The accepted branch-local CUDA library SHA-256 is
-  `7e0f28dc34286d90a3ff0d99ade88055c702870f659bed524e5d7aada8ff9d00`.
-- 2026-08-19 equal-$s$/shell addendum: adaptive outer-shell QH versus Simsopt
-  face QH reached Spearman `0.96708`, above whole-volume `0.95754`, with no
-  coverage loss. Strict single-$s$ area QH was less robust (`0.62557`, 391
-  accepted/root-valid) and remains diagnostic only; production score unchanged.
-- Next action is not yet selected. Completed original-space evidence remains in
-  `reports/qh_original_space_optimization_20260815.md`; trajectory-corpus
-  statistics remain in
-  `reports/qh_adam_trajectory_dataset_pilot_acceptance_20260813.md`.
+- The minimum face-QH sample complete evaluation and all DESC artifacts remain
+  accepted in `reports/qh_min_face_qh_full_evaluation_20260819.md`. The current
+  report should reuse this evidence rather than rerun it.
+- No summary1 remote benchmark has been submitted yet. Next: freeze the report
+  skeleton, implement one same-version three-mode benchmark and a small paired
+  current-score Flow/data-space comparison, then write results into
+  `reports/summary1/技术报告.md`.

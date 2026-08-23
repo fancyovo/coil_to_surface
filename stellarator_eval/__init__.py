@@ -8,6 +8,16 @@ os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 from .config import AxisGAConfig, EvalConfig, PsiFitConfig, SurfaceScanConfig, BoozerConfig, DiagnosticsConfig, VolumeQSConfig
 from .score import ScoreConfig, coil_geometry_metrics, evaluate_quality_score
 from .volume_score import VolumeScoreConfig, evaluate_volume_quality_score
+from .native_evaluator import (
+    AxisContinuationState,
+    CoilSet,
+    EvaluationMode,
+    EvaluationResult,
+    Evaluator,
+    NativeScorePolicy,
+    ScorePolicy,
+    WeightedComponentPolicy,
+)
 
 
 def evaluate_case_file(*args, **kwargs):
@@ -40,6 +50,14 @@ __all__ = [
     "coil_geometry_metrics",
     "evaluate_quality_score",
     "evaluate_volume_quality_score",
+    "AxisContinuationState",
+    "CoilSet",
+    "EvaluationMode",
+    "EvaluationResult",
+    "Evaluator",
+    "NativeScorePolicy",
+    "ScorePolicy",
+    "WeightedComponentPolicy",
     "evaluate_case_file",
     "evaluate_coils",
     "evaluate_coil_quality",

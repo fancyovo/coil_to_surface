@@ -6,12 +6,23 @@ from enum import Enum
 import json
 import math
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Protocol
 
 import numpy as np
 
 
 RESULT_SCHEMA = "stellarator-native-evaluation-v1"
+PRODUCTION_SCORE_CONFIG = MappingProxyType(
+    {
+        "iota_degree": 3,
+        "surface_selection_mode": 1,
+        "surface_confidence_periods": 1,
+        "surface_theta_count": 128,
+        "surface_trace_steps": 400,
+        "surface_flux_bisection_iters": 6,
+    }
+)
 _AXIS_CONFIG_FIELDS = {
     "axis_hint_enabled",
     "axis_hint_require_continuation",
@@ -280,12 +291,15 @@ class Evaluator:
         device_id: int = 0,
         score_policy: ScorePolicy | None = None,
         config_overrides: Mapping[str, Any] | None = None,
+        use_production_defaults: bool = True,
         backend: NativeBackend | None = None,
     ) -> None:
         self.library = Path(library)
         self.device_id = int(device_id)
         self.score_policy = score_policy or NativeScorePolicy()
-        self.config_overrides = dict(config_overrides or {})
+        defaults = PRODUCTION_SCORE_CONFIG if use_production_defaults else {}
+        self.config_overrides = {**defaults, **dict(config_overrides or {})}
+        self.use_production_defaults = bool(use_production_defaults)
         self._backend = backend
 
     def evaluate(
@@ -385,8 +399,8 @@ __all__ = [
     "EvaluationResult",
     "Evaluator",
     "NativeScorePolicy",
+    "PRODUCTION_SCORE_CONFIG",
     "RESULT_SCHEMA",
     "ScorePolicy",
     "WeightedComponentPolicy",
 ]
-

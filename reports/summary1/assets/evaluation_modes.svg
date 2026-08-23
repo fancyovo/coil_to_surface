@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="620" viewBox="0 0 1440 620">
+  <defs>
+    <style>
+      .title{font:700 27px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18323f}
+      .head{font:700 21px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#ffffff}
+      .label{font:700 17px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18323f}
+      .body{font:400 15px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#425a66}
+      .badge{font:700 13px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif}
+    </style>
+  </defs>
+  <rect width="1440" height="620" fill="#fbfcfd"/>
+  <text x="55" y="55" class="title">三种执行方式共享物理公式，但复用边界不同</text>
+  <g transform="translate(55 95)">
+    <rect x="0" y="0" width="410" height="455" rx="10" fill="#eef3f6" stroke="#315a78" stroke-width="2"/>
+    <rect x="0" y="0" width="410" height="62" rx="10" fill="#315a78"/>
+    <path d="M0 50 H410 V62 H0 Z" fill="#315a78"/>
+    <text x="24" y="39" class="head">独立评估</text>
+    <rect x="308" y="19" width="78" height="25" rx="12" fill="#ffffff"/>
+    <text x="347" y="37" text-anchor="middle" class="badge" fill="#315a78">正式</text>
+    <text x="25" y="100" class="label">输入</text><text x="105" y="100" class="body">只有线圈与 NFP</text>
+    <text x="25" y="139" class="label">磁轴</text><text x="105" y="139" class="body">全局网格搜索 + 精修</text>
+    <text x="25" y="178" class="label">s / psi</text><text x="105" y="178" class="body">从零拟合与标定</text>
+    <text x="25" y="217" class="label">alpha</text><text x="105" y="217" class="body">完整 QR</text>
+    <line x1="25" y1="247" x2="385" y2="247" stroke="#bdcbd2"/>
+    <text x="25" y="284" class="label">适用</text><text x="105" y="284" class="body">独立筛选、语料评分、最终复评</text>
+    <text x="25" y="329" class="label">可信度</text><text x="105" y="329" class="body">不依赖历史状态</text>
+    <rect x="25" y="365" width="360" height="62" rx="7" fill="#ffffff" stroke="#aebfc8"/>
+    <text x="205" y="390" text-anchor="middle" class="label">代价最高，但定义最清楚</text>
+    <text x="205" y="414" text-anchor="middle" class="body">可作为其它模式的参照</text>
+  </g>
+  <g transform="translate(515 95)">
+    <rect x="0" y="0" width="410" height="455" rx="10" fill="#fff5ec" stroke="#d17a45" stroke-width="2"/>
+    <rect x="0" y="0" width="410" height="62" rx="10" fill="#d17a45"/>
+    <path d="M0 50 H410 V62 H0 Z" fill="#d17a45"/>
+    <text x="24" y="39" class="head">严格续接评估</text>
+    <rect x="308" y="19" width="78" height="25" rx="12" fill="#ffffff"/>
+    <text x="347" y="37" text-anchor="middle" class="badge" fill="#b45f2e">正式</text>
+    <text x="25" y="100" class="label">输入</text><text x="105" y="100" class="body">线圈 + 已验证中心磁轴</text>
+    <text x="25" y="139" class="label">磁轴</text><text x="105" y="139" class="body">同分支局部精修</text>
+    <text x="25" y="178" class="label">s / psi</text><text x="105" y="178" class="body">重新完整计算</text>
+    <text x="25" y="217" class="label">alpha</text><text x="105" y="217" class="body">完整 QR</text>
+    <line x1="25" y1="247" x2="385" y2="247" stroke="#dbc6b5"/>
+    <text x="25" y="284" class="label">适用</text><text x="105" y="284" class="body">优化中心与少量差分端点</text>
+    <text x="25" y="329" class="label">拒绝</text><text x="105" y="329" class="body">不能续接则 branch_lost</text>
+    <rect x="25" y="365" width="360" height="62" rx="7" fill="#ffffff" stroke="#dfb38f"/>
+    <text x="205" y="390" text-anchor="middle" class="label">不允许悄悄切换磁轴</text>
+    <text x="205" y="414" text-anchor="middle" class="body">结果仍是完整正式 score</text>
+  </g>
+  <g transform="translate(975 95)">
+    <rect x="0" y="0" width="410" height="455" rx="10" fill="#eef6f1" stroke="#4d8b6a" stroke-width="2"/>
+    <rect x="0" y="0" width="410" height="62" rx="10" fill="#4d8b6a"/>
+    <path d="M0 50 H410 V62 H0 Z" fill="#4d8b6a"/>
+    <text x="24" y="39" class="head">近邻批量代理</text>
+    <rect x="294" y="19" width="92" height="25" rx="12" fill="#ffffff"/>
+    <text x="340" y="37" text-anchor="middle" class="badge" fill="#3e7358">实验性</text>
+    <text x="25" y="100" class="label">输入</text><text x="105" y="100" class="body">正式中心 + 整批近邻</text>
+    <text x="25" y="139" class="label">磁轴</text><text x="105" y="139" class="body">候选各自局部精修</text>
+    <text x="25" y="178" class="label">s / psi</text><text x="105" y="178" class="body">中心预条件 + 固定迭代</text>
+    <text x="25" y="217" class="label">alpha</text><text x="105" y="217" class="body">query-major 批量迭代</text>
+    <line x1="25" y1="247" x2="385" y2="247" stroke="#bdd2c5"/>
+    <text x="25" y="284" class="label">适用</text><text x="105" y="284" class="body">有限差分、局部排序</text>
+    <text x="25" y="329" class="label">近似</text><text x="105" y="329" class="body">局部固定 coordinate 与面分支</text>
+    <rect x="25" y="365" width="360" height="62" rx="7" fill="#ffffff" stroke="#9fbea9"/>
+    <text x="205" y="390" text-anchor="middle" class="label">一次 CUDA 调用处理整批候选</text>
+    <text x="205" y="414" text-anchor="middle" class="body">更新中心必须回到正式评估</text>
+  </g>
+  <text x="720" y="590" text-anchor="middle" class="body">“批量”描述计算布局，不代表结果自动等价；物理复用假设必须随结果一起保存。</text>
+</svg>

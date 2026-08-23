@@ -15,6 +15,7 @@ from .native_evaluator import (
     EvaluationResult,
     Evaluator,
     NativeScorePolicy,
+    PRODUCTION_SCORE_CONFIG,
     ScorePolicy,
     WeightedComponentPolicy,
 )
@@ -56,6 +57,7 @@ __all__ = [
     "EvaluationResult",
     "Evaluator",
     "NativeScorePolicy",
+    "PRODUCTION_SCORE_CONFIG",
     "ScorePolicy",
     "WeightedComponentPolicy",
     "evaluate_case_file",

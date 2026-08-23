@@ -13,6 +13,7 @@ from stellarator_eval.native_evaluator import (
     EvaluationMode,
     EvaluationResult,
     NativeScorePolicy,
+    PRODUCTION_SCORE_CONFIG,
     ScorePolicy,
 )
 from stellarator_eval.psi import build_modes
@@ -213,12 +214,9 @@ class NeighborhoodEvaluator:
         timing["field_create_s"] = _elapsed(started)
         try:
             formal_config = {
+                **PRODUCTION_SCORE_CONFIG,
                 "iota_degree": settings.iota_degree,
-                "surface_selection_mode": 1,
-                "surface_confidence_periods": 1,
                 "surface_theta_count": settings.formal_surface_theta_count,
-                "surface_trace_steps": 400,
-                "surface_flux_bisection_iters": 6,
                 "axis_hint_enabled": 1,
                 "axis_hint_require_continuation": 2,
                 "axis_hint_R": continuation.R,
@@ -372,4 +370,3 @@ __all__ = [
     "NeighborhoodEvaluator",
     "NeighborhoodSettings",
 ]
-

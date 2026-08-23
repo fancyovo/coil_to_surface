@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="680" viewBox="0 0 1440 680">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#47606f"/>
+    </marker>
+    <style>
+      .title{font:700 27px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18323f}
+      .label{font:700 20px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18323f}
+      .body{font:400 16px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#425a66}
+      .small{font:400 14px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#526975}
+      .box{stroke-width:2}
+      .arrow{stroke:#47606f;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1440" height="680" fill="#fbfcfd"/>
+  <text x="60" y="55" class="title">从 Fourier 线圈到快速优化与独立物理验收</text>
+
+  <g transform="translate(55 105)">
+    <rect class="box" x="0" y="0" width="185" height="112" rx="8" fill="#e8f0f4" stroke="#315a78"/>
+    <text x="92" y="42" text-anchor="middle" class="label">线圈输入</text>
+    <text x="92" y="72" text-anchor="middle" class="body">Fourier 曲线 + 电流</text>
+    <text x="92" y="95" text-anchor="middle" class="small">NFP 与基本线圈数</text>
+
+    <path class="arrow" d="M185 56 H235"/>
+    <rect class="box" x="240" y="0" width="170" height="112" rx="8" fill="#eef5ef" stroke="#4d8b6a"/>
+    <text x="325" y="42" text-anchor="middle" class="label">磁场与磁轴</text>
+    <text x="325" y="72" text-anchor="middle" class="body">Biot-Savart</text>
+    <text x="325" y="95" text-anchor="middle" class="small">Poincare 固定点</text>
+
+    <path class="arrow" d="M410 56 H460"/>
+    <rect class="box" x="465" y="0" width="170" height="112" rx="8" fill="#fff3e8" stroke="#d17a45"/>
+    <text x="550" y="42" text-anchor="middle" class="label">几何标签 s</text>
+    <text x="550" y="72" text-anchor="middle" class="body">B · grad s = 0</text>
+    <text x="550" y="95" text-anchor="middle" class="small">线性最小二乘</text>
+
+    <path class="arrow" d="M635 56 H685"/>
+    <rect class="box" x="690" y="0" width="170" height="112" rx="8" fill="#f6edf3" stroke="#a35f82"/>
+    <text x="775" y="42" text-anchor="middle" class="label">磁通标定</text>
+    <text x="775" y="72" text-anchor="middle" class="body">psi(s) = Phi_t / 2pi</text>
+    <text x="775" y="95" text-anchor="middle" class="small">单调四次拟合</text>
+
+    <path class="arrow" d="M860 56 H910"/>
+    <rect class="box" x="915" y="0" width="205" height="112" rx="8" fill="#edf1f7" stroke="#536f9d"/>
+    <text x="1017" y="42" text-anchor="middle" class="label">alpha 与 iota</text>
+    <text x="1017" y="72" text-anchor="middle" class="body">B · grad alpha = 0</text>
+    <text x="1017" y="95" text-anchor="middle" class="small">联合线性最小二乘</text>
+  </g>
+
+  <path class="arrow" d="M1072 217 V285 H410 V327"/>
+  <path class="arrow" d="M1072 217 V285 H1025 V327"/>
+
+  <g transform="translate(115 328)">
+    <rect x="0" y="0" width="590" height="260" rx="10" fill="#eef6f1" stroke="#4d8b6a" stroke-width="2"/>
+    <rect x="0" y="0" width="590" height="48" rx="10" fill="#4d8b6a"/>
+    <path d="M0 38 H590 V48 H0 Z" fill="#4d8b6a"/>
+    <text x="24" y="32" class="label" fill="#ffffff">固定预算快速分支</text>
+    <text x="30" y="91" class="body">100000 个体积点上的微分 QA / QH / QP</text>
+    <text x="30" y="126" class="body">磁面置信度、iota、工程量与拟合诊断</text>
+    <rect x="30" y="151" width="250" height="70" rx="7" fill="#ffffff" stroke="#7ba28c"/>
+    <text x="155" y="181" text-anchor="middle" class="label">结构化元数据</text>
+    <text x="155" y="207" text-anchor="middle" class="small">可由用户自定义 ScorePolicy</text>
+    <path class="arrow" d="M280 186 H335"/>
+    <rect x="340" y="151" width="220" height="70" rx="7" fill="#ffffff" stroke="#7ba28c"/>
+    <text x="450" y="181" text-anchor="middle" class="label">优化内环</text>
+    <text x="450" y="207" text-anchor="middle" class="small">Flow + 差分 Adam</text>
+  </g>
+
+  <g transform="translate(735 328)">
+    <rect x="0" y="0" width="590" height="260" rx="10" fill="#fff5ec" stroke="#d17a45" stroke-width="2"/>
+    <rect x="0" y="0" width="590" height="48" rx="10" fill="#d17a45"/>
+    <path d="M0 38 H590 V48 H0 Z" fill="#d17a45"/>
+    <text x="24" y="32" class="label" fill="#ffffff">独立物理验收分支</text>
+    <text x="30" y="91" class="body">求 nu，构造接近 Boozer 坐标的磁面初值</text>
+    <text x="30" y="126" class="body">逐样本向外搜索，不复用固定 a 或 s</text>
+    <rect x="30" y="151" width="250" height="70" rx="7" fill="#ffffff" stroke="#e0a270"/>
+    <text x="155" y="181" text-anchor="middle" class="label">Simsopt LS/Newton</text>
+    <text x="155" y="207" text-anchor="middle" class="small">标准磁面 + 稠密验证</text>
+    <path class="arrow" d="M280 186 H335"/>
+    <rect x="340" y="151" width="220" height="70" rx="7" fill="#ffffff" stroke="#e0a270"/>
+    <text x="450" y="181" text-anchor="middle" class="label">DESC</text>
+    <text x="450" y="207" text-anchor="middle" class="small">嵌套性与力残差</text>
+  </g>
+
+  <text x="720" y="645" text-anchor="middle" class="small">快速分支负责筛选和优化；标准磁面与平衡求解负责最终结论。</text>
+</svg>

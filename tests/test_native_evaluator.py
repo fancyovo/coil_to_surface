@@ -10,6 +10,7 @@ from stellarator_eval.native_evaluator import (
     EvaluationMode,
     Evaluator,
     NativeScorePolicy,
+    PRODUCTION_SCORE_CONFIG,
     WeightedComponentPolicy,
 )
 from stellarator_eval.experimental.neighborhood import NeighborhoodEvaluator
@@ -63,7 +64,7 @@ def test_independent_evaluation_returns_structured_metadata() -> None:
     assert result.score == result.native_score == 81.5
     assert result.mode is EvaluationMode.INDEPENDENT
     assert result.target_helicity == (1, 4)
-    assert backend.calls[0]["config_overrides"] == {}
+    assert backend.calls[0]["config_overrides"] == dict(PRODUCTION_SCORE_CONFIG)
     assert result.continuation_state().R == 1.2
     assert result.to_dict()["input"]["current_unit"] == "A"
 
@@ -83,6 +84,13 @@ def test_strict_continuation_forces_mixed_same_branch_mode() -> None:
     assert config["axis_hint_require_continuation"] == 2
     assert config["axis_hint_R"] == 1.2
     assert config["axis_hint_Z"] == -0.1
+
+
+def test_raw_abi_defaults_require_explicit_opt_out() -> None:
+    backend = RecordingBackend()
+    Evaluator("unused.so", backend=backend, use_production_defaults=False).evaluate(coils())
+
+    assert backend.calls[0]["config_overrides"] == {}
 
 
 def test_axis_fields_cannot_be_smuggled_through_config() -> None:

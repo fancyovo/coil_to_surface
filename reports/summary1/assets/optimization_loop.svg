@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="610" viewBox="0 0 1440 610">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#47606f"/></marker>
+    <style>
+      .title{font:700 27px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18323f}
+      .label{font:700 19px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#18323f}
+      .body{font:400 15px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#425a66}
+      .small{font:400 13px 'Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#526975}
+      .line{stroke:#47606f;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1440" height="610" fill="#fbfcfd"/>
+  <text x="55" y="55" class="title">Flow 只改变搜索坐标，物理评分仍决定优化方向</text>
+
+  <g transform="translate(65 116)">
+    <rect x="0" y="50" width="180" height="105" rx="9" fill="#edf1f7" stroke="#536f9d" stroke-width="2"/>
+    <text x="90" y="91" text-anchor="middle" class="label">潜变量 z</text>
+    <text x="90" y="121" text-anchor="middle" class="body">标准高斯坐标</text>
+    <text x="90" y="144" text-anchor="middle" class="small">每个线圈一个 token</text>
+    <path class="line" d="M180 102 H246"/>
+
+    <rect x="250" y="50" width="220" height="105" rx="9" fill="#eef3f6" stroke="#315a78" stroke-width="2"/>
+    <text x="360" y="88" text-anchor="middle" class="label">Flow ODE</text>
+    <text x="360" y="117" text-anchor="middle" class="body">FP32 RK4-128</text>
+    <text x="360" y="142" text-anchor="middle" class="small">可逆重参数化 F(z)</text>
+    <path class="line" d="M470 102 H536"/>
+
+    <rect x="540" y="50" width="200" height="105" rx="9" fill="#e8f0f4" stroke="#315a78" stroke-width="2"/>
+    <text x="640" y="88" text-anchor="middle" class="label">物理线圈</text>
+    <text x="640" y="117" text-anchor="middle" class="body">Fourier 系数 + 电流</text>
+    <text x="640" y="142" text-anchor="middle" class="small">不是生成质量证书</text>
+
+    <path class="line" d="M740 102 H808"/>
+    <rect x="812" y="0" width="260" height="205" rx="11" fill="#eef6f1" stroke="#4d8b6a" stroke-width="2"/>
+    <text x="942" y="38" text-anchor="middle" class="label">中心差分端点</text>
+    <text x="942" y="68" text-anchor="middle" class="body">z +/- h u1, z +/- h u2</text>
+    <rect x="842" y="91" width="200" height="76" rx="7" fill="#ffffff" stroke="#8db19b"/>
+    <text x="942" y="121" text-anchor="middle" class="label">近邻评分</text>
+    <text x="942" y="147" text-anchor="middle" class="small">严格续接或批量代理</text>
+    <text x="942" y="190" text-anchor="middle" class="small">任一端点失效则本步不更新</text>
+
+    <path class="line" d="M1072 102 H1138"/>
+    <rect x="1142" y="50" width="200" height="105" rx="9" fill="#fff3e8" stroke="#d17a45" stroke-width="2"/>
+    <text x="1242" y="88" text-anchor="middle" class="label">Adam 更新</text>
+    <text x="1242" y="117" text-anchor="middle" class="body">beta1 = 0.7</text>
+    <text x="1242" y="142" text-anchor="middle" class="small">提出 z 的下一位置</text>
+  </g>
+
+  <path class="line" d="M1307 271 V350 H1000"/>
+  <g transform="translate(690 350)">
+    <rect x="0" y="0" width="310" height="118" rx="9" fill="#f6edf3" stroke="#a35f82" stroke-width="2"/>
+    <text x="155" y="38" text-anchor="middle" class="label">新中心正式评分</text>
+    <text x="155" y="68" text-anchor="middle" class="body">完整 s / psi / alpha / iota / QS</text>
+    <text x="155" y="96" text-anchor="middle" class="small">保存 current 与 running best</text>
+  </g>
+  <path d="M690 409 H555 V525 H350" stroke="#4d8b6a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <text x="555" y="396" text-anchor="end" class="body" fill="#4d8b6a">ok：接受并继续</text>
+  <path d="M1000 409 H1160 V525 H1070" stroke="#d17a45" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <text x="1160" y="396" class="body" fill="#b45f2e">失败：缩步或完整回滚</text>
+
+  <rect x="145" y="500" width="205" height="58" rx="7" fill="#edf1f7" stroke="#536f9d"/>
+  <text x="247" y="535" text-anchor="middle" class="label">下一步 z</text>
+  <rect x="1070" y="500" width="225" height="58" rx="7" fill="#fff3e8" stroke="#d17a45"/>
+  <text x="1182" y="535" text-anchor="middle" class="label">保持旧中心与动量</text>
+  <text x="720" y="585" text-anchor="middle" class="small">Flow 不参与物理正确性的裁决；所有被保留的中心都重新经过正式 evaluator。</text>
+</svg>

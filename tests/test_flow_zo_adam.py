@@ -80,6 +80,26 @@ def test_load_initial_noise_accepts_generic_start(tmp_path):
     assert "flow_prior_start" in payload
 
 
+def test_load_initial_noise_accepts_standardized_data_prior(tmp_path):
+    parameters = np.arange(200, dtype=np.float32).reshape(2, 100)
+    path = tmp_path / "data_start.json"
+    path.write_text(
+        json.dumps(
+            {
+                "data_prior_screening": {
+                    "normalized_coil_tokens": parameters.tolist()
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded, payload = load_initial_noise(path)
+
+    np.testing.assert_array_equal(loaded, parameters)
+    assert "data_prior_screening" in payload
+
+
 def test_load_initial_noise_accepts_optimizer_outputs_and_raw_trajectory(tmp_path):
     noise = np.arange(300, dtype=np.float32).reshape(3, 100)
     for key in (

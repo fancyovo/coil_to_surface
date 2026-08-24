@@ -163,6 +163,8 @@ def load_initial_noise(path: Path) -> tuple[np.ndarray, dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if "flow_prior_start" in payload:
         noise = payload["flow_prior_start"]["noise"]
+    elif "data_prior_screening" in payload:
+        noise = payload["data_prior_screening"]["normalized_coil_tokens"]
     elif "flow_prior_screening" in payload:
         noise = payload["flow_prior_screening"]["noise"]
     elif "flow_prior_zo_adam" in payload:
@@ -182,10 +184,10 @@ def load_initial_noise(path: Path) -> tuple[np.ndarray, dict[str, Any]]:
     elif "noise" in payload:
         noise = payload["noise"]
     else:
-        raise ValueError("initial case does not contain flow-prior noise")
+        raise ValueError("initial case does not contain optimizer parameters")
     value = np.asarray(noise, dtype=np.float32)
     if value.ndim != 2 or value.shape[1] != TOKEN_DIM:
-        raise ValueError(f"initial noise must have shape (coils, {TOKEN_DIM})")
+        raise ValueError(f"initial parameters must have shape (coils, {TOKEN_DIM})")
     return value, payload
 
 

@@ -45,6 +45,7 @@ from scripts.optimize_native_score_cem import (  # noqa: E402
     token_case,
     write_json,
 )
+from flow_matching.data import CoilNormalizer  # noqa: E402
 from flow_matching.trajectory_dataset import OptimizationTraceRecorder  # noqa: E402
 
 
@@ -196,6 +197,7 @@ def axis_hint(result: dict[str, Any]) -> tuple[float, float]:
 def recorded_native_result(payload: dict[str, Any]) -> dict[str, Any] | None:
     for key in (
         "original_space_local_gradient_adam",
+        "data_prior_screening",
         "flow_prior_screening",
         "flow_prior_local_full_gradient_adam",
         "flow_prior_local_full_gradient_bfgs",
@@ -720,8 +722,11 @@ def main() -> None:
         if any(path.exists() for path in paths.values()) or trajectory_dir.exists():
             raise FileExistsError(f"refusing to overwrite existing run {args.out_dir}")
         current_noise, initial_payload = load_initial_noise(args.initial_case)
+        direct_data_start = "data_prior_screening" in initial_payload
+        if direct_data_start and args.parameter_space != "data":
+            raise ValueError("data-prior starts require --parameter-space data")
         if current_noise.shape != (args.n_base_coils, TOKEN_DIM):
-            raise ValueError("initial latent shape does not match n-base-coils")
+            raise ValueError("initial parameter shape does not match n-base-coils")
         best_noise = current_noise.copy()
         first_moment = np.zeros_like(current_noise, dtype=np.float64)
         second_moment = np.zeros_like(current_noise, dtype=np.float64)
@@ -764,7 +769,11 @@ def main() -> None:
                 "use": (
                     "every gradient endpoint and accepted center"
                     if args.parameter_space == "latent"
-                    else "initial latent-to-coil decode only"
+                    else (
+                        "none"
+                        if direct_data_start
+                        else "initial latent-to-coil decode only"
+                    )
                 ),
             },
             "flow_pipeline": bool(
@@ -815,6 +824,7 @@ def main() -> None:
 
     if args.resume:
         initial_payload = json.loads(args.initial_case.read_text(encoding="utf-8"))
+        direct_data_start = args.parameter_space == "data"
         saved_space = manifest.get("parameter_space", "latent")
         if saved_space != args.parameter_space:
             raise ValueError(
@@ -823,7 +833,16 @@ def main() -> None:
 
     torch.cuda.set_device(args.flow_device)
     flow_device = torch.device("cuda", args.flow_device)
-    model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, flow_device)
+    if args.parameter_space == "data" and (args.resume or direct_data_start):
+        checkpoint = torch.load(
+            args.checkpoint, map_location="cpu", weights_only=False
+        )
+        normalizer = CoilNormalizer.from_dict(checkpoint["normalizer"])
+        model = None
+    else:
+        model, normalizer, checkpoint = load_flow_checkpoint(
+            args.checkpoint, flow_device
+        )
     if int(checkpoint["step"]) != 30000:
         raise RuntimeError("unexpected flow checkpoint step")
     estimator = LocalFullGradientEstimator(
@@ -839,13 +858,15 @@ def main() -> None:
     )
 
     torch.cuda.set_device(args.flow_device)
-    if args.resume and args.parameter_space == "data":
+    if args.parameter_space == "data" and (args.resume or direct_data_start):
         started = time.perf_counter()
         current_tokens_batch = normalizer.inverse(
             current_noise[None], (args.nfp, args.n_base_coils)
         ).astype(np.float64, copy=False)
         initial_decode_wall_s = time.perf_counter() - started
     else:
+        if model is None:
+            raise RuntimeError("Flow model is unavailable for latent decoding")
         current_tokens_batch, initial_decode_wall_s = decode_noise_rk4(
             model,
             normalizer,
@@ -872,6 +893,11 @@ def main() -> None:
         manifest["data_parameterization"] = {
             "definition": "per-coordinate training-set standardization",
             "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+            "initial_source": (
+                "direct standardized-data Gaussian prior"
+                if direct_data_start
+                else "one initial Flow decode"
+            ),
             "initial_clipped_fraction": float(clipped_fraction),
             "initial_roundtrip_relative_rms": reconstruction_relative_rms,
             "flow_calls_after_initialization": 0,
@@ -962,6 +988,8 @@ def main() -> None:
                 states, (args.nfp, args.n_base_coils)
             ).astype(np.float64, copy=False)
             return decoded, time.perf_counter() - started
+        if model is None:
+            raise RuntimeError("Flow model is unavailable for latent decoding")
         torch.cuda.set_device(args.flow_device)
         decoded, wall_s = decode_noise_rk4(
             model,

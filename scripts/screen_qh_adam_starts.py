@@ -17,7 +17,7 @@ for path in (REPO_ROOT, REPO_ROOT / "gpu_backend" / "python"):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from flow_matching.data import file_sha256  # noqa: E402
+from flow_matching.data import CoilNormalizer, file_sha256  # noqa: E402
 from flow_matching.trajectory_dataset import (  # noqa: E402
     COMPONENT_KEYS,
     atomic_savez_compressed,
@@ -49,6 +49,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--nfp", type=int, required=True)
     parser.add_argument("--n-base-coils", type=int, required=True)
     parser.add_argument("--candidate-count", type=int, default=32)
+    parser.add_argument(
+        "--parameter-space",
+        choices=("latent", "data"),
+        default="latent",
+        help=(
+            "Draw standard Gaussian Flow latents, or draw independent standard "
+            "Gaussians directly in per-coordinate standardized coil space."
+        ),
+    )
     parser.add_argument("--flow-steps", type=int, default=128)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--device", type=int, default=0)
@@ -68,19 +77,33 @@ def main() -> None:
     torch.cuda.set_device(args.device)
     torch.set_float32_matmul_precision("high")
     device = torch.device("cuda", args.device)
-    model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
     rng = np.random.default_rng(args.seed)
-    latent = rng.standard_normal(
+    sampled_parameters = rng.standard_normal(
         (args.candidate_count, args.n_base_coils, TOKEN_DIM), dtype=np.float32
     )
-    tokens, decode_wall_s = decode_noise_rk4(
-        model,
-        normalizer,
-        latent,
-        nfp=args.nfp,
-        steps=args.flow_steps,
-        device=device,
-    )
+    if args.parameter_space == "latent":
+        model, normalizer, checkpoint = load_flow_checkpoint(args.checkpoint, device)
+        tokens, mapping_wall_s = decode_noise_rk4(
+            model,
+            normalizer,
+            sampled_parameters,
+            nfp=args.nfp,
+            steps=args.flow_steps,
+            device=device,
+        )
+        optimizer_parameters = sampled_parameters
+        clipped_fraction = 0.0
+    else:
+        checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+        normalizer = CoilNormalizer.from_dict(checkpoint["normalizer"])
+        started = time.perf_counter()
+        tokens = normalizer.inverse(
+            sampled_parameters, (args.nfp, args.n_base_coils)
+        )
+        optimizer_parameters, clipped_fraction = normalizer.transform(
+            tokens, (args.nfp, args.n_base_coils)
+        )
+        mapping_wall_s = time.perf_counter() - started
 
     rows: list[dict[str, Any]] = []
     score_wall_s = 0.0
@@ -124,18 +147,30 @@ def main() -> None:
         if valid_indices
         else None
     )
-    arrays_sha = atomic_savez_compressed(
-        args.out_dir / "screening_arrays.npz",
-        latent=latent,
-        decoded_tokens=np.asarray(tokens, dtype=np.float32),
-        score=np.asarray([result_score(row["native_score"]) for row in rows]),
-        status=np.asarray([row["native_score"].get("status", "missing") for row in rows]),
-        components=np.asarray(
+    parameter_key = "latent" if args.parameter_space == "latent" else "normalized_data"
+    array_payload = {
+        parameter_key: np.asarray(optimizer_parameters, dtype=np.float32),
+        "decoded_tokens": np.asarray(tokens, dtype=np.float32),
+        "score": np.asarray([result_score(row["native_score"]) for row in rows]),
+        "status": np.asarray(
+            [row["native_score"].get("status", "missing") for row in rows]
+        ),
+        "components": np.asarray(
             [
-                [float(row["native_score"].get("components", {}).get(key, 0.0)) for key in COMPONENT_KEYS]
+                [
+                    float(row["native_score"].get("components", {}).get(key, 0.0))
+                    for key in COMPONENT_KEYS
+                ]
                 for row in rows
             ]
         ),
+    }
+    if args.parameter_space == "data":
+        array_payload["sampled_standard_normal"] = np.asarray(
+            sampled_parameters, dtype=np.float32
+        )
+    arrays_sha = atomic_savez_compressed(
+        args.out_dir / "screening_arrays.npz", **array_payload
     )
     results_sha = atomic_write_jsonl_gzip(
         args.out_dir / "screening_native_results.jsonl.gz", rows
@@ -144,6 +179,7 @@ def main() -> None:
         "status": "ok" if selected_index is not None else "no_valid_candidate",
         "nfp": args.nfp,
         "n_base_coils": args.n_base_coils,
+        "parameter_space": args.parameter_space,
         "candidate_count": args.candidate_count,
         "valid_candidate_count": len(valid_indices),
         "selected_index": selected_index,
@@ -156,15 +192,31 @@ def main() -> None:
             sorted(Counter(row["native_score"].get("status", "missing") for row in rows).items())
         ),
         "timing": {
-            "decode_wall_s": decode_wall_s,
+            "parameter_mapping_wall_s": mapping_wall_s,
+            "decode_wall_s": (
+                mapping_wall_s if args.parameter_space == "latent" else 0.0
+            ),
             "score_sum_wall_s": score_wall_s,
-            "total_wall_s": decode_wall_s + score_wall_s,
+            "total_wall_s": mapping_wall_s + score_wall_s,
         },
         "provenance": {
             "checkpoint_sha256": file_sha256(args.checkpoint),
             "checkpoint_step": int(checkpoint["step"]),
             "score_library_sha256": file_sha256(args.lib),
-            "flow": {"method": "rk4", "steps": args.flow_steps, "dtype": "fp32"},
+            "flow": (
+                {"method": "rk4", "steps": args.flow_steps, "dtype": "fp32"}
+                if args.parameter_space == "latent"
+                else None
+            ),
+            "prior": (
+                {"kind": "flow_latent_gaussian", "flow_method": "rk4", "steps": args.flow_steps, "dtype": "fp32"}
+                if args.parameter_space == "latent"
+                else {
+                    "kind": "independent_standardized_data_gaussian",
+                    "current_projection": "condition-specific L1 and dominant-current sign",
+                    "post_projection_clipped_fraction": float(clipped_fraction),
+                }
+            ),
             "seed": args.seed,
         },
         "files": {
@@ -175,9 +227,22 @@ def main() -> None:
     if selected_index is not None:
         selected_result = rows[selected_index]["native_score"]
         selected_case = token_case(tokens[selected_index], nfp=args.nfp, target="QH")
-        selected_case["flow_prior_screening"] = {
-            "format": "qh_flow_screened_start_v1",
-            "noise": latent[selected_index].tolist(),
+        metadata_key = (
+            "flow_prior_screening"
+            if args.parameter_space == "latent"
+            else "data_prior_screening"
+        )
+        selected_case[metadata_key] = {
+            "format": (
+                "qh_flow_screened_start_v1"
+                if args.parameter_space == "latent"
+                else "qh_data_screened_start_v1"
+            ),
+            (
+                "noise"
+                if args.parameter_space == "latent"
+                else "normalized_coil_tokens"
+            ): optimizer_parameters[selected_index].tolist(),
             "candidate_index": selected_index,
             "candidate_count": args.candidate_count,
             "native_score": selected_result,

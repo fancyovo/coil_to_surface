@@ -45,6 +45,24 @@ def bootstrap_median_interval(
     return [float(np.quantile(medians, 0.025)), float(np.quantile(medians, 0.975))]
 
 
+def summarize_subset(rows: list[dict]) -> dict:
+    difference = np.asarray([row["best_difference"] for row in rows], dtype=float)
+    latent_gain = np.asarray([row["latent_gain"] for row in rows], dtype=float)
+    data_gain = np.asarray([row["data_gain"] for row in rows], dtype=float)
+    return {
+        "count": len(rows),
+        "latent_wins": int(np.count_nonzero(difference > 1.0e-10)),
+        "ties": int(np.count_nonzero(np.abs(difference) <= 1.0e-10)),
+        "data_wins": int(np.count_nonzero(difference < -1.0e-10)),
+        "latent_gain_p50": quantile(latent_gain, 0.50),
+        "data_gain_p50": quantile(data_gain, 0.50),
+        "latent_minus_data_best_p50": quantile(difference, 0.50),
+        "latent_minus_data_best_median_bootstrap_95": bootstrap_median_interval(
+            difference
+        ),
+    }
+
+
 def running_gain(history: list[dict], initial: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     score = np.maximum.accumulate(
         np.asarray([initial] + [float(item["best_score"]) for item in history])
@@ -211,6 +229,18 @@ def main() -> None:
         "case_count": len(manifest["cases"]),
         "selection_rule": manifest.get("selection_rule"),
         "condition_counts": dict(sorted(condition_counts.items())),
+        "initial_score_strata": {
+            "all": summarize_subset(paired),
+            "at_least_50": summarize_subset(
+                [row for row in paired if row["initial_score"] >= 50.0]
+            ),
+            "at_least_70": summarize_subset(
+                [row for row in paired if row["initial_score"] >= 70.0]
+            ),
+            "below_50": summarize_subset(
+                [row for row in paired if row["initial_score"] < 50.0]
+            ),
+        },
         "runs": rows,
         "pairs": paired,
         "aggregate": aggregate,
@@ -333,7 +363,7 @@ def main() -> None:
     )
     axes[1, 0].set(
         xlabel="Best score gain after 100 steps",
-        ylabel="Pairs sorted by Flow advantage",
+        ylabel="Matched cases",
         title="Matched outcomes from the same initial coil",
         yticks=[],
     )

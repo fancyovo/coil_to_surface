@@ -1,0 +1,78 @@
+{
+  "status": "ok",
+  "stop_reason": "completed_iterations",
+  "initial_score": 12.693005958958482,
+  "final_score": 21.931229974974123,
+  "best_score": 42.51338562349006,
+  "best_iteration": 78,
+  "completed_iterations": 100,
+  "completed_adam_steps": 83,
+  "completed_optimizer_steps": 83,
+  "total_wall_s": 306.9254235625267,
+  "initial_decode_wall_s": 1.4927198998630047,
+  "initial_score_wall_s": 0.5082114338874817,
+  "mean_iteration_wall_s": 3.068421524837613,
+  "manifest": {
+    "algorithm": "adam_with_query_batched_local_gradient",
+    "optimizer": "adam",
+    "parameter_space": "latent",
+    "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+    "formal_objective": "complete native QH score for every accepted center",
+    "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runs/summary1_review2_20260824/flow_pairs/cases/case_21.json",
+    "initial_case_sha256": "8b72851b573a17f72f71674a9ee6ec95f177ad1b828e0b666a3647c289286901",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runs/summary1_review2_20260824/build_native/libstellarator_gpu.so",
+    "native_lib_sha256": "7d3784e02172f5c3130bcf085efa8120dc059d5007daa4b18680edd97b077f94",
+    "nfp": 2,
+    "n_base_coils": 2,
+    "iterations": 100,
+    "max_wall_s": 4200.0,
+    "flow": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32",
+      "use": "every gradient endpoint and accepted center"
+    },
+    "flow_pipeline": true,
+    "coordinate_gradient": {
+      "dimension": 200,
+      "mode": "random-orthogonal",
+      "random_directions": 2,
+      "endpoint_count": 4,
+      "perturbation": 0.005,
+      "difference": "centered",
+      "psi_grid": 48,
+      "psi_iterations": 4,
+      "alpha_iterations": 4,
+      "formal_surface_theta_count": 128,
+      "local_surface_theta_count": 64
+    },
+    "adam": {
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "epsilon": 1e-08,
+      "weight_decay": 0.0
+    },
+    "bfgs": {
+      "initial_trust_rms": 0.01,
+      "min_trust_rms": 1e-05,
+      "max_trust_rms": 0.05,
+      "trust_growth": 1.2,
+      "trust_shrink": 0.5,
+      "min_improvement": 0.0
+    },
+    "seed": 2026082521,
+    "axis_policy": "initial global search, then strict mixed-precision continuation",
+    "devices": {
+      "flow": 0,
+      "score": 0
+    },
+    "initial_metadata_keys": [
+      "flow_prior_screening",
+      "nfp",
+      "raw"
+    ]
+  }
+}

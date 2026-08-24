@@ -1,0 +1,26 @@
+-- The CXX compiler identification is GNU 13.3.0
+-- The CUDA compiler identification is NVIDIA 13.0.48 with host compiler GNU 13.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- Check for working CUDA compiler: /public/app/cuda/13.0/bin/nvcc - skipped
+-- Detecting CUDA compile features
+-- Detecting CUDA compile features - done
+-- Found CUDAToolkit: /public/app/cuda/13.0/targets/x86_64-linux/include;/public/app/cuda/13.0/targets/x86_64-linux/include/cccl (found version "13.0.48")
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (10.3s)
+-- Generating done (0.5s)
+-- Build files have been written to: /home/scc/pb24511935/local_surface_evaluator/runs/summary1_review2_20260824/build_native
+[ 50%] Building CUDA object CMakeFiles/stellarator_gpu.dir/src/score_pipeline.cu.o
+[ 50%] Building CUDA object CMakeFiles/stellarator_gpu.dir/src/coil_field.cu.o
+[ 75%] Linking CUDA device code CMakeFiles/stellarator_gpu.dir/cmake_device_link.o
+[100%] Linking CUDA shared library libstellarator_gpu.so
+[100%] Built target stellarator_gpu
+summary1 interface smoke checks: 9 passed
+{"case_count": 32, "output": "/home/scc/pb24511935/local_surface_evaluator/runs/summary1_review2_20260824/flow_pairs"}

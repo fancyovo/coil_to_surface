@@ -1,0 +1,85 @@
+{
+  "status": "ok",
+  "stop_reason": "completed_iterations",
+  "initial_score": 77.78212731942871,
+  "final_score": 84.12884209279868,
+  "best_score": 85.05043645949334,
+  "best_iteration": 59,
+  "completed_iterations": 100,
+  "completed_adam_steps": 100,
+  "completed_optimizer_steps": 100,
+  "total_wall_s": 263.940694399178,
+  "initial_decode_wall_s": 1.5144402123987675,
+  "initial_score_wall_s": 1.0787262357771397,
+  "mean_iteration_wall_s": 2.638467849716544,
+  "manifest": {
+    "algorithm": "adam_with_query_batched_local_gradient",
+    "optimizer": "adam",
+    "parameter_space": "data",
+    "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+    "formal_objective": "complete native QH score for every accepted center",
+    "initial_case": "/home/scc/pb24511935/local_surface_evaluator/runs/summary1_review2_20260824/flow_pairs/cases/case_08.json",
+    "initial_case_sha256": "0e6cf41847332b9e1ed2ed3d6d856773ccd7b31f2b0608617e8027707c9cd80c",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib": "/home/scc/pb24511935/local_surface_evaluator/runs/summary1_review2_20260824/build_native/libstellarator_gpu.so",
+    "native_lib_sha256": "7d3784e02172f5c3130bcf085efa8120dc059d5007daa4b18680edd97b077f94",
+    "nfp": 5,
+    "n_base_coils": 4,
+    "iterations": 100,
+    "max_wall_s": 4200.0,
+    "flow": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32",
+      "use": "initial latent-to-coil decode only"
+    },
+    "flow_pipeline": false,
+    "coordinate_gradient": {
+      "dimension": 400,
+      "mode": "random-orthogonal",
+      "random_directions": 2,
+      "endpoint_count": 4,
+      "perturbation": 0.0025,
+      "difference": "centered",
+      "psi_grid": 48,
+      "psi_iterations": 4,
+      "alpha_iterations": 4,
+      "formal_surface_theta_count": 128,
+      "local_surface_theta_count": 64
+    },
+    "adam": {
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "epsilon": 1e-08,
+      "weight_decay": 0.0
+    },
+    "bfgs": {
+      "initial_trust_rms": 0.01,
+      "min_trust_rms": 1e-05,
+      "max_trust_rms": 0.05,
+      "trust_growth": 1.2,
+      "trust_shrink": 0.5,
+      "min_improvement": 0.0
+    },
+    "seed": 2026082508,
+    "axis_policy": "initial global search, then strict mixed-precision continuation",
+    "devices": {
+      "flow": 0,
+      "score": 0
+    },
+    "initial_metadata_keys": [
+      "flow_prior_screening",
+      "nfp",
+      "raw"
+    ],
+    "data_parameterization": {
+      "definition": "per-coordinate training-set standardization",
+      "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+      "initial_clipped_fraction": 0.0,
+      "initial_roundtrip_relative_rms": 3.807381569592755e-08,
+      "flow_calls_after_initialization": 0
+    }
+  }
+}

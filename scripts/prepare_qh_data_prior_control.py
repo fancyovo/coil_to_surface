@@ -4,14 +4,17 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import sys
 import time
 from typing import Any
 
-from flow_matching.data import file_sha256
-from flow_matching.trajectory_dataset import atomic_write_json
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from flow_matching.data import file_sha256
+from flow_matching.trajectory_dataset import atomic_write_json
 
 
 def git_commit() -> str:

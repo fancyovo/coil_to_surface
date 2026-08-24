@@ -23,7 +23,7 @@ build_dir="$run_root/build_native"
 source "${VENV:-$HOME/coil/.venv}/bin/activate"
 mkdir -p "$run_root/logs" "$run_root/flow_pairs"
 
-git bundle verify "$bundle"
+git bundle list-heads "$bundle" > "$run_root/source_bundle_heads.txt"
 if [[ -e "$project" ]]; then
   actual_commit="$(git -C "$project" rev-parse HEAD)"
   if [[ "$actual_commit" != "$expected_commit" ]]; then

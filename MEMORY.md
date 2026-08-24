@@ -428,43 +428,42 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-24 active branch is `codex/summary1-project-report-qh`, checked out
-  directly in the repository root. The second-review revision of
-  `reports/summary1/技术报告.md` is committed through `3ad8856`. Public README and
-  release synchronization remains explicitly deferred until the user accepts
-  the technical report. User review files in `reports/summary1/` are inputs and
-  remain untracked and unmodified.
-- The second-review revision rebuilt `pipeline.svg` and `evaluation_modes.svg`,
-  replaced the synthetic physical-construction diagram with real flux and
-  field-line diagnostics, and rewrote Sections 2.1, 2.4, and 2.6 as a standalone
-  causal description. Source currently declares result-structure ABI version
-  10; the report defines it only in the reproducibility appendix rather than
-  using an unexplained `ABI-10` method name.
-- The old eight-case Flow/data result under
-  `reports/summary1/assets/flow_pairs_current_20260824/` is **superseded for any
-  general optimization claim**: it mixed mid-trajectory probes with starts,
-  creating an artificial pile at zero gain. Preserve it only as historical
-  evidence of the invalid experimental design.
-- Replacement jobs `43743--43745` evaluated 32 distinct original 32-to-1
-  screening winners, spanning 27 `(nfp,n_coils)` combinations. Every latent and
-  direct-data run completed 100 steps. Flow/data median gains were
-  `7.676/8.664`; Flow won 10 cases and direct data won 22. The paired final-score
-  difference had median `-1.031`, bootstrap 95% interval `[-1.807,-0.223]`, and
-  fixed-step wall-time ratio 1.514. Thus Flow remains a usable learned
-  reparameterization and has favorable local landscape examples, but this
-  protocol gives no evidence of a universal optimization advantage; direct
-  normalized data space was slightly better and cheaper. Evidence is under
-  `reports/summary1/assets/flow_pairs_true_starts_20260824/`.
-- Same-library evaluator results remain: independent/strict P50
-  `2.848/0.845 s`; neighborhood batch-128 P50 `3.069 s` total and
-  `0.02397 s` per candidate. Strict-versus-independent common-`ok` score
-  Spearman is `0.99878`; proxy-versus-strict is `0.98514`. Landscape job
-  `42189` remains valid for the narrower learned-direction-transport claim.
-- Benchmark library hashes are `50877cdb...` for evaluator/landscape evidence
-  and `7d3784e0...` for the replacement pair run; the Flow checkpoint hash
-  remains `39a3293a...`. Pair jobs left 2 MiB idle GPU memory, no running GPU
-  process, and zero postflight zombies.
-- Final local verification on 2026-08-24: 201 pytest tests passed; pair-analysis
-  regeneration was byte-identical; both revised SVGs parsed; every report link
-  resolved; display-math delimiters were balanced; and `git diff --check`
-  passed. The next action is user review of the revised report itself.
+- 2026-08-24 active branch is `codex/data-prior-end-to-end-control`, checked out
+  directly in the repository root. It branches from the second-review report
+  work; the implementation used remotely is pinned at `a708f7b`, with later
+  local commits limited to run/report metadata. Do not put this experiment into
+  `reports/summary1/技术报告.md` until the user reviews its separate result. Public
+  README/release synchronization remains deferred. User review files under
+  `reports/summary1/` remain untracked inputs and must not be modified or added.
+- The old eight-case Flow/data comparison is invalid for general optimization
+  claims because it mixed trajectory probes with true starts. Replacement jobs
+  `43743--43745` used 32 distinct 32-to-1 winners: Flow/data median 100-step
+  gains were `7.676/8.664`, Flow won `10/32`, and direct standardized data space
+  won `22/32`; median paired final difference was `-1.031` with bootstrap 95%
+  interval `[-1.807,-0.223]`. This gives no positive evidence that latent space
+  is the better local optimizer coordinate, but both starts still came from
+  Flow and therefore did not test Flow's initialization value.
+- The active end-to-end control fixes that gap. For each of 48 uniformly
+  selected reference conditions it compares Flow decode of 32 Gaussian latent
+  candidates against 32 independent Gaussian candidates in standardized coil
+  coordinates, then runs the independently calibrated 200-step optimizer from
+  each best valid candidate. Conditions and RNG seeds are paired exactly.
+  Analyze candidate validity, best-of-32 starts, conditional optimizer gains,
+  and end-to-end failures separately. Report:
+  `reports/qh_flow_initialization_vs_optimization_control_20260824.md`.
+- Formal remote source is an isolated clone at
+  `~/local_surface_evaluator/runs/qh_data_prior_end_to_end_48_20260824/source`,
+  exact commit `a708f7b286a872931224825c542dc5e8f01daecd`. Checkpoint hash is
+  `39a3293a...`; score-library hash is `7834a88d...`. P107 array job `43810`
+  runs workers 0--3, Students array `43811` runs workers 4--5, and dependency
+  job `43812` performs automatic analysis after both succeed. Five formal
+  workers were stable at handoff; the sixth waits for smoke job `43798` to
+  release one P107 slot. Every started GPU was idle before timing and all error
+  logs were empty. Expected completion is roughly 3--5 hours.
+- Smoke job `43798` is diagnostic only and must not be mixed into the formal 48
+  rows. Two cases correctly recorded no valid data-prior start; two found valid
+  starts and entered optimization. Its purpose is interface/runtime validation.
+- 2026-08-24 local verification with repository import path set explicitly:
+  `205 passed in 19.05s`. Running bare `pytest` without `PYTHONPATH=.` produces
+  collection import errors and is an environment invocation error, not a code
+  regression.

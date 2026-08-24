@@ -435,7 +435,8 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-24 active branch is `codex/data-space-large-scale-validation`, checked
-  out directly in the repository root from result commit `5060182`. User review
+  out directly in the repository root. The remotely validated implementation is
+  commit `a80ca142f02a3da2931e903875ebdd489462c678`. User review
   files under `reports/summary1/` remain untracked inputs and must not be
   modified or added. Do not revise the summary1 technical report until the new
   large-scale physical evaluation is complete.
@@ -452,7 +453,7 @@ Only current decisions are retained here; exact history is in
   median face-QH ratio was `0.005291`. The new plot and explicit limitation are
   appended to the Flow-role report; assets are under
   `reports/assets/qh_flow_initialization_vs_optimization_control_20260824/`.
-- The active experiment will reuse all 309 saved Flow screening winners, skip
+- The active experiment reuses all 309 saved Flow screening winners, skips
   screening, and rerun 200-step Adam directly in standardized coil space with
   the original optimizer seed, 64 centered orthogonal directions, `h=0.0025`,
   LR `0.01`, and beta `(0.7,0.999)`. It then repeats the same 96-trajectory,
@@ -461,5 +462,20 @@ Only current decisions are retained here; exact history is in
   score-library hashes remain `39a3293a...` and `7834a88d...` for a controlled
   comparison with the historical 309 trajectories.
 - 2026-08-24 local verification for the active implementation: `208 passed in
-  19.72s`; Bash syntax and `git diff --check` passed. Remote jobs have not yet
-  been recorded in this memory entry.
+  19.72s`; Bash syntax and `git diff --check` passed. Six-card two-step smoke
+  jobs `44070/44071` completed 6/6 trajectories in about 23.5 s each, saved all
+  traces, had zero-byte error/zombie logs, and returned each GPU to 2 MiB/0%.
+  Replaying saved physical starts changed the initial score by only
+  `[-0.013,+0.029]` across those six cases.
+- Formal jobs are active: prepare `44078` completed; P107 workers `44080[0-3]`
+  and Students workers `44082[0-1]` run all 309 direct-data trajectories;
+  summary `44084` and face-pipeline launcher `44086` wait on dependencies. The
+  run root is
+  `~/local_surface_evaluator_data/qh_data_space_same_start_309_20260824` and
+  isolated source is
+  `~/local_surface_evaluator/runs/qh_data_space_large_validation_20260824/source`.
+  At the stability check all six workers were at iterations 15--26 with all
+  128/128 directional endpoints `ok` and about `3.7--4.9 s/step`. Estimated
+  optimizer wall time is 11--14 h and the dependent physical evaluation adds
+  about 8 h, for roughly 19--22 h total. The launcher will record later face
+  and equal-s job IDs inside the run root; do not submit duplicates.

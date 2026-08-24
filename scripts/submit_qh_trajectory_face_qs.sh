@@ -15,7 +15,8 @@ git diff --cached --quiet
 
 TRAJECTORY_COUNT=${TRAJECTORY_COUNT:-96}
 ITERATIONS=${ITERATIONS:-0,10,25,50,75,100,150,200}
-export PROJECT DATASET_ROOT EXPERIMENT_ROOT GPU_LIB TRAJECTORY_COUNT ITERATIONS
+INCLUDE_SCORE_BEST=${INCLUDE_SCORE_BEST:-0}
+export PROJECT DATASET_ROOT EXPERIMENT_ROOT GPU_LIB TRAJECTORY_COUNT ITERATIONS INCLUDE_SCORE_BEST
 
 sbatch --test-only --export=ALL scripts/slurm_qh_face_qs_select.sh
 select_job=$(sbatch --parsable --export=ALL scripts/slurm_qh_face_qs_select.sh)

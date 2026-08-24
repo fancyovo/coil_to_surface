@@ -88,3 +88,19 @@ Flow 路径在同一批 25 个条件上的起点和最终中位数分别为 77.9
 - 本次只重算原参数对照，Flow 结果复用同一评分库下既有的匹配轨迹；因此总作业墙钟时间不是两条路径重新并跑的速度对比。
 
 原始统计见 [summary.json](assets/qh_data_prior_end_to_end_48_20260824/summary.json) 和 [case_metrics.csv](assets/qh_data_prior_end_to_end_48_20260824/case_metrics.csv)。本地验证使用显式仓库导入路径，`205` 项测试全部通过。
+
+## 补充：旧 309 条 latent 轨迹的面 QH 从起点到后期怎样变化
+
+在切换到原参数空间重跑以前，先复用已有的批量 Simsopt 数据检查旧 latent 轨迹是否真的降低了面 QH。历史面评估不是逐条人工挑面，而是从 309 条轨迹中按 $(N_{\mathrm{FP}},N_{\mathrm{coils}})$ 比例和最终 score 分位抽取 96 条，并对每条轨迹的同一个固定物理探针面评估迭代
+
+$$
+0,10,25,50,75,100,150,200.
+$$
+
+96 条中有 78 条的起点固定探针面通过严格验收。起点和第 200 步都通过的有 67 条，其中 65 条面 QH 下降；第 200 步面 QH 与起点之比的中位数为 0.00529，即典型下降约 189 倍。若在 7 个已测后续阶段中取面 QH 最低者，则有 69 条可配对，68 条下降，中位数比例仍为 0.00529。
+
+![旧 latent 轨迹的起点与后期面 QH](assets/qh_flow_initialization_vs_optimization_control_20260824/face_qh_start_vs_later.png)
+
+虚线表示前后完全不变。左图是严格定义的第 200 步末点；右图是 7 个已测后续阶段中的最低面 QH。右图不能被称为每条轨迹的“精确 score-best 点”：旧实验没有专门评估各条轨迹保存的 score-best iteration，而且 score-best 也不保证恰好是面 QH 最低点。因此这张现成图只能证明旧优化路径通常会把真实面 QH 大幅压低，不能完成 latent 与原参数优化的最终对照。
+
+新的大规模原参数实验将直接复用全部 309 个旧筛选胜者，跳过 32 选 1；在相同的 96 条分层轨迹和相同 8 个阶段上重做面评估，并额外评估每条轨迹的精确 score-best 快照。这样后续报告既能做阶段曲线的同口径比较，也能回答“起点到各自 score-best 的面 QH 变化”。本节数据与绘图统计保存在 `reports/assets/qh_flow_initialization_vs_optimization_control_20260824/`。

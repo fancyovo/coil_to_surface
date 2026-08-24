@@ -187,6 +187,51 @@ def endpoint_pair_summary(rows: list[dict[str, Any]], *, acceptance_key: str) ->
     }
 
 
+def score_best_pairs(
+    rows: list[dict[str, Any]], *, acceptance_key: str
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    fixed = [row for row in rows if row["surface_name"] == "fixed_probe"]
+    starts = {
+        row["trajectory_id"]: row
+        for row in fixed
+        if row["iteration"] == 0 and row["scheduled_snapshot"]
+    }
+    best = {
+        row["trajectory_id"]: row for row in fixed if row["score_best_snapshot"]
+    }
+    pairs = []
+    for trajectory_id in sorted(starts.keys() & best.keys()):
+        start = starts[trajectory_id]
+        endpoint = best[trajectory_id]
+        if (
+            start[acceptance_key]
+            and endpoint[acceptance_key]
+            and start["face_qh"] > 0.0
+            and endpoint["face_qh"] > 0.0
+        ):
+            pairs.append((start, endpoint))
+    return pairs
+
+
+def score_best_pair_summary(
+    rows: list[dict[str, Any]], *, acceptance_key: str
+) -> dict[str, Any]:
+    pairs = score_best_pairs(rows, acceptance_key=acceptance_key)
+    return {
+        "count": len(pairs),
+        "start_face_qh": distribution(start["face_qh"] for start, _ in pairs),
+        "best_face_qh": distribution(best["face_qh"] for _, best in pairs),
+        "best_over_start": distribution(
+            best["face_qh"] / start["face_qh"] for start, best in pairs
+        ),
+        "improved_count": sum(best["face_qh"] < start["face_qh"] for start, best in pairs),
+        "improved_fraction": (
+            sum(best["face_qh"] < start["face_qh"] for start, best in pairs)
+            / max(len(pairs), 1)
+        ),
+    }
+
+
 def prepare_failure_stage(prepare: dict[str, Any]) -> str:
     if prepare.get("status") == "ok":
         return "none"
@@ -230,6 +275,8 @@ def flatten_case(case_dir: Path) -> list[dict[str, Any]]:
                 "case_id": metadata["case_id"],
                 "trajectory_id": metadata["trajectory_id"],
                 "iteration": int(metadata["iteration"]),
+                "scheduled_snapshot": bool(metadata.get("scheduled_snapshot", True)),
+                "score_best_snapshot": bool(metadata.get("score_best_snapshot", False)),
                 "optimizer_wall_s": float(metadata["optimizer_wall_s"]),
                 "nfp": int(metadata["nfp"]),
                 "n_base_coils": int(metadata["n_base_coils"]),
@@ -441,6 +488,33 @@ def plot_condition_summary(rows: list[dict[str, Any]], path: Path) -> None:
     plt.close(figure)
 
 
+def plot_score_best_comparison(rows: list[dict[str, Any]], path: Path) -> None:
+    pairs = score_best_pairs(rows, acceptance_key="accepted")
+    if not pairs:
+        return
+    x = np.asarray([start["face_qh"] for start, _ in pairs], dtype=float)
+    y = np.asarray([best["face_qh"] for _, best in pairs], dtype=float)
+    nfp = np.asarray([start["nfp"] for start, _ in pairs], dtype=float)
+    lower = min(np.min(x), np.min(y)) / 1.5
+    upper = max(np.max(x), np.max(y)) * 1.5
+    figure, axis = plt.subplots(figsize=(6.5, 5.8), constrained_layout=True)
+    scatter = axis.scatter(x, y, c=nfp, cmap="viridis", s=30, alpha=0.72, linewidths=0)
+    axis.plot([lower, upper], [lower, upper], "--", color="#222222", linewidth=1.2)
+    axis.set_xscale("log")
+    axis.set_yscale("log")
+    axis.set_xlim(lower, upper)
+    axis.set_ylim(lower, upper)
+    axis.grid(True, which="both", alpha=0.18)
+    axis.set(
+        xlabel="Initial Simsopt face QH",
+        ylabel="Score-best Simsopt face QH",
+        title=f"Exact optimizer score-best snapshots (n={len(pairs)})",
+    )
+    figure.colorbar(scatter, ax=axis, label="NFP")
+    figure.savefig(path, dpi=190)
+    plt.close(figure)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Aggregate and plot trajectory face-QS calibration results.")
     parser.add_argument("--experiment-root", type=Path, required=True)
@@ -451,10 +525,11 @@ def main() -> None:
     for case in read_json(args.experiment_root / "cases.json"):
         rows.extend(flatten_case(args.experiment_root / "cases" / case["case_id"]))
     write_csv(args.output_dir / "surface_records.csv", rows)
+    scheduled_rows = [row for row in rows if row["scheduled_snapshot"]]
 
     by_surface = {}
     for name in ("fixed_probe", "adaptive_edge"):
-        subset = [row for row in rows if row["surface_name"] == name]
+        subset = [row for row in scheduled_rows if row["surface_name"] == name]
         by_surface[name] = {
             "count": len(subset),
             "accepted": sum(row["accepted"] for row in subset),
@@ -473,8 +548,8 @@ def main() -> None:
             "log10_face_from_log10_volume": log_linear_relation(subset),
         }
     by_iteration = {}
-    for iteration in sorted({row["iteration"] for row in rows}):
-        subset = [row for row in rows if row["iteration"] == iteration and row["surface_name"] == "fixed_probe"]
+    for iteration in sorted({row["iteration"] for row in scheduled_rows}):
+        subset = [row for row in scheduled_rows if row["iteration"] == iteration and row["surface_name"] == "fixed_probe"]
         accepted = [row for row in subset if row["accepted"]]
         by_iteration[str(iteration)] = {
             "count": len(subset),
@@ -494,16 +569,16 @@ def main() -> None:
             "correlation": correlations(subset, seed=20260819 + iteration, bootstrap=500),
         }
     by_condition = {}
-    for nfp, n_base_coils in sorted({(row["nfp"], row["n_base_coils"]) for row in rows}):
-        subset = [row for row in rows if row["nfp"] == nfp and row["n_base_coils"] == n_base_coils]
+    for nfp, n_base_coils in sorted({(row["nfp"], row["n_base_coils"]) for row in scheduled_rows}):
+        subset = [row for row in scheduled_rows if row["nfp"] == nfp and row["n_base_coils"] == n_base_coils]
         by_condition[f"nfp{nfp}_nc{n_base_coils}"] = {
             "count": len(subset),
             "accepted": sum(row["accepted"] for row in subset),
             "correlation": correlations(subset, seed=20260819 + 10 * nfp + n_base_coils, bootstrap=500),
         }
     by_condition_fixed_probe = {}
-    for nfp, n_base_coils in sorted({(row["nfp"], row["n_base_coils"]) for row in rows}):
-        subset = [row for row in rows if row["surface_name"] == "fixed_probe" and row["nfp"] == nfp and row["n_base_coils"] == n_base_coils]
+    for nfp, n_base_coils in sorted({(row["nfp"], row["n_base_coils"]) for row in scheduled_rows}):
+        subset = [row for row in scheduled_rows if row["surface_name"] == "fixed_probe" and row["nfp"] == nfp and row["n_base_coils"] == n_base_coils]
         by_condition_fixed_probe[f"nfp{nfp}_nc{n_base_coils}"] = {
             "count": len(subset),
             "accepted": sum(row["accepted"] for row in subset),
@@ -511,7 +586,7 @@ def main() -> None:
             "correlation": correlations(subset, seed=20261819 + 10 * nfp + n_base_coils, bootstrap=500),
         }
     threshold_times = {}
-    fixed_rows = [row for row in rows if row["surface_name"] == "fixed_probe" and row["accepted"]]
+    fixed_rows = [row for row in scheduled_rows if row["surface_name"] == "fixed_probe" and row["accepted"]]
     for threshold in (1e-3, 1e-4, 1e-5):
         reached = []
         for trajectory_id in sorted({row["trajectory_id"] for row in fixed_rows}):
@@ -520,39 +595,45 @@ def main() -> None:
                 reached.append(min(row["optimizer_wall_s"] / 60.0 for row in candidates))
         threshold_times[f"{threshold:.0e}"] = {
             "trajectory_count_reached": len(reached),
-            "fraction_of_sampled_trajectories": len(reached) / max(len({row["trajectory_id"] for row in rows}), 1),
+            "fraction_of_sampled_trajectories": len(reached) / max(len({row["trajectory_id"] for row in scheduled_rows}), 1),
             "first_reached_wall_minutes": distribution(reached),
         }
     summary = {
-        "row_count": len(rows),
-        "case_count": len(rows) // 2,
-        "trajectory_count": len({row["trajectory_id"] for row in rows}),
-        "prepare_status_counts": dict(Counter(row["prepare_status"] for row in rows[::2])),
-        "prepare_failure_stage_counts": dict(Counter(row["prepare_failure_stage"] for row in rows[::2])),
-        "cpu_solve_status_counts": dict(Counter(row["cpu_solve_status"] for row in rows)),
-        "validation_status_counts": dict(Counter(row["validation_status"] for row in rows)),
+        "row_count": len(scheduled_rows),
+        "all_row_count_including_score_best_extras": len(rows),
+        "case_count": len(scheduled_rows) // 2,
+        "all_case_count_including_score_best_extras": len(rows) // 2,
+        "trajectory_count": len({row["trajectory_id"] for row in scheduled_rows}),
+        "prepare_status_counts": dict(Counter(row["prepare_status"] for row in scheduled_rows[::2])),
+        "prepare_failure_stage_counts": dict(Counter(row["prepare_failure_stage"] for row in scheduled_rows[::2])),
+        "cpu_solve_status_counts": dict(Counter(row["cpu_solve_status"] for row in scheduled_rows)),
+        "validation_status_counts": dict(Counter(row["validation_status"] for row in scheduled_rows)),
         "by_surface": by_surface,
         "by_iteration_fixed_probe": by_iteration,
         "by_condition": by_condition,
         "by_condition_fixed_probe": by_condition_fixed_probe,
         "threshold_times": threshold_times,
         "paired_endpoints_fixed_probe": {
-            "strict_accepted": endpoint_pair_summary(rows, acceptance_key="accepted"),
-            "solved_regular": endpoint_pair_summary(rows, acceptance_key="solved_regular"),
+            "strict_accepted": endpoint_pair_summary(scheduled_rows, acceptance_key="accepted"),
+            "solved_regular": endpoint_pair_summary(scheduled_rows, acceptance_key="solved_regular"),
+        },
+        "paired_score_best_fixed_probe": {
+            "strict_accepted": score_best_pair_summary(rows, acceptance_key="accepted"),
+            "solved_regular": score_best_pair_summary(rows, acceptance_key="solved_regular"),
         },
         "psi_accuracy": {
-            key: distribution(row[key] for row in rows if row["surface_name"] == "fixed_probe")
+            key: distribution(row[key] for row in scheduled_rows if row["surface_name"] == "fixed_probe")
             for key in ("native_psi_train_rms", "native_psi_angle_l2", "native_psi_angle_p95", "source_psi_train_rms", "source_psi_validation_rms", "source_psi_angle_l2", "source_psi_angle_p95", "alpha_validation_l2", "alpha_normal_floor_l2")
         },
         "iota": {
-            "absolute_error": distribution(row["iota_abs_error"] for row in rows if row["accepted"]),
-            "relative_error": distribution(row["iota_relative_error"] for row in rows if row["accepted"]),
-            "gpu_initial": distribution(row["initial_iota"] for row in rows if row["accepted"]),
-            "surface_final": distribution(row["face_iota"] for row in rows if row["accepted"]),
-            "correlation": paired_correlations(rows, x_key="initial_iota", y_key="face_iota"),
+            "absolute_error": distribution(row["iota_abs_error"] for row in scheduled_rows if row["accepted"]),
+            "relative_error": distribution(row["iota_relative_error"] for row in scheduled_rows if row["accepted"]),
+            "gpu_initial": distribution(row["initial_iota"] for row in scheduled_rows if row["accepted"]),
+            "surface_final": distribution(row["face_iota"] for row in scheduled_rows if row["accepted"]),
+            "correlation": paired_correlations(scheduled_rows, x_key="initial_iota", y_key="face_iota"),
         },
         "acceptance_check_failures": {
-            key: sum(row["has_acceptance_checks"] and not row[f"check_{key}"] for row in rows)
+            key: sum(row["has_acceptance_checks"] and not row[f"check_{key}"] for row in scheduled_rows)
             for key in (
                 "solver_converged",
                 "dense_relative_l2",
@@ -562,20 +643,21 @@ def main() -> None:
             )
         },
         "timing_s": {
-            "gpu_prepare_per_case": distribution(row["prepare_wall_s"] for row in rows[::2]),
-            "source_psi_per_case": distribution(row["source_psi_wall_s"] for row in rows[::2]),
-            "alpha_per_case": distribution(row["alpha_wall_s"] for row in rows[::2]),
-            "alpha_nu_per_case": distribution(row["alpha_nu_wall_s"] for row in rows[::2]),
-            "cpu_solve_per_surface": distribution(row["cpu_solve_wall_s"] for row in rows),
-            "gpu_validation_per_surface": distribution(row["validation_wall_s"] for row in rows),
+            "gpu_prepare_per_case": distribution(row["prepare_wall_s"] for row in scheduled_rows[::2]),
+            "source_psi_per_case": distribution(row["source_psi_wall_s"] for row in scheduled_rows[::2]),
+            "alpha_per_case": distribution(row["alpha_wall_s"] for row in scheduled_rows[::2]),
+            "alpha_nu_per_case": distribution(row["alpha_nu_wall_s"] for row in scheduled_rows[::2]),
+            "cpu_solve_per_surface": distribution(row["cpu_solve_wall_s"] for row in scheduled_rows),
+            "gpu_validation_per_surface": distribution(row["validation_wall_s"] for row in scheduled_rows),
         },
     }
     write_json(args.output_dir / "summary.json", summary)
-    plot_face_vs_volume(rows, args.output_dir / "face_vs_volume_qs.png")
-    plot_time_evolution(rows, args.output_dir / "face_qs_over_time.png")
-    plot_accuracy(rows, args.output_dir / "psi_and_coordinate_accuracy.png")
-    plot_iota(rows, args.output_dir / "iota_comparison.png")
-    plot_condition_summary(rows, args.output_dir / "condition_summary.png")
+    plot_face_vs_volume(scheduled_rows, args.output_dir / "face_vs_volume_qs.png")
+    plot_time_evolution(scheduled_rows, args.output_dir / "face_qs_over_time.png")
+    plot_accuracy(scheduled_rows, args.output_dir / "psi_and_coordinate_accuracy.png")
+    plot_iota(scheduled_rows, args.output_dir / "iota_comparison.png")
+    plot_condition_summary(scheduled_rows, args.output_dir / "condition_summary.png")
+    plot_score_best_comparison(rows, args.output_dir / "face_qs_start_vs_score_best.png")
     print(json.dumps({"rows": len(rows), "accepted": sum(row["accepted"] for row in rows), "output": str(args.output_dir)}))
 
 

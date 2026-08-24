@@ -139,6 +139,11 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--trajectory-count", type=int, default=96)
     parser.add_argument("--iterations", default=",".join(str(value) for value in DEFAULT_ITERATIONS))
+    parser.add_argument(
+        "--include-score-best",
+        action="store_true",
+        help="Also materialize each selected trajectory's exact score-best iteration.",
+    )
     parser.add_argument("--fixed-probe-rho", type=float, default=0.8)
     parser.add_argument("--source-a", type=float, default=0.05)
     args = parser.parse_args()
@@ -147,7 +152,7 @@ def main() -> None:
         raise FileExistsError(f"refusing to overwrite {args.output_root}")
     if not 0.0 < args.fixed_probe_rho <= 1.0:
         raise ValueError("fixed-probe-rho must be in (0, 1]")
-    iterations = parse_iterations(args.iterations)
+    scheduled_iterations = parse_iterations(args.iterations)
     rows = read_csv(args.trajectory_summary)
     selected = select_trajectories(rows, args.trajectory_count)
     args.output_root.mkdir(parents=True)
@@ -162,6 +167,15 @@ def main() -> None:
         optimization_dir = trajectory_dir / "optimization"
         center_results = read_center_results(optimization_dir / "center_native_results.jsonl.gz")
         wall_times = read_history_wall_times(optimization_dir / "history.jsonl")
+        best_iteration = (
+            int(summary_row["best_iteration"]) if args.include_score_best else None
+        )
+        iterations = tuple(
+            sorted(
+                set(scheduled_iterations)
+                | ({best_iteration} if best_iteration is not None else set())
+            )
+        )
         missing = [iteration for iteration in iterations if iteration not in center_results or iteration not in wall_times]
         if missing:
             raise ValueError(f"{trajectory_id} is missing iterations {missing}")
@@ -194,6 +208,8 @@ def main() -> None:
                     "case_id": case_id,
                     "trajectory_id": trajectory_id,
                     "iteration": iteration,
+                    "scheduled_snapshot": iteration in scheduled_iterations,
+                    "score_best_snapshot": iteration == best_iteration,
                     "optimizer_wall_s": wall_times[iteration],
                     "nfp": int(summary_row["nfp"]),
                     "n_base_coils": int(summary_row["n_base_coils"]),
@@ -217,6 +233,8 @@ def main() -> None:
                         "case_id": case_id,
                         "trajectory_id": trajectory_id,
                         "iteration": iteration,
+                        "scheduled_snapshot": iteration in scheduled_iterations,
+                        "score_best_snapshot": iteration == best_iteration,
                         "optimizer_wall_s": wall_times[iteration],
                         "nfp": int(summary_row["nfp"]),
                         "n_base_coils": int(summary_row["n_base_coils"]),
@@ -232,6 +250,7 @@ def main() -> None:
                 "n_base_coils": int(summary_row["n_base_coils"]),
                 "initial_score": float(summary_row["initial_online_score"]),
                 "best_global_score": float(summary_row["best_global_score"]),
+                "best_iteration": best_iteration,
             }
         )
 
@@ -243,7 +262,9 @@ def main() -> None:
             "source_dataset": str(args.dataset_root.resolve()),
             "trajectory_summary": str(args.trajectory_summary.resolve()),
             "trajectory_count": len(selected),
-            "iterations": list(iterations),
+            "scheduled_iterations": list(scheduled_iterations),
+            "iterations": list(scheduled_iterations),
+            "include_score_best": bool(args.include_score_best),
             "case_count": len(case_records),
             "surface_count": 2 * len(case_records),
             "fixed_probe_rho": float(args.fixed_probe_rho),

@@ -71,6 +71,8 @@ def flatten_case(case_dir: Path, output_name: str) -> list[dict[str, Any]]:
                 "case_id": metadata["case_id"],
                 "trajectory_id": metadata["trajectory_id"],
                 "iteration": int(metadata["iteration"]),
+                "scheduled_snapshot": bool(metadata.get("scheduled_snapshot", True)),
+                "score_best_snapshot": bool(metadata.get("score_best_snapshot", False)),
                 "nfp": int(metadata["nfp"]),
                 "n_base_coils": int(metadata["n_base_coils"]),
                 "surface_name": name,
@@ -332,9 +334,14 @@ def main() -> None:
         writer = csv.DictWriter(stream, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-    summary = build_summary(rows)
+    scheduled_rows = [row for row in rows if row["scheduled_snapshot"]]
+    summary = build_summary(scheduled_rows)
+    summary["all_row_count_including_score_best_extras"] = len(rows)
+    summary["score_best_extra_row_count"] = sum(
+        row["score_best_snapshot"] and not row["scheduled_snapshot"] for row in rows
+    )
     write_json(args.output_dir / "equal_s_summary.json", summary)
-    plot_scatter(rows, summary, args.output_dir / "equal_s_vs_face_qh.png")
+    plot_scatter(scheduled_rows, summary, args.output_dir / "equal_s_vs_face_qh.png")
     plot_correlations(summary, args.output_dir / "equal_s_correlation_summary.png")
     print(json.dumps({"case_count": summary["case_count"], "row_count": summary["row_count"], "output": str(args.output_dir)}))
 

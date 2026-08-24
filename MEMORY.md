@@ -434,42 +434,32 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-24 active branch is `codex/data-prior-end-to-end-control`, checked out
-  directly in the repository root. It branches from the second-review report
-  work; the implementation used remotely is pinned at `a708f7b`, with later
-  local commits limited to run/report metadata. Do not put this experiment into
-  `reports/summary1/技术报告.md` until the user reviews its separate result. Public
-  README/release synchronization remains deferred. User review files under
-  `reports/summary1/` remain untracked inputs and must not be modified or added.
-- The old eight-case Flow/data comparison is invalid for general optimization
-  claims because it mixed trajectory probes with true starts. Replacement jobs
-  `43743--43745` used 32 distinct 32-to-1 winners: Flow/data median 100-step
-  gains were `7.676/8.664`, Flow won `10/32`, and direct standardized data space
-  won `22/32`; median paired final difference was `-1.031` with bootstrap 95%
-  interval `[-1.807,-0.223]`. This gives no positive evidence that latent space
-  is the better local optimizer coordinate. This is the valid coordinate-effect
-  result; both starts came from Flow, so it does not measure initialization.
-- End-to-end jobs `43810/43811/43812` completed 48 matched cases spanning 15
-  `(nfp,n_coils)` groups. Flow versus independent standardized-data Gaussian
-  candidate validity was `61.2%` versus `2.8%`; Flow found a valid best-of-32
-  start in `48/48` cases versus `25/48`. Start-score medians were
-  `77.339/0.423`, and Flow won all 48 paired starts. After 200 steps, best-score
-  medians were `90.677/0.754`; Flow again won all 48. Thus the strong validated
-  Flow effect is its learned prior and screened initialization. Do not claim a
-  general latent local-optimization advantage from this result.
-- Formal source remains the isolated remote clone at exact commit
-  `a708f7b286a872931224825c542dc5e8f01daecd`; checkpoint/library hashes are
-  `39a3293a...` / `7834a88d...`. All 48 rows completed with no missing cases;
-  six error logs and six zombie reports were empty, and postflight GPUs were
-  idle. Longest worker wall time was `10134.7 s`. Raw evidence and figures are
-  under `reports/assets/qh_data_prior_end_to_end_48_20260824/`; the standalone
-  interpretation is
+- 2026-08-24 active branch is `codex/data-space-large-scale-validation`, checked
+  out directly in the repository root from result commit `5060182`. User review
+  files under `reports/summary1/` remain untracked inputs and must not be
+  modified or added. Do not revise the summary1 technical report until the new
+  large-scale physical evaluation is complete.
+- The accepted interpretation is now: Flow reliably supplies high-quality QH
+  best-of-32 starts, but latent-space local optimization has no demonstrated
+  advantage over direct per-coordinate-standardized coil optimization and may
+  be slightly worse. The valid same-start 32-case control favored data space in
+  `22/32` cases; the separate 48-case prior control showed Flow's decisive
+  advantage is initialization. Evidence and exact hashes are in
   `reports/qh_flow_initialization_vs_optimization_control_20260824.md`.
-- 2026-08-24 local verification with repository import path set explicitly:
-  final result rerun `205 passed in 20.46s`. Running bare `pytest` without
-  `PYTHONPATH=.` produces
-  collection import errors and is an environment invocation error, not a code
-  regression.
-- Next action is user review of the standalone result. Do not edit the summary1
-  technical report or switch the production optimizer until the user decides
-  how strongly to incorporate this conclusion.
+- Existing historical face-QS data cover 96 stratified trajectories from the
+  309-trajectory latent corpus at eight fixed stages, not each exact score-best
+  point. Of 67 strict start/iteration-200 fixed-probe pairs, 65 improved and the
+  median face-QH ratio was `0.005291`. The new plot and explicit limitation are
+  appended to the Flow-role report; assets are under
+  `reports/assets/qh_flow_initialization_vs_optimization_control_20260824/`.
+- The active experiment will reuse all 309 saved Flow screening winners, skip
+  screening, and rerun 200-step Adam directly in standardized coil space with
+  the original optimizer seed, 64 centered orthogonal directions, `h=0.0025`,
+  LR `0.01`, and beta `(0.7,0.999)`. It then repeats the same 96-trajectory,
+  eight-stage Simsopt face-QS/iota calibration, adds each exact score-best
+  snapshot, and repeats the equal-s diagnostic. The reference checkpoint and
+  score-library hashes remain `39a3293a...` and `7834a88d...` for a controlled
+  comparison with the historical 309 trajectories.
+- 2026-08-24 local verification for the active implementation: `208 passed in
+  19.72s`; Bash syntax and `git diff --check` passed. Remote jobs have not yet
+  been recorded in this memory entry.

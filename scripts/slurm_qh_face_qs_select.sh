@@ -29,6 +29,11 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
+extra_args=()
+if [[ "${INCLUDE_SCORE_BEST:-0}" == "1" ]]; then
+  extra_args+=(--include-score-best)
+fi
+
 python "$PROJECT/scripts/prepare_qh_trajectory_face_qs_cases.py" \
   --dataset-root "$DATASET_ROOT" \
   --trajectory-summary "$summary_csv" \
@@ -36,4 +41,5 @@ python "$PROJECT/scripts/prepare_qh_trajectory_face_qs_cases.py" \
   --trajectory-count "$trajectory_count" \
   --iterations "$iterations" \
   --fixed-probe-rho 0.8 \
-  --source-a 0.05
+  --source-a 0.05 \
+  "${extra_args[@]}"

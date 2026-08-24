@@ -246,11 +246,15 @@ $$
   `~/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt`,
   EMA step 30000, SHA-256
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
-- Flow matching is retained as an invertible reparameterization that produces
-  wider/smoother useful search directions. It is not accepted as a direct
-  high-quality generator. Formal inversion/landscape checks may use RK4-256;
-  current optimization uses self-consistent FP32 RK4-128. Never resume a saved
-  optimizer state with a different flow discretization.
+- 2026-08-24 evidence separates two roles. Flow is now validated as a strong QH
+  **prior/initializer under finite screening**: best-of-32 starts are reliable,
+  although individual draws remain broad. It is not validated as a universally
+  better local optimization coordinate; a 32-case same-start control slightly
+  favored direct standardized-data Adam and was cheaper. The production
+  optimizer remains latent pending an explicit integration decision. Formal
+  inversion/landscape checks may use RK4-256; current optimization uses
+  self-consistent FP32 RK4-128. Never resume a saved optimizer state with a
+  different flow discretization.
 
 ### Default optimizer
 
@@ -395,12 +399,14 @@ Only current decisions are retained here; exact history is in
 - The bounded native GPU score was corrected for current sign, $G$, volume
   weights, valid counts, low-iota cheating, and helicity competition. See
   `reports/qh_differential_qs_metric_investigation.md`.
-- Flow is useful as an invertible search reparameterization, not as a direct
-  high-quality generator. Latent CEM and then finite-difference Adam established
-  this route; proxy and G2--G5 analytic-gradient attempts were rejected. See
-  `reports/qh_flow_landscape_report.md`,
-  `reports/qh_latent_score_regression_proxy_report.md`, and
-  `reports/qh_blackbox_gradient_exploration_report.md`.
+- Latent CEM and finite-difference Adam established a workable QH optimization
+  route, while proxy and G2--G5 analytic-gradient attempts were rejected.
+  Later matched controls showed that Flow's robust contribution is generation
+  and initialization, not a demonstrated universal local-coordinate advantage.
+  See `reports/qh_flow_landscape_report.md`,
+  `reports/qh_latent_score_regression_proxy_report.md`,
+  `reports/qh_blackbox_gradient_exploration_report.md`, and
+  `reports/qh_flow_initialization_vs_optimization_control_20260824.md`.
 - The validated $N_{\rm FP}=4$, three-coil long run reached score 93.367 at step
   4341 and passed complete evaluation; exact continuation to 10000 found no new
   best. See `reports/qh_score_throughput_and_continuous_surface_plan.md`.
@@ -441,29 +447,29 @@ Only current decisions are retained here; exact history is in
   gains were `7.676/8.664`, Flow won `10/32`, and direct standardized data space
   won `22/32`; median paired final difference was `-1.031` with bootstrap 95%
   interval `[-1.807,-0.223]`. This gives no positive evidence that latent space
-  is the better local optimizer coordinate, but both starts still came from
-  Flow and therefore did not test Flow's initialization value.
-- The active end-to-end control fixes that gap. For each of 48 uniformly
-  selected reference conditions it compares Flow decode of 32 Gaussian latent
-  candidates against 32 independent Gaussian candidates in standardized coil
-  coordinates, then runs the independently calibrated 200-step optimizer from
-  each best valid candidate. Conditions and RNG seeds are paired exactly.
-  Analyze candidate validity, best-of-32 starts, conditional optimizer gains,
-  and end-to-end failures separately. Report:
+  is the better local optimizer coordinate. This is the valid coordinate-effect
+  result; both starts came from Flow, so it does not measure initialization.
+- End-to-end jobs `43810/43811/43812` completed 48 matched cases spanning 15
+  `(nfp,n_coils)` groups. Flow versus independent standardized-data Gaussian
+  candidate validity was `61.2%` versus `2.8%`; Flow found a valid best-of-32
+  start in `48/48` cases versus `25/48`. Start-score medians were
+  `77.339/0.423`, and Flow won all 48 paired starts. After 200 steps, best-score
+  medians were `90.677/0.754`; Flow again won all 48. Thus the strong validated
+  Flow effect is its learned prior and screened initialization. Do not claim a
+  general latent local-optimization advantage from this result.
+- Formal source remains the isolated remote clone at exact commit
+  `a708f7b286a872931224825c542dc5e8f01daecd`; checkpoint/library hashes are
+  `39a3293a...` / `7834a88d...`. All 48 rows completed with no missing cases;
+  six error logs and six zombie reports were empty, and postflight GPUs were
+  idle. Longest worker wall time was `10134.7 s`. Raw evidence and figures are
+  under `reports/assets/qh_data_prior_end_to_end_48_20260824/`; the standalone
+  interpretation is
   `reports/qh_flow_initialization_vs_optimization_control_20260824.md`.
-- Formal remote source is an isolated clone at
-  `~/local_surface_evaluator/runs/qh_data_prior_end_to_end_48_20260824/source`,
-  exact commit `a708f7b286a872931224825c542dc5e8f01daecd`. Checkpoint hash is
-  `39a3293a...`; score-library hash is `7834a88d...`. P107 array job `43810`
-  runs workers 0--3, Students array `43811` runs workers 4--5, and dependency
-  job `43812` performs automatic analysis after both succeed. Five formal
-  workers were stable at handoff; the sixth waits for smoke job `43798` to
-  release one P107 slot. Every started GPU was idle before timing and all error
-  logs were empty. Expected completion is roughly 3--5 hours.
-- Smoke job `43798` is diagnostic only and must not be mixed into the formal 48
-  rows. Two cases correctly recorded no valid data-prior start; two found valid
-  starts and entered optimization. Its purpose is interface/runtime validation.
 - 2026-08-24 local verification with repository import path set explicitly:
-  `205 passed in 19.05s`. Running bare `pytest` without `PYTHONPATH=.` produces
+  final result rerun `205 passed in 20.46s`. Running bare `pytest` without
+  `PYTHONPATH=.` produces
   collection import errors and is an environment invocation error, not a code
   regression.
+- Next action is user review of the standalone result. Do not edit the summary1
+  technical report or switch the production optimizer until the user decides
+  how strongly to incorporate this conclusion.

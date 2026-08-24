@@ -22,4 +22,6 @@ python scripts/prepare_qh_data_prior_control.py \
   --run-root "${RUN_ROOT:?RUN_ROOT is required}" \
   --checkpoint "${CHECKPOINT:?CHECKPOINT is required}" \
   --lib "${NATIVE_LIB:?NATIVE_LIB is required}" \
-  --worker-count "${WORKER_COUNT:-4}"
+  --worker-count "${WORKER_COUNT:-4}" \
+  --case-count "${CASE_COUNT:-0}" \
+  --selection-seed "${SELECTION_SEED:-2026082403}"

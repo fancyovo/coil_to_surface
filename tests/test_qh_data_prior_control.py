@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 
 from scripts.generate_qh_data_prior_control import worker_cases
-from scripts.prepare_qh_data_prior_control import assign_workers, load_reference_cases
+from scripts.prepare_qh_data_prior_control import (
+    assign_workers,
+    load_reference_cases,
+    select_cases,
+)
 
 
 def write_reference(root: Path, name: str, *, nfp: int, coils: int, wall: float) -> None:
@@ -59,3 +63,14 @@ def test_worker_cases_filters_and_sorts() -> None:
         "a",
         "b",
     ]
+
+
+def test_case_selection_is_reproducible_without_replacement() -> None:
+    cases = [{"trajectory_id": f"case_{index:02d}"} for index in range(20)]
+
+    first = select_cases(cases, case_count=8, seed=73)
+    second = select_cases(cases, case_count=8, seed=73)
+
+    assert first == second
+    assert len(first) == 8
+    assert len({row["trajectory_id"] for row in first}) == 8

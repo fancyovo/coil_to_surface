@@ -8,6 +8,8 @@ import sys
 import time
 from typing import Any
 
+import numpy as np
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -72,6 +74,19 @@ def assign_workers(
     return sorted(assigned, key=lambda item: item["trajectory_id"]), loads
 
 
+def select_cases(
+    cases: list[dict[str, Any]], *, case_count: int, seed: int
+) -> list[dict[str, Any]]:
+    if case_count <= 0 or case_count >= len(cases):
+        return sorted(cases, key=lambda item: item["trajectory_id"])
+    rng = np.random.default_rng(seed)
+    selected = rng.choice(len(cases), size=case_count, replace=False)
+    return sorted(
+        (cases[int(index)] for index in selected),
+        key=lambda item: item["trajectory_id"],
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Prepare a matched standardized-data-prior control for QH trajectories."
@@ -81,6 +96,8 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--lib", type=Path, required=True)
     parser.add_argument("--worker-count", type=int, default=4)
+    parser.add_argument("--case-count", type=int, default=0)
+    parser.add_argument("--selection-seed", type=int, default=2026082403)
     args = parser.parse_args()
 
     if args.run_root.exists():
@@ -89,9 +106,13 @@ def main() -> None:
     for name in ("cases", "incomplete", "failures", "workers", "logs"):
         (args.run_root / name).mkdir()
 
-    cases, loads = assign_workers(
-        load_reference_cases(args.reference_root), args.worker_count
+    reference_cases = load_reference_cases(args.reference_root)
+    selected_cases = select_cases(
+        reference_cases,
+        case_count=args.case_count,
+        seed=args.selection_seed,
     )
+    cases, loads = assign_workers(selected_cases, args.worker_count)
     manifest = {
         "format": "qh_data_prior_end_to_end_control_v1",
         "question": (
@@ -99,6 +120,12 @@ def main() -> None:
             "than by improving local Adam updates?"
         ),
         "reference_root": str(args.reference_root.resolve()),
+        "reference_case_count": len(reference_cases),
+        "selection": {
+            "rule": "uniform sample without replacement from the reference trajectories",
+            "requested_case_count": args.case_count,
+            "seed": args.selection_seed,
+        },
         "run_root": str(args.run_root.resolve()),
         "case_count": len(cases),
         "worker_count": args.worker_count,
@@ -106,7 +133,7 @@ def main() -> None:
         "screening": {
             "candidate_count": 32,
             "prior": "independent N(0,1) in per-coordinate standardized coil space",
-            "condition_and_seed_pairing": "exactly matched to each reference Flow trajectory",
+            "condition_and_seed_pairing": "exactly matched to each selected reference Flow trajectory",
         },
         "optimizer": {
             "parameter_space": "standardized coil data",

@@ -73,6 +73,7 @@ setsid python "$PROJECT/scripts/run_qh_data_space_trajectory_rerun.py" \
   --device 0 \
   --max-wall-s "${MAX_WALL_S:-81000}" \
   --max-new-cases "${MAX_NEW_CASES:-0}" \
+  --max-attempts "${MAX_ATTEMPTS:-0}" \
   --iterations "${ITERATIONS:-200}" \
   "${extra_args[@]}" &
 child=$!

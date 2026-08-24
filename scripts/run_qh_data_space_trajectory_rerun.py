@@ -105,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--max-wall-s", type=float, default=81000.0)
     parser.add_argument("--max-new-cases", type=int, default=0)
+    parser.add_argument("--max-attempts", type=int, default=0)
     parser.add_argument("--iterations", type=int, default=200)
     parser.add_argument("--allow-partial", action="store_true")
     return parser
@@ -132,6 +133,8 @@ def main() -> None:
     durations: list[float] = []
     outcomes: Counter[str] = Counter()
     stop_reason = "all_assigned_cases_complete"
+    previous_failure_signature: str | None = None
+    consecutive_failure_count = 0
 
     for case in cases:
         destination = args.run_root / "trajectories" / case["trajectory_id"]
@@ -140,6 +143,9 @@ def main() -> None:
             continue
         if args.max_new_cases and completed >= args.max_new_cases:
             stop_reason = "max_new_cases"
+            break
+        if args.max_attempts and attempted >= args.max_attempts:
+            stop_reason = "max_attempts"
             break
         elapsed = time.perf_counter() - started
         reserve = max(1800.0, 1.35 * max(durations[-3:], default=0.0))
@@ -167,7 +173,9 @@ def main() -> None:
             screening_dir = partial / "screening"
             screening_dir.mkdir()
             shutil.copy2(source_path, screening_dir / "reference_selected_start.json")
-            atomic_write_json(screening_dir / "selected_start.json", data_start)
+            atomic_write_json(
+                screening_dir / "selected_start.json", data_start, allow_nan=True
+            )
 
             optimization_dir = partial / "optimization"
             optimization_wall_s = run_logged(
@@ -282,6 +290,8 @@ def main() -> None:
             os.replace(partial, destination)
             completed += 1
             outcomes["ok"] += 1
+            previous_failure_signature = None
+            consecutive_failure_count = 0
             durations.append(trajectory_wall_s)
             print(
                 json.dumps(
@@ -297,11 +307,12 @@ def main() -> None:
                 flush=True,
             )
         except Exception as exc:
+            failure_signature = f"{type(exc).__name__}: {exc}"
             failure = {
                 "format": "qh_data_space_same_start_failure_v1",
                 "trajectory_id": trajectory_id,
                 "worker_index": args.worker_index,
-                "error": f"{type(exc).__name__}: {exc}",
+                "error": failure_signature,
                 "wall_s": time.perf_counter() - case_started,
             }
             atomic_write_json(partial / "failure.json", failure)
@@ -311,6 +322,11 @@ def main() -> None:
             os.replace(partial, failure_destination)
             outcomes["runtime_failure"] += 1
             print(json.dumps({"event": "trajectory_failed", **failure}), flush=True)
+            if failure_signature == previous_failure_signature:
+                consecutive_failure_count += 1
+            else:
+                previous_failure_signature = failure_signature
+                consecutive_failure_count = 1
 
         replace_json(
             worker_dir / "progress.json",
@@ -328,6 +344,9 @@ def main() -> None:
                 "updated_unix_s": time.time(),
             },
         )
+        if consecutive_failure_count >= 3:
+            stop_reason = "three_identical_consecutive_failures"
+            break
 
     finished_ids = {
         path.name for path in (args.run_root / "trajectories").iterdir() if path.is_dir()

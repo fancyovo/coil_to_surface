@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=24G
-#SBATCH --time=01:30:00
+#SBATCH --time=04:00:00
 #SBATCH --output=logs/summary1-flow-pair-%A_%a.out
 #SBATCH --error=logs/summary1-flow-pair-%A_%a.err
 #SBATCH --array=0-3
@@ -122,8 +122,6 @@ import sys
 print(len(json.load(open(sys.argv[1], encoding="utf-8"))["cases"]))
 PY
 )"
-run_case "$SLURM_ARRAY_TASK_ID"
-second_index=$((SLURM_ARRAY_TASK_ID + SLURM_ARRAY_TASK_COUNT))
-if ((second_index < case_count)); then
-  run_case "$second_index"
-fi
+for ((case_index=SLURM_ARRAY_TASK_ID; case_index<case_count; case_index+=SLURM_ARRAY_TASK_COUNT)); do
+  run_case "$case_index"
+done

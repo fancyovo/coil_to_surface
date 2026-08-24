@@ -58,7 +58,7 @@ PYTHONPATH="$project${PYTHONPATH:+:$PYTHONPATH}" \
 python "$project/scripts/prepare_summary1_flow_pairs.py" \
   --trajectory-root "$trajectory_root" \
   --output-dir "$run_root/flow_pairs" \
-  --case-count 8
+  --case-count "${PAIR_CASE_COUNT:-32}"
 
 sha256sum "$bundle" > "$run_root/source_bundle.sha256"
 sha256sum "$build_dir/libstellarator_gpu.so" > "$run_root/library.sha256"

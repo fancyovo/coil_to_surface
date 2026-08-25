@@ -26,6 +26,10 @@
 - The newest dated correction in this file wins over older reports and the
   archive. Preserve old artifacts, but label results produced by obsolete code
   or score definitions as invalid or historical.
+- Keep score-evaluator defaults, optimizer-launcher defaults, and frozen
+  experiment protocols separate. When a task says to reuse an experiment's
+  configuration, load its machine-readable manifest and compare every setting;
+  never substitute a CLI default or a later "standard" recipe.
 - Never store passwords, authentication tokens, private keys, one-time codes,
   or credential-bearing URLs in repository files.
 
@@ -248,34 +252,39 @@ $$
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
 - 2026-08-25 protocol-audit correction: Flow is a strong QH
   **prior/initializer under finite screening**; that conclusion remains valid.
-  The 309-case run did **not** supersede the earlier 32-case coordinate control.
-  It compared 64 directions, 200 steps, and latent/data LR `0.02/0.01`, while
-  the old control used 2 directions, 100 steps, and equal LR `0.01`; direction
-  seeds also differed. On the exact same 32 IDs, data won `22/32` under the old
-  protocol but latent won `21/32` under the new one. Thus the raw 309-case result
-  (latent `201/309`, median data-minus-latent `-0.997`; data 1.41x faster) is a
-  comparison of two complete configurations, not evidence that latent is the
-  better coordinate. Pairing, starts, score hashes, update sign, and independent
-  rescoring were checked; no implementation error explained the reversal. Local
+  The earlier 32-case run is **invalid for its requested same-configuration
+  coordinate comparison**: it used 2 directions, 100 steps, and equal LR
+  `0.01`, instead of the referenced 309-corpus protocol of 64 directions,
+  200 steps, and LR `0.02`. On the exact same 32 IDs, that invalid run gave data
+  `22/32`, while the 309 protocol gave latent `21/32`, proving strong protocol
+  sensitivity. The full 309 result (latent `201/309`, median data-minus-latent
+  `-0.997`; data 1.41x faster) compares latent LR `0.02` with data LR `0.01`, so
+  it is also not a clean coordinate ablation. Pairing, starts, score hashes,
+  update sign, and rescoring were checked. Local
   coordinate superiority remains unresolved pending independently tuned,
-  matched-protocol testing. Production remains latent only as the established
-  route, not because this experiment proved it superior. Formal inversion and
-  landscape checks may use RK4-256; current optimization uses self-consistent
-  FP32 RK4-128. Never resume saved optimizer state with a different flow
-  discretization. Evidence:
+  matched-protocol testing. Neither result defines a universal optimizer
+  default, and the native score evaluator itself has no direction-count
+  setting. Formal inversion and landscape checks may use RK4-256; optimization
+  trajectories must retain their own frozen flow discretization. Never resume
+  saved optimizer state with a different discretization. Evidence:
   `reports/qh_data_space_large_scale_validation_20260825.md` protocol audit.
 
-### Default optimizer
+### Optimizer recipes (scope must be explicit)
 
 - Entry points: `scripts/optimize_flow_prior_standard_adam.py` and
   `scripts/slurm_flow_prior_standard_adam.sh`.
-- Current default is score-only zeroth-order Adam in flow latent space: two
-  fresh orthogonal directions, four centered score endpoints, perturbation
-  `0.005`, LR `0.01`, beta `(0.7,0.999)`, FP32 RK4-128, continuous score, and
-  cubic `iota(psi/psi_edge)`, with strict axis continuation using mixed topology
-  and no FP64 replay (mode 2).
+- The generic latent-Adam launcher on `main` has retained its 2026-08-06
+  throughput-oriented CLI defaults: two fresh orthogonal directions, four
+  centered score endpoints, perturbation `0.005`, LR `0.01`, beta
+  `(0.7,0.999)`, and FP32 RK4-128. This is only that launcher's historical
+  default recipe; it is not a score-evaluator setting or a comparison baseline.
+  The 309-trajectory corpus instead freezes 64 directions, 200 steps, LR
+  `0.02`, beta `(0.7,0.999)`, and RK4-128 in its `dataset_manifest.json`.
+  Any matched rerun of that corpus must use those manifest values.
+- Both routes use continuous score, cubic `iota(psi/psi_edge)`, and strict axis
+  continuation using mixed topology and no FP64 replay (mode 2).
   `--axis-hint-verification fp64` restores mode 1. No gradient experiment may
-  leak into this production route.
+  leak into a frozen route.
 - Cross-iteration pipelining decodes the accepted center together with the next
   endpoints. On the validated two-GPU setup, 600-step jobs averaged
   `5.27--5.40 s/step`; native score consumed about 75--77% of wall time and
@@ -460,13 +469,12 @@ Only current decisions are retained here; exact history is in
   valid complete-configuration measurements, but not a coordinate ablation:
   latent/data used LR `0.02/0.01`, and this protocol differs from the old
   2-direction, equal-LR, 100-step control.
-- 2026-08-25 reversal audit reused the exact old 32 IDs. Old protocol gave data
-  `22:10` and median delta `+1.031`; new protocol at step 100 gave latent `20:12`
-  and `-0.637`, and at step 200 latent `21:11` and `-0.997`. Condition-stratified
-  resampling under the new protocol reached neither the old 22 data wins nor its
-  median delta in 20000 draws. The reporting error was causal attribution, not
-  score computation or row pairing. Do not update the technical report's
-  coordinate conclusion until a matched, independently tuned control exists.
+- 2026-08-25 root-cause correction: the 32-case launcher hard-coded 2 directions,
+  100 steps, and LR `0.01` instead of loading the referenced 309-corpus manifest.
+  No pre-submit protocol diff caught the violation. Memory's former undifferentiated
+  "default optimizer" wording increased the risk but does not excuse the execution
+  error. The 32-case coordinate conclusion is invalid; do not use it or update the
+  technical report until a correctly frozen comparison exists.
 - Direct-data physical calibration sampled 96 trajectories at eight stages and
   exact score-best extras. At step 200, 84/96 fixed probe surfaces passed strict
   validation and face-QH P50 was `1.426e-5`. Across 73 strict start/end pairs,

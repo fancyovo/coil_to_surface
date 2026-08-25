@@ -1,0 +1,107 @@
+{
+  "format": "qh_coordinate_protocol_reversal_diagnosis_v1",
+  "same_id_count": 32,
+  "comparisons": {
+    "old_2_directions_100_steps_equal_lr": {
+      "count": 32,
+      "data_wins": 22,
+      "latent_wins": 10,
+      "ties": 0,
+      "mean": 3.086706121945638,
+      "p10": -2.688138071136777,
+      "p50": 1.0306609904543365,
+      "p90": 9.1372482062876,
+      "sign_test_p": 0.050102459732443094,
+      "wilcoxon_p": 0.04754120111465454
+    },
+    "new_64_directions_100_steps_asymmetric_lr": {
+      "count": 32,
+      "data_wins": 12,
+      "latent_wins": 20,
+      "ties": 0,
+      "mean": 0.3428375294322985,
+      "p10": -5.158875844189349,
+      "p50": -0.6374628490420591,
+      "p90": 2.884063766644491,
+      "sign_test_p": 0.21532714972272515,
+      "wilcoxon_p": 0.2781296819448471
+    },
+    "new_64_directions_200_steps_asymmetric_lr": {
+      "count": 32,
+      "data_wins": 11,
+      "latent_wins": 21,
+      "ties": 0,
+      "mean": 0.23567387546432506,
+      "p10": -4.275089457949301,
+      "p50": -0.9968550306900426,
+      "p90": 3.853715317368914,
+      "sign_test_p": 0.11018416518345475,
+      "wilcoxon_p": 0.11064805556088686
+    }
+  },
+  "within_coordinate_protocol_change_at_100": {
+    "data": {
+      "positive_count": 26,
+      "median": 2.551860881110109
+    },
+    "latent": {
+      "positive_count": 26,
+      "median": 3.9502569788051076,
+      "warning": "This change combines 2-to-64 directions with latent LR 0.01-to-0.02."
+    }
+  },
+  "extra_steps_100_to_200": {
+    "data_median_best_gain": 0.2947098253640945,
+    "latent_median_best_gain": 0.6279859180798226
+  },
+  "historical_latent_online_vs_independent_rescore": {
+    "online_comparison": {
+      "count": 32,
+      "data_wins": 11,
+      "latent_wins": 21,
+      "ties": 0,
+      "mean": 0.2356738754643246,
+      "p10": -4.275089457949301,
+      "p50": -0.9968550306900354,
+      "p90": 3.853715317368914,
+      "sign_test_p": 0.11018416518345475,
+      "wilcoxon_p": 0.11064805556088686
+    },
+    "independent_rescore_comparison": {
+      "count": 32,
+      "data_wins": 11,
+      "latent_wins": 21,
+      "ties": 0,
+      "mean": 0.24246852378517458,
+      "p10": -4.264477985391477,
+      "p50": -0.9836344063483011,
+      "p90": 3.854295600783018,
+      "sign_test_p": 0.11018416518345475,
+      "wilcoxon_p": 0.11064805556088686
+    },
+    "conclusion": "Replacing historical online best with its independent rescore does not change the 11-to-21 outcome."
+  },
+  "condition_stratified_resampling_under_new_protocol": {
+    "resamples": 20000,
+    "historical_condition_template_size": 32,
+    "observed_old_data_wins": 22,
+    "observed_old_median_delta": 1.0306609904543365,
+    "count_with_at_least_observed_wins": 0,
+    "count_with_at_least_observed_median": 0,
+    "data_win_count_percentiles": [
+      6.0,
+      8.0,
+      11.0,
+      15.0,
+      16.0
+    ],
+    "median_delta_percentiles": [
+      -1.7650284064410684,
+      -1.612001736819714,
+      -1.0134848119967756,
+      -0.5154342438668706,
+      -0.07563980035580055
+    ]
+  },
+  "diagnosis": "The 309-case result is numerically real but is not a replication of the 32-case coordinate control. Direction count, latent learning rate, iteration budget, and random-direction seeds changed together."
+}

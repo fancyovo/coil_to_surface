@@ -246,17 +246,24 @@ $$
   `~/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt`,
   EMA step 30000, SHA-256
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
-- 2026-08-25 evidence separates two roles. Flow is a strong QH
-  **prior/initializer under finite screening**: best-of-32 starts are reliable,
-  although individual draws remain broad. A complete 309-case same-start,
-  same-seed, 200-step control supersedes the earlier 32-case inference: latent
-  optimization won 201/309 cases and had a `0.997`-point median best-score
-  advantage, while direct standardized-data optimization was 1.41x faster and
-  more often cleared score 85. Thus latent has a modest high-score-tail benefit,
-  not universal dominance; direct data is a valid lower-cost alternative. The
-  production optimizer remains latent. Formal inversion/landscape checks may
-  use RK4-256; current optimization uses self-consistent FP32 RK4-128. Never
-  resume a saved optimizer state with a different flow discretization.
+- 2026-08-25 protocol-audit correction: Flow is a strong QH
+  **prior/initializer under finite screening**; that conclusion remains valid.
+  The 309-case run did **not** supersede the earlier 32-case coordinate control.
+  It compared 64 directions, 200 steps, and latent/data LR `0.02/0.01`, while
+  the old control used 2 directions, 100 steps, and equal LR `0.01`; direction
+  seeds also differed. On the exact same 32 IDs, data won `22/32` under the old
+  protocol but latent won `21/32` under the new one. Thus the raw 309-case result
+  (latent `201/309`, median data-minus-latent `-0.997`; data 1.41x faster) is a
+  comparison of two complete configurations, not evidence that latent is the
+  better coordinate. Pairing, starts, score hashes, update sign, and independent
+  rescoring were checked; no implementation error explained the reversal. Local
+  coordinate superiority remains unresolved pending independently tuned,
+  matched-protocol testing. Production remains latent only as the established
+  route, not because this experiment proved it superior. Formal inversion and
+  landscape checks may use RK4-256; current optimization uses self-consistent
+  FP32 RK4-128. Never resume saved optimizer state with a different flow
+  discretization. Evidence:
+  `reports/qh_data_space_large_scale_validation_20260825.md` protocol audit.
 
 ### Default optimizer
 
@@ -404,9 +411,9 @@ Only current decisions are retained here; exact history is in
 - Latent CEM and finite-difference Adam established a workable QH optimization
   route, while proxy and G2--G5 analytic-gradient attempts were rejected.
   Matched controls show that Flow's largest robust contribution is generation
-  and initialization; the 309-case control additionally found a modest latent
-  high-score-tail advantage at higher runtime, but no universal coordinate
-  dominance.
+  and initialization. The apparent 309-case latent high-score-tail advantage
+  was later found to be confounded by direction count, learning rate, budget,
+  and RNG changes; it must not be cited as an intrinsic coordinate advantage.
   See `reports/qh_flow_landscape_report.md`,
   `reports/qh_latent_score_regression_proxy_report.md`,
   `reports/qh_blackbox_gradient_exploration_report.md`, and
@@ -447,7 +454,17 @@ Only current decisions are retained here; exact history is in
 - The exact score comparison used all 309 saved Flow screening winners and the
   original optimizer seeds. Latent won `201/309`; data-minus-latent best-score
   P50 was `-0.997` with bootstrap 95% `[-1.312,-0.799]`. Direct standardized
-  data took `825.6 s` P50 versus latent `1166.3 s`, or 1.41x less time.
+  data took `825.6 s` P50 versus latent `1166.3 s`, or 1.41x less time. These are
+  valid complete-configuration measurements, but not a coordinate ablation:
+  latent/data used LR `0.02/0.01`, and this protocol differs from the old
+  2-direction, equal-LR, 100-step control.
+- 2026-08-25 reversal audit reused the exact old 32 IDs. Old protocol gave data
+  `22:10` and median delta `+1.031`; new protocol at step 100 gave latent `20:12`
+  and `-0.637`, and at step 200 latent `21:11` and `-0.997`. Condition-stratified
+  resampling under the new protocol reached neither the old 22 data wins nor its
+  median delta in 20000 draws. The reporting error was causal attribution, not
+  score computation or row pairing. Do not update the technical report's
+  coordinate conclusion until a matched, independently tuned control exists.
 - Direct-data physical calibration sampled 96 trajectories at eight stages and
   exact score-best extras. At step 200, 84/96 fixed probe surfaces passed strict
   validation and face-QH P50 was `1.426e-5`. Across 73 strict start/end pairs,
@@ -461,5 +478,7 @@ Only current decisions are retained here; exact history is in
   optimization.
 - Final report and technical-report revision plan:
   `reports/qh_data_space_large_scale_validation_20260825.md`. User-owned files
-  under `reports/summary1/` remain untouched and untracked. Await review before
-  changing the original technical report or submitting additional jobs.
+  under `reports/summary1/` remain untouched and untracked. The report now
+  contains a prominent protocol-audit correction and reproducible same-32
+  evidence. Await review before changing the original technical report or
+  submitting additional jobs.

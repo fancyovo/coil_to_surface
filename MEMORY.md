@@ -440,7 +440,8 @@ Only current decisions are retained here; exact history is in
 
 - 2026-08-25 branch `codex/data-space-large-scale-validation` is checked out in
   the repository root. Implementation commit `a80ca142...` passed 208 local
-  tests and six-card remote smoke validation. The complete 309-trajectory,
+  tests and six-card remote smoke validation. Final report, analysis, and small
+  evidence assets are commit `52972ed`. The complete 309-trajectory,
   1708-surface, and equal-s job chain has finished; the Slurm queue is empty,
   all six optimizer zombie files are empty, and GPU postflight is 2 MiB/0%.
 - The exact score comparison used all 309 saved Flow screening winners and the

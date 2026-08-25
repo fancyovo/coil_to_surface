@@ -450,7 +450,7 @@ Only current decisions are retained here; exact history is in
   tests and six-card remote smoke validation. Final report, analysis, and small
   evidence assets were initially commit `52972ed`; protocol-attribution
   correction, same-32 diagnostics, and reproducible assets are commit
-  `fc30d16`. The complete 309-trajectory,
+  `fc30d16`, with final uncertainty wording at `a53b9b0`. The complete 309-trajectory,
   1708-surface, and equal-s job chain has finished; the Slurm queue is empty,
   all six optimizer zombie files are empty, and GPU postflight is 2 MiB/0%.
 - The exact score comparison used all 309 saved Flow screening winners and the

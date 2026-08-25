@@ -250,24 +250,22 @@ $$
   `~/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt`,
   EMA step 30000, SHA-256
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
-- 2026-08-25 protocol-audit correction: Flow is a strong QH
-  **prior/initializer under finite screening**; that conclusion remains valid.
-  The earlier 32-case run is **invalid for its requested same-configuration
-  coordinate comparison**: it used 2 directions, 100 steps, and equal LR
-  `0.01`, instead of the referenced 309-corpus protocol of 64 directions,
-  200 steps, and LR `0.02`. On the exact same 32 IDs, that invalid run gave data
-  `22/32`, while the 309 protocol gave latent `21/32`, proving strong protocol
-  sensitivity. The full 309 result (latent `201/309`, median data-minus-latent
-  `-0.997`; data 1.41x faster) compares latent LR `0.02` with data LR `0.01`, so
-  it is also not a clean coordinate ablation. Pairing, starts, score hashes,
-  update sign, and rescoring were checked. Local
-  coordinate superiority remains unresolved pending independently tuned,
-  matched-protocol testing. Neither result defines a universal optimizer
-  default, and the native score evaluator itself has no direction-count
-  setting. Formal inversion and landscape checks may use RK4-256; optimization
-  trajectories must retain their own frozen flow discretization. Never resume
-  saved optimizer state with a different discretization. Evidence:
-  `reports/qh_data_space_large_scale_validation_20260825.md` protocol audit.
+- 2026-08-25 accepted Flow interpretation: the current practical latent recipe
+  is the main method; direct standardized-data optimization is feasible and
+  1.41x faster but is a weaker high-score baseline. On the same 309 starts and
+  direction seeds, latent won `201/309`, paired best-score median advantage was
+  `0.997` (95% `[0.799,1.312]`), and score `>=92` rates were `23.0%/0.32%`.
+  This is a complete-recipe comparison, not a pure coordinate ablation, because
+  latent/data use LR `0.02/0.01` and radii `0.005/0.0025`. The old 32-case run
+  remains invalid for its requested protocol: it silently used 2 directions
+  and 100 steps instead of the 309 manifest's 64 directions and 200 steps.
+  Three separate evidence groups support Flow: 48-condition finite screening
+  gives stable high-quality starts, 12-direction landscape scans show broader
+  and smoother correlated deformations, and the 309-pair run shows a practical
+  high-score-tail advantage. Formal inversion/landscape may use RK4-256;
+  optimization trajectories must retain their frozen discretization. Evidence:
+  `reports/summary1/技术报告.md` and
+  `reports/qh_data_space_large_scale_validation_20260825.md`.
 
 ### Optimizer recipes (scope must be explicit)
 
@@ -419,10 +417,9 @@ Only current decisions are retained here; exact history is in
   `reports/qh_differential_qs_metric_investigation.md`.
 - Latent CEM and finite-difference Adam established a workable QH optimization
   route, while proxy and G2--G5 analytic-gradient attempts were rejected.
-  Matched controls show that Flow's largest robust contribution is generation
-  and initialization. The apparent 309-case latent high-score-tail advantage
-  was later found to be confounded by direction count, learning rate, budget,
-  and RNG changes; it must not be cited as an intrinsic coordinate advantage.
+  Flow is supported by initialization, landscape, and 309-pair practical
+  optimization evidence. Cite the latter only as an advantage of the tested
+  complete latent recipe, never as an isolated intrinsic coordinate effect.
   See `reports/qh_flow_landscape_report.md`,
   `reports/qh_latent_score_regression_proxy_report.md`,
   `reports/qh_blackbox_gradient_exploration_report.md`, and
@@ -455,40 +452,19 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-25 branch `codex/data-space-large-scale-validation` is checked out in
-  the repository root. Implementation commit `a80ca142...` passed 208 local
-  tests and six-card remote smoke validation. Final report, analysis, and small
-  evidence assets were initially commit `52972ed`; protocol-attribution
-  correction, same-32 diagnostics, and reproducible assets are commit
-  `fc30d16`, with final uncertainty wording at `a53b9b0`. The complete 309-trajectory,
-  1708-surface, and equal-s job chain has finished; the Slurm queue is empty,
-  all six optimizer zombie files are empty, and GPU postflight is 2 MiB/0%.
-- The exact score comparison used all 309 saved Flow screening winners and the
-  original optimizer seeds. Latent won `201/309`; data-minus-latent best-score
-  P50 was `-0.997` with bootstrap 95% `[-1.312,-0.799]`. Direct standardized
-  data took `825.6 s` P50 versus latent `1166.3 s`, or 1.41x less time. These are
-  valid complete-configuration measurements, but not a coordinate ablation:
-  latent/data used LR `0.02/0.01`, and this protocol differs from the old
-  2-direction, equal-LR, 100-step control.
-- 2026-08-25 root-cause correction: the 32-case launcher hard-coded 2 directions,
-  100 steps, and LR `0.01` instead of loading the referenced 309-corpus manifest.
-  No pre-submit protocol diff caught the violation. Memory's former undifferentiated
-  "default optimizer" wording increased the risk but does not excuse the execution
-  error. The 32-case coordinate conclusion is invalid; do not use it or update the
-  technical report until a correctly frozen comparison exists.
-- Direct-data physical calibration sampled 96 trajectories at eight stages and
-  exact score-best extras. At step 200, 84/96 fixed probe surfaces passed strict
-  validation and face-QH P50 was `1.426e-5`. Across 73 strict start/end pairs,
-  69 improved with P50 end/start `0.0789`. Volume/face-QH Spearman was
-  `0.935--0.942`; GPU/face iota Spearman/Pearson was `0.979/0.993`.
-- Important limitation: the new selector reran score-quantile sampling instead
-  of freezing the historical 96 IDs, so only 36 trajectories overlap. Strict
-  cross-method physical comparison is inconclusive; never compare the two
-  separate 96-case face-QH medians as if paired. Completing that comparison
-  requires evaluating the 60 missing direct-data trajectories, not rerunning
-  optimization.
-- Final report and technical-report revision plan:
-  `reports/qh_data_space_large_scale_validation_20260825.md`. User-owned files
-  under `reports/summary1/` remain untouched and untracked. The report now
-  contains a prominent protocol-audit correction and reproducible same-32
-  evidence. Await review before changing the original technical report or
-  submitting additional jobs.
+  the repository root. Direct-data implementation commit `a80ca142` passed 208
+  local tests and six-card smoke validation. All 309 optimization and physical
+  calibration jobs are complete; the recorded Slurm queue and postflight were
+  clean.
+- Technical report commit `bd71ac5` rewrites Flow around three explicit evidence
+  groups, removes the invalid 32-case conclusion, adds focused reproducible
+  figures, and reports the volume-to-surface QH fits. Fixed/adaptive relations
+  are `E_face=0.642 E_vol^2.148` and `0.615 E_vol^2.066`, with log-residual
+  standard deviations `0.344/0.290` decades.
+- Direct-data physical calibration remains useful but is not a strict physical
+  method comparison: its 96-case selector overlaps the historical latent set in
+  only 36 trajectories. Do not compare the separate 96-case face-QH medians as
+  paired evidence; completing that test requires the 60 missing trajectories.
+- Current detailed reports are `reports/summary1/技术报告.md` and
+  `reports/qh_data_space_large_scale_validation_20260825.md`. Await user review;
+  no remote job is active or required for this report-only revision.

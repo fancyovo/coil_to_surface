@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-24 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-25 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -246,15 +246,17 @@ $$
   `~/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt`,
   EMA step 30000, SHA-256
   `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
-- 2026-08-24 evidence separates two roles. Flow is now validated as a strong QH
+- 2026-08-25 evidence separates two roles. Flow is a strong QH
   **prior/initializer under finite screening**: best-of-32 starts are reliable,
-  although individual draws remain broad. It is not validated as a universally
-  better local optimization coordinate; a 32-case same-start control slightly
-  favored direct standardized-data Adam and was cheaper. The production
-  optimizer remains latent pending an explicit integration decision. Formal
-  inversion/landscape checks may use RK4-256; current optimization uses
-  self-consistent FP32 RK4-128. Never resume a saved optimizer state with a
-  different flow discretization.
+  although individual draws remain broad. A complete 309-case same-start,
+  same-seed, 200-step control supersedes the earlier 32-case inference: latent
+  optimization won 201/309 cases and had a `0.997`-point median best-score
+  advantage, while direct standardized-data optimization was 1.41x faster and
+  more often cleared score 85. Thus latent has a modest high-score-tail benefit,
+  not universal dominance; direct data is a valid lower-cost alternative. The
+  production optimizer remains latent. Formal inversion/landscape checks may
+  use RK4-256; current optimization uses self-consistent FP32 RK4-128. Never
+  resume a saved optimizer state with a different flow discretization.
 
 ### Default optimizer
 
@@ -401,8 +403,10 @@ Only current decisions are retained here; exact history is in
   `reports/qh_differential_qs_metric_investigation.md`.
 - Latent CEM and finite-difference Adam established a workable QH optimization
   route, while proxy and G2--G5 analytic-gradient attempts were rejected.
-  Later matched controls showed that Flow's robust contribution is generation
-  and initialization, not a demonstrated universal local-coordinate advantage.
+  Matched controls show that Flow's largest robust contribution is generation
+  and initialization; the 309-case control additionally found a modest latent
+  high-score-tail advantage at higher runtime, but no universal coordinate
+  dominance.
   See `reports/qh_flow_landscape_report.md`,
   `reports/qh_latent_score_regression_proxy_report.md`,
   `reports/qh_blackbox_gradient_exploration_report.md`, and
@@ -434,48 +438,27 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-24 active branch is `codex/data-space-large-scale-validation`, checked
-  out directly in the repository root. The remotely validated implementation is
-  commit `a80ca142f02a3da2931e903875ebdd489462c678`. User review
-  files under `reports/summary1/` remain untracked inputs and must not be
-  modified or added. Do not revise the summary1 technical report until the new
-  large-scale physical evaluation is complete.
-- The accepted interpretation is now: Flow reliably supplies high-quality QH
-  best-of-32 starts, but latent-space local optimization has no demonstrated
-  advantage over direct per-coordinate-standardized coil optimization and may
-  be slightly worse. The valid same-start 32-case control favored data space in
-  `22/32` cases; the separate 48-case prior control showed Flow's decisive
-  advantage is initialization. Evidence and exact hashes are in
-  `reports/qh_flow_initialization_vs_optimization_control_20260824.md`.
-- Existing historical face-QS data cover 96 stratified trajectories from the
-  309-trajectory latent corpus at eight fixed stages, not each exact score-best
-  point. Of 67 strict start/iteration-200 fixed-probe pairs, 65 improved and the
-  median face-QH ratio was `0.005291`. The new plot and explicit limitation are
-  appended to the Flow-role report; assets are under
-  `reports/assets/qh_flow_initialization_vs_optimization_control_20260824/`.
-- The active experiment reuses all 309 saved Flow screening winners, skips
-  screening, and rerun 200-step Adam directly in standardized coil space with
-  the original optimizer seed, 64 centered orthogonal directions, `h=0.0025`,
-  LR `0.01`, and beta `(0.7,0.999)`. It then repeats the same 96-trajectory,
-  eight-stage Simsopt face-QS/iota calibration, adds each exact score-best
-  snapshot, and repeats the equal-s diagnostic. The reference checkpoint and
-  score-library hashes remain `39a3293a...` and `7834a88d...` for a controlled
-  comparison with the historical 309 trajectories.
-- 2026-08-24 local verification for the active implementation: `208 passed in
-  19.72s`; Bash syntax and `git diff --check` passed. Six-card two-step smoke
-  jobs `44070/44071` completed 6/6 trajectories in about 23.5 s each, saved all
-  traces, had zero-byte error/zombie logs, and returned each GPU to 2 MiB/0%.
-  Replaying saved physical starts changed the initial score by only
-  `[-0.013,+0.029]` across those six cases.
-- Formal jobs are active: prepare `44078` completed; P107 workers `44080[0-3]`
-  and Students workers `44082[0-1]` run all 309 direct-data trajectories;
-  summary `44084` and face-pipeline launcher `44086` wait on dependencies. The
-  run root is
-  `~/local_surface_evaluator_data/qh_data_space_same_start_309_20260824` and
-  isolated source is
-  `~/local_surface_evaluator/runs/qh_data_space_large_validation_20260824/source`.
-  At the stability check all six workers were at iterations 15--26 with all
-  128/128 directional endpoints `ok` and about `3.7--4.9 s/step`. Estimated
-  optimizer wall time is 11--14 h and the dependent physical evaluation adds
-  about 8 h, for roughly 19--22 h total. The launcher will record later face
-  and equal-s job IDs inside the run root; do not submit duplicates.
+- 2026-08-25 branch `codex/data-space-large-scale-validation` is checked out in
+  the repository root. Implementation commit `a80ca142...` passed 208 local
+  tests and six-card remote smoke validation. The complete 309-trajectory,
+  1708-surface, and equal-s job chain has finished; the Slurm queue is empty,
+  all six optimizer zombie files are empty, and GPU postflight is 2 MiB/0%.
+- The exact score comparison used all 309 saved Flow screening winners and the
+  original optimizer seeds. Latent won `201/309`; data-minus-latent best-score
+  P50 was `-0.997` with bootstrap 95% `[-1.312,-0.799]`. Direct standardized
+  data took `825.6 s` P50 versus latent `1166.3 s`, or 1.41x less time.
+- Direct-data physical calibration sampled 96 trajectories at eight stages and
+  exact score-best extras. At step 200, 84/96 fixed probe surfaces passed strict
+  validation and face-QH P50 was `1.426e-5`. Across 73 strict start/end pairs,
+  69 improved with P50 end/start `0.0789`. Volume/face-QH Spearman was
+  `0.935--0.942`; GPU/face iota Spearman/Pearson was `0.979/0.993`.
+- Important limitation: the new selector reran score-quantile sampling instead
+  of freezing the historical 96 IDs, so only 36 trajectories overlap. Strict
+  cross-method physical comparison is inconclusive; never compare the two
+  separate 96-case face-QH medians as if paired. Completing that comparison
+  requires evaluating the 60 missing direct-data trajectories, not rerunning
+  optimization.
+- Final report and technical-report revision plan:
+  `reports/qh_data_space_large_scale_validation_20260825.md`. User-owned files
+  under `reports/summary1/` remain untouched and untracked. Await review before
+  changing the original technical report or submitting additional jobs.

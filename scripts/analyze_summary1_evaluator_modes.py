@@ -9,6 +9,7 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import spearmanr
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -48,6 +49,37 @@ def first_candidate_rows(records: list[dict]) -> dict[tuple[str, int, str], dict
     return output
 
 
+def paired_strict_proxy(records: list[dict]) -> list[tuple[dict, dict]]:
+    first = first_candidate_rows(records)
+    pairs: list[tuple[dict, dict]] = []
+    for case_id, candidate, mode in first:
+        if mode != "strict_continuation":
+            continue
+        strict = first[(case_id, candidate, mode)]
+        proxy = first.get((case_id, candidate, "neighborhood_proxy"))
+        if proxy and strict["status"] == proxy["status"] == "ok":
+            pairs.append((strict, proxy))
+    return pairs
+
+
+def coil_component_summary(records: list[dict]) -> dict[str, float | int]:
+    pairs = paired_strict_proxy(records)
+    strict = np.asarray([row[0]["components"]["coil"] for row in pairs], dtype=float)
+    proxy = np.asarray([row[1]["components"]["coil"] for row in pairs], dtype=float)
+    error = proxy - strict
+    absolute = np.abs(error)
+    return {
+        "count": int(len(pairs)),
+        "spearman": float(spearmanr(strict, proxy).statistic),
+        "signed_bias": float(np.mean(error)),
+        "mae": float(np.mean(absolute)),
+        "absolute_error_p50": float(np.median(absolute)),
+        "absolute_error_p95": float(np.quantile(absolute, 0.95)),
+        "absolute_error_max": float(np.max(absolute)),
+        "weighted_score_error_p95": float(0.08 * np.quantile(absolute, 0.95)),
+    }
+
+
 def plot_overview(records: list[dict], destination: Path) -> None:
     plt.rcParams.update(
         {
@@ -57,7 +89,8 @@ def plot_overview(records: list[dict], destination: Path) -> None:
             "axes.spines.right": False,
         }
     )
-    fig, axes = plt.subplots(1, 3, figsize=(13.2, 3.8), constrained_layout=True)
+    fig, axes = plt.subplots(2, 2, figsize=(10.8, 8.0), constrained_layout=True)
+    axes = axes.ravel()
     formal = ["independent", "strict_continuation"]
     values = [
         [row["wall_s"] for row in records if row["mode"] == mode]
@@ -89,17 +122,9 @@ def plot_overview(records: list[dict], destination: Path) -> None:
     axes[1].set_title("Neighborhood proxy throughput")
     axes[1].grid(alpha=0.2, which="both")
 
-    first = first_candidate_rows(records)
-    x: list[float] = []
-    y: list[float] = []
-    for case_id, candidate, mode in first:
-        if mode != "strict_continuation":
-            continue
-        strict = first[(case_id, candidate, mode)]
-        proxy = first.get((case_id, candidate, "neighborhood_proxy"))
-        if proxy and strict["status"] == proxy["status"] == "ok":
-            x.append(float(strict["score"]))
-            y.append(float(proxy["score"]))
+    pairs = paired_strict_proxy(records)
+    x = [float(strict["score"]) for strict, _ in pairs]
+    y = [float(proxy["score"]) for _, proxy in pairs]
     axes[2].scatter(x, y, s=22, alpha=0.72, color=COLORS["neighborhood_proxy"], edgecolors="none")
     if x:
         lower = min(x + y)
@@ -108,6 +133,27 @@ def plot_overview(records: list[dict], destination: Path) -> None:
     axes[2].set(xlabel="Strict-continuation score", ylabel="Neighborhood proxy score")
     axes[2].set_title("Local proxy fidelity")
     axes[2].grid(alpha=0.2)
+
+    strict_coil = [float(strict["components"]["coil"]) for strict, _ in pairs]
+    proxy_coil = [float(proxy["components"]["coil"]) for _, proxy in pairs]
+    axes[3].scatter(
+        strict_coil,
+        proxy_coil,
+        s=22,
+        alpha=0.72,
+        color="#B85C38",
+        edgecolors="none",
+    )
+    if strict_coil:
+        lower = min(strict_coil + proxy_coil)
+        upper = max(strict_coil + proxy_coil)
+        axes[3].plot([lower, upper], [lower, upper], color="#555555", ls="--", lw=1)
+    axes[3].set(
+        xlabel="Exactly recomputed coil component",
+        ylabel="First-order coil component",
+        title="Coil-engineering linearization",
+    )
+    axes[3].grid(alpha=0.2)
     fig.savefig(destination, dpi=220, facecolor="white")
     plt.close(fig)
 
@@ -197,6 +243,7 @@ def main() -> None:
         "record_count": len(records),
         "case_count": len({row["case_id"] for row in records}),
         **summarize(records),
+        "coil_component_proxy": coil_component_summary(records),
     }
     plot_overview(records, args.output_dir / "evaluator_modes_overview.png")
     summary["formal_stage_timing"] = plot_stage_timing(

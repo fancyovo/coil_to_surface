@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-25 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-26 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -451,20 +451,22 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-25 branch `codex/data-space-large-scale-validation` is checked out in
-  the repository root. Direct-data implementation commit `a80ca142` passed 208
-  local tests and six-card smoke validation. All 309 optimization and physical
-  calibration jobs are complete; the recorded Slurm queue and postflight were
-  clean.
-- Technical report commit `bd71ac5` rewrites Flow around three explicit evidence
-  groups, removes the invalid 32-case conclusion, adds focused reproducible
-  figures, and reports the volume-to-surface QH fits. Fixed/adaptive relations
-  are `E_face=0.642 E_vol^2.148` and `0.615 E_vol^2.066`, with log-residual
-  standard deviations `0.344/0.290` decades.
-- Direct-data physical calibration remains useful but is not a strict physical
-  method comparison: its 96-case selector overlaps the historical latent set in
-  only 36 trajectories. Do not compare the separate 96-case face-QH medians as
-  paired evidence; completing that test requires the 60 missing trajectories.
-- Current detailed reports are `reports/summary1/技术报告.md` and
-  `reports/qh_data_space_large_scale_validation_20260825.md`. Await user review;
-  no remote job is active or required for this report-only revision.
+- 2026-08-26 branch `codex/data-space-large-scale-validation` is checked out in
+  the repository root. All 309 optimization and physical-calibration jobs are
+  complete; no remote job is active for the report revision.
+- The third-review revision of `reports/summary1/技术报告.md` now distinguishes
+  the native scalar tangential alpha/iota fit from the full-evaluation vector
+  Clebsch fit, defines every section-4.3 reference error, documents the exact
+  neighborhood boundary and coil Taylor proxies, and removes obsolete
+  constant-iota/early-straightening evidence.
+- The report now includes the fixed-probe face-QH wall-time trend and calibrated
+  coil-proxy bias. Fixed/adaptive volume-to-face relations remain
+  `E_face=0.642 E_vol^2.148` and `0.615 E_vol^2.066`, with log-residual standard
+  deviations `0.344/0.290` decades.
+- 2026-08-26 grouped three-fold CV found no useful residual NFP dependence in
+  the volume-to-face QH relation after the current per-helicity normalization:
+  a continuous NFP term changed fixed-probe RMSE from `0.354226` to `0.354183`
+  decades and worsened adaptive-edge RMSE from `0.294566` to `0.295110`.
+  NFP-specific fits and undoing the normalization were worse. Keep the pooled
+  calibration; evidence is `scripts/analyze_summary1_qh_nfp_effect.py` and
+  `reports/summary1/assets/evidence_20260826/qh_nfp_calibration.json`.

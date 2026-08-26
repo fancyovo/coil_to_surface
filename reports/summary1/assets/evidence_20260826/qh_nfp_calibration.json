@@ -1,0 +1,283 @@
+{
+  "format": "summary1_qh_nfp_calibration_v1",
+  "source": "reports/assets/qh_trajectory_face_qs_calibration_20260819/surface_records.csv",
+  "cross_validation": "three folds grouped by trajectory and stratified by nfp",
+  "fixed_probe": {
+    "surface_name": "fixed_probe",
+    "count": 606,
+    "trajectory_count": 89,
+    "nfp_values": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "models": {
+      "pooled": {
+        "coefficients": [
+          -0.19255676341207745,
+          2.14804902936179
+        ],
+        "in_sample_residual_std_decades": 0.3440864310976256,
+        "grouped_cv_rmse_decades": 0.3542257732249391,
+        "grouped_cv_mae_decades": 0.2725162295945617
+      },
+      "undo_helicity_normalization": {
+        "coefficients": [
+          -1.8982275691193629,
+          1.9485040279277879
+        ],
+        "in_sample_residual_std_decades": 0.40680079683863946,
+        "grouped_cv_rmse_decades": 0.41571915852646024,
+        "grouped_cv_mae_decades": 0.31638783048888985
+      },
+      "continuous_nfp": {
+        "coefficients": [
+          -0.15114912878396286,
+          2.1509326702770455,
+          -0.05364843861231339
+        ],
+        "in_sample_residual_std_decades": 0.3440393765895004,
+        "grouped_cv_rmse_decades": 0.35418285019981066,
+        "grouped_cv_mae_decades": 0.272743424259623,
+        "helicity_coefficient_over_qh_slope": -0.024941942327466406
+      },
+      "nfp_intercepts": {
+        "coefficients": [
+          -0.15817124738167473,
+          2.1291106906328117,
+          -0.01557666287114759,
+          -0.12008092660658959,
+          -0.08253673876287071,
+          0.04369883972534151,
+          -0.011232036098259165,
+          -0.15056493055635944
+        ],
+        "in_sample_residual_std_decades": 0.3404232404111226,
+        "grouped_cv_rmse_decades": 0.3657451829543184,
+        "grouped_cv_mae_decades": 0.28114314231354864
+      },
+      "nfp_separate_lines": {
+        "coefficients": [
+          1.3040611653597223,
+          3.240559925623493,
+          -0.424040495539564,
+          2.011820844018417,
+          0.0057664756771804715,
+          2.252450171465425,
+          -0.2633524977365719,
+          2.118366970213581,
+          -0.8786358030490213,
+          1.7358073049462113,
+          -0.3671819083457022,
+          2.0166524936512555,
+          0.9085306281640757,
+          2.8623343731926467
+        ],
+        "in_sample_residual_std_decades": 0.3348981776820229,
+        "grouped_cv_rmse_decades": 0.36725837827325836,
+        "grouped_cv_mae_decades": 0.28282257523859927
+      }
+    },
+    "by_nfp": {
+      "2": {
+        "count": 3,
+        "trajectory_count": 3,
+        "slope": 3.240559925623458,
+        "intercept": 1.3040611653596788,
+        "residual_std_decades": 0.009468106259275993,
+        "spearman": 1.0
+      },
+      "3": {
+        "count": 108,
+        "trajectory_count": 22,
+        "slope": 2.0118208440184158,
+        "intercept": -0.4240404955395675,
+        "residual_std_decades": 0.4051230826568433,
+        "spearman": 0.9147535904502408
+      },
+      "4": {
+        "count": 211,
+        "trajectory_count": 28,
+        "slope": 2.2524501714654237,
+        "intercept": 0.005766475677179217,
+        "residual_std_decades": 0.3457346897695055,
+        "spearman": 0.9533878020244312
+      },
+      "5": {
+        "count": 190,
+        "trajectory_count": 24,
+        "slope": 2.1183669702135615,
+        "intercept": -0.26335249773661595,
+        "residual_std_decades": 0.30635360121001853,
+        "spearman": 0.9413348088717108
+      },
+      "6": {
+        "count": 31,
+        "trajectory_count": 4,
+        "slope": 1.735807304946211,
+        "intercept": -0.8786358030490199,
+        "residual_std_decades": 0.3136081277714909,
+        "spearman": 0.7822580645161292
+      },
+      "7": {
+        "count": 40,
+        "trajectory_count": 5,
+        "slope": 2.016652493651255,
+        "intercept": -0.3671819083457009,
+        "residual_std_decades": 0.1938401938658831,
+        "spearman": 0.9757973733583492
+      },
+      "8": {
+        "count": 23,
+        "trajectory_count": 3,
+        "slope": 2.86233437319265,
+        "intercept": 0.9085306281640827,
+        "residual_std_decades": 0.33854747538642743,
+        "spearman": 0.7994071146245059
+      }
+    }
+  },
+  "adaptive_edge": {
+    "surface_name": "adaptive_edge",
+    "count": 625,
+    "trajectory_count": 88,
+    "nfp_values": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "models": {
+      "pooled": {
+        "coefficients": [
+          -0.21089849508358577,
+          2.0658240718214156
+        ],
+        "in_sample_residual_std_decades": 0.2897633363676927,
+        "grouped_cv_rmse_decades": 0.2945663193578076,
+        "grouped_cv_mae_decades": 0.2423867540965509
+      },
+      "undo_helicity_normalization": {
+        "coefficients": [
+          -1.7895978434957018,
+          1.9054348271904393
+        ],
+        "in_sample_residual_std_decades": 0.350044430574851,
+        "grouped_cv_rmse_decades": 0.35108700185071656,
+        "grouped_cv_mae_decades": 0.2852295315249322
+      },
+      "continuous_nfp": {
+        "coefficients": [
+          -0.35886006963639955,
+          2.0584355818297846,
+          0.20344871462933134
+        ],
+        "in_sample_residual_std_decades": 0.288845231934561,
+        "grouped_cv_rmse_decades": 0.295110459560349,
+        "grouped_cv_mae_decades": 0.24410395457879294,
+        "helicity_coefficient_over_qh_slope": 0.09883657104706756
+      },
+      "nfp_intercepts": {
+        "coefficients": [
+          -0.14416400686122252,
+          2.025056262293794,
+          -0.16398472042070036,
+          -0.18575357207396612,
+          -0.18301626711970076,
+          0.02808050669261162,
+          -0.028015261811515965,
+          -0.07776147105441783
+        ],
+        "in_sample_residual_std_decades": 0.2836957385809729,
+        "grouped_cv_rmse_decades": 0.29989618551476094,
+        "grouped_cv_mae_decades": 0.24924377784248528
+      },
+      "nfp_separate_lines": {
+        "coefficients": [
+          -0.015311215267361478,
+          2.1156372352544945,
+          -0.5127472683614864,
+          1.9271942268951523,
+          -0.051482660989894846,
+          2.1452727354686436,
+          -0.3548292233499426,
+          2.011938179322608,
+          -0.3834666239566083,
+          1.8874381972368588,
+          -0.4311673286113427,
+          1.8777939872111655,
+          0.2837691131973375,
+          2.329662654653879
+        ],
+        "in_sample_residual_std_decades": 0.2802246929573771,
+        "grouped_cv_rmse_decades": 0.2989299045569176,
+        "grouped_cv_mae_decades": 0.24881271084188125
+      }
+    },
+    "by_nfp": {
+      "2": {
+        "count": 10,
+        "trajectory_count": 3,
+        "slope": 2.1156372352544945,
+        "intercept": -0.015311215267362914,
+        "residual_std_decades": 0.09908421297666704,
+        "spearman": 0.812776759390954
+      },
+      "3": {
+        "count": 123,
+        "trajectory_count": 22,
+        "slope": 1.9271942268951505,
+        "intercept": -0.5127472683614883,
+        "residual_std_decades": 0.30120708338794394,
+        "spearman": 0.9511401608948592
+      },
+      "4": {
+        "count": 208,
+        "trajectory_count": 27,
+        "slope": 2.145272735468646,
+        "intercept": -0.05148266098988657,
+        "residual_std_decades": 0.27052571990153357,
+        "spearman": 0.9642489349461377
+      },
+      "5": {
+        "count": 190,
+        "trajectory_count": 24,
+        "slope": 2.0119381793226094,
+        "intercept": -0.35482922334994366,
+        "residual_std_decades": 0.3062806700424121,
+        "spearman": 0.935480668129718
+      },
+      "6": {
+        "count": 31,
+        "trajectory_count": 4,
+        "slope": 1.8874381972368592,
+        "intercept": -0.38346662395660824,
+        "residual_std_decades": 0.238636137817655,
+        "spearman": 0.8850806451612904
+      },
+      "7": {
+        "count": 40,
+        "trajectory_count": 5,
+        "slope": 1.8777939872111655,
+        "intercept": -0.4311673286113438,
+        "residual_std_decades": 0.22592020048653152,
+        "spearman": 0.9523452157598502
+      },
+      "8": {
+        "count": 23,
+        "trajectory_count": 3,
+        "slope": 2.329662654653883,
+        "intercept": 0.283769113197345,
+        "residual_std_decades": 0.20520157693191546,
+        "spearman": 0.8705533596837944
+      }
+    }
+  }
+}

@@ -322,14 +322,16 @@ def plot_volume_face_relation() -> None:
         axis.set_xscale("log")
         axis.set_yscale("log")
         axis.set(
-            xlabel="Volume differential QH error",
-            ylabel="Simsopt surface QH error",
+            xlabel=r"Volume differential QH error $E_{\mathrm{vol}}$",
+            ylabel=r"Simsopt surface QH error $E_{\mathrm{face}}$",
             title=f"{title} (n={len(rows)})",
         )
         axis.text(
             0.04,
             0.96,
-            f"E_face = {coefficient:.3f} E_vol^{slope:.3f}\nlog10 residual std = {residual_std:.3f} decades",
+            rf"$E_{{\mathrm{{face}}}}={coefficient:.3f}E_{{\mathrm{{vol}}}}^{{{slope:.3f}}}$"
+            "\n"
+            rf"$\sigma_{{\log_{{10}}E_{{\mathrm{{face}}}}}}={residual_std:.3f}$ decades",
             transform=axis.transAxes,
             va="top",
             fontsize=9,

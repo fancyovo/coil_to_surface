@@ -43,14 +43,20 @@
   was checked out directly in the repository root. The completed feature branch
   remains at `f9b5ebc` only as a historical pointer.
 - The private research repository contains personal/infrastructure paths and
-  must not be published directly. The sanitized public project is maintained
-  separately at `../opensource_staging` and published as
-  `https://github.com/fancyovo/StellCoilOpt` under the MIT license. Public
-  `main` commit `9de21bc4849252915b53825e64e9788bf8d65664` was pushed on
-  2026-08-10 with the current score defaults and synchronized README/method
-  docs. It passed 66 local tests and remote RTX 5090 CUDA 13/sm120 job `35941`:
-  defaults read back as `48/48/48` and `iota_degree=3`; the packaged example
-  returned `ok`, score `86.319425035571`, stage 8, and no residual GPU process.
+  must not be published directly. The sanitized MIT project is maintained at
+  `../opensource_staging` and published as `fancyovo/StellCoilOpt`.
+- 2026-08-26 public `main` commit `917ca41` superseded `9de21bc`. `docs/` now
+  contains only `technical-report.md` plus its 16 local figures; public Appendix
+  C has no hashes, internal commits, machine paths, or private evidence links.
+  The release adds formal `Evaluator`, batched-neighborhood evaluation, and the
+  stable 309-trajectory QH entry points. Public optimization defaults are
+  exactly 32-start screening, 200 Adam steps, 64 fresh orthogonal centered
+  directions, `h=0.005`, `lr=0.02`, beta `(0.7,0.999)`, and FP32 RK4-128.
+  The old two-direction launcher default is obsolete and must never be called
+  the stable method. Validation: 79 local tests and wheel build passed; copied
+  CUDA/binding files are byte-identical to the current compiled private source.
+  A fresh remote CUDA rebuild was not run because the `ustc107` SSH master was
+  absent, so do not claim a new GPU smoke test for `917ca41`.
 
 ### Production score-evaluation defaults
 

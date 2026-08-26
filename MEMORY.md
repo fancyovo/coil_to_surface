@@ -37,6 +37,13 @@
 
 ### Repository and publication
 
+- 2026-08-26: the user plans to submit StellCoilOpt to the “一〇七杯”
+  computing-platform track. The notice requires submission by September 6 at
+  23:59 as one leader-named archive containing a design document, about-five-
+  minute demo video, tested deployable program, project brief, and an additional
+  Slurm-cluster runtime-data explanation. Competition packaging must add a
+  reproducible checkpoint/demo path and sanitized Slurm scripts/logs because
+  these are intentionally absent from the public repository.
 - 2026-08-10 production `main` fast-forwarded through score-compression commit
   `f9b5ebc`; current documented content commit is `e6fc9a2`. After integration,
   the temporary `.worktrees/main-integration` worktree was retired and `main`

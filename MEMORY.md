@@ -45,7 +45,7 @@
 - The private research repository contains personal/infrastructure paths and
   must not be published directly. The sanitized MIT project is maintained at
   `../opensource_staging` and published as `fancyovo/StellCoilOpt`.
-- 2026-08-26 public `main` commit `77eac0c` superseded `917ca41`. `docs/` now
+- 2026-08-26 public `main` commit `e89a8fd` superseded `77eac0c`. `docs/` now
   contains only `technical-report.md` plus its 16 local figures; public Appendix
   C has no hashes, internal commits, machine paths, or private evidence links.
   The release adds formal `Evaluator`, batched-neighborhood evaluation, and the
@@ -53,9 +53,10 @@
   exactly 32-start screening, 200 Adam steps, 64 fresh orthogonal centered
   directions, `h=0.005`, `lr=0.02`, beta `(0.7,0.999)`, and FP32 RK4-128.
   The old two-direction launcher default is obsolete and must never be called
-  the stable method. `77eac0c` replaces GitHub-rejected `\operatorname` math,
-  adds a regression test for that macro, and moves an executable quick start
-  to the top of README. Validation: 80 local tests passed; the preceding wheel
+  the stable method. The release replaces GitHub-rejected `\operatorname`,
+  requires spaces outside every inline-math `$...$` pair in public Markdown,
+  and moves an executable quick start to the top of README. Validation: 81
+  local tests passed; the preceding wheel
   build passed, and copied
   CUDA/binding files are byte-identical to the current compiled private source.
   A fresh remote CUDA rebuild was not run because the `ustc107` SSH master was

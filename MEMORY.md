@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-26 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-27 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -52,22 +52,17 @@
 - The private research repository contains personal/infrastructure paths and
   must not be published directly. The sanitized MIT project is maintained at
   `../opensource_staging` and published as `fancyovo/StellCoilOpt`.
-- 2026-08-26 public `main` commit `e89a8fd` superseded `77eac0c`. `docs/` now
-  contains only `technical-report.md` plus its 16 local figures; public Appendix
-  C has no hashes, internal commits, machine paths, or private evidence links.
-  The release adds formal `Evaluator`, batched-neighborhood evaluation, and the
-  stable 309-trajectory QH entry points. Public optimization defaults are
-  exactly 32-start screening, 200 Adam steps, 64 fresh orthogonal centered
-  directions, `h=0.005`, `lr=0.02`, beta `(0.7,0.999)`, and FP32 RK4-128.
-  The old two-direction launcher default is obsolete and must never be called
-  the stable method. The release replaces GitHub-rejected `\operatorname`,
-  requires spaces outside every inline-math `$...$` pair in public Markdown,
-  and moves an executable quick start to the top of README. Validation: 81
-  local tests passed; the preceding wheel
-  build passed, and copied
-  CUDA/binding files are byte-identical to the current compiled private source.
-  A fresh remote CUDA rebuild was not run because the `ustc107` SSH master was
-  absent, so do not claim a new GPU smoke test for this public release.
+- 2026-08-27 public `main` commit `89d30e9` supersedes `e89a8fd`. `docs/`
+  contains only `technical-report.md` plus its 16 local figures; Appendix C has
+  no hashes, internal commits, machine paths, or private evidence links. README
+  now presents the current workflow directly, uses GitHub-compatible formulas,
+  and consistently calls the device a `仿星器`. The release exposes formal
+  `Evaluator`, batched-neighborhood evaluation, and the stable 309-trajectory
+  QH entry points. Public optimization defaults are exactly 32-start screening,
+  200 Adam steps, 64 fresh orthogonal centered directions, `h=0.005`,
+  `lr=0.02`, beta `(0.7,0.999)`, and FP32 RK4-128. Validation: 81 local tests
+  passed; the wheel build passed, and copied CUDA/binding files are
+  byte-identical to the current compiled private source.
 
 ### Production score-evaluation defaults
 
@@ -468,22 +463,17 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-26 branch `codex/data-space-large-scale-validation` is checked out in
-  the repository root. All 309 optimization and physical-calibration jobs are
-  complete; no remote job is active for the report revision.
-- The third-review revision of `reports/summary1/技术报告.md` now distinguishes
-  the native scalar tangential alpha/iota fit from the full-evaluation vector
-  Clebsch fit, defines every section-4.3 reference error, documents the exact
-  neighborhood boundary and coil Taylor proxies, and removes obsolete
-  constant-iota/early-straightening evidence.
-- The report now includes the fixed-probe face-QH wall-time trend and calibrated
-  coil-proxy bias. Fixed/adaptive volume-to-face relations remain
-  `E_face=0.642 E_vol^2.148` and `0.615 E_vol^2.066`, with log-residual standard
-  deviations `0.344/0.290` decades.
-- 2026-08-26 grouped three-fold CV found no useful residual NFP dependence in
-  the volume-to-face QH relation after the current per-helicity normalization:
-  a continuous NFP term changed fixed-probe RMSE from `0.354226` to `0.354183`
-  decades and worsened adaptive-edge RMSE from `0.294566` to `0.295110`.
-  NFP-specific fits and undoing the normalization were worse. Keep the pooled
-  calibration; evidence is `scripts/analyze_summary1_qh_nfp_effect.py` and
-  `reports/summary1/assets/evidence_20260826/qh_nfp_calibration.json`.
+- 2026-08-27 competition materials are complete in sibling repository
+  `../StellCoilOpt_107Cup_Submission`, commit `1b75b3c`. The package contains
+  three verified PDFs, an exactly 300-second subtitled 1080p demo, deployable
+  source, checkpoint, sample, sanitized Slurm evidence, and license notes.
+- Final archive:
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 548790041 bytes,
+  SHA-256 `b384dbd7f0aaa2de8e5f89009bf54f4366a1aad81734668545257488dae23b00`.
+  ZIP CRC, 200-file internal manifest, checkpoint/sample verifier, Python/JSON/
+  Bash syntax checks, and all 81 tests pass. Runtime Slurm jobs completed without
+  residual processes; no project job is active.
+- QUASR's Zenodo record has no declared dataset license. The package therefore
+  includes the trained checkpoint and a project-generated sample, while raw
+  QUASR data remains external. No team-name field is required by the notice;
+  category is `本科生队伍（单人参赛）`.

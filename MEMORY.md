@@ -464,9 +464,14 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-27 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `b77028c`. The package contains
+  `../StellCoilOpt_107Cup_Submission`, commit `02fe6e6`. The package contains
   three visually verified PDFs, an exactly 300-second subtitled 1920x1080 demo,
   deployable source, checkpoint, sample, Slurm evidence, and license notes.
+- 2026-08-27 subtitle packaging correction: the MP4 already contains burned-in
+  captions in its dedicated bottom band. A same-stem SRT beside the MP4 caused
+  media players to auto-load a second, oversized subtitle track. The SRT source
+  now lives at `03_演示视频/字幕稿/演示字幕稿.srt`, and the package builder
+  rejects any `StellCoilOpt_演示.srt` sidecar beside the video.
 - Project accounting evidence must retain the original per-job records and Job
   IDs as an audit trail. The frozen submission contains 678 authenticated SCOW
   raw detail records for 2026-08-05 through 2026-08-27, the normalized web TSV,
@@ -476,8 +481,8 @@ Only current decisions are retained here; exact history is in
   `../StellCoilOpt_107Cup_Submission/06_运行证据/Slurm/`; the package-level
   verifier is `05_算力集群运行数据/verify_project_accounting.py`.
 - Final archive:
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 547770702 bytes,
-  SHA-256 `d8b5047134e0c6fd5276cd9f8e74fe5333d21101474824bc59fe5dd2ae7d0553`.
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 547770976 bytes,
+  SHA-256 `c4919d123976bac9b3296467b80e0d2d5c64055a637fc92bb83889c30fda542e`.
   ZIP CRC, all 214 internal manifest hashes, the five accounting evidence files,
   checkpoint/sample verification, Python/JSON/Bash checks, and all 81 tests pass.
   Runtime Slurm jobs completed without residual processes; no project job is active.

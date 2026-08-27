@@ -464,15 +464,23 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-27 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `1b75b3c`. The package contains
-  three verified PDFs, an exactly 300-second subtitled 1080p demo, deployable
-  source, checkpoint, sample, sanitized Slurm evidence, and license notes.
+  `../StellCoilOpt_107Cup_Submission`, commit `b77028c`. The package contains
+  three visually verified PDFs, an exactly 300-second subtitled 1920x1080 demo,
+  deployable source, checkpoint, sample, Slurm evidence, and license notes.
+- Project accounting evidence must retain the original per-job records and Job
+  IDs as an audit trail. The frozen submission contains 678 authenticated SCOW
+  raw detail records for 2026-08-05 through 2026-08-27, the normalized web TSV,
+  583 earlier `sacct` records, a 1261-row merged ledger with 1261 unique Job IDs,
+  and a selection/hash report. Recomputed totals are 1132 GPU jobs, 965.0633 GPU
+  hours, and 5284.1122 CPU core-hours. Canonical files are under
+  `../StellCoilOpt_107Cup_Submission/06_运行证据/Slurm/`; the package-level
+  verifier is `05_算力集群运行数据/verify_project_accounting.py`.
 - Final archive:
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 548790041 bytes,
-  SHA-256 `b384dbd7f0aaa2de8e5f89009bf54f4366a1aad81734668545257488dae23b00`.
-  ZIP CRC, 200-file internal manifest, checkpoint/sample verifier, Python/JSON/
-  Bash syntax checks, and all 81 tests pass. Runtime Slurm jobs completed without
-  residual processes; no project job is active.
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 547770702 bytes,
+  SHA-256 `d8b5047134e0c6fd5276cd9f8e74fe5333d21101474824bc59fe5dd2ae7d0553`.
+  ZIP CRC, all 214 internal manifest hashes, the five accounting evidence files,
+  checkpoint/sample verification, Python/JSON/Bash checks, and all 81 tests pass.
+  Runtime Slurm jobs completed without residual processes; no project job is active.
 - QUASR's Zenodo record has no declared dataset license. The package therefore
   includes the trained checkpoint and a project-generated sample, while raw
   QUASR data remains external. No team-name field is required by the notice;

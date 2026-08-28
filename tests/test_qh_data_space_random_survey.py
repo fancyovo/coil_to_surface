@@ -87,7 +87,7 @@ def test_atomic_chunk_fixture_is_valid_gzip_jsonl(tmp_path: Path) -> None:
     assert json.loads(__import__("gzip").open(path, "rt", encoding="utf-8").read())["sample_id"] == "a"
 
 
-def test_standalone_score_uses_library_defaults_without_overrides(
+def test_standalone_score_pins_only_solver_modes(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -103,6 +103,7 @@ def test_standalone_score_uses_library_defaults_without_overrides(
         *,
         device_id,
         target_helicity,
+        config_overrides,
     ):
         calls.append(
             {
@@ -114,6 +115,7 @@ def test_standalone_score_uses_library_defaults_without_overrides(
                 "nfp": nfp,
                 "device_id": device_id,
                 "target_helicity": target_helicity,
+                "config_overrides": config_overrides,
             }
         )
         return {"status": "ok", "score": 91.0}
@@ -136,6 +138,10 @@ def test_standalone_score_uses_library_defaults_without_overrides(
     assert call["nfp"] == 4
     assert call["device_id"] == 2
     assert call["target_helicity"] == (1, 4)
+    assert call["config_overrides"] == {
+        "psi_solver_mode": 2,
+        "alpha_solver_mode": 2,
+    }
     np.testing.assert_array_equal(call["xc"], tokens[:, :33])
     np.testing.assert_array_equal(call["xs"], tokens[:, 33:66])
     np.testing.assert_array_equal(call["yc"], tokens[:, 66:99])

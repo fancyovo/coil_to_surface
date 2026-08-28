@@ -51,10 +51,11 @@
 
 - Registered experimental protocol `qh-data-gaussian-global-survey-v1` draws
   independent `N(0,1)` values in standardized coil-data coordinates and scores
-  them with independent current ABI-10 standalone global evaluations, using
-  library defaults with no optimizer-specific Python overrides. All 33
-  supported `(nfp,n_base_coils)` groups are sampled exactly evenly across six
-  workers.
+  them with independent current ABI-10 standalone global evaluations. Each GPU
+  process first runs one discarded frozen-reference warmup; formal calls pin
+  `psi_solver_mode=2` and `alpha_solver_mode=2`, with all remaining fields at
+  library defaults. All 33 supported `(nfp,n_base_coils)` groups are sampled
+  exactly evenly across six workers.
 - This survey measures score-tail prevalence. It preserves the `score >= 20`
   tail and deterministic reconstruction metadata for every sample. A separate
   stratified 64-direction, 200-step data-space Adam follow-up is required to
@@ -77,8 +78,11 @@
   Same-process build/reference gate job `46853` was submitted for commit
   `ed832462`; it correctly rejected the first numerical comparison because the
   validator had used optimizer center-score overrides against a standalone
-  reference. No random survey or clustering job has been submitted yet;
-  test-only prediction numbers are not jobs.
+  reference. Production-library gate job `46861` then exposed the reference
+  script's discarded warmup and explicit solver-mode pins: its cold score was
+  `94.6254148`, while the frozen `94.6368682` is a warmed score. No random
+  survey or clustering job has been submitted yet; test-only prediction
+  numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

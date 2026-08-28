@@ -40,6 +40,13 @@ CURRENT_SCORE_SHA256 = (
 NORMALIZER_CHECKPOINT_SHA256 = (
     "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f"
 )
+REFERENCE_CASE_SHA256 = (
+    "6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1"
+)
+STANDALONE_SCORE_OVERRIDES = {
+    "psi_solver_mode": 2,
+    "alpha_solver_mode": 2,
+}
 GROUP_PATTERN = re.compile(r"^nfp(?P<nfp>\d+)_nc(?P<ncoils>\d+)$")
 SCORE_THRESHOLDS = (10.0, 20.0, 30.0, 40.0, 50.0)
 FOLLOWUP_BANDS = (
@@ -73,8 +80,31 @@ def score_tokens_standalone(
         int(nfp),
         device_id=int(device),
         target_helicity=(1, int(nfp)),
+        config_overrides=dict(STANDALONE_SCORE_OVERRIDES),
     )
     return result, time.perf_counter() - started
+
+
+def case_tokens(payload: dict[str, Any]) -> tuple[np.ndarray, int]:
+    raw = payload["raw"]
+    unit = str(raw.get("current_unit", "A")).lower()
+    if unit in {"a", "amp", "amps"}:
+        current_scale = 1.0
+    elif unit in {"ma", "megaamp", "megaamps"}:
+        current_scale = 1.0e6
+    else:
+        raise ValueError(f"unsupported current unit {unit!r}")
+    x = np.asarray(raw["x"], dtype=np.float64)
+    y = np.asarray(raw["y"], dtype=np.float64)
+    z = np.asarray(raw["z"], dtype=np.float64)
+    current = np.asarray(raw["current"], dtype=np.float64) * current_scale
+    if x.ndim != 2 or x.shape != y.shape or x.shape != z.shape or x.shape[1] != 33:
+        raise ValueError("reference case has inconsistent Fourier arrays")
+    if current.shape != (x.shape[0],):
+        raise ValueError("reference case has inconsistent currents")
+    tokens = np.concatenate((x, y, z, current[:, None]), axis=1)
+    nfp = payload["nfp"] if "nfp" in payload else raw["nfp"]
+    return tokens, int(nfp)
 
 
 def git_value(*args: str) -> str:
@@ -129,10 +159,13 @@ def prepare(args: argparse.Namespace) -> None:
         raise RuntimeError("tracked worktree must be clean before preparing a survey")
     checkpoint_sha = file_sha256(args.checkpoint)
     library_sha = file_sha256(args.lib)
+    warmup_case_sha = file_sha256(args.warmup_case)
     if checkpoint_sha != args.expected_checkpoint_sha:
         raise ValueError(f"unexpected normalizer checkpoint SHA-256: {checkpoint_sha}")
     if library_sha != args.expected_lib_sha:
         raise ValueError(f"unexpected score-library SHA-256: {library_sha}")
+    if warmup_case_sha != args.expected_warmup_case_sha:
+        raise ValueError(f"unexpected warmup-case SHA-256: {warmup_case_sha}")
 
     dataset_manifest_path = args.data_dir / "manifest.json"
     dataset_manifest = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
@@ -188,7 +221,11 @@ def prepare(args: argparse.Namespace) -> None:
             "abi": 10,
             "target": "QH",
             "target_helicity": "(1,nfp)",
-            "configuration": "standalone library defaults; no Python overrides",
+            "configuration": (
+                "standalone library defaults with psi_solver_mode=2 and "
+                "alpha_solver_mode=2 explicitly pinned"
+            ),
+            "explicit_overrides": dict(STANDALONE_SCORE_OVERRIDES),
             "resolved_key_defaults": {
                 "psi_grid": 48,
                 "iota_degree": 3,
@@ -198,6 +235,12 @@ def prepare(args: argparse.Namespace) -> None:
                 "surface_confidence_periods": 2,
             },
             "axis_history": "independent global search; no continuation hint",
+            "process_warmup": {
+                "case": str(args.warmup_case.resolve()),
+                "case_sha256": warmup_case_sha,
+                "discarded_evaluations_per_worker_process": 1,
+                "reason": "reproduce the frozen standalone batch scoring state",
+            },
         },
         "sampling": {
             "prior": "independent N(0,1) per standardized coil-data coordinate",
@@ -329,10 +372,14 @@ def worker(args: argparse.Namespace) -> None:
 
     checkpoint_path = Path(manifest["normalizer"]["checkpoint"])
     library_path = Path(manifest["evaluator"]["library"])
+    warmup_spec = manifest["evaluator"]["process_warmup"]
+    warmup_case_path = Path(warmup_spec["case"])
     if file_sha256(checkpoint_path) != manifest["normalizer"]["checkpoint_sha256"]:
         raise ValueError("normalizer checkpoint hash changed")
     if file_sha256(library_path) != manifest["evaluator"]["library_sha256"]:
         raise ValueError("score-library hash changed")
+    if file_sha256(warmup_case_path) != warmup_spec["case_sha256"]:
+        raise ValueError("score warmup-case hash changed")
 
     torch.cuda.set_device(args.device)
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
@@ -374,6 +421,17 @@ def worker(args: argparse.Namespace) -> None:
         else 0
     )
     started = time.perf_counter()
+    warmup_tokens, warmup_nfp = case_tokens(
+        json.loads(warmup_case_path.read_text(encoding="utf-8"))
+    )
+    warmup_result, warmup_wall_s = score_tokens_standalone(
+        library_path,
+        warmup_tokens,
+        nfp=warmup_nfp,
+        device=args.device,
+    )
+    if str(warmup_result.get("status")) != "ok":
+        raise RuntimeError(f"score warmup failed: {warmup_result.get('status')}")
     new_count = 0
     score_wall_sum = 0.0
     recent_score_wall: list[float] = []
@@ -397,6 +455,8 @@ def worker(args: argparse.Namespace) -> None:
                 },
                 "status_counts": dict(sorted(outcomes.items())),
                 "new_score_wall_s": score_wall_sum,
+                "process_warmup_score": float(warmup_result["score"]),
+                "process_warmup_wall_s": float(warmup_wall_s),
                 "elapsed_s": time.perf_counter() - started,
                 "updated_unix_s": time.time(),
             },
@@ -750,6 +810,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--run-label", required=True)
     prepare_parser.add_argument("--checkpoint", type=Path, required=True)
     prepare_parser.add_argument("--lib", type=Path, required=True)
+    prepare_parser.add_argument("--warmup-case", type=Path, required=True)
     prepare_parser.add_argument("--data-dir", type=Path, required=True)
     prepare_parser.add_argument("--worker-count", type=int, default=6)
     prepare_parser.add_argument("--worker-samples-per-condition", default="2")
@@ -759,6 +820,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--expected-checkpoint-sha", default=NORMALIZER_CHECKPOINT_SHA256
     )
     prepare_parser.add_argument("--expected-lib-sha", default=CURRENT_SCORE_SHA256)
+    prepare_parser.add_argument(
+        "--expected-warmup-case-sha", default=REFERENCE_CASE_SHA256
+    )
     prepare_parser.set_defaults(func=prepare)
 
     worker_parser = subparsers.add_parser("worker")

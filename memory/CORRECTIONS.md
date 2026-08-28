@@ -132,6 +132,26 @@ An open critical correction blocks promotion and external reporting.
   standalone helper that passes no config overrides. The deferred Adam200 stage
   remains separately labeled and uses its own frozen optimizer configuration.
 
+## CORR-20260828-08 - Frozen standalone reference included warmup and solver pins
+
+- Severity/status: high / contained in code; replacement validation pending.
+- Discovered by: model from job `46861`, the frozen native-score `job.sh`, and
+  `batch_native_score.py` argument defaults.
+- Error: correction `CORR-20260828-07` described the frozen reference as having
+  no Python overrides and omitted `--warmup`. The batch script always passed
+  `psi_solver_mode=2` and `alpha_solver_mode=2`, then discarded one evaluation
+  of the same case before writing its measured result.
+- Impact: production-library gate job `46861` evaluated the frozen case cold.
+  It returned status `ok`, ABI 10, and score `94.6254148`, so the gate rejected
+  it against the warmed reference `94.6368682`. No random survey ran.
+- Corrected fact: the two solver pins equal the current library defaults. The
+  warmed and cold calls differ slightly in the psi/surface/coordinate numerical
+  path, so the exact historical scoring state includes one discarded warmup.
+- Containment: the survey now records the warmup-case hash, warms each worker
+  process once, pins exactly the two solver modes, and leaves all other fields
+  at library defaults. The replacement gate requires two consecutive warmed
+  evaluations to match the frozen reference and each other within `1e-5`.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

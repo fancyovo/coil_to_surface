@@ -35,13 +35,15 @@ case "$admin_mode" in
       --run-label "${RUN_LABEL:?RUN_LABEL is required}" \
       --checkpoint "${CHECKPOINT:?CHECKPOINT is required}" \
       --lib "${SCORE_LIB:?SCORE_LIB is required}" \
+      --warmup-case "${WARMUP_CASE:?WARMUP_CASE is required}" \
       --data-dir "${DATA_DIR:?DATA_DIR is required}" \
       --worker-count "${WORKER_COUNT:-6}" \
       --worker-samples-per-condition "${WORKER_SAMPLES_PER_CONDITION:-2}" \
       --seed-base "${SEED_BASE:-2026082801}" \
       --tail-retention-score "${TAIL_RETENTION_SCORE:-20.0}" \
       --expected-checkpoint-sha "${EXPECTED_CHECKPOINT_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}" \
-      --expected-lib-sha "${EXPECTED_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}"
+      --expected-lib-sha "${EXPECTED_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}" \
+      --expected-warmup-case-sha "${EXPECTED_WARMUP_CASE_SHA:-6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1}"
     ;;
   summarize)
     python scripts/qh_data_space_random_survey.py summarize \

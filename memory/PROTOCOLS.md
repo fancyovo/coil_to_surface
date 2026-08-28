@@ -75,10 +75,12 @@ Status: `registered-experimental` on
 This initialization survey draws independent standard Gaussians in the fixed
 per-coordinate coil-data normalization. It applies the condition-specific
 current L1 and dominant-sign projection, then runs one history-independent
-current ABI-10 QH global evaluation with the standalone library defaults and no
-optimizer-specific Python overrides. The sampling prior is exactly balanced
-over all 33 QUASR-supported `(nfp,n_base_coils)` groups. Six one-GPU workers
-use disjoint machine-recorded random streams and atomic resumable output chunks.
+current ABI-10 QH global evaluation. Each worker first runs one discarded
+evaluation of the frozen reference case; formal calls explicitly pin the
+standalone solver modes `psi_solver_mode=2` and `alpha_solver_mode=2`, while all
+other fields use library defaults. The sampling prior is exactly balanced over
+all 33 QUASR-supported `(nfp,n_base_coils)` groups. Six one-GPU workers use
+disjoint machine-recorded random streams and atomic resumable output chunks.
 
 The global survey records score-tail prevalence and retains every candidate at
 score 20 or above. It does not classify a start as optimizable. After the

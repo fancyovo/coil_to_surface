@@ -6,9 +6,6 @@ from pathlib import Path
 import sys
 import time
 
-import numpy as np
-
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 for search_path in (REPO_ROOT, REPO_ROOT / "gpu_backend" / "python"):
     if str(search_path) not in sys.path:
@@ -16,26 +13,11 @@ for search_path in (REPO_ROOT, REPO_ROOT / "gpu_backend" / "python"):
 
 from flow_matching.data import file_sha256  # noqa: E402
 from flow_matching.trajectory_dataset import atomic_write_json  # noqa: E402
-from scripts.qh_data_space_random_survey import score_tokens_standalone  # noqa: E402
-
-
-def case_tokens(payload: dict) -> tuple[np.ndarray, int]:
-    raw = payload["raw"]
-    unit = str(raw.get("current_unit", "A")).lower()
-    if unit in {"a", "amp", "amps"}:
-        current_scale = 1.0
-    elif unit in {"ma", "megaamp", "megaamps"}:
-        current_scale = 1.0e6
-    else:
-        raise ValueError(f"unsupported current unit {unit!r}")
-    x = np.asarray(raw["x"], dtype=np.float64)
-    y = np.asarray(raw["y"], dtype=np.float64)
-    z = np.asarray(raw["z"], dtype=np.float64)
-    current = np.asarray(raw["current"], dtype=np.float64) * current_scale
-    if x.shape != y.shape or x.shape != z.shape or x.shape[1] != 33:
-        raise ValueError("reference case has inconsistent Fourier arrays")
-    tokens = np.concatenate((x, y, z, current[:, None]), axis=1)
-    return tokens, int(payload.get("nfp", raw["nfp"]))
+from scripts.qh_data_space_random_survey import (  # noqa: E402
+    STANDALONE_SCORE_OVERRIDES,
+    case_tokens,
+    score_tokens_standalone,
+)
 
 
 def main() -> None:
@@ -58,21 +40,40 @@ def main() -> None:
         raise ValueError(f"score-library SHA-256 mismatch: {library_sha}")
     tokens, nfp = case_tokens(json.loads(args.case.read_text(encoding="utf-8")))
     started = time.perf_counter()
-    result, score_wall_s = score_tokens_standalone(
+    warmup_result, warmup_wall_s = score_tokens_standalone(
         args.lib,
         tokens,
         nfp=nfp,
         device=args.device,
     )
-    score = float(result["score"])
-    abi = int(result["diagnostics"]["abi_version"])
+    measured = [
+        score_tokens_standalone(
+            args.lib,
+            tokens,
+            nfp=nfp,
+            device=args.device,
+        )
+        for _ in range(2)
+    ]
+    results = [item[0] for item in measured]
+    measured_scores = [float(result["score"]) for result in results]
+    measured_wall_s = [float(item[1]) for item in measured]
+    score_spread = max(measured_scores) - min(measured_scores)
+    abi_values = [int(result["diagnostics"]["abi_version"]) for result in results]
+    warmup_abi = int(warmup_result["diagnostics"]["abi_version"])
     passed = (
-        result["status"] == "ok"
-        and abi == 10
-        and abs(score - args.expected_score) <= args.score_atol
+        warmup_result["status"] == "ok"
+        and warmup_abi == 10
+        and all(result["status"] == "ok" for result in results)
+        and abi_values == [10, 10]
+        and all(
+            abs(score - args.expected_score) <= args.score_atol
+            for score in measured_scores
+        )
+        and score_spread <= args.score_atol
     )
     payload = {
-        "format": "native_score_reference_validation_v1",
+        "format": "native_score_reference_validation_v2",
         "passed": passed,
         "case": str(args.case.resolve()),
         "case_sha256": case_sha,
@@ -80,14 +81,25 @@ def main() -> None:
         "library_sha256": library_sha,
         "expected_score": args.expected_score,
         "score_atol": args.score_atol,
-        "observed_score": score,
-        "score_delta": score - args.expected_score,
-        "status": result["status"],
-        "abi": abi,
-        "score_mode": "standalone library defaults; no Python overrides",
-        "score_wall_s": score_wall_s,
+        "warmup": {
+            "discarded_evaluation_count": 1,
+            "observed_score": float(warmup_result["score"]),
+            "status": warmup_result["status"],
+            "abi": warmup_abi,
+            "wall_s": float(warmup_wall_s),
+        },
+        "observed_scores": measured_scores,
+        "score_deltas": [score - args.expected_score for score in measured_scores],
+        "score_spread": score_spread,
+        "statuses": [result["status"] for result in results],
+        "abi_values": abi_values,
+        "score_mode": {
+            "base": "standalone library defaults",
+            "explicit_overrides": dict(STANDALONE_SCORE_OVERRIDES),
+        },
+        "score_wall_s": measured_wall_s,
         "process_wall_s": time.perf_counter() - started,
-        "components": result["components"],
+        "components": [result["components"] for result in results],
     }
     atomic_write_json(args.output, payload, allow_nan=True)
     print(json.dumps(payload, indent=2), flush=True)

@@ -21,7 +21,7 @@ from flow_matching.data import file_sha256  # noqa: E402
 from flow_matching.trajectory_dataset import atomic_savez_compressed, atomic_write_json  # noqa: E402
 
 
-FORMAT = "quasr_qh_geometric_structure_atlas_v1"
+FORMAT = "quasr_qh_geometric_structure_atlas_v2"
 CURVE_ORDER = 16
 COEFF_COUNT = 2 * CURVE_ORDER + 1
 TOKEN_DIM = 3 * COEFF_COUNT + 1
@@ -31,10 +31,18 @@ def group_name(nfp: int, ncoils: int) -> str:
     return f"nfp{nfp}_nc{ncoils}"
 
 
-def dataset_groups(manifest: dict[str, Any]) -> dict[tuple[int, int], list[dict[str, Any]]]:
-    groups: defaultdict[tuple[int, int], list[dict[str, Any]]] = defaultdict(list)
+def dataset_groups(
+    manifest: dict[str, Any], stratification: str = "condition"
+) -> dict[tuple[int, ...], list[dict[str, Any]]]:
+    groups: defaultdict[tuple[int, ...], list[dict[str, Any]]] = defaultdict(list)
     for shard in manifest["shards"]:
-        groups[(int(shard["nfp"]), int(shard["n_coils"]))].append(shard)
+        if stratification == "condition":
+            key = (int(shard["nfp"]), int(shard["n_coils"]))
+        elif stratification == "ncoils":
+            key = (int(shard["n_coils"]),)
+        else:
+            raise ValueError(f"unknown stratification: {stratification}")
+        groups[key].append(shard)
     return {key: sorted(rows, key=lambda row: row["file"]) for key, rows in groups.items()}
 
 
@@ -43,9 +51,10 @@ def load_group(
     shards: list[dict[str, Any]],
     *,
     verify_hashes: bool,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     token_parts = []
     id_parts = []
+    nfp_parts = []
     for shard in shards:
         path = data_dir / shard["file"]
         if verify_hashes and file_sha256(path) != shard["sha256"]:
@@ -58,7 +67,12 @@ def load_group(
             raise ValueError(f"unexpected shard shape in {path.name}")
         token_parts.append(tokens)
         id_parts.append(ids)
-    return np.concatenate(token_parts), np.concatenate(id_parts)
+        nfp_parts.append(np.full(len(ids), int(shard["nfp"]), dtype=np.int16))
+    return (
+        np.concatenate(token_parts),
+        np.concatenate(id_parts),
+        np.concatenate(nfp_parts),
+    )
 
 
 def curve_arrays(tokens: np.ndarray, samples: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -432,6 +446,58 @@ def choose_partition(
     }, candidates
 
 
+def balanced_fit_indices(
+    strata: np.ndarray,
+    fit_count: int,
+    *,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    values = np.asarray(strata)
+    if len(values) <= fit_count:
+        return np.arange(len(values), dtype=np.int64)
+    unique = np.unique(values)
+    base, remainder = divmod(fit_count, len(unique))
+    selected: list[np.ndarray] = []
+    leftovers: list[np.ndarray] = []
+    for index, value in enumerate(unique):
+        members = rng.permutation(np.flatnonzero(values == value))
+        take = min(len(members), base + int(index < remainder))
+        selected.append(members[:take])
+        leftovers.append(members[take:])
+    chosen = np.concatenate(selected)
+    deficit = fit_count - len(chosen)
+    if deficit:
+        available = np.concatenate(leftovers)
+        chosen = np.concatenate((chosen, rng.choice(available, deficit, replace=False)))
+    return np.sort(chosen.astype(np.int64, copy=False))
+
+
+def normalized_mutual_information(first: np.ndarray, second: np.ndarray) -> float:
+    left = np.asarray(first)
+    right = np.asarray(second)
+    if left.shape != right.shape or left.ndim != 1:
+        raise ValueError("mutual-information labels must be matching vectors")
+    _, left_inverse = np.unique(left, return_inverse=True)
+    _, right_inverse = np.unique(right, return_inverse=True)
+    left_count = int(np.max(left_inverse)) + 1
+    right_count = int(np.max(right_inverse)) + 1
+    if left_count < 2 or right_count < 2:
+        return 0.0
+    contingency = np.zeros((left_count, right_count), dtype=np.float64)
+    np.add.at(contingency, (left_inverse, right_inverse), 1.0)
+    probability = contingency / len(left)
+    left_probability = np.sum(probability, axis=1)
+    right_probability = np.sum(probability, axis=0)
+    expected = left_probability[:, None] * right_probability[None, :]
+    occupied = probability > 0.0
+    information = float(
+        np.sum(probability[occupied] * np.log(probability[occupied] / expected[occupied]))
+    )
+    left_entropy = float(-np.sum(left_probability * np.log(left_probability)))
+    right_entropy = float(-np.sum(right_probability * np.log(right_probability)))
+    return information / math.sqrt(left_entropy * right_entropy)
+
+
 def normalized_nearest_neighbor(coordinates: np.ndarray) -> np.ndarray:
     from scipy.spatial import cKDTree
 
@@ -480,9 +546,10 @@ def plot_gallery(
     path: Path,
     representative_tokens: np.ndarray,
     representative_ids: np.ndarray,
+    representative_nfp: np.ndarray,
     cluster_sizes: np.ndarray,
     *,
-    nfp: int,
+    nfp_label: str,
     ncoils: int,
     curve_samples: int,
 ) -> None:
@@ -505,52 +572,109 @@ def plot_gallery(
             axis.plot(closed[:, 0], closed[:, 1], closed[:, 2], color=colors(coil_index), linewidth=1.6)
         equal_3d_limits(axis, position)
         axis.set_title(
-            f"C{cluster}: n={int(cluster_sizes[cluster])}, QUASR {int(representative_ids[cluster])}",
+            f"C{cluster}: n={int(cluster_sizes[cluster])}\n"
+            f"medoid nfp={int(representative_nfp[cluster])}, "
+            f"QUASR {int(representative_ids[cluster])}",
             fontsize=9,
         )
         axis.set_xticks([])
         axis.set_yticks([])
         axis.set_zticks([])
         axis.view_init(elev=24, azim=-58)
-    figure.suptitle(f"Representative base-coil sets: nfp={nfp}, base coils={ncoils}", fontsize=12)
+    figure.suptitle(
+        f"Representative base-coil sets: nfp={nfp_label}, base coils={ncoils}",
+        fontsize=12,
+    )
     figure.savefig(path, dpi=180)
     plt.close(figure)
 
 
-def plot_overview(groups: list[dict[str, Any]], output_dir: Path) -> None:
+def plot_overview(
+    groups: list[dict[str, Any]], output_dir: Path, *, stratification: str
+) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     figure, axes = plt.subplots(1, 2, figsize=(13.5, 5.2), constrained_layout=True)
-    nfp = np.asarray([row["nfp"] for row in groups])
-    ncoils = np.asarray([row["n_base_coils"] for row in groups])
     counts = np.asarray([row["sample_count"] for row in groups])
     selected_k = np.asarray([row["selected_k"] for row in groups])
-    scatter = axes[0].scatter(
-        nfp,
-        ncoils,
-        s=35.0 + 220.0 * np.sqrt(counts / np.max(counts)),
-        c=selected_k,
-        cmap="viridis",
-        edgecolor="black",
-        linewidth=0.5,
-    )
-    for row in groups:
-        axes[0].text(row["nfp"] + 0.06, row["n_base_coils"] + 0.06, str(row["selected_k"]), fontsize=7)
     hard_group_count = len(groups)
     leaf_cluster_count = sum(int(row["selected_k"]) for row in groups)
-    axes[0].set(
-        xlabel="Field periods (nfp)",
-        ylabel="Base-coil count",
-        title="Hard condition groups and within-group partitions",
-        xticks=range(2, 9),
-        yticks=range(1, 6),
-    )
-    figure.colorbar(scatter, ax=axes[0], label="Within-group partition count")
+    if stratification == "condition":
+        nfp = np.asarray([row["nfp"] for row in groups])
+        ncoils = np.asarray([row["n_base_coils"] for row in groups])
+        scatter = axes[0].scatter(
+            nfp,
+            ncoils,
+            s=35.0 + 220.0 * np.sqrt(counts / np.max(counts)),
+            c=selected_k,
+            cmap="viridis",
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        for row in groups:
+            axes[0].text(
+                row["nfp"] + 0.06,
+                row["n_base_coils"] + 0.06,
+                str(row["selected_k"]),
+                fontsize=7,
+            )
+        axes[0].set(
+            xlabel="Field periods (nfp)",
+            ylabel="Base-coil count",
+            title="Hard condition groups and within-group partitions",
+            xticks=range(2, 9),
+            yticks=range(1, 6),
+        )
+        figure.colorbar(scatter, ax=axes[0], label="Within-group partition count")
+        ordered = sorted(
+            groups, key=lambda row: (-row["sample_count"], row["group"])
+        )
+        labels = [
+            row["group"].replace("nfp", "").replace("_nc", "/")
+            for row in ordered
+        ]
+        overview_title = (
+            f"{hard_group_count} hard (nfp, base-coil count) groups; "
+            f"{leaf_cluster_count} total leaf partitions"
+        )
+        concentration_title = "Partition concentration by condition"
+        density_xlabel = "Condition groups, ordered by sample count"
+    else:
+        ordered = sorted(groups, key=lambda row: int(row["n_base_coils"]))
+        x_left = np.arange(len(ordered))
+        bars = axes[0].bar(
+            x_left,
+            [row["selected_k"] for row in ordered],
+            color="#397c6b",
+        )
+        for bar, row in zip(bars, ordered, strict=True):
+            axes[0].text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height() + 0.08,
+                f"k={row['selected_k']}\nn={row['sample_count']:,}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
+        axes[0].set(
+            xlabel="Base-coil count",
+            ylabel="Cross-nfp partition count",
+            title="Hard base-coil groups and cross-nfp partitions",
+            xticks=x_left,
+            xticklabels=[str(row["n_base_coils"]) for row in ordered],
+            ylim=(0.0, max(row["selected_k"] for row in ordered) + 1.0),
+        )
+        labels = [str(row["n_base_coils"]) for row in ordered]
+        overview_title = (
+            f"{hard_group_count} hard base-coil-count groups; "
+            f"{leaf_cluster_count} total cross-nfp leaf partitions"
+        )
+        concentration_title = "Cross-nfp partition concentration by base-coil count"
+        density_xlabel = "Base-coil count"
 
-    ordered = sorted(groups, key=lambda row: (-row["sample_count"], row["group"]))
     x = np.arange(len(ordered))
     effective = np.asarray([row["effective_cluster_count"] for row in ordered])
     largest = np.asarray([row["largest_cluster_fraction"] for row in ordered])
@@ -558,20 +682,16 @@ def plot_overview(groups: list[dict[str, Any]], output_dir: Path) -> None:
     twin = axes[1].twinx()
     twin.plot(x, largest, color="#a24d3f", marker=".", linewidth=1.0, label="largest-cluster share")
     axes[1].set(
-        xlabel="Condition groups, ordered by sample count",
+        xlabel=density_xlabel,
         ylabel="Effective cluster count",
-        title="Partition concentration by condition",
+        title=concentration_title,
         xticks=x,
-        xticklabels=[row["group"].replace("nfp", "").replace("_nc", "/") for row in ordered],
+        xticklabels=labels,
     )
     axes[1].tick_params(axis="x", labelrotation=90, labelsize=6)
     twin.set_ylabel("Largest-cluster share")
     twin.set_ylim(0.0, 1.0)
-    figure.suptitle(
-        f"{hard_group_count} hard (nfp, base-coil count) groups; "
-        f"{leaf_cluster_count} total leaf partitions",
-        fontsize=12,
-    )
+    figure.suptitle(overview_title, fontsize=12)
     figure.savefig(output_dir / "group_structure_overview.png", dpi=190)
     plt.close(figure)
 
@@ -582,11 +702,11 @@ def plot_overview(groups: list[dict[str, Any]], output_dir: Path) -> None:
     axis.plot(x, p95_data, marker=".", label="95th percentile")
     axis.set(
         yscale="log",
-        xlabel="Condition groups, ordered by sample count",
+        xlabel=density_xlabel,
         ylabel="Nearest-neighbor distance / sqrt(PCA dimensions)",
         title="Local descriptor density",
         xticks=x,
-        xticklabels=[row["group"].replace("nfp", "").replace("_nc", "/") for row in ordered],
+        xticklabels=labels,
     )
     axis.tick_params(axis="x", labelrotation=90, labelsize=6)
     axis.legend()
@@ -594,11 +714,76 @@ def plot_overview(groups: list[dict[str, Any]], output_dir: Path) -> None:
     plt.close(figure)
 
 
+def plot_cross_nfp_composition(
+    groups: list[dict[str, Any]], output_dir: Path
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    entries = [
+        (row, composition)
+        for row in sorted(groups, key=lambda item: int(item["n_base_coils"]))
+        for composition in row["cluster_nfp_composition"]
+    ]
+    labels = [
+        f"nc{row['n_base_coils']}/C{composition['cluster']}"
+        for row, composition in entries
+    ]
+    totals = np.asarray(
+        [sum(composition["counts"].values()) for _, composition in entries],
+        dtype=np.float64,
+    )
+    nfp_values = sorted(
+        {
+            int(nfp)
+            for _, composition in entries
+            for nfp in composition["counts"]
+        }
+    )
+    figure, axis = plt.subplots(
+        figsize=(10.5, max(4.2, 0.48 * len(entries))), constrained_layout=True
+    )
+    left = np.zeros(len(entries), dtype=np.float64)
+    colors = plt.get_cmap("tab10")
+    for color_index, nfp in enumerate(nfp_values):
+        fraction = np.asarray(
+            [
+                composition["counts"].get(str(nfp), 0) / total
+                for (_, composition), total in zip(entries, totals, strict=True)
+            ]
+        )
+        axis.barh(
+            np.arange(len(entries)),
+            fraction,
+            left=left,
+            color=colors(color_index),
+            label=f"nfp={nfp}",
+        )
+        left += fraction
+    for index, total in enumerate(totals):
+        axis.text(1.01, index, f"n={int(total):,}", va="center", fontsize=8)
+    axis.set(
+        xlim=(0.0, 1.12),
+        xlabel="Fraction of leaf members",
+        ylabel="Cross-nfp leaf partition",
+        title="Field-period composition of cross-nfp leaf partitions",
+        yticks=np.arange(len(entries)),
+        yticklabels=labels,
+    )
+    axis.invert_yaxis()
+    axis.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), fontsize=8)
+    figure.savefig(output_dir / "cross_nfp_composition.png", dpi=190)
+    plt.close(figure)
+
+
 def analyze_group(
     tokens: np.ndarray,
     ids: np.ndarray,
+    sample_nfp: np.ndarray,
     *,
-    nfp: int,
+    name: str,
     ncoils: int,
     args: argparse.Namespace,
     output_dir: Path,
@@ -611,10 +796,23 @@ def analyze_group(
         batch_size=args.feature_batch_size,
     )
     scaled, scaling = robust_scale(features)
-    rng = np.random.default_rng(args.seed + 100 * nfp + ncoils)
-    fit_indices = np.sort(
-        rng.choice(len(tokens), size=min(args.fit_count, len(tokens)), replace=False)
-    )
+    unique_nfp = np.unique(sample_nfp)
+    if args.stratification == "condition":
+        fit_seed = args.seed + 100 * int(unique_nfp[0]) + ncoils
+        partition_seed = args.seed + 1009 * int(unique_nfp[0]) + ncoils
+        rng = np.random.default_rng(fit_seed)
+        fit_indices = np.sort(
+            rng.choice(
+                len(tokens), size=min(args.fit_count, len(tokens)), replace=False
+            )
+        )
+        fit_sampling = "uniform within the (nfp,n_base_coils) hard group"
+    else:
+        fit_seed = args.seed + 10_000 + ncoils
+        partition_seed = args.seed + 1_000_000 + ncoils
+        rng = np.random.default_rng(fit_seed)
+        fit_indices = balanced_fit_indices(sample_nfp, args.fit_count, rng=rng)
+        fit_sampling = "nfp-balanced within the n_base_coils hard group"
     coordinates, pca = fit_pca(
         scaled,
         fit_indices,
@@ -626,7 +824,7 @@ def analyze_group(
         coordinates,
         fit_indices,
         k_values=k_values,
-        seed=args.seed + 1009 * nfp + ncoils,
+        seed=partition_seed,
         max_iterations=args.kmeans_iterations,
         silhouette_count=args.silhouette_count,
     )
@@ -640,6 +838,7 @@ def analyze_group(
     probabilities = cluster_sizes / len(labels)
     effective_count = float(np.exp(-np.sum(probabilities * np.log(np.maximum(probabilities, 1.0e-30)))))
     representatives = []
+    cluster_nfp_composition = []
     medoid_indices = []
     cluster_radius = []
     raw_center_distances = squared_distances(coordinates, centers)
@@ -651,23 +850,50 @@ def analyze_group(
         normalized = np.sqrt(local) / math.sqrt(coordinates.shape[1])
         radius = quantiles(normalized, (0.5, 0.9, 0.95, 0.99))
         cluster_radius.append(radius)
+        member_nfp, member_nfp_counts = np.unique(
+            sample_nfp[member_indices], return_counts=True
+        )
+        nfp_probabilities = member_nfp_counts / len(member_indices)
+        nfp_effective_count = float(
+            np.exp(
+                -np.sum(
+                    nfp_probabilities
+                    * np.log(np.maximum(nfp_probabilities, 1.0e-30))
+                )
+            )
+        )
+        cluster_nfp_composition.append(
+            {
+                "cluster": cluster,
+                "counts": {
+                    str(int(nfp)): int(count)
+                    for nfp, count in zip(
+                        member_nfp, member_nfp_counts, strict=True
+                    )
+                },
+                "nfp_value_count": len(member_nfp),
+                "effective_nfp_count": nfp_effective_count,
+                "largest_nfp_fraction": float(np.max(nfp_probabilities)),
+            }
+        )
         representatives.append(
             {
                 "cluster": cluster,
                 "sample_count": int(cluster_sizes[cluster]),
                 "sample_fraction": float(probabilities[cluster]),
                 "quasr_id": int(ids[medoid]),
+                "nfp": int(sample_nfp[medoid]),
                 "group_row_index": medoid,
                 "normalized_center_distance": float(distance_to_center[medoid]),
                 "member_center_distance_quantiles": radius,
             }
-        )
+    )
     nearest = normalized_nearest_neighbor(coordinates)
-    name = group_name(nfp, ncoils)
     assignment_path = output_dir / "atlas_data" / f"{name}.npz"
     assignment_sha = atomic_savez_compressed(
         assignment_path,
         quasr_id=ids,
+        nfp=sample_nfp.astype(np.int16, copy=False),
         cluster=labels,
         pca_coordinates=coordinates,
         normalized_center_distance=distance_to_center.astype(np.float32),
@@ -679,26 +905,40 @@ def analyze_group(
             output_dir / "galleries" / f"{name}_representatives.png",
             tokens[np.asarray(medoid_indices)],
             ids[np.asarray(medoid_indices)],
+            sample_nfp[np.asarray(medoid_indices)],
             cluster_sizes,
-            nfp=nfp,
+            nfp_label=(
+                str(int(unique_nfp[0]))
+                if len(unique_nfp) == 1
+                else f"{int(unique_nfp[0])}-{int(unique_nfp[-1])} mixed"
+            ),
             ncoils=ncoils,
             curve_samples=max(192, args.curve_samples),
         )
     summary = {
         "group": name,
-        "nfp": nfp,
+        "nfp": int(unique_nfp[0]) if len(unique_nfp) == 1 else None,
+        "nfp_values": [int(value) for value in unique_nfp],
+        "nfp_counts": {
+            str(int(value)): int(np.sum(sample_nfp == value)) for value in unique_nfp
+        },
         "n_base_coils": ncoils,
         "sample_count": len(tokens),
         "input_feature_count": features.shape[1],
         "nonconstant_feature_count": len(scaling["keep"]),
         "pca_component_count": int(pca["retained_components"]),
         "pca_retained_variance_fraction": float(pca["retained_variance_fraction"]),
+        "fit_sampling": fit_sampling,
         "selected_k": cluster_count,
         "selected_metrics": selected["metrics"],
         "candidate_metrics": candidates,
         "cluster_sizes": cluster_sizes.tolist(),
         "largest_cluster_fraction": float(np.max(probabilities)),
         "effective_cluster_count": effective_count,
+        "cluster_nfp_normalized_mutual_information": normalized_mutual_information(
+            labels, sample_nfp
+        ),
+        "cluster_nfp_composition": cluster_nfp_composition,
         "descriptor_duplicate_fraction_round6": descriptor_duplicate_fraction(scaled),
         "nearest_neighbor_normalized_quantiles": quantiles(nearest, (0.0, 0.01, 0.05, 0.5, 0.95, 0.99, 1.0)),
         "near_neighbor_fraction": {
@@ -712,6 +952,8 @@ def analyze_group(
     }
     model = {
         "group": name,
+        "nfp_values": [int(value) for value in unique_nfp],
+        "n_base_coils": ncoils,
         "feature_names": set_feature_names(ncoils),
         "scaling_median": scaling["median"].tolist(),
         "scaling_scale": scaling["scale"].tolist(),
@@ -729,10 +971,21 @@ def analyze_group(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build a condition-stratified geometric atlas of QUASR QH coil sets.")
+    parser = argparse.ArgumentParser(
+        description="Build a physically stratified geometric atlas of QUASR QH coil sets."
+    )
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--verify-hashes", action="store_true")
+    parser.add_argument(
+        "--stratification",
+        choices=("condition", "ncoils"),
+        default="condition",
+        help=(
+            "condition isolates each (nfp,n_base_coils) pair; ncoils permits "
+            "cross-nfp clusters while keeping base-coil counts separate"
+        ),
+    )
     parser.add_argument("--curve-samples", type=int, default=96)
     parser.add_argument("--feature-batch-size", type=int, default=384)
     parser.add_argument("--fit-count", type=int, default=5000)
@@ -756,7 +1009,7 @@ def main() -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("format") != "quasr_qh_flow_v1":
         raise ValueError("unexpected dataset format")
-    groups = dataset_groups(manifest)
+    groups = dataset_groups(manifest, args.stratification)
     expected_count = int(manifest["requested_count"])
     if sum(int(row["count"]) for rows in groups.values() for row in rows) != expected_count:
         raise ValueError("dataset shard counts do not sum to requested_count")
@@ -771,13 +1024,27 @@ def main() -> None:
     summaries = []
     models = {}
     for key, shards in sorted(groups.items()):
-        tokens, ids = load_group(args.data_dir, shards, verify_hashes=args.verify_hashes)
-        print(json.dumps({"event": "group_loaded", "group": group_name(*key), "count": len(tokens)}), flush=True)
+        if args.stratification == "condition":
+            nfp, ncoils = key
+            name = group_name(nfp, ncoils)
+        else:
+            (ncoils,) = key
+            name = f"nc{ncoils}"
+        tokens, ids, sample_nfp = load_group(
+            args.data_dir, shards, verify_hashes=args.verify_hashes
+        )
+        print(
+            json.dumps(
+                {"event": "group_loaded", "group": name, "count": len(tokens)}
+            ),
+            flush=True,
+        )
         summary, model = analyze_group(
             tokens,
             ids,
-            nfp=key[0],
-            ncoils=key[1],
+            sample_nfp,
+            name=name,
+            ncoils=ncoils,
             args=args,
             output_dir=args.output_dir,
             make_gallery=key in gallery_keys,
@@ -785,7 +1052,9 @@ def main() -> None:
         summaries.append(summary)
         models[summary["group"]] = model
         print(json.dumps({"event": "group_complete", **{name: summary[name] for name in ("group", "sample_count", "selected_k", "wall_s")}}), flush=True)
-    plot_overview(summaries, args.output_dir)
+    plot_overview(summaries, args.output_dir, stratification=args.stratification)
+    if args.stratification == "ncoils":
+        plot_cross_nfp_composition(summaries, args.output_dir)
     leaf_cluster_count_by_n_base_coils = {
         str(ncoils): sum(
             int(row["selected_k"])
@@ -794,6 +1063,57 @@ def main() -> None:
         )
         for ncoils in sorted({int(row["n_base_coils"]) for row in summaries})
     }
+    aggregate = {
+        "sample_count": sum(row["sample_count"] for row in summaries),
+        "hard_group_count": len(summaries),
+        "nfp_values": sorted(
+            {int(value) for row in summaries for value in row["nfp_values"]}
+        ),
+        "n_base_coils_values": sorted(
+            {int(row["n_base_coils"]) for row in summaries}
+        ),
+        "leaf_cluster_count": sum(int(row["selected_k"]) for row in summaries),
+        "leaf_cluster_count_by_n_base_coils": leaf_cluster_count_by_n_base_coils,
+        "selected_k_per_hard_group_range": [
+            min(row["selected_k"] for row in summaries),
+            max(row["selected_k"] for row in summaries),
+        ],
+        "selected_k_range": [
+            min(row["selected_k"] for row in summaries),
+            max(row["selected_k"] for row in summaries),
+        ],
+        "sample_weighted_effective_cluster_count": float(
+            np.average(
+                [row["effective_cluster_count"] for row in summaries],
+                weights=[row["sample_count"] for row in summaries],
+            )
+        ),
+        "sample_weighted_largest_cluster_fraction": float(
+            np.average(
+                [row["largest_cluster_fraction"] for row in summaries],
+                weights=[row["sample_count"] for row in summaries],
+            )
+        ),
+    }
+    if args.stratification == "ncoils":
+        aggregate.update(
+            {
+                "cross_nfp_leaf_cluster_count": sum(
+                    int(composition["nfp_value_count"] > 1)
+                    for row in summaries
+                    for composition in row["cluster_nfp_composition"]
+                ),
+                "sample_weighted_cluster_nfp_normalized_mutual_information": float(
+                    np.average(
+                        [
+                            row["cluster_nfp_normalized_mutual_information"]
+                            for row in summaries
+                        ],
+                        weights=[row["sample_count"] for row in summaries],
+                    )
+                ),
+            }
+        )
     atlas = {
         "format": FORMAT,
         "created_unix_s": time.time(),
@@ -805,7 +1125,16 @@ def main() -> None:
             "hashes_verified": bool(args.verify_hashes),
         },
         "method": {
-            "scope": "base-coil geometry and relative currents, stratified by (nfp,n_base_coils)",
+            "scope": (
+                "base-coil geometry and relative currents, hard-stratified by "
+                + (
+                    "(nfp,n_base_coils)"
+                    if args.stratification == "condition"
+                    else "n_base_coils with cross-nfp clustering allowed"
+                )
+            ),
+            "stratification": args.stratification,
+            "cross_nfp_clustering": args.stratification == "ncoils",
             "invariances": [
                 "base-coil permutation",
                 "global toroidal rotation",
@@ -813,7 +1142,12 @@ def main() -> None:
                 "curve-parameter reversal",
             ],
             "curve_samples": args.curve_samples,
-            "robust_scaling": "median and Gaussian-equivalent IQR within each condition group",
+            "robust_scaling": "median and Gaussian-equivalent IQR within each hard group",
+            "fit_sampling": (
+                "uniform within each condition group"
+                if args.stratification == "condition"
+                else "nfp-balanced within each n_base_coils hard group"
+            ),
             "pca_variance_target": args.pca_variance,
             "pca_component_cap": args.max_pca_components,
             "fit_count_cap": args.fit_count,
@@ -826,40 +1160,17 @@ def main() -> None:
             "seed": args.seed,
         },
         "groups": summaries,
-        "aggregate": {
-            "sample_count": sum(row["sample_count"] for row in summaries),
-            "hard_group_count": len(summaries),
-            "n_base_coils_values": sorted(
-                {int(row["n_base_coils"]) for row in summaries}
-            ),
-            "leaf_cluster_count": sum(
-                int(row["selected_k"]) for row in summaries
-            ),
-            "leaf_cluster_count_by_n_base_coils": leaf_cluster_count_by_n_base_coils,
-            "selected_k_per_hard_group_range": [
-                min(row["selected_k"] for row in summaries),
-                max(row["selected_k"] for row in summaries),
-            ],
-            "selected_k_range": [min(row["selected_k"] for row in summaries), max(row["selected_k"] for row in summaries)],
-            "sample_weighted_effective_cluster_count": float(
-                np.average(
-                    [row["effective_cluster_count"] for row in summaries],
-                    weights=[row["sample_count"] for row in summaries],
-                )
-            ),
-            "sample_weighted_largest_cluster_fraction": float(
-                np.average(
-                    [row["largest_cluster_fraction"] for row in summaries],
-                    weights=[row["sample_count"] for row in summaries],
-                )
-            ),
-        },
+        "aggregate": aggregate,
         "wall_s": time.perf_counter() - started,
     }
     atomic_write_json(args.output_dir / "atlas_summary.json", atlas, allow_nan=True)
     atomic_write_json(
         args.output_dir / "novelty_reference.json",
-        {"format": "quasr_qh_geometric_novelty_reference_v1", "models": models},
+        {
+            "format": "quasr_qh_geometric_novelty_reference_v2",
+            "stratification": args.stratification,
+            "models": models,
+        },
         allow_nan=True,
     )
     print(json.dumps({"event": "atlas_complete", **atlas["aggregate"], "wall_s": atlas["wall_s"]}), flush=True)

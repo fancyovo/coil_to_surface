@@ -10,7 +10,9 @@ import numpy as np
 from flow_matching.data import file_sha256
 from scripts.analyze_quasr_qh_structure import (
     adjusted_rand_index,
+    balanced_fit_indices,
     fit_kmeans,
+    normalized_mutual_information,
     set_features,
 )
 
@@ -91,6 +93,17 @@ def test_kmeans_and_adjusted_rand_recover_separated_blobs() -> None:
     assert adjusted_rand_index(labels, truth) == 1.0
 
 
+def test_balanced_fit_and_nfp_mixing_metrics() -> None:
+    strata = np.repeat([2, 3, 4], 20)
+    indices = balanced_fit_indices(strata, 15, rng=np.random.default_rng(17))
+    assert len(indices) == 15
+    np.testing.assert_array_equal(np.unique(strata[indices], return_counts=True)[1], [5, 5, 5])
+
+    cluster = np.repeat([0, 1], 4)
+    assert normalized_mutual_information(cluster, cluster) == 1.0
+    assert normalized_mutual_information(cluster, np.tile([4, 5], 4)) < 1.0e-12
+
+
 def test_small_atlas_runs_end_to_end(tmp_path: Path) -> None:
     rng = np.random.default_rng(23)
     tokens = rng.normal(scale=0.015, size=(40, 2, 100)).astype(np.float32)
@@ -165,3 +178,93 @@ def test_small_atlas_runs_end_to_end(tmp_path: Path) -> None:
         summary["groups"][0]["selected_k"],
     ]
     assert (output / "novelty_reference.json").is_file()
+
+
+def test_cross_nfp_atlas_keeps_ncoils_hard_and_mixes_nfp(tmp_path: Path) -> None:
+    rng = np.random.default_rng(29)
+    shards = []
+    next_id = 2000
+    for nfp in (4, 5):
+        tokens = rng.normal(scale=0.01, size=(20, 2, 100)).astype(np.float32)
+        tokens[:10, :, 0] += 0.7
+        tokens[10:, :, 0] += 1.4
+        tokens[..., 33] += 0.2
+        tokens[..., -1] = np.asarray([2.0, 1.0], dtype=np.float32)
+        ids = np.arange(next_id, next_id + len(tokens), dtype=np.int32)
+        next_id += len(tokens)
+        shard = tmp_path / f"qh_nfp{nfp:02d}_nc02_part0000.npz"
+        np.savez_compressed(
+            shard,
+            tokens=tokens,
+            ids=ids,
+            split=np.zeros(len(ids), dtype=np.uint8),
+            curve_order=np.full(len(ids), 16, dtype=np.uint8),
+        )
+        shards.append(
+            {
+                "count": len(ids),
+                "file": shard.name,
+                "n_coils": 2,
+                "nfp": nfp,
+                "sha256": file_sha256(shard),
+                "shape": [len(ids), 2, 100],
+            }
+        )
+    manifest = {
+        "format": "quasr_qh_flow_v1",
+        "requested_count": 40,
+        "shards": shards,
+    }
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    output = tmp_path / "cross_nfp_atlas"
+    subprocess.run(
+        [
+            sys.executable,
+            str(
+                Path(__file__).resolve().parents[1]
+                / "scripts"
+                / "analyze_quasr_qh_structure.py"
+            ),
+            "--data-dir",
+            str(tmp_path),
+            "--output-dir",
+            str(output),
+            "--verify-hashes",
+            "--stratification",
+            "ncoils",
+            "--curve-samples",
+            "32",
+            "--feature-batch-size",
+            "16",
+            "--fit-count",
+            "40",
+            "--silhouette-count",
+            "20",
+            "--max-pca-components",
+            "8",
+            "--k-values",
+            "2",
+            "--gallery-group-count",
+            "1",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    summary = json.loads((output / "atlas_summary.json").read_text(encoding="utf-8"))
+    group = summary["groups"][0]
+    assert summary["method"]["stratification"] == "ncoils"
+    assert summary["aggregate"]["hard_group_count"] == 1
+    assert summary["aggregate"]["n_base_coils_values"] == [2]
+    assert summary["aggregate"]["leaf_cluster_count"] == 2
+    assert summary["aggregate"]["cross_nfp_leaf_cluster_count"] == 2
+    assert group["group"] == "nc2"
+    assert group["nfp"] is None
+    assert group["nfp_values"] == [4, 5]
+    assert group["nfp_counts"] == {"4": 20, "5": 20}
+    assert group["cluster_nfp_normalized_mutual_information"] < 0.1
+    assert all(row["nfp_value_count"] == 2 for row in group["cluster_nfp_composition"])
+    assert (output / "cross_nfp_composition.png").is_file()
+    assert (output / "galleries" / "nc2_representatives.png").is_file()
+    with np.load(output / group["assignment_file"], allow_pickle=False) as payload:
+        np.testing.assert_array_equal(np.unique(payload["nfp"], return_counts=True)[1], [20, 20])

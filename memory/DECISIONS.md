@@ -1,6 +1,6 @@
 # Active Decisions
 
-Last reviewed: 2026-08-28 (Asia/Shanghai).
+Last reviewed: 2026-08-29 (Asia/Shanghai).
 
 ## DEC-20260828-01 - One current optimization default
 
@@ -54,3 +54,18 @@ External documents and multimodal deliverables use direct affirmative prose,
 explicit versioned references, and only claims relevant to the core argument.
 They receive a second semantic audit after generation. Detailed rules are in
 `WRITING.md`.
+
+## DEC-20260829-01 - Dual QUASR geometry atlases
+
+Status: active for the QH basin exploration.
+
+The strict atlas uses `(nfp,n_base_coils)` as its hard physical boundary and
+retains condition-resolved structure. The aggressive atlas uses only
+`n_base_coils` as its hard boundary and permits similar coil geometries from
+different `nfp` values to share a leaf. Samples with different base-coil counts
+remain incomparable in both atlases. The aggressive fit balances `nfp`
+contributions and records each leaf's `nfp` composition plus normalized mutual
+information between leaf labels and `nfp`. Future novelty assessment consults
+both atlases: the strict view locates condition-specific departures, while the
+aggressive view tests whether a departure matches a geometry already present at
+another field period.

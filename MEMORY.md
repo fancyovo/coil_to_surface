@@ -72,6 +72,11 @@
   counts for `n_base_coils=1..5` are `[11,15,14,17,15]`. Different base-coil
   counts never share a group or leaf. The sample-weighted within-group effective
   count is 1.599 and the sample-weighted largest-partition share is 81.28%.
+  A second aggressive atlas hard-splits only the five `n_base_coils` values and
+  permits geometrically similar samples from different `nfp` values to share a
+  leaf. Its fit is balanced across `nfp`; every leaf records `nfp` composition
+  and each hard group records cluster/`nfp` normalized mutual information.
+  Strict and aggressive references are complementary novelty checks.
 - Remote build/reference-validation gate job `46832` ran on 2026-08-28 and
   failed before configuration because CMake was not on the compute-node PATH.
   It produced no library or numerical result. The launcher now activates the

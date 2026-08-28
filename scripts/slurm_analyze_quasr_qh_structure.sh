@@ -33,6 +33,7 @@ python scripts/analyze_quasr_qh_structure.py \
   --data-dir "$data_dir" \
   --output-dir "$output_dir" \
   --verify-hashes \
+  --stratification "${STRATIFICATION:-condition}" \
   --curve-samples "${CURVE_SAMPLES:-96}" \
   --fit-count "${FIT_COUNT:-5000}" \
   --silhouette-count "${SILHOUETTE_COUNT:-600}" \

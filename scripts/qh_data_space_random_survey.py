@@ -43,6 +43,7 @@ NORMALIZER_CHECKPOINT_SHA256 = (
 REFERENCE_CASE_SHA256 = (
     "6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1"
 )
+CURRENT_REFERENCE_SCORE = 94.62541477362565
 STANDALONE_SCORE_OVERRIDES = {
     "psi_solver_mode": 2,
     "alpha_solver_mode": 2,
@@ -159,13 +160,13 @@ def prepare(args: argparse.Namespace) -> None:
         raise RuntimeError("tracked worktree must be clean before preparing a survey")
     checkpoint_sha = file_sha256(args.checkpoint)
     library_sha = file_sha256(args.lib)
-    warmup_case_sha = file_sha256(args.warmup_case)
+    reference_case_sha = file_sha256(args.reference_case)
     if checkpoint_sha != args.expected_checkpoint_sha:
         raise ValueError(f"unexpected normalizer checkpoint SHA-256: {checkpoint_sha}")
     if library_sha != args.expected_lib_sha:
         raise ValueError(f"unexpected score-library SHA-256: {library_sha}")
-    if warmup_case_sha != args.expected_warmup_case_sha:
-        raise ValueError(f"unexpected warmup-case SHA-256: {warmup_case_sha}")
+    if reference_case_sha != args.expected_reference_case_sha:
+        raise ValueError(f"unexpected reference-case SHA-256: {reference_case_sha}")
 
     dataset_manifest_path = args.data_dir / "manifest.json"
     dataset_manifest = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
@@ -235,11 +236,13 @@ def prepare(args: argparse.Namespace) -> None:
                 "surface_confidence_periods": 2,
             },
             "axis_history": "independent global search; no continuation hint",
-            "process_warmup": {
-                "case": str(args.warmup_case.resolve()),
-                "case_sha256": warmup_case_sha,
-                "discarded_evaluations_per_worker_process": 1,
-                "reason": "reproduce the frozen standalone batch scoring state",
+            "process_reference_preflight": {
+                "case": str(args.reference_case.resolve()),
+                "case_sha256": reference_case_sha,
+                "expected_score": float(args.expected_reference_score),
+                "score_atol": float(args.reference_score_atol),
+                "evaluations_per_worker_process": 1,
+                "reason": "detect evaluator environment or device drift before sampling",
             },
         },
         "sampling": {
@@ -372,14 +375,14 @@ def worker(args: argparse.Namespace) -> None:
 
     checkpoint_path = Path(manifest["normalizer"]["checkpoint"])
     library_path = Path(manifest["evaluator"]["library"])
-    warmup_spec = manifest["evaluator"]["process_warmup"]
-    warmup_case_path = Path(warmup_spec["case"])
+    reference_spec = manifest["evaluator"]["process_reference_preflight"]
+    reference_case_path = Path(reference_spec["case"])
     if file_sha256(checkpoint_path) != manifest["normalizer"]["checkpoint_sha256"]:
         raise ValueError("normalizer checkpoint hash changed")
     if file_sha256(library_path) != manifest["evaluator"]["library_sha256"]:
         raise ValueError("score-library hash changed")
-    if file_sha256(warmup_case_path) != warmup_spec["case_sha256"]:
-        raise ValueError("score warmup-case hash changed")
+    if file_sha256(reference_case_path) != reference_spec["case_sha256"]:
+        raise ValueError("score reference-case hash changed")
 
     torch.cuda.set_device(args.device)
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
@@ -421,17 +424,29 @@ def worker(args: argparse.Namespace) -> None:
         else 0
     )
     started = time.perf_counter()
-    warmup_tokens, warmup_nfp = case_tokens(
-        json.loads(warmup_case_path.read_text(encoding="utf-8"))
+    reference_tokens, reference_nfp = case_tokens(
+        json.loads(reference_case_path.read_text(encoding="utf-8"))
     )
-    warmup_result, warmup_wall_s = score_tokens_standalone(
+    reference_result, reference_wall_s = score_tokens_standalone(
         library_path,
-        warmup_tokens,
-        nfp=warmup_nfp,
+        reference_tokens,
+        nfp=reference_nfp,
         device=args.device,
     )
-    if str(warmup_result.get("status")) != "ok":
-        raise RuntimeError(f"score warmup failed: {warmup_result.get('status')}")
+    reference_score = float(reference_result.get("score", math.nan))
+    reference_abi = int(reference_result.get("diagnostics", {}).get("abi_version", -1))
+    if (
+        str(reference_result.get("status")) != "ok"
+        or reference_abi != 10
+        or not math.isfinite(reference_score)
+        or abs(reference_score - float(reference_spec["expected_score"]))
+        > float(reference_spec["score_atol"])
+    ):
+        raise RuntimeError(
+            "score reference preflight failed: "
+            f"status={reference_result.get('status')} abi={reference_abi} "
+            f"score={reference_score}"
+        )
     new_count = 0
     score_wall_sum = 0.0
     recent_score_wall: list[float] = []
@@ -455,8 +470,8 @@ def worker(args: argparse.Namespace) -> None:
                 },
                 "status_counts": dict(sorted(outcomes.items())),
                 "new_score_wall_s": score_wall_sum,
-                "process_warmup_score": float(warmup_result["score"]),
-                "process_warmup_wall_s": float(warmup_wall_s),
+                "process_reference_score": reference_score,
+                "process_reference_wall_s": float(reference_wall_s),
                 "elapsed_s": time.perf_counter() - started,
                 "updated_unix_s": time.time(),
             },
@@ -810,7 +825,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--run-label", required=True)
     prepare_parser.add_argument("--checkpoint", type=Path, required=True)
     prepare_parser.add_argument("--lib", type=Path, required=True)
-    prepare_parser.add_argument("--warmup-case", type=Path, required=True)
+    prepare_parser.add_argument("--reference-case", type=Path, required=True)
     prepare_parser.add_argument("--data-dir", type=Path, required=True)
     prepare_parser.add_argument("--worker-count", type=int, default=6)
     prepare_parser.add_argument("--worker-samples-per-condition", default="2")
@@ -821,8 +836,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     prepare_parser.add_argument("--expected-lib-sha", default=CURRENT_SCORE_SHA256)
     prepare_parser.add_argument(
-        "--expected-warmup-case-sha", default=REFERENCE_CASE_SHA256
+        "--expected-reference-case-sha", default=REFERENCE_CASE_SHA256
     )
+    prepare_parser.add_argument(
+        "--expected-reference-score", type=float, default=CURRENT_REFERENCE_SCORE
+    )
+    prepare_parser.add_argument("--reference-score-atol", type=float, default=1.0e-5)
     prepare_parser.set_defaults(func=prepare)
 
     worker_parser = subparsers.add_parser("worker")

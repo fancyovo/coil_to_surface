@@ -40,12 +40,6 @@ def main() -> None:
         raise ValueError(f"score-library SHA-256 mismatch: {library_sha}")
     tokens, nfp = case_tokens(json.loads(args.case.read_text(encoding="utf-8")))
     started = time.perf_counter()
-    warmup_result, warmup_wall_s = score_tokens_standalone(
-        args.lib,
-        tokens,
-        nfp=nfp,
-        device=args.device,
-    )
     measured = [
         score_tokens_standalone(
             args.lib,
@@ -53,19 +47,16 @@ def main() -> None:
             nfp=nfp,
             device=args.device,
         )
-        for _ in range(2)
+        for _ in range(3)
     ]
     results = [item[0] for item in measured]
     measured_scores = [float(result["score"]) for result in results]
     measured_wall_s = [float(item[1]) for item in measured]
     score_spread = max(measured_scores) - min(measured_scores)
     abi_values = [int(result["diagnostics"]["abi_version"]) for result in results]
-    warmup_abi = int(warmup_result["diagnostics"]["abi_version"])
     passed = (
-        warmup_result["status"] == "ok"
-        and warmup_abi == 10
-        and all(result["status"] == "ok" for result in results)
-        and abi_values == [10, 10]
+        all(result["status"] == "ok" for result in results)
+        and abi_values == [10, 10, 10]
         and all(
             abs(score - args.expected_score) <= args.score_atol
             for score in measured_scores
@@ -73,7 +64,7 @@ def main() -> None:
         and score_spread <= args.score_atol
     )
     payload = {
-        "format": "native_score_reference_validation_v2",
+        "format": "native_score_reference_validation_v3",
         "passed": passed,
         "case": str(args.case.resolve()),
         "case_sha256": case_sha,
@@ -81,13 +72,7 @@ def main() -> None:
         "library_sha256": library_sha,
         "expected_score": args.expected_score,
         "score_atol": args.score_atol,
-        "warmup": {
-            "discarded_evaluation_count": 1,
-            "observed_score": float(warmup_result["score"]),
-            "status": warmup_result["status"],
-            "abi": warmup_abi,
-            "wall_s": float(warmup_wall_s),
-        },
+        "evaluation_count": len(results),
         "observed_scores": measured_scores,
         "score_deltas": [score - args.expected_score for score in measured_scores],
         "score_spread": score_spread,

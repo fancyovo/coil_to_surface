@@ -46,7 +46,7 @@ cleanup() {
     kill -TERM -- "-$child" 2>/dev/null || true
     wait "$child" 2>/dev/null || true
   fi
-  nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
+  nvidia-smi --query-gpu=index,uuid,name,driver_version,utilization.gpu,memory.used,memory.total \
     --format=csv,noheader,nounits > "$gpu_post" 2>/dev/null || true
   exit "$status"
 }
@@ -56,7 +56,7 @@ if nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits | grep -Eq 
   echo "allocated GPU is not idle before survey timing" >&2
   exit 42
 fi
-nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
+nvidia-smi --query-gpu=index,uuid,name,driver_version,utilization.gpu,memory.used,memory.total \
   --format=csv,noheader,nounits > "$gpu_pre"
 
 setsid python scripts/qh_data_space_random_survey.py worker \

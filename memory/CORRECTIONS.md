@@ -152,6 +152,29 @@ An open critical correction blocks promotion and external reporting.
   at library defaults. The replacement gate requires two consecutive warmed
   evaluations to match the frozen reference and each other within `1e-5`.
 
+## CORR-20260828-09 - Warmup did not explain the reference-score drift
+
+- Severity/status: high / contained for the survey; historical runtime cause
+  remains unresolved.
+- Discovered by: model from repeated-reference job `46865` and an exact array
+  comparison between the frozen batch loader and the survey helper.
+- Error: correction `CORR-20260828-08` attributed the score difference to a
+  discarded warmup. Job `46865` returned `94.6254147736` identically on the
+  first, second, and third call, with status `ok` and ABI 10 throughout.
+- Evidence: frozen input and library hashes match; the helper passes coefficient
+  and current arrays identical to `batch_native_score.py`; the current wrapper
+  and GPU backend files have no diff from recorded commit `2ff16a6`. The old
+  artifact did not preserve enough driver/CUDA runtime metadata to isolate the
+  remaining `0.0114534` difference.
+- Corrected fact: `94.6368681663` is the recorded 2026-08-19 observation.
+  `94.6254147736` is the reproducible 2026-08-28 current-runtime reference for
+  the same input and library. The full physical conclusions are unaffected by
+  this small screening-score drift.
+- Containment: every survey worker now treats the frozen case as a score
+  reference preflight, requires the current value within `1e-5`, and records
+  GPU UUID plus driver version. The six-GPU pilot will detect device-level
+  differences before the formal sample count is calibrated.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

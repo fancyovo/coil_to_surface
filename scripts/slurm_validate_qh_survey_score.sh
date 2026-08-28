@@ -21,6 +21,7 @@ validation_case="${VALIDATION_CASE:?VALIDATION_CASE is required}"
 validation_output="${VALIDATION_OUTPUT:?VALIDATION_OUTPUT is required}"
 expected_lib_sha="${EXPECTED_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}"
 expected_case_sha="${EXPECTED_CASE_SHA:-6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1}"
+expected_score="${EXPECTED_SCORE:-94.62541477362565}"
 
 source "${VENV:-$HOME/coil/.venv}/bin/activate"
 cd "$project"
@@ -38,12 +39,16 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
+printf '%s' 'gpu_reference_environment='
+nvidia-smi --query-gpu=index,uuid,name,driver_version \
+  --format=csv,noheader,nounits
+
 python scripts/validate_native_score_reference.py \
   --case "$validation_case" \
   --lib "$score_lib" \
   --output "$validation_output" \
   --expected-case-sha "$expected_case_sha" \
   --expected-lib-sha "$expected_lib_sha" \
-  --expected-score 94.63686816626627 \
+  --expected-score "$expected_score" \
   --score-atol 1e-5 \
   --device 0

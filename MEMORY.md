@@ -52,10 +52,11 @@
 - Registered experimental protocol `qh-data-gaussian-global-survey-v1` draws
   independent `N(0,1)` values in standardized coil-data coordinates and scores
   them with independent current ABI-10 standalone global evaluations. Each GPU
-  process first runs one discarded frozen-reference warmup; formal calls pin
-  `psi_solver_mode=2` and `alpha_solver_mode=2`, with all remaining fields at
-  library defaults. All 33 supported `(nfp,n_base_coils)` groups are sampled
-  exactly evenly across six workers.
+  process must first reproduce the current frozen-case reference
+  `94.6254147736` within `1e-5`; formal calls pin `psi_solver_mode=2` and
+  `alpha_solver_mode=2`, with all remaining fields at library defaults. All 33
+  supported `(nfp,n_base_coils)` groups are sampled exactly evenly across six
+  workers.
 - This survey measures score-tail prevalence. It preserves the `score >= 20`
   tail and deterministic reconstruction metadata for every sample. A separate
   stratified 64-direction, 200-step data-space Adam follow-up is required to
@@ -79,10 +80,12 @@
   `ed832462`; it correctly rejected the first numerical comparison because the
   validator had used optimizer center-score overrides against a standalone
   reference. Production-library gate job `46861` then exposed the reference
-  script's discarded warmup and explicit solver-mode pins: its cold score was
-  `94.6254148`, while the frozen `94.6368682` is a warmed score. No random
-  survey or clustering job has been submitted yet; test-only prediction
-  numbers are not jobs.
+  script's explicit solver-mode pins. Repeated-reference job `46865` returned
+  `94.6254148` identically three times, disproving the warmup explanation. The
+  2026-08-19 `94.6368682` remains a historical recorded observation; its runtime
+  environment was not captured sufficiently to reproduce the small difference.
+  No random survey or clustering job has been submitted yet; test-only
+  prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 
@@ -116,10 +119,12 @@
 - The 32-case 2026-08-24 coordinate control used 2 directions and 100 steps.
   Its coordinate-causality conclusion is retracted. Its separate 48-condition
   initialization evidence remains usable.
-- Under the current ABI-10 cubic-iota library, fully evaluated sample
-  `p107_37034_3_000018_step0150` scores `94.6368682`; input SHA-256 is
-  `6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1`.
-  See `reports/qh_min_face_qh_full_evaluation_20260819.md`.
+- With the same ABI-10 library and frozen input, fully evaluated sample
+  `p107_37034_3_000018_step0150` recorded `94.6368682` on 2026-08-19 and
+  reproducibly scores `94.6254148` under the 2026-08-28 runtime. Input SHA-256
+  is `6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1`.
+  See `reports/qh_min_face_qh_full_evaluation_20260819.md` and
+  `CORR-20260828-09`.
 - The 10,000-step run whose best was `93.3672653` at step 4341 remains valid
   evidence for its historical constant-iota objective and for stagnation under
   that frozen recipe. Its score is not the current maximum and is not directly

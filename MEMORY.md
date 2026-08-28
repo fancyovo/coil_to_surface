@@ -464,7 +464,7 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-28 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `e058ea0`. Three PDFs were rendered
+  `../StellCoilOpt_107Cup_Submission`, commit `47a3fed`. Three PDFs were rendered
   and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
   exactly 300 seconds with one burned-in bottom caption layer and no audio track.
   The archive's video directory contains only the final MP4; video generators,
@@ -475,8 +475,8 @@ Only current decisions are retained here; exact history is in
   six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
   1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
 - Final archive is
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541732562 bytes,
-  SHA-256 `c93bda587a6a3df21b0191718f77d83fdbc5ef04a3f19b71504164b1326b57f3`.
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541732574 bytes,
+  SHA-256 `d8dd094c9c27fa013aeb8ba5cf4613e762332703ff3afc1f88ac7a46c71b7e52`.
   ZIP CRC, all 172 internal hashes, six required package-path checks, checkpoint
   and sample verification, accounting verification, and all 81 tests pass.
 - 2026-08-28 primary-source audit verifies all five design-document references:

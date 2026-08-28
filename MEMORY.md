@@ -61,7 +61,8 @@
   tail and deterministic reconstruction metadata for every sample. A separate
   stratified 64-direction, 200-step data-space Adam follow-up is required to
   estimate the optimizable-basin rate and its additional accelerator cost;
-  score thresholds alone are not that rate.
+  score thresholds alone are not that rate. Its pre-registered cap is 56
+  candidates, or 18.7 serial GPU-hours at the provisional 20 minutes each.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty
@@ -86,7 +87,13 @@
   environment was not captured sufficiently to reproduce the small difference.
   Current-runtime gate job `46869` passed on driver `580.173.02`: three scores
   matched `94.6254147736` with maximum spread `1.42e-14`, using the frozen input
-  and production-library hashes. No random survey or clustering job has been
+  and production-library hashes. Six-GPU pilot arrays `46876` and `46877`
+  completed 396/396 samples; status counts were 287 `no_axis`, 78 `no_surface`,
+  18 `drift_rejected`, 2 `flux_rejected`, and 11 `ok`. Its maximum score was
+  `5.88136`, with zero scores at least 10. Calibration jobs `46886` and `46887`
+  set the formal worker samples per condition to `[223,231,233,234,238,240]`,
+  totaling 46,167 global evaluations with predicted per-worker wall times
+  `35246`--`35292` seconds. No formal survey or clustering job has been
   submitted yet; test-only prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract

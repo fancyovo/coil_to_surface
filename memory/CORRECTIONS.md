@@ -220,8 +220,10 @@ An open critical correction blocks promotion and external reporting.
   total leaf count, leaf count by base-coil count, and the per-hard-group range.
   The overview figure names its colors as within-group partition counts and
   prints both global totals. End-to-end tests assert the hierarchy fields.
-- Reporting blocker: resolved once the corrected atlas is regenerated and the
-  report uses the two-level terminology throughout.
+- Reporting blocker: resolved. Strict atlas job `46913` regenerated the summary
+  and overview with explicit 33-hard-group/72-leaf fields. The report
+  `reports/quasr_qh_structure_atlas_20260829.md` uses the two-level terminology
+  and adds a separate five-hard-group/10-leaf cross-`nfp` atlas.
 
 ## Required Entry Template
 

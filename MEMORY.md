@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-08-28 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-08-29 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -75,8 +75,12 @@
   A second aggressive atlas hard-splits only the five `n_base_coils` values and
   permits geometrically similar samples from different `nfp` values to share a
   leaf. Its fit is balanced across `nfp`; every leaf records `nfp` composition
-  and each hard group records cluster/`nfp` normalized mutual information.
-  Strict and aggressive references are complementary novelty checks.
+  and each hard group records cluster/`nfp` normalized mutual information. The
+  full aggressive result selects two leaves for each base-coil count, for 10
+  leaves total. All 10 contain 5--7 `nfp` values; sample-weighted cluster/`nfp`
+  normalized mutual information is 0.0932. Strict and aggressive references
+  are complementary novelty checks. Full results and artifact hashes are in
+  `reports/quasr_qh_structure_atlas_20260829.md`.
 - Remote build/reference-validation gate job `46832` ran on 2026-08-28 and
   failed before configuration because CMake was not on the compute-node PATH.
   It produced no library or numerical result. The launcher now activates the
@@ -110,10 +114,10 @@
   worker used the invalid manifest. Corrected formal run
   `qh_data_gaussian_global_formal_10h_v2_20260828` targets 46,167 samples.
   P107 array `46898` runs workers 0--2 and Students array `46901` runs workers
-  4--5. CPU clustering job `46903` completed in 83.29 seconds, after which P107
-  job `46905` started worker 3. All six GPU workers passed the per-process
-  `94.6254148` reference gate and are running. Test-only prediction numbers are
-  not jobs.
+  4--5. Initial CPU clustering job `46903`, hierarchy-explicit strict job
+  `46913`, and cross-`nfp` job `46927` completed successfully. P107 job `46905`
+  runs worker 3. All six GPU workers passed the per-process `94.6254148`
+  reference gate and are running. Test-only prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

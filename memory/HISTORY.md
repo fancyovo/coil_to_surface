@@ -1,6 +1,6 @@
 # Concise Project History
 
-Last reviewed: 2026-08-28 (Asia/Shanghai). This file routes historical questions;
+Last reviewed: 2026-08-29 (Asia/Shanghai). This file routes historical questions;
 reports and immutable archives retain the detailed record.
 
 ## Timeline
@@ -33,6 +33,10 @@ reports and immutable archives retain the detailed record.
   were centralized, 2D execution was blocked, old reports were bannered, and
   memory was split into current, protocol, correction, decision, writing,
   history, and immutable archive layers.
+- 2026-08-29: all 170,755 QUASR QH samples were indexed in two geometry atlases.
+  The strict `(nfp,n_base_coils)` atlas has 33 hard groups and 72 leaves. The
+  base-coil-only atlas has five hard groups and 10 cross-`nfp` leaves. See
+  `../reports/quasr_qh_structure_atlas_20260829.md`.
 
 ## Evidence Routes
 
@@ -47,5 +51,7 @@ reports and immutable archives retain the detailed record.
   `../reports/qh_score_throughput_and_continuous_surface_plan.md`.
 - Full physical evaluation contract: `../docs/精简线圈评估流程.md` and
   `../evaluation/full_physical/README.md`.
+- QUASR QH structure and novelty references:
+  `../reports/quasr_qh_structure_atlas_20260829.md`.
 - Early DESC handoff:
   `archive/CODEX_HANDOFF_pre_restructure_20260828.md`.

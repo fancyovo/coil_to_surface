@@ -470,7 +470,9 @@ Only current decisions are retained here; exact history is in
   layer and no audio track. The packaged FP32 inference checkpoint is 121365896
   bytes, SHA-256 `81feaf6ba8d1e98ad821c813c521c2a7e94bbd0f3bd59a0bed3927402231f8ea`;
   its EMA tensors exactly match the full training checkpoint, while duplicate
-  model, optimizer, scheduler, and resume state are omitted.
+  model, optimizer, scheduler, and resume state are omitted. Slurm job `46668`
+  loaded it successfully, completed 8-candidate screening plus five Adam steps,
+  and left empty error and zombie-process logs.
   The archive's video directory contains only the final MP4; video generators,
   source captions, document sources, and build assets remain outside the archive.
 - Accounting evidence retains 678 authenticated SCOW details, 583 earlier

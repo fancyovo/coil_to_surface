@@ -61,7 +61,12 @@
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty
-  reference. No remote job has been submitted yet.
+  reference.
+- Remote build/reference-validation gate job `46832` ran on 2026-08-28 and
+  failed before configuration because CMake was not on the compute-node PATH.
+  It produced no library or numerical result. The launcher now activates the
+  pinned virtual environment before CMake. No random survey or clustering job
+  has been submitted yet; test-only prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

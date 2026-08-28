@@ -87,6 +87,18 @@ An open critical correction blocks promotion and external reporting.
 - Containment: zero successes now force the lower endpoint to 0, all successes
   force the upper endpoint to 1, and the focused test suite passes.
 
+## CORR-20260828-05 - Build gate did not activate its CMake environment
+
+- Severity/status: low / contained; replacement validation still required.
+- Discovered by: model from Slurm job `46832` stderr.
+- Error: the first survey build launcher called `cmake` before activating the
+  pinned virtual environment that provides CMake on Students compute nodes.
+- Impact: job `46832` exited before configuration and produced no library,
+  validation artifact, random sample, or numerical conclusion.
+- Containment: the launcher now activates the pinned environment before the
+  configure step. A new job ID and a passing hash/ABI/reference-score gate are
+  required before any survey worker can run.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

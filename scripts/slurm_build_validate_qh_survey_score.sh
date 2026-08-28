@@ -22,6 +22,7 @@ validation_output="${VALIDATION_OUTPUT:?VALIDATION_OUTPUT is required}"
 expected_lib_sha="${EXPECTED_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}"
 expected_case_sha="${EXPECTED_CASE_SHA:-6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1}"
 
+source "${VENV:-$HOME/coil/.venv}/bin/activate"
 cd "$project"
 test "$(git rev-parse HEAD)" = "$expected_commit"
 test -z "$(git status --porcelain --untracked-files=no)"
@@ -41,7 +42,6 @@ cmake --build "$build_dir" --target stellarator_gpu --parallel "$SLURM_CPUS_PER_
 lib="$build_dir/libstellarator_gpu.so"
 test "$(sha256sum "$lib" | awk '{print $1}')" = "$expected_lib_sha"
 
-source "${VENV:-$HOME/coil/.venv}/bin/activate"
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1

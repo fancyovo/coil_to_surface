@@ -464,9 +464,13 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-28 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `47a3fed`. Three PDFs were rendered
+  `../StellCoilOpt_107Cup_Submission`, commit `cb7e72b`. Three PDFs were rendered
   and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
-  exactly 300 seconds with one burned-in bottom caption layer and no audio track.
+  exactly 300 seconds, H.264, 9797894 bytes, with one burned-in bottom caption
+  layer and no audio track. The packaged FP32 inference checkpoint is 121365896
+  bytes, SHA-256 `81feaf6ba8d1e98ad821c813c521c2a7e94bbd0f3bd59a0bed3927402231f8ea`;
+  its EMA tensors exactly match the full training checkpoint, while duplicate
+  model, optimizer, scheduler, and resume state are omitted.
   The archive's video directory contains only the final MP4; video generators,
   source captions, document sources, and build assets remain outside the archive.
 - Accounting evidence retains 678 authenticated SCOW details, 583 earlier
@@ -475,8 +479,8 @@ Only current decisions are retained here; exact history is in
   six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
   1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
 - Final archive is
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541732574 bytes,
-  SHA-256 `d8dd094c9c27fa013aeb8ba5cf4613e762332703ff3afc1f88ac7a46c71b7e52`.
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 140611282 bytes,
+  SHA-256 `2777e16f12a9447edd72ce3f627ada1d29949a58050d28f0618d368ead48fd81`.
   ZIP CRC, all 172 internal hashes, six required package-path checks, checkpoint
   and sample verification, accounting verification, and all 81 tests pass.
 - 2026-08-28 primary-source audit verifies all five design-document references:

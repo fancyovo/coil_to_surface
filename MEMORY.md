@@ -464,21 +464,22 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-28 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `6f124d1`. Three PDFs were rendered
+  `../StellCoilOpt_107Cup_Submission`, commit `2dd8893`. Three PDFs were rendered
   and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
-  exactly 300 seconds with one burned-in bottom caption layer and an original,
-  low-volume AAC music track. The builder rejects any same-name external SRT.
+  exactly 300 seconds with one burned-in bottom caption layer and no audio track.
+  The archive's video directory contains only the final MP4; video generators,
+  source captions, document sources, and build assets remain outside the archive.
 - Accounting evidence retains 678 authenticated SCOW details, 583 earlier
   `sacct` records, and a 1261-row merged ledger with unique Job IDs. The new
   `06_运行证据/Slurm/项目作业流水与汇总.xlsx` is the human-readable
   six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
   1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
 - Final archive is
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 554225640 bytes,
-  SHA-256 `c913e27f914fbff690bfdd3364bc08379d42420fb4ebf3f1fc70d4a97d9fd726`.
-  ZIP CRC, all 216 internal hashes, six required package-path checks, checkpoint
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541726943 bytes,
+  SHA-256 `407ed66a802b0c12e95bda4e479d433adf9f518d8a3ffd999fffebe1bd547739`.
+  ZIP CRC, all 172 internal hashes, six required package-path checks, checkpoint
   and sample verification, accounting verification, and all 81 tests pass.
 - QUASR's Zenodo record has no declared dataset license. The package therefore
   includes the trained checkpoint and a project-generated sample, while raw
   QUASR data remains external. No team-name field is required by the notice;
-  category is `本科生队伍（单人参赛）`.
+  submission documents state only the category `本科生队伍` and entrant name.

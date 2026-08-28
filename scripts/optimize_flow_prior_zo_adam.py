@@ -20,6 +20,7 @@ for path in (REPO_ROOT, REPO_ROOT / "gpu_backend" / "python"):
 from flow_matching.data import CoilNormalizer
 from flow_matching.flow import integrate_flow
 from flow_matching.model import CoilFlowTransformer
+from flow_matching.optimization import validate_qh_direction_count
 from scripts.optimize_native_score_cem import (
     NativeScorePool,
     append_jsonl,
@@ -555,6 +556,7 @@ def main() -> None:
     parser.add_argument("--plot-every", type=int, default=10)
     parser.add_argument("--seed", type=int, default=2026073002)
     args = parser.parse_args()
+    validate_qh_direction_count(args.directions)
 
     calibration_steps = parse_ints(args.calibration_steps)
     backtrack_scales = parse_floats(args.backtrack_scales)

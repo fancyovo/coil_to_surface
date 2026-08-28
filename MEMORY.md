@@ -1,498 +1,132 @@
-# Local Surface Evaluator Project Memory
+# Current Project Memory
 
-> **Living source of truth. Last updated: 2026-08-28 (Asia/Shanghai).**
->
-> This file was compacted on 2026-08-08. The exact pre-compaction memory is
-> preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
-> SHA-256 `c16776912751d7ecdb1c0b139d83bfc6aa9fd9c0d2f196cb9ec27dce3b695b6d`).
-> The archive is immutable historical evidence; this file is authoritative for
-> current work. Consult the archive only when this file or a report points to it.
-> The Git snapshot immediately before compaction is commit `7898bc7`.
+> Current truth, verified 2026-08-28 (Asia/Shanghai). This is a compact routing
+> and safety file, not a work log. Older material is indexed under `memory/`.
 
-## 1. Maintenance Rules
+## Baseline
 
-- Read this file at the start of every conversation and immediately after any
-  context compaction or handoff.
-- Update it in the same turn when an important branch, job, validated hash,
-  interface, numerical conclusion, user requirement, bug, or invalid result
-  changes. Date every update and make supersession explicit.
-- Keep this file under a soft limit of 500 lines. Active jobs may temporarily
-  carry enough detail to resume safely; after acceptance, reduce each to one
-  outcome and a report/artifact pointer.
-- Do not duplicate report tables, routine scheduler history, failed setup
-  attempts, or step-by-step debugging here. Put them in reports or the dated
-  archive. A historical detail belongs here only when forgetting it could make
-  a future run incorrect.
-- The newest dated correction in this file wins over older reports and the
-  archive. Preserve old artifacts, but label results produced by obsolete code
-  or score definitions as invalid or historical.
-- Keep score-evaluator defaults, optimizer-launcher defaults, and frozen
-  experiment protocols separate. When a task says to reuse an experiment's
-  configuration, load its machine-readable manifest and compare every setting;
-  never substitute a CLI default or a later "standard" recipe.
-- Never store passwords, authentication tokens, private keys, one-time codes,
-  or credential-bearing URLs in repository files.
+- The authoritative private development baseline is `main` after the
+  2026-08-28 consolidation. Verify the actual checkout and HEAD with Git at the
+  start of repository work; do not infer them from this file.
+- The sanitized open-source sibling `../opensource_staging` was verified clean
+  on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
+  carries the current public screening and optimization interfaces while
+  retaining private research evidence.
+- No experiment is selected as the next exploration and no remote job is
+  declared active by this baseline. Before remote work, inspect the scheduler
+  and read `REMOTE_CODEX_INSTRUCTIONS.md`; old logs and run directories do not
+  establish current job state.
+- Hundreds of pre-existing untracked audit, bundle, run, and generated paths
+  are present. Preserve them and stage source changes explicitly.
 
-## 2. Current State
+## Current QH Default
 
-### Repository and publication
+- Protocol ID: `qh-flow-screen32-adam200-64d-v1`.
+- Screen 32 random Flow starts. Optimize the selected latent with 200 Adam
+  updates, 64 fresh random-orthogonal centered directions per update,
+  perturbation `0.005`, learning rate `0.02`, beta `(0.7, 0.999)`, and FP32
+  RK4-128 decoding.
+- Canonical entry points are `scripts/screen_flow_starts.py` and
+  `scripts/optimize_flow_latent.py`. Shared defaults and protocol metadata live
+  in `flow_matching/optimization.py`. Compatibility entry points must resolve
+  to the same values.
+- Exactly two directions is deprecated historical evidence and is hard-blocked
+  in current Python entry points. Historical shell launchers exit before their
+  old 2D settings can run.
+- Resume requires an exact machine protocol match and matching repository
+  commit/dirty state. Legacy or unclassified manifests cannot enter current run
+  state through `--resume`.
+- A nondefault experiment must identify itself as experimental in its manifest.
+  An explicit future request to study two directions requires a new protocol,
+  branch, launcher, and review of the guard; historical 2D files remain inert.
+- Full rules, manifest fields, and the historical protocol registry are in
+  `memory/PROTOCOLS.md`.
 
-- 2026-08-26: the user plans to submit StellCoilOpt to the “一〇七杯”
-  computing-platform track. The notice requires submission by September 6 at
-  23:59 as one leader-named archive containing a design document, about-five-
-  minute demo video, tested deployable program, project brief, and an additional
-  Slurm-cluster runtime-data explanation. Competition packaging must add a
-  reproducible checkpoint/demo path and sanitized Slurm scripts/logs because
-  these are intentionally absent from the public repository.
-- 2026-08-10 production `main` fast-forwarded through score-compression commit
-  `f9b5ebc`; current documented content commit is `e6fc9a2`. After integration,
-  the temporary `.worktrees/main-integration` worktree was retired and `main`
-  was checked out directly in the repository root. The completed feature branch
-  remains at `f9b5ebc` only as a historical pointer.
-- The private research repository contains personal/infrastructure paths and
-  must not be published directly. The sanitized MIT project is maintained at
-  `../opensource_staging` and published as `fancyovo/StellCoilOpt`.
-- 2026-08-27 public `main` commit `89d30e9` supersedes `e89a8fd`. `docs/`
-  contains only `technical-report.md` plus its 16 local figures; Appendix C has
-  no hashes, internal commits, machine paths, or private evidence links. README
-  now presents the current workflow directly, uses GitHub-compatible formulas,
-  and consistently calls the device a `仿星器`. The release exposes formal
-  `Evaluator`, batched-neighborhood evaluation, and the stable 309-trajectory
-  QH entry points. Public optimization defaults are exactly 32-start screening,
-  200 Adam steps, 64 fresh orthogonal centered directions, `h=0.005`,
-  `lr=0.02`, beta `(0.7,0.999)`, and FP32 RK4-128. Validation: 81 local tests
-  passed; the wheel build passed, and copied CUDA/binding files are
-  byte-identical to the current compiled private source.
+## Current Evaluator And Physical Contract
 
-### Production score-evaluation defaults
-
-- 2026-08-10: the former `codex/score-eval-compression` work is merged into
-  production `main`. Exact loop-invariant removals, psi grid 48, cubic iota, and
-  strict-hint mode 2 are production defaults. Fixed-matrix QR alternatives
-  remain experimental; standalone global-axis search remains history-independent.
-- The established 69-case strict-continuation grid-80 timing reference was
-  P50/P95 `0.990/1.254 s`. A later 8-case run was anomalously slower, so its
-  absolute times are not a new baseline. Within that run, exact caching of
-  toroidal trigonometry and axis interpolation improved P50 from `1.323` to
-  `1.117 s` with score differences below `3e-14`. Its FP32 QR, not matrix
-  assembly, was the bottleneck; NCU counters were unavailable. See report
-  sections 5--11 rather than reusing these node-sensitive raw timings.
-- 2026-08-10 psi-grid acceptance used all 69 historical strict-continuation
-  `legacy-ok` holdout cases, five grids, two repeats, and fixed 4000-point
-  independent physical validation. Grid 48 reduced physical fit rows from
-  389440 to 82176, psi-fit P50 from `0.4402` to `0.0983 s`, and score-call
-  P50/P95 from `1.013/1.266` to `0.665/0.913 s`. All 138 calls were `ok`;
-  independent angle-P95 median/P95 ratios were `0.9991/1.0137`, score Spearman
-  was `0.999927`, and top-decile overlap was 100%. On 2026-08-10 the user
-  accepted grid 48 as production default in core ABI and both direct CLIs.
-  CUDA13 smoke job `35813` built commit `34cdf2a`, read back `48/48/48`, and
-  scored one no-override case `ok` with no zombies. Do not extrapolate below 48.
-- 2026-08-10 strict-hint mode 2 deletes the five-line FP64 replay but retains
-  four mixed-precision topology traces and all branch/residual rejection gates.
-  Across 69 cases x two repeats, exact-hint P50/P95 fell from `660/905` to
-  `551/730 ms` (1.198x); all calls stayed `ok`, rank and downstream physics were
-  unchanged. A `1e-3` hint offset gave 1.107x because Newton then dominates.
-  Optimizers default to mode 2; mode 1 retains formal FP64 verification.
-  Evidence is section 15 of `reports/qh_score_evaluation_compression_20260810.md`.
-- 2026-08-10 corrected the production joint fit from constant iota to
-  `iota(u)=c0+c1*u+c2*u^2+c3*u^3`, where `u=rho^2=psi/psi_edge`. Across 69
-  cases, all 138+138 calls were `ok`, every cubic fit reduced the joint
-  alpha/iota residual (P50 ratio `0.9452`), added no measurable time, and kept
-  the top decile exactly. A 200-step rerun from historical `start_10` rose from
-  `85.5157` to `91.5263` at `4.117 s/step`; all updates were valid and step 200
-  was best. Implementation commit `c8b185f`; accepted evidence commit `233f57e`.
-  Evidence is section 16 and assets
-  `qh_iota_degree_calibration_35856` / `qh_iota_cubic_adam200_35864`.
-- 2026-08-10 matched 1000-step P107 jobs `35902/35903` completed cleanly and
-  were identical through step 300. Two fresh random directions reached best
-  `92.6818` at step 994 with 1000 accepted updates. Reusing the previous update
-  plus one random direction reached only `92.5087` and then suffered 77 repeated
-  temporal-gradient rejections at steps 924--1000. Keep fresh random directions
-  as default; full evidence is section 17 of the current compression report.
-- 2026-08-10 fixed-matrix screening used the exact augmented FP32 problem
-  `391014 x 1574`. The best accurate single-RTX5090 result fused RHS into
-  Householder QR at P50/P95 `162.428/162.492 ms` (1.120x over the baseline),
-  but no tested QR, TSQR, Gram, PCGLS, LSQR, BF16, or refinement method was both
-  at least 1.5x faster and reference-accurate. Nothing replaced production QR.
-  `physical_residual_relative` in those artifacts is a training-equation
-  residual, not the independent normalized physical angle. Frozen inputs,
-  exact solver evidence, and rejected alternatives are in sections 12--13 of
-  `reports/qh_score_evaluation_compression_20260810.md` and
-  `reports/assets/qh_psi_qr_benchmark_20260810/`.
-
-### Completed 10000-step optimization continuation
-
-- Exact continuation restored all optimizer/RNG/prefetch state and completed
-  10000 contiguous iterations cleanly, but steps 5001--10000 found no new best.
-  Score `93.3672653` at iteration 4341 remained unchanged for 5659 iterations;
-  this is strong stagnation evidence under that fixed Adam configuration, not
-  proof of global optimality. The already fully evaluated best SHA-256 remains
-  `d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29`.
-  Timing, resume proof, and diagnostics are in section 22 of
-  `reports/qh_score_throughput_and_continuous_surface_plan.md`.
-
-### Current physically accepted best (historical score definition)
-
-- Highest fully evaluated sample remains QH, $N_{\mathrm{FP}}=4$, three base
-  coils. Its historical constant-iota score was `93.3672653337` at iteration
-  4341; the physical evaluation remains valid, but that score is not directly
-  comparable with the current cubic-iota objective. Input SHA-256:
-  `d4517e03d66913d958bfac88b42b7d56228a9717c4b445f5ac28f242b049cc29`.
-- Its sample-adaptive complete evaluation selected `a=0.08`; standard
-  LS/Newton accepted `s=0.24/0.36/0.49` with increasing enclosed volume and
-  selected `s=0.49`, volume `0.0658787 m^3`. `s=0.64` was the tested outer
-  failure because GPU-ray supplied `174967 < 180000` required points. These
-  `a/s` values belong only to this sample.
-- Selected-surface diagnostics: iota `1.53758`, dense relative L2
-  `8.7371e-6`, normal-field P95 `1.1583e-5`, and face QA/QH/QP errors
-  `4.9096e-3 / 2.9965e-6 / 4.9715e-3`. Poincare and direct/DESC colored
-  contours show a nested QH configuration.
-- CPU-P107 DESC preserved nesting and reduced normalized force mean/P95/max
-  from `1.2562 / 1.7427 / 2.7540` to
-  `7.6700e-4 / 1.7054e-3 / 4.8221e-3`. It reached the 50-step cap, so physical
-  acceptance passed but strict solver convergence is false.
-- Evidence: `reports/assets/qh_score_fast_beta1_0p7_best933673_full_eval_20260808/`
-  and sections 20--22 of
-  `reports/qh_score_throughput_and_continuous_surface_plan.md`.
-
-## 3. Production Mainline
-
-The maintained workflow is:
-
-$$
-\text{coils}
-\rightarrow \boldsymbol B
-\rightarrow \text{magnetic axis}
-\rightarrow s
-\rightarrow \psi(s)
-\rightarrow (\alpha,\iota)
-\begin{cases}
-\rightarrow \text{volume QS}\rightarrow \text{native score},\\
-\rightarrow \nu\rightarrow \text{Simsopt LS/Newton}\rightarrow \text{DESC}.
-\end{cases}
-$$
-
-### Stable front end
-
-- **Magnetic axis:** batch-search elliptic fixed points of a one-period
-  Poincare map, then use bounded Newton refinement and axis tracing. During
-  local optimization, strict continuation from the previously validated axis
-  is allowed and expected; standalone/corpus scoring must remain
-  history-independent and use global search.
-- **Geometric label $s$:** fit $\boldsymbol B\cdot\nabla s=0$ near the axis
-  with a complete two-dimensional polynomial basis combined with toroidal
-  Fourier modes. $s$ is a geometric surface label, not physical magnetic flux.
-- **Flux calibration:** compute toroidal flux on multiple sections and set
-  $\psi(s)=\Phi_t(s)/(2\pi)$. The coils-to-axis-to-$s/\psi$ route is validated
-  infrastructure; do not redesign it unless a required physical quantity is
-  genuinely unavailable.
-- **Straight-field-line coordinate:** on dense, approximately uniform volume
-  samples, solve one linear least-squares system for the Zernike-Fourier
-  expansion of $\alpha$ and $\iota$ using
-  $\boldsymbol B\cdot\nabla\alpha=0$. This yields a volume straight-field-line
-  coordinate, not merely one fitted surface. Current default is cubic in
-  $u=\rho^2=\psi/\psi_{\rm edge}$; artifacts with `iota_degree=0` are historical.
-
-### Fast native score branch
-
-- The production evaluator is C++/CUDA ABI 10. Python is an orchestration and
-  ctypes layer only; it must not reimplement or silently move the hot numerical
-  chain to CPU.
-- From calibrated $\psi$, fitted $\alpha/\iota$, $\boldsymbol B$, and
-  $\nabla\boldsymbol B$, compute differential volume QA/QH/QP on a fixed
-  100000-point physical-volume sample. This branch does not need $\nu$.
-- Score range is 0--100 and larger is better. Components are `axis`, `psi`,
-  `surface`, `coordinate`, `volume_qs`, `iota`, and `coil`, with nominal
-  weights `(10,10,10,10,42,10,8)`. QH iota and helicity-advantage gates are
-  multiplicative, so the total cannot always be reconstructed by a simple
-  weighted component sum.
-- The score rewards a reasonably large magnetic region but saturates after
-  useful size, strongly weights QH quality, penalizes low $|\iota|$, and blocks
-  circular-coil, tiny-surface, wrong-helicity, and low-valid-point shortcuts.
-- Current branch-specific score library SHA-256:
+- The production native evaluator is C++/CUDA ABI 10. Current score-library
+  SHA-256 is
   `565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729`.
-  Production launchers must verify this hash. An intentional rebuild requires
-  fresh numerical validation and an update here before use.
-- Current score conventions include
-  $G=\mu_0 I_{\mathrm{link}}/(2\pi)$ with the sign of the linked current,
-  cylindrical physical-volume weights, fixed point count, strict elliptic-axis
-  existence $|\operatorname{tr}J|/\sqrt{\det J}<2$, continuous surface
-  confidence, low-iota and helicity gates, and surface-size saturation.
-- The score is a bounded screening/optimization objective, not proof of a
-  Boozer surface or MHD equilibrium. Every selected candidate still requires
-  the complete physical evaluation contract below.
+  Intentional rebuilds require fresh numerical validation before promotion.
+- Current evaluator defaults include psi grid 48, cubic
+  `iota(u)` with `u=psi/psi_edge`, strict axis-hint mode 2, continuous surface
+  confidence, and history-independent standalone/corpus axis search. Optimizer
+  continuation alone may use the previous validated axis as a strict hint.
+- Native score is a bounded screening objective, not a Boozer-surface or MHD
+  certificate. Selected candidates require the fixed workflow in
+  `docs/精简线圈评估流程.md` and `evaluation/full_physical/README.md`.
+- Surface-fit radius `a` and level `s` are sample-specific results, never global
+  defaults. Acceptance requires independent dense residuals, standard
+  Simsopt LS/Newton, Poincare nesting, face QA/QH/QP, and DESC diagnostics.
 
-### Full physical evaluation branch
+## Accepted Numerical Conclusions
 
-- Fit toroidal correction $\nu$ after $\alpha/\iota$ to construct a near-Boozer
-  volume coordinate and strong surface initial guesses. Dense field evaluation,
-  sampling, and QR use validated FP32 GPU paths; $\alpha+\nu$ is an initializer,
-  not an exact-surface certificate.
-- Search outward using sample-specific source-fit radii $a$ and surface levels
-  $s$. Select the largest reasonably feasible tested surface, with at least one
-  nearby outer failure when practical. Never reuse another sample's $a/s$.
-- Standard Simsopt LS/Newton plus independent dense residual, normal-field,
-  regularity, nesting, and branch-continuity checks decide whether a magnetic
-  surface exists. The conservative `guarded` path is diagnostic only and may
-  reject a surface that standard LS/Newton accepts.
-- DESC refines the accepted boundary. It may run on explicit CPU-P107; report
-  force quantiles, boundary mismatch, nesting, Jacobian sign, and optimizer
-  exit reason. A low mean force or `optimizer_success=true` cannot override
-  non-nestedness, folding, or singular residuals.
-- The earlier DESC exploration remains paused: near-Boozer initialization is
-  now robust, but DESC convergence is not guaranteed. See
-  `reports/project_progress_recap_20260726.md` for the detailed history.
+- Flow provides reliable initialization evidence and is the current practical
+  high-score optimization method. Direct standardized-data optimization is a
+  valid, faster baseline, but the current 309-pair evidence compares complete
+  recipes rather than isolating coordinate causality.
+- The 309-pair corpus actually used 64 directions and 200 steps. Its manifest
+  and aggregate count of 3,955,200 orthogonal directions support this. Latent
+  optimization won 201/309 pairs; median paired best-score advantage was 0.997
+  with 95% interval `[0.799, 1.312]`; score-at-least-92 rates were 23.0% versus
+  0.32%. Latent/data settings differed in learning rate and perturbation, so
+  this result does not prove an intrinsic coordinate effect.
+- The 32-case 2026-08-24 coordinate control used 2 directions and 100 steps.
+  Its coordinate-causality conclusion is retracted. Its separate 48-condition
+  initialization evidence remains usable.
+- Under the current ABI-10 cubic-iota library, fully evaluated sample
+  `p107_37034_3_000018_step0150` scores `94.6368682`; input SHA-256 is
+  `6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1`.
+  See `reports/qh_min_face_qh_full_evaluation_20260819.md`.
+- The 10,000-step run whose best was `93.3672653` at step 4341 remains valid
+  evidence for its historical constant-iota objective and for stagnation under
+  that frozen recipe. Its score is not the current maximum and is not directly
+  comparable with the current cubic-iota objective.
 
-## 4. Current Flow and Optimizer
+## Invalid Or Historical High-Risk Material
 
-### Flow model
+- Every 2-direction optimization result and launcher is historical. Labels such
+  as "default", "production", or "standard" inside an old artifact describe
+  its old local context and have no authority over the current method.
+- `reports/qh_flow_initialization_vs_optimization_control_20260824.md` preserves
+  the erroneous 2D/100 coordinate-control history. Only its explicitly retained
+  initialization evidence may be cited.
+- ABI-9 and earlier score results that predate current-sign, linked-current
+  scale, physical-volume weighting, fixed-point budget, topology, or continuous
+  surface corrections cannot be numerically mixed with the current score.
+- Old CEM, hybrid Adam, analytic-gradient G2-G5, BFGS, proxy, trust-region,
+  reduced-zero-tail, and constant-iota routes are research history, not current
+  defaults. Their artifacts remain available for provenance.
+- `CODEX_HANDOFF.md` is a tombstone for a July DESC handoff, not current task
+  state. Its exact former contents are archived.
 
-- Training data: all extracted QUASR QH groups, 170755 samples total and
-  153747 training samples, covering $N_{\mathrm{FP}}=2\ldots8$ and one through
-  five base coils. Training sampled the empirical joint `(nfp,n_coils)`
-  distribution, not independent uniform conditions.
-- One token is one base coil: 99 Fourier geometry coefficients plus one current.
-  Architecture: eight-layer non-causal Transformer, no RoPE, width 512, eight
-  heads, FFN width 1408, PreNorm, RMSNorm, and SwiGLU; $N_{\mathrm{FP}}$ enters
-  through a condition embedding.
-- Per-coordinate normalization stabilizes the input distribution. The loss
-  restores raw Fourier/Parseval curve-distance importance so standardized
-  high-frequency tails do not dominate merely because their variance is small.
-- Checkpoint:
-  `~/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt`,
-  EMA step 30000, SHA-256
-  `39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f`.
-- 2026-08-25 accepted Flow interpretation: the current practical latent recipe
-  is the main method; direct standardized-data optimization is feasible and
-  1.41x faster but is a weaker high-score baseline. On the same 309 starts and
-  direction seeds, latent won `201/309`, paired best-score median advantage was
-  `0.997` (95% `[0.799,1.312]`), and score `>=92` rates were `23.0%/0.32%`.
-  This is a complete-recipe comparison, not a pure coordinate ablation, because
-  latent/data use LR `0.02/0.01` and radii `0.005/0.0025`. The old 32-case run
-  remains invalid for its requested protocol: it silently used 2 directions
-  and 100 steps instead of the 309 manifest's 64 directions and 200 steps.
-  Three separate evidence groups support Flow: 48-condition finite screening
-  gives stable high-quality starts, 12-direction landscape scans show broader
-  and smoother correlated deformations, and the 309-pair run shows a practical
-  high-score-tail advantage. Formal inversion/landscape may use RK4-256;
-  optimization trajectories must retain their frozen discretization. Evidence:
-  `reports/summary1/技术报告.md` and
-  `reports/qh_data_space_large_scale_validation_20260825.md`.
+## Work Governance
 
-### Optimizer recipes (scope must be explicit)
+- Start new exploration from the consolidated `main`. Use a `codex/` branch
+  when an experiment changes methods, defaults, or shared code.
+- User acceptance of a method as the default means promotion to `main` and
+  coordinated updates to implementation defaults, protocol metadata, launchers,
+  tests, current docs, `memory/DECISIONS.md`, and any affected correction entry.
+- Preserve frozen experiment manifests. Record observed metadata separately
+  from current re-evaluation; never reconstruct settings from prose or CLI
+  defaults when a manifest exists.
+- Record every discovered error in `memory/CORRECTIONS.md` in the same turn,
+  including impact, retained conclusions, evidence, containment, and status.
+- External documents and figures must pass `memory/WRITING.md`. Use direct,
+  affirmative explanations; remove defensive contrast, ambiguous references,
+  version leakage, and irrelevant claims after generation.
 
-- Entry points: `scripts/optimize_flow_prior_standard_adam.py` and
-  `scripts/slurm_flow_prior_standard_adam.sh`.
-- The generic latent-Adam launcher on `main` has retained its 2026-08-06
-  throughput-oriented CLI defaults: two fresh orthogonal directions, four
-  centered score endpoints, perturbation `0.005`, LR `0.01`, beta
-  `(0.7,0.999)`, and FP32 RK4-128. This is only that launcher's historical
-  default recipe; it is not a score-evaluator setting or a comparison baseline.
-  The 309-trajectory corpus instead freezes 64 directions, 200 steps, LR
-  `0.02`, beta `(0.7,0.999)`, and RK4-128 in its `dataset_manifest.json`.
-  Any matched rerun of that corpus must use those manifest values.
-- Both routes use continuous score, cubic `iota(psi/psi_edge)`, and strict axis
-  continuation using mixed topology and no FP64 replay (mode 2).
-  `--axis-hint-verification fp64` restores mode 1. No gradient experiment may
-  leak into a frozen route.
-- Cross-iteration pipelining decodes the accepted center together with the next
-  endpoints. On the validated two-GPU setup, 600-step jobs averaged
-  `5.27--5.40 s/step`; native score consumed about 75--77% of wall time and
-  flow about 21--22%, without an extreme latency tail.
-- Any non-`ok` directional endpoint skips the complete gradient/moment/parameter
-  step. Valid but exceptional direction deltas are handled with scale-adaptive
-  median/MAD filtering. An invalid proposed center triggers bounded feasibility
-  backtracking and full rollback. Preserve the running best independently of
-  the current state.
-- Exact resume must restore current and best latents, both moments, Adam step,
-  direction and flow RNGs, and prefetched endpoint state. Starting from a
-  `best.json` with zero moments is a new staged optimization, not continuation.
+## Memory Map
 
-## 5. Complete Evaluation Contract
+- `memory/README.md`: loading and maintenance architecture.
+- `memory/PROTOCOLS.md`: current protocol, run gates, and deprecated registry.
+- `memory/CORRECTIONS.md`: append-only error and correction ledger.
+- `memory/DECISIONS.md`: active decisions and promotion semantics.
+- `memory/WRITING.md`: external document and multimodal review rules.
+- `memory/HISTORY.md`: concise chronology and evidence pointers.
+- `memory/archive/`: immutable pre-restructure snapshots; never read by default.
+- `MEMORY_archive_20260808.md`: legacy full-history archive; historical only.
 
-Use only `evaluation/full_physical/`, following
-`docs/精简线圈评估流程.md` and `evaluation/full_physical/README.md`. Do not
-assemble a new acceptance script during evaluation.
-
-Every complete evaluation must:
-
-1. Re-run the current native score and preserve total score, all seven
-   components, complete diagnostics, timing, code commit, score-library hash,
-   checkpoint hash, and input identity.
-2. Search sample-specific source-$\psi$ radii and surface levels outward; do not
-   default to an `a=0.05` micro-tube or claim strict maximality.
-3. Use GPU-ray sampling and FP32 GPU $\alpha+\nu$ initialization. Do not
-   silently fall back to legacy Cartesian/CPU preprocessing; if no bounded GPU
-   route exists, stop and ask the user whether to accept the slower method.
-4. Run standard Simsopt LS/Newton and independent dense validation. Treat
-   `guarded` rejection, initial $\psi$ distance, and displacement only as
-   branch diagnostics, not final nonexistence proof.
-5. Run batched GPU Poincare tracing and report per-section hits and nesting.
-6. Report the selected surface's face QA/QH/QP error explicitly.
-7. Generate white-background colored $|B|$ contour lines, with color encoding
-   magnitude. Heatmaps and filled contours are not accepted replacements.
-8. Generate complete-device coil plus large-surface PNG/HTML. Do not connect
-   each field period's surface seam to itself; periodic copies must join in the
-   physically correct order.
-9. Run DESC with explicit backend and include every generated DESC figure,
-   including boundary, Boozer modes, Boozer $|B|$, QH diagnostics, iota, and
-   all available quantities versus $\rho$.
-10. Run `evaluation/full_physical/validate_delivery.sh` and cite every required
-    artifact in the report before declaring completion.
-
-If $\psi$ residual is small but Poincare or the reconstructed surface is wildly
-inconsistent, first diagnose code, coordinate, branch, or evaluation-path
-errors. That combination is not credible evidence of new physics by itself.
-
-## 6. Remote Compute Rules
-
-- Before every remote connection, read `REMOTE_CODEX_INSTRUCTIONS.md` and run
-  its WSL/master-connection preflight in order. Current alias is `ustc107`,
-  authenticated through the existing WSL `Ubuntu` master connection. Never
-  initiate interactive authentication or guess an alias.
-- All remote project code, data, logs, and artifacts must remain under `~/`.
-  Heavy computation, builds, tests, plots, and benchmarks run as Slurm jobs,
-  never on the login node.
-- Current preferred route is
-  `competition / P107-RTX5090 / qos_p107-rtx5090`; up to four RTX 5090 GPUs and
-  16 CPUs are available under its documented limits. Use only resources needed
-  by the task and do not overlap jobs writing the same run directory.
-- Before timing, verify every allocated GPU is idle. After every job, verify no
-  score worker, child process, GPU allocation, or zombie process remains.
-  `sbatch --test-only` validates resource syntax but its start-time estimate is
-  unreliable.
-- Native coils-to-score and parallel full-evaluation preprocessing must remain
-  C++/CUDA or validated GPU code. Do not independently choose a CPU fallback
-  that is one or two orders of magnitude slower. DESC is the explicit exception
-  and may use `DESC_BACKEND=cpu-p107`.
-- Keep branch code/builds in the active worktree, large shared artifacts in
-  `~/local_surface_evaluator`, QH data in
-  `~/local_surface_evaluator_data/quasr_qh_flow_v1`, and use `~/coil/.venv`
-  where the current flow/score launchers require it. Do not collapse these into
-  a generic asset root; that previously selected a stale score library.
-- Under Slurm, use `SLURM_SUBMIT_DIR` or an explicit `PROJECT`; `BASH_SOURCE`
-  resolves into `/var/spool/slurmd`. Use real Bash scripts for Bash-only shell
-  behavior rather than relying on `sbatch --wrap` and `/bin/sh`.
-- The old server and `/data/zhouyebi/QUASR_08072024/` are historical read-only
-  sources and should not be used for current numerical work.
-- Routine latent-score corpus collection was permanently stopped on 2026-08-02
-  after the proxy experiments and a score-definition correction. Do not launch
-  or report background collectors unless the user explicitly reopens that task.
-  Unrelated Student-partition jobs are outside this project and must be ignored.
-
-## 7. Errors and Invalid Results That Must Not Recur
-
-- **Score/version mixing:** ABI-9 results before current-sign, $G$-scale,
-  physical-volume-weight, fixed-point-budget, topology, or continuous-surface
-  corrections are historical and cannot be compared numerically with current
-  score. Always pin code, library, flow checkpoint, and decode resolution.
-- **Current reversal:** simultaneous reversal of all coil currents must leave
-  field-line geometry and normalized QS invariant. The signed linked-current
-  convention for $G$ is mandatory.
-- **Elliptic-axis threshold:** existence uses strict normalized trace `<2`.
-  The topology margin affects preference/quality only; using it as an existence
-  threshold created false `no_axis` results and dirty optimizer gradients.
-- **Drift status:** `drift_rejected` means the bounded quick surface screen
-  failed; it does not mean no magnetic axis and does not prove LS/Newton cannot
-  find a surface. Do not add slow all-candidate or very-long-trace fallbacks to
-  production without measured need and unchanged bounded latency.
-- **History leakage:** optimizer continuation may use the previous axis as a
-  strict hint, but standalone score/corpus evaluation must remain independent.
-- **Surface constants:** `a` and `s` are sample-specific. Historical values such
-  as `a=0.08`, `s=0.49`, or `s=0.30` are results, never global defaults.
-- **Incomplete acceptance:** high score, low $\psi$ residual, a guarded solve,
-  or reduced DESC force alone is insufficient. Run the full contract.
-- **Hidden CPU fallback:** do not label a stage GPU merely because the Slurm
-  job requested a GPU. Record backend and precision for $\psi$, $\alpha$, and
-  $\nu$; legacy Cartesian alpha preprocessing is prohibited by default.
-- **Wrong optimizer identity:** the current method is score finite differences
-  plus Adam. Old hybrid “Adam”, CEM, G2/G3/G4, BFGS, proxy, and trust-region
-  experiments must not be silently mixed into it.
-- **Resume from best:** resuming only the best latent discards moments, current
-  state, RNG, and pipeline cache. It is a restart and must be labeled as such.
-- **Score artifacts:** distinguish an old artifact's recorded score, a new
-  decode of the same latent, and a score from the current validated library.
-- **Remote hygiene:** do not use stale shared builds, guessed paths, busy GPUs,
-  login-node compute, sequential candidate evaluation as a “conservative”
-  default, or unjoined multiprocessing workers.
-
-## 8. Historical Milestones
-
-Only current decisions are retained here; exact history is in
-`MEMORY_archive_20260808.md` and the linked reports.
-
-- Dense linear $\psi\rightarrow\alpha/\iota\rightarrow\nu$ fitting produced
-  useful near-Boozer volume coordinates but did not make DESC automatic. See
-  `reports/project_progress_recap_20260726.md`.
-- The bounded native GPU score was corrected for current sign, $G$, volume
-  weights, valid counts, low-iota cheating, and helicity competition. See
-  `reports/qh_differential_qs_metric_investigation.md`.
-- Latent CEM and finite-difference Adam established a workable QH optimization
-  route, while proxy and G2--G5 analytic-gradient attempts were rejected.
-  Flow is supported by initialization, landscape, and 309-pair practical
-  optimization evidence. Cite the latter only as an advantage of the tested
-  complete latent recipe, never as an isolated intrinsic coordinate effect.
-  See `reports/qh_flow_landscape_report.md`,
-  `reports/qh_latent_score_regression_proxy_report.md`,
-  `reports/qh_blackbox_gradient_exploration_report.md`, and
-  `reports/qh_flow_initialization_vs_optimization_control_20260824.md`.
-- The validated $N_{\rm FP}=4$, three-coil long run reached score 93.367 at step
-  4341 and passed complete evaluation; exact continuation to 10000 found no new
-  best. See `reports/qh_score_throughput_and_continuous_surface_plan.md`.
-- Exact-zero reduced latent tails $k=16\ldots80$ failed reconstruction and must
-  not be used. See `reports/qh_reduced_latent_flow_plan.md`.
-
-## 9. Important Files
-
-- Current source of truth: `MEMORY.md`.
-- Exact full history before 2026-08-08 compaction:
-  `MEMORY_archive_20260808.md`.
-- Archived early DESC handoff: `CODEX_HANDOFF.md`.
-- Current user-facing overview and commands: `README.md`.
-- Remote access and Slurm rules: `REMOTE_CODEX_INSTRUCTIONS.md`.
-- Current methodology: `docs/QH原生评分与潜空间优化方法.md`.
-- Fixed complete-evaluation procedure: `docs/精简线圈评估流程.md` and
-  `evaluation/full_physical/README.md`.
-- Current optimization/evaluation record: `reports/qh_score_throughput_and_continuous_surface_plan.md`.
-- Score design: `reports/gpu_native_volume_qs_score_report.md` and
-  `reports/volume_qs_score_design.md`.
-- Flow training: `reports/qh_flow_matching_first_generation_report.md`.
-- Corrected landscape: `reports/qh_flow_landscape_report.md`.
-- Differential-QS audit: `reports/qh_differential_qs_metric_investigation.md`.
-- Abandoned gradient direction: `reports/qh_blackbox_gradient_exploration_report.md`.
-
-## 10. Active Next Action
-
-- 2026-08-28 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `cb7e72b`. Three PDFs were rendered
-  and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
-  exactly 300 seconds, H.264, 9797894 bytes, with one burned-in bottom caption
-  layer and no audio track. The packaged FP32 inference checkpoint is 121365896
-  bytes, SHA-256 `81feaf6ba8d1e98ad821c813c521c2a7e94bbd0f3bd59a0bed3927402231f8ea`;
-  its EMA tensors exactly match the full training checkpoint, while duplicate
-  model, optimizer, scheduler, and resume state are omitted. Slurm job `46668`
-  loaded it successfully, completed 8-candidate screening plus five Adam steps,
-  and left empty error and zombie-process logs.
-  The archive's video directory contains only the final MP4; video generators,
-  source captions, document sources, and build assets remain outside the archive.
-- Accounting evidence retains 678 authenticated SCOW details, 583 earlier
-  `sacct` records, and a 1261-row merged ledger with unique Job IDs. The new
-  `06_运行证据/Slurm/项目作业流水与汇总.xlsx` is the human-readable
-  six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
-  1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
-- Final archive is
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 140611282 bytes,
-  SHA-256 `2777e16f12a9447edd72ce3f627ada1d29949a58050d28f0618d368ead48fd81`.
-  ZIP CRC, all 172 internal hashes, six required package-path checks, checkpoint
-  and sample verification, accounting verification, and all 81 tests pass.
-- 2026-08-28 primary-source audit verifies all five design-document references:
-  QUASR v4 and its JPP paper, SIMSOPT, DESC Part 1, and Flow Matching. The
-  training source is QUASR v4, file `QUASR_08072024.tar.gz`, version DOI
-  `10.5281/zenodo.13717741`, and concept DOI `10.5281/zenodo.10050655`. Its
-  Zenodo Rights section displays no
-  license value. Raw QUASR data remains external; the competition checkpoint is
-  documented at `04_部署程序/StellCoilOpt/THIRD_PARTY_DATA.md`. The former
-  top-level `07_许可与引用/` was removed so this supporting notice no longer
-  appears as a peer of required submission items. No team-name field is required
-  by the notice; submission documents state only category `本科生队伍` and the
-  entrant name.
+Update this file only when current truth or routing changes. Put chronology in
+`memory/HISTORY.md`, errors in `memory/CORRECTIONS.md`, and detailed evidence in
+reports. Never store credentials.

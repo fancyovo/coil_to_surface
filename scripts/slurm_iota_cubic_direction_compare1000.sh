@@ -14,6 +14,11 @@
 
 set -euo pipefail
 
+# DEPRECATED HISTORICAL 2-DIRECTION PROTOCOL (2026-08-10).
+# Preserved only to reconstruct the recorded direction-reuse comparison.
+echo "deprecated historical 2-direction launcher; no new runs are permitted" >&2
+exit 64
+
 project="${PROJECT:?PROJECT is required}"
 variant="${DIRECTION_VARIANT:?DIRECTION_VARIANT is required}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_iota_cubic_cuda13/libstellarator_gpu.so}"

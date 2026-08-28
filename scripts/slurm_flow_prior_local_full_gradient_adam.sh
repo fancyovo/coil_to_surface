@@ -2,7 +2,7 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=qh-local-fullgrad-adam
+#SBATCH --job-name=qh-flow-latent-64d
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -18,10 +18,11 @@ project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:?SCORE_LIB must name the validated experimental score library}"
-initial_case="${INITIAL_CASE:-$project/reports/assets/qh_score_adam_start_panel_29960/start_10.json}"
-run_root="${RUN_ROOT:-$project/runs/qh_local_full_gradient_adam/${SLURM_JOB_ID}}"
-iterations="${ITERATIONS:-2000}"
-max_wall_s="${MAX_WALL_S:-27300}"
+expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}"
+initial_case="${INITIAL_CASE:?INITIAL_CASE must name selected_start.json from screen_flow_starts.py}"
+run_root="${RUN_ROOT:-$project/runs/qh_flow_latent/${SLURM_JOB_ID}}"
+iterations="${ITERATIONS:-200}"
+max_wall_s="${MAX_WALL_S:-7200}"
 resume="${RESUME:-0}"
 gpu_selector="${CUDA_VISIBLE_DEVICES:-}"
 child=""
@@ -47,6 +48,7 @@ mkdir -p "$run_root"
 cd "$project"
 test -f "$checkpoint"
 test -f "$lib"
+test "$(sha256sum "$lib" | awk '{print $1}')" = "$expected_lib_sha"
 test -f "$initial_case"
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 
@@ -97,7 +99,7 @@ if [[ "$resume" == "1" ]]; then resume_args+=(--resume); fi
 pipeline_args=(--flow-pipeline)
 if [[ "${FLOW_PIPELINE:-1}" != "1" ]]; then pipeline_args=(--no-flow-pipeline); fi
 
-python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
+python "$project/scripts/optimize_flow_latent.py" \
   --checkpoint "$checkpoint" \
   --initial-case "$initial_case" \
   --lib "$lib" \
@@ -107,11 +109,11 @@ python "$project/scripts/optimize_flow_prior_local_full_gradient_adam.py" \
   --flow-steps "${FLOW_STEPS:-128}" \
   --parameter-space "${PARAMETER_SPACE:-latent}" \
   --perturbation "${PERTURBATION:-0.005}" \
-  --gradient-mode "${GRADIENT_MODE:-coordinate}" \
+  --gradient-mode "${GRADIENT_MODE:-random-orthogonal}" \
   --random-directions "${RANDOM_DIRECTIONS:-64}" \
   --seed "${SEED:-20260812}" \
   --optimizer "${OPTIMIZER:-adam}" \
-  --learning-rate "${LEARNING_RATE:-0.01}" \
+  --learning-rate "${LEARNING_RATE:-0.02}" \
   --beta1 "${BETA1:-0.7}" \
   --beta2 "${BETA2:-0.999}" \
   --flow-device 0 \

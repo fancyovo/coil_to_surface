@@ -36,6 +36,15 @@ from scripts.optimize_native_score_cem import (
     token_case,
     write_json,
 )
+from flow_matching.optimization import (
+    CURRENT_NATIVE_SCORE_ABI,
+    CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
+    QH_OPTIMIZATION_DEFAULTS,
+    describe_qh_optimization_protocol,
+    validate_qh_direction_count,
+    validate_qh_resume_protocol,
+)
+from scripts.flow_runtime import repository_provenance
 
 
 def parse_ints(value: str) -> tuple[int, ...]:
@@ -410,8 +419,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target", choices=("QA", "QH"), default="QH")
     parser.add_argument("--nfp", type=int, default=4)
     parser.add_argument("--n-base-coils", type=int, default=3)
-    parser.add_argument("--iterations", type=int, default=60)
-    parser.add_argument("--directions", type=int, default=2)
+    parser.add_argument(
+        "--iterations", type=int, default=QH_OPTIMIZATION_DEFAULTS.iterations
+    )
+    parser.add_argument(
+        "--directions", type=int, default=QH_OPTIMIZATION_DEFAULTS.directions
+    )
     parser.add_argument(
         "--reuse-update-direction-after",
         type=int,
@@ -445,11 +458,17 @@ def build_parser() -> argparse.ArgumentParser:
             "finite-difference endpoints, while keeping score evaluation staged."
         ),
     )
-    parser.add_argument("--flow-steps", type=int, default=128)
-    parser.add_argument("--perturbation", type=float, default=0.005)
-    parser.add_argument("--learning-rate", type=float, default=0.01)
-    parser.add_argument("--beta1", type=float, default=0.7)
-    parser.add_argument("--beta2", type=float, default=0.999)
+    parser.add_argument(
+        "--flow-steps", type=int, default=QH_OPTIMIZATION_DEFAULTS.flow_steps
+    )
+    parser.add_argument(
+        "--perturbation", type=float, default=QH_OPTIMIZATION_DEFAULTS.perturbation
+    )
+    parser.add_argument(
+        "--learning-rate", type=float, default=QH_OPTIMIZATION_DEFAULTS.learning_rate
+    )
+    parser.add_argument("--beta1", type=float, default=QH_OPTIMIZATION_DEFAULTS.beta1)
+    parser.add_argument("--beta2", type=float, default=QH_OPTIMIZATION_DEFAULTS.beta2)
     parser.add_argument("--adam-epsilon", type=float, default=1.0e-8)
     parser.add_argument(
         "--robust-direction-filter",
@@ -529,6 +548,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     args = build_parser().parse_args(argv)
+    validate_qh_direction_count(args.directions)
     if args.invalid_center_backtracking is None:
         args.invalid_center_backtracking = (
             (0.5, 0.25, 0.125) if args.reject_invalid_center else ()
@@ -815,6 +835,22 @@ def main() -> None:
         raise ValueError(f"condition {normalizer_key} is absent from normalizer")
 
     requested_manifest = {
+        "protocol": describe_qh_optimization_protocol(
+            parameter_space="latent",
+            optimizer="adam",
+            iterations=args.iterations,
+            directions=args.directions,
+            perturbation=args.perturbation,
+            learning_rate=args.learning_rate,
+            beta1=args.beta1,
+            beta2=args.beta2,
+            flow_steps=args.flow_steps,
+            gradient_mode="random-orthogonal",
+            difference=(
+                "centered" if args.gradient_estimator == "central" else "one-sided"
+            ),
+        ),
+        "repository": repository_provenance(REPO_ROOT),
         "algorithm": (
             "standard_adam_with_orthogonal_antithetic_zo_gradient"
             if args.gradient_estimator == "central"
@@ -878,6 +914,10 @@ def main() -> None:
         "checkpoint_step": int(checkpoint["step"]),
         "checkpoint_sha256": file_sha256(args.checkpoint),
         "native_lib_sha256": file_sha256(args.lib),
+        "native_score_abi": CURRENT_NATIVE_SCORE_ABI,
+        "validated_default_native_lib_sha256": (
+            CURRENT_NATIVE_SCORE_LIBRARY_SHA256
+        ),
         "gpu_ids": list(gpu_ids),
         "max_wall_s": args.max_wall_s,
         "score_surface_mode": args.score_surface_mode,
@@ -896,6 +936,9 @@ def main() -> None:
     }
     if args.resume:
         manifest = json.loads(run_paths["manifest.json"].read_text(encoding="utf-8"))
+        validate_qh_resume_protocol(
+            manifest.get("protocol"), requested_manifest["protocol"]
+        )
         manifest.setdefault("direction_bank_size", manifest.get("directions"))
         manifest.setdefault("reuse_update_direction_after", 0)
         manifest.setdefault("direction_policy", "fresh_orthogonal_random")
@@ -906,6 +949,7 @@ def main() -> None:
         manifest.setdefault("axis_hint_verification", "fp64")
         stable_keys = (
             "algorithm",
+            "repository",
             "objective",
             "target",
             "nfp",
@@ -940,6 +984,8 @@ def main() -> None:
             "flow_pipeline",
             "checkpoint_sha256",
             "native_lib_sha256",
+            "native_score_abi",
+            "validated_default_native_lib_sha256",
             "gpu_ids",
             "score_surface_mode",
             "surface_confidence_periods",

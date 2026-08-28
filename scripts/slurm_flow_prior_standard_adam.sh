@@ -2,7 +2,7 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=flow-adam-rnd
+#SBATCH --job-name=flow-adam-64d
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
@@ -14,17 +14,21 @@
 
 set -euo pipefail
 
+# Compatibility launcher for the older multi-GPU implementation. Its defaults
+# are kept identical to the current 309-trajectory protocol; the canonical
+# single-GPU entry point is scripts/optimize_flow_latent.py.
+
 project="${PROJECT:-${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}}"
 asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_native_score/libstellarator_gpu.so}"
-expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-40dca7422995a91eab0a58285d9ced59a8e3be04a96b2b37686effbe6f1abff5}"
+expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}"
 run_root="${RUN_ROOT:-$project/runs/qh_flow_standard_adam/${SLURM_JOB_ID}}"
-iterations="${ITERATIONS:-60}"
+iterations="${ITERATIONS:-200}"
 max_wall_s="${MAX_WALL_S:-1500}"
-learning_rate="${LEARNING_RATE:-0.01}"
+learning_rate="${LEARNING_RATE:-0.02}"
 perturbation="${PERTURBATION:-0.005}"
-directions="${DIRECTIONS:-2}"
+directions="${DIRECTIONS:-64}"
 direction_bank_size="${DIRECTION_BANK_SIZE:-$directions}"
 reuse_update_direction_after="${REUSE_UPDATE_DIRECTION_AFTER:-0}"
 gradient_estimator="${GRADIENT_ESTIMATOR:-central}"

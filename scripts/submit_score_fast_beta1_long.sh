@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# DEPRECATED HISTORICAL 2-DIRECTION PROTOCOL (2026-08-06).
+# Preserved only to reconstruct the recorded beta1 sweep.
+echo "deprecated historical 2-direction launcher; no new runs are permitted" >&2
+exit 64
+
 project="${PROJECT:-$HOME/local_surface_evaluator_worktrees/score-fast-continuation}"
 run_root="${RUN_ROOT:-$project/runs/score_fast_beta1_long_20260806_v2}"
 launcher="$project/scripts/slurm_flow_prior_standard_adam.sh"

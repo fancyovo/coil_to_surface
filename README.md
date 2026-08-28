@@ -2,6 +2,8 @@
 
 从 Fourier 线圈参数出发，快速评估局部磁面、旋转变换和体准对称性，并为高价值样本执行完整的 Boozer 磁面与 DESC 物理验收。
 
+当前 `main` 的 QH 默认协议与公开 StellCoilOpt 主线一致：独立评分 32 个 Flow 候选并选择最高有效起点，随后执行 200 步 Adam；每步使用 64 个新正交方向、128 个中心差分端点、$h=0.005$、学习率 0.02、$(\beta_1,\beta_2)=(0.7,0.999)$ 和 FP32 RK4-128。仓库中所有既有 2 方向配置均为废弃历史协议，当前入口会拒绝运行。
+
 当前项目有两条边界清晰、互不替代的正式路径：
 
 | 路径 | 用途 | 数值方法 | 典型成本 |
@@ -9,7 +11,7 @@
 | ABI-10 原生 score | 大批量筛选和优化 | C++/CUDA 有界追踪、FP32 QR、固定规模归约 | 严格磁轴续接约 0.55--1.01 s/次，取决于提示误差 |
 | 完整物理评估 | 验收单个高分样本 | 样本自适应 $\psi$、GPU FP32 $\alpha+\nu$、Simsopt LS/Newton、DESC | 通常数分钟，DESC 可使用 CPU |
 
-原生链路依次完成批量磁轴追踪、局部不变量 $s$、物理磁通 $\psi(s)$、$\alpha$ 与 $\iota$ 联合拟合和体 QA/QH/QP 统计。训练后的 flow matching 用作 Fourier 参数空间的可逆预条件器，不被当作高质量生成保证。正式评分与完整评估中的批量前端使用 GPU，并对失败返回结构化状态；只有明确允许的 DESC 等步骤可以使用 CPU。
+原生链路依次完成批量磁轴追踪、局部不变量 $s$、物理磁通 $\psi(s)$、$\alpha$ 与 $\iota$ 联合拟合和体 QA/QH/QP 统计。训练后的 flow matching 同时提供有限筛选先验和可逆搜索坐标。正式评分与完整评估中的批量前端使用 GPU，并对失败返回结构化状态；只有明确允许的 DESC 等步骤可以使用 CPU。
 
 快速 score 是有物理含义的排序代理，但不是平衡存在性的证明。正式结论必须来自完整评估支线。
 
@@ -55,9 +57,9 @@ $$
 
 早期 ABI-9 校准曾在 1024 个 QUASR QH 样本与 1024 个同条件随机 flow 样本上显示明确区分梯度；这些数值只保留为 score 设计证据，不能作为当前 ABI-10 分布基线。当前 `48^3` 网格在 69 个严格续接样本上的 score 排序与 `80^3` 基线 Spearman 相关系数为 0.999927，最高一成完全重合；三次 $\iota(u)$ 在全部 69 例中降低了联合拟合残差。
 
-flow matching 当前不被视为“一次采样即可生成优质线圈”的生成器。它的主要作用是可逆地重参数化 Fourier 参数空间：修正后的 landscape 实验中，潜空间相对随机原空间方向的下降 5 分盆地宽度中位数放大 8.63 倍，且 FP32 RK4-256 的反向--正向线圈位置闭环 RMS 为 $2.26\times10^{-8}$--$4.57\times10^{-8}\,\mathrm m$。
+flow matching 为有限候选筛选提供生成先验，并以可逆映射提供潜空间搜索坐标。修正后的 landscape 实验中，潜空间相对随机原空间方向的下降 5 分盆地宽度中位数放大 8.63 倍，且 FP32 RK4-256 的反向--正向线圈位置闭环 RMS 为 $2.26\times10^{-8}$--$4.57\times10^{-8}\,\mathrm m$。309 组同起点实验进一步支持当前潜空间完整配置的高分尾部优势；由于两种参数空间使用了不同学习率和扰动半径，该结果保留为完整配置比较，纯坐标因果效应仍待同协议消融。
 
-当前标准优化器默认使用连续磁面 score、严格磁轴 continuation、FP32 RK4-128 流水线、两个正交中心差分方向和 $\beta_1=0.7$ 的 Adam，并启用无效端点整步跳过、中心回退和跨步 median/MAD 脏梯度保护。代表性结果包括：
+当前标准优化器默认使用连续磁面 score、严格磁轴 continuation、FP32 RK4-128 流水线、64 个新正交中心差分方向和 $\beta_1=0.7$ 的 Adam，并启用无效端点整步跳过、中心回退和跨步 median/MAD 脏梯度保护。下表保留两项历史优化结果及其独立物理验收：
 
 | 条件 | 起点 | 历史 score | 独立物理验收 |
 |---|---:|---:|---|
@@ -260,20 +262,33 @@ export QH_FLOW_OUTPUT=$QH_FLOW_REPO/runs/qh_flow_<name>
 sbatch scripts/slurm_train_qh_flow.sh
 ```
 
-标准单起点优化入口如下；除输出目录外，下面列出的优化参数都已有生产默认值：
+当前流程先筛选 32 个起点：
 
 ```bash
-export PROJECT=$HOME/local_surface_evaluator_worktrees/<branch>
-export RUN_ROOT=$PROJECT/runs/qh_flow_standard_adam/<name>
-export ITERATIONS=600
-sbatch scripts/slurm_flow_prior_standard_adam.sh
+python scripts/screen_flow_starts.py \
+  --checkpoint runs/flow/checkpoint_latest.pt \
+  --lib gpu_backend/build_native_score/libstellarator_gpu.so \
+  --out-dir runs/qh_nfp4_nc3/screen \
+  --nfp 4 --n-base-coils 3 --seed 1
 ```
 
-默认配置为学习率 0.01、扰动 0.005、$(\beta_1,\beta_2)=(0.7,0.999)$、FP32 RK4-128 流水线、2 个正交中心差分方向、连续磁面 score 和严格磁轴 continuation。`--flow-steps`/`FLOW_STEPS`、`--directions`/`DIRECTIONS`、`--beta1`/`BETA1`、`--score-surface-mode`/`SCORE_SURFACE_MODE` 等接口仍可显式覆盖；Python CLI 的布尔默认项可用对应的 `--no-*` 关闭，Slurm 包装使用环境变量 `0` 关闭。
+再从选中起点执行当前 64 方向、200 步协议：
 
-程序保存每一步的完整线圈、潜变量、score 分量和优化器状态。精确续跑必须保持原作业的 flow 步数、方向数和 Adam 参数，指向原 `RUN_ROOT` 并设置 `RESUME=1` 后重新提交 `scripts/slurm_flow_prior_standard_adam.sh`；不得只从 `best.json` 重启并丢失 Adam 动量。需要“先从 128 个 IID 潜变量筛选起点”的批量实验时，旧的 screened-start 编排仍保留，但它不是标准优化器的默认入口。
+```bash
+python scripts/optimize_flow_latent.py \
+  --checkpoint runs/flow/checkpoint_latest.pt \
+  --initial-case runs/qh_nfp4_nc3/screen/selected_start.json \
+  --lib gpu_backend/build_native_score/libstellarator_gpu.so \
+  --out-dir runs/qh_nfp4_nc3/optimization \
+  --nfp 4 --n-base-coils 3 \
+  --flow-device 0 --score-device 0
+```
 
-## 旧 Python 研究路径
+CLI 默认值由 `flow_matching/optimization.py` 集中定义，并由测试锁定。非默认实验会在 manifest 中标成 `unregistered-experimental`；它不能继承当前协议 ID，也不能自动成为新默认。2 方向配置被硬性禁止。若未来因特殊问题需要新的低方向数实验，必须创建新分支、新协议 ID、新启动脚本和新 manifest，经独立验收后再决定是否晋升。
+
+程序保存每一步的完整线圈、潜变量、score 分量和优化器状态。精确续跑必须保持原 manifest 的全部参数并使用同一个输出目录和 `--resume`；只读取 `best.json` 会丢失 Adam 动量、当前状态、随机数状态和预取缓存，因此属于新的分阶段优化。
+
+## 废弃历史研究路径
 
 原有 Python CLI、Simsopt LS/Newton 和 DESC 接口仍被保留，用于历史示例和局部算法研究：
 
@@ -285,7 +300,7 @@ python -m stellarator_eval.cli \
   --a 0.05
 ```
 
-该入口不是 ABI-10 原生 score，也不是当前正式完整评估编排。批量筛选应使用 `scripts/smoke_native_score.py` / `scripts/batch_native_score.py`，物理验收应使用 `evaluation/full_physical/`。
+该入口属于历史 Python 研究 API。ABI-10 批量筛选使用 `scripts/smoke_native_score.py` / `scripts/batch_native_score.py`，当前物理验收使用 `evaluation/full_physical/`。
 
 ## 仓库结构
 

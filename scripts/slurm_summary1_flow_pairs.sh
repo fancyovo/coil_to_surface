@@ -15,6 +15,13 @@
 
 set -euo pipefail
 
+# DEPRECATED HISTORICAL 2-DIRECTION PROTOCOL (2026-08-24).
+# Retained only as exact provenance for the old 32-case comparison. Current
+# main forbids this protocol. Any future special comparison requires a new
+# protocol ID, launcher, manifest, and explicit review.
+echo "deprecated historical 2-direction launcher; no new runs are permitted" >&2
+exit 64
+
 project="${PROJECT:?PROJECT is required}"
 run_root="${RUN_ROOT:?RUN_ROOT is required}"
 native_lib="${NATIVE_LIB:?NATIVE_LIB is required}"

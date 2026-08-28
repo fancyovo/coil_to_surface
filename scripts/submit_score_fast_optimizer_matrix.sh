@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# DEPRECATED HISTORICAL 2-DIRECTION PROTOCOL (2026-08-06).
+# This mixed matrix contains 2-direction cases and is preserved as evidence only.
+echo "deprecated historical optimizer matrix; no new runs are permitted" >&2
+exit 64
+
 project="${PROJECT:-$HOME/local_surface_evaluator_worktrees/score-fast-continuation}"
 run_root="${RUN_ROOT:-$project/runs/score_fast_optimizer_matrix_20260806}"
 launcher="$project/scripts/slurm_flow_prior_standard_adam.sh"

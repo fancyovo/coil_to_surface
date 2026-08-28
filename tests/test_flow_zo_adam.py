@@ -4,6 +4,7 @@ import json
 
 import numpy as np
 
+from flow_matching.optimization import QH_OPTIMIZATION_DEFAULTS
 from scripts.optimize_flow_prior_zo_adam import (
     gradient_from_pairs,
     load_initial_noise,
@@ -27,13 +28,14 @@ def test_standard_adam_production_defaults():
         ["--checkpoint", "checkpoint.pt", "--out-dir", "run"]
     )
 
-    assert args.learning_rate == 0.01
-    assert args.perturbation == 0.005
-    assert args.beta1 == 0.7
-    assert args.beta2 == 0.999
-    assert args.flow_steps == 128
+    assert args.iterations == QH_OPTIMIZATION_DEFAULTS.iterations
+    assert args.learning_rate == QH_OPTIMIZATION_DEFAULTS.learning_rate
+    assert args.perturbation == QH_OPTIMIZATION_DEFAULTS.perturbation
+    assert args.beta1 == QH_OPTIMIZATION_DEFAULTS.beta1
+    assert args.beta2 == QH_OPTIMIZATION_DEFAULTS.beta2
+    assert args.flow_steps == QH_OPTIMIZATION_DEFAULTS.flow_steps
     assert args.flow_pipeline
-    assert args.directions == 2
+    assert args.directions == QH_OPTIMIZATION_DEFAULTS.directions
     assert args.gradient_estimator == "central"
     assert args.score_surface_mode == "continuous"
     assert args.axis_continuation

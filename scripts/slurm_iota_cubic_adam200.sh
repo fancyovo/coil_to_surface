@@ -14,6 +14,11 @@
 
 set -euo pipefail
 
+# DEPRECATED HISTORICAL 2-DIRECTION PROTOCOL (2026-08-10).
+# Preserved only to reconstruct the recorded cubic-iota experiment.
+echo "deprecated historical 2-direction launcher; no new runs are permitted" >&2
+exit 64
+
 project="${PROJECT:?PROJECT is required}"
 run_root="${RUN_ROOT:-$HOME/local_surface_evaluator_runs/iota_cubic_adam200_${SLURM_JOB_ID}}"
 lib="${SCORE_LIB:-$project/gpu_backend/build_iota_cubic_cuda13/libstellarator_gpu.so}"

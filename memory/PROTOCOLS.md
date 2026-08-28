@@ -1,0 +1,95 @@
+# QH Protocol Registry
+
+Last verified: 2026-08-28 (Asia/Shanghai).
+
+## Status Vocabulary
+
+- `current-default`: accepted baseline used when no experimental override is
+  requested.
+- `unregistered-experimental`: an automatic manifest label for any deviation
+  from the current shared defaults; it has not been accepted for reuse.
+- `registered-experimental`: a named, manifest-backed deviation on an
+  exploration branch. It does not change the default.
+- `historical-deprecated`: retained for provenance and prohibited for new runs.
+- `invalidated`: the run occurred, but an implementation or protocol mismatch
+  prevents the stated conclusion.
+
+## Current Default
+
+Protocol ID: `qh-flow-screen32-adam200-64d-v1`.
+
+| Stage or setting | Current value |
+| --- | --- |
+| Screening | 32 random Flow candidates; select by current native score |
+| Parameter space | Flow latent |
+| Optimizer | Adam |
+| Updates | 200 |
+| Gradient estimate | 64 fresh random-orthogonal directions, centered |
+| Score endpoints per update | 128 directional endpoints |
+| Perturbation | `0.005` |
+| Learning rate | `0.02` |
+| Adam beta | `(0.7, 0.999)` |
+| Flow decode | FP32 RK4-128 |
+| Evaluator | current ABI-10 cubic-iota native library |
+| Axis handling | strict continuation, mode 2, within an optimization only |
+
+The shared constants and classifier are in `flow_matching/optimization.py`.
+Canonical commands are implemented by `scripts/screen_flow_starts.py` and
+`scripts/optimize_flow_latent.py`. Compatibility wrappers and Slurm launchers
+must inherit the shared values rather than defining another default.
+
+## Run Gate
+
+Every new run must write a machine-readable protocol block containing at least:
+
+- protocol ID and status;
+- code commit and dirty-state declaration;
+- score-library ABI and SHA-256;
+- Flow checkpoint SHA-256 and decoder discretization;
+- input identity, `nfp`, base-coil count, and random seeds;
+- parameter space and optimizer;
+- candidate count, updates, directions, difference rule, perturbation,
+  learning rate, beta, and axis mode;
+- every deviation from the current default.
+
+A reproduction uses the frozen original manifest. A new run using modified
+settings is an experiment, even when it starts from a historical sample.
+
+`--resume` is reserved for an interrupted run whose saved machine protocol and
+repository commit/dirty state exactly match the requested continuation. Legacy
+or unclassified manifests are historical inputs and cannot resume on current
+`main`.
+
+Exactly two directions is rejected by current Python entry points. If the user
+explicitly requests a future two-direction study, create a new protocol on a
+dedicated branch, write a new launcher and manifest, and deliberately review
+the guard. Do not edit, copy, or re-enable a historical launcher.
+
+## Deprecated 2D Registry
+
+All entries below are `historical-deprecated`; an entry may also have an
+invalidated conclusion.
+
+| Period | Family | Interpretation |
+| --- | --- | --- |
+| 2026-08-06 | early score-fast optimizer matrix and beta1 sweeps | Old throughput/optimizer experiments; never a current default |
+| 2026-08-10 | cubic-iota Adam-200 and direction-reuse comparison | Historical score-compression evidence under two fresh directions |
+| 2026-08-24/25 | 32-case Flow/data coordinate control | Actually 2 directions and 100 steps; coordinate-causality claim invalidated |
+
+Historical shell launchers containing 2D settings must carry the exact marker
+`DEPRECATED HISTORICAL 2-DIRECTION PROTOCOL` and exit with status 64 before the
+first old setting. Tests scan this invariant repository-wide.
+
+Old files may contain words such as `default`, `production`, or `standard`.
+Those words are timestamp-local historical metadata and never override this
+registry. Reports requiring such files must label them as historical at the
+point of reference.
+
+## Promotion
+
+Exploration remains `registered-experimental` until the user accepts it as the
+default. Promotion requires one coordinated mainline change: shared defaults,
+canonical and compatibility entry points, manifests, launchers, tests, current
+documentation, `DECISIONS.md`, and affected correction entries. The former
+default then moves to the historical registry; it is never left as a competing
+implicit default.

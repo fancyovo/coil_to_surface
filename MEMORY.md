@@ -464,7 +464,7 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-28 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `e057d0f`. Three PDFs were rendered
+  `../StellCoilOpt_107Cup_Submission`, commit `e058ea0`. Three PDFs were rendered
   and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
   exactly 300 seconds with one burned-in bottom caption layer and no audio track.
   The archive's video directory contains only the final MP4; video generators,
@@ -475,13 +475,15 @@ Only current decisions are retained here; exact history is in
   six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
   1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
 - Final archive is
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541731227 bytes,
-  SHA-256 `5d28f6f3ac5f3499457f0a3ef5b73113b12ab53b86b1c0eb7e9eaea861d3d1d3`.
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541732562 bytes,
+  SHA-256 `c93bda587a6a3df21b0191718f77d83fdbc5ef04a3f19b71504164b1326b57f3`.
   ZIP CRC, all 172 internal hashes, six required package-path checks, checkpoint
   and sample verification, accounting verification, and all 81 tests pass.
-- 2026-08-28 official-source recheck identifies the training source as QUASR
-  v4, file `QUASR_08072024.tar.gz`, version DOI `10.5281/zenodo.13717741`, and
-  concept DOI `10.5281/zenodo.10050655`. Its Zenodo Rights section displays no
+- 2026-08-28 primary-source audit verifies all five design-document references:
+  QUASR v4 and its JPP paper, SIMSOPT, DESC Part 1, and Flow Matching. The
+  training source is QUASR v4, file `QUASR_08072024.tar.gz`, version DOI
+  `10.5281/zenodo.13717741`, and concept DOI `10.5281/zenodo.10050655`. Its
+  Zenodo Rights section displays no
   license value. Raw QUASR data remains external; the competition checkpoint is
   documented at `04_部署程序/StellCoilOpt/THIRD_PARTY_DATA.md`. The former
   top-level `07_许可与引用/` was removed so this supporting notice no longer

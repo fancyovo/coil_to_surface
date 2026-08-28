@@ -61,6 +61,19 @@ An open critical correction blocks promotion and external reporting.
   `reports/qh_score_throughput_and_continuous_surface_plan.md`.
 - Containment: root memory now separates the two objective definitions.
 
+## CORR-20260828-03 - Untracked inventory was understated
+
+- Severity/status: low / contained.
+- Discovered by: model during final mainline verification.
+- Error: the restructured root memory described the pre-existing untracked
+  inventory as hundreds of files. `git ls-files --others --exclude-standard`
+  reported 12,230 files on 2026-08-28.
+- Impact: no source, protocol, experiment, or numerical conclusion is affected;
+  all untracked files remained unstaged and untouched.
+- Corrected state: root memory now says "many thousands" and requires a live
+  count when the exact inventory matters, avoiding another stale snapshot.
+- Verification: tracked status remained clean after the consolidation commit.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

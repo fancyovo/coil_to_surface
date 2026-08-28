@@ -16,8 +16,9 @@
   declared active by this baseline. Before remote work, inspect the scheduler
   and read `REMOTE_CODEX_INSTRUCTIONS.md`; old logs and run directories do not
   establish current job state.
-- Hundreds of pre-existing untracked audit, bundle, run, and generated paths
-  are present. Preserve them and stage source changes explicitly.
+- Many thousands of pre-existing untracked audit, bundle, run, and generated
+  files are present. Preserve them and stage source changes explicitly; verify
+  the live count instead of treating a recorded count as stable.
 
 ## Current QH Default
 

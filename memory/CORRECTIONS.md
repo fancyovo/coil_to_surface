@@ -99,6 +99,21 @@ An open critical correction blocks promotion and external reporting.
   configure step. A new job ID and a passing hash/ABI/reference-score gate are
   required before any survey worker can run.
 
+## CORR-20260828-06 - Rebuild validation assumed a stable linker hash
+
+- Severity/status: medium / contained in code; replacement validation pending.
+- Discovered by: model from build jobs `46845` and `46850`.
+- Error: the second gate tried to compare a newly linked library against the
+  hash from the preceding build. Reconfiguration/relinking changes the GNU
+  build ID, so identical source and toolchain need not reproduce identical
+  binary bytes across separate jobs.
+- Impact: `46845` and `46850` stopped before native scoring. They produced no
+  accepted validation, random sample, or numerical conclusion.
+- Containment: one job now builds once, records that file's actual SHA-256, and
+  immediately validates the same bytes against ABI 10 and the frozen
+  `94.6368681663` reference score. The survey manifest must then pin the hash
+  recorded by that validation artifact; it may not trigger another rebuild.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

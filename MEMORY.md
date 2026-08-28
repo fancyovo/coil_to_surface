@@ -65,8 +65,15 @@
 - Remote build/reference-validation gate job `46832` ran on 2026-08-28 and
   failed before configuration because CMake was not on the compute-node PATH.
   It produced no library or numerical result. The launcher now activates the
-  pinned virtual environment before CMake. No random survey or clustering job
-  has been submitted yet; test-only prediction numbers are not jobs.
+  pinned virtual environment before CMake. Replacement job `46845` built commit
+  `af9db1d9`, producing SHA-256 `227b76f7274891c1866594683653ad5a45f045a016aab12c0293934aec396d62`,
+  then stopped at the intentional stored-binary hash gate before numerical
+  validation because the rebuilt bytes differ from the production archive.
+  Numerical reference-validation job `46850` also stopped before scoring
+  because relinking generated another build ID and therefore another byte hash.
+  The corrected gate validates and records one rebuilt file in the same job.
+  No random survey or clustering job has been submitted yet; test-only
+  prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

@@ -51,8 +51,10 @@
 
 - Registered experimental protocol `qh-data-gaussian-global-survey-v1` draws
   independent `N(0,1)` values in standardized coil-data coordinates and scores
-  them with independent current ABI-10 global evaluations. All 33 supported
-  `(nfp,n_base_coils)` groups are sampled exactly evenly across six workers.
+  them with independent current ABI-10 standalone global evaluations, using
+  library defaults with no optimizer-specific Python overrides. All 33
+  supported `(nfp,n_base_coils)` groups are sampled exactly evenly across six
+  workers.
 - This survey measures score-tail prevalence. It preserves the `score >= 20`
   tail and deterministic reconstruction metadata for every sample. A separate
   stratified 64-direction, 200-step data-space Adam follow-up is required to
@@ -72,8 +74,11 @@
   Numerical reference-validation job `46850` also stopped before scoring
   because relinking generated another build ID and therefore another byte hash.
   The corrected gate validates and records one rebuilt file in the same job.
-  No random survey or clustering job has been submitted yet; test-only
-  prediction numbers are not jobs.
+  Same-process build/reference gate job `46853` was submitted for commit
+  `ed832462`; it correctly rejected the first numerical comparison because the
+  validator had used optimizer center-score overrides against a standalone
+  reference. No random survey or clustering job has been submitted yet;
+  test-only prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

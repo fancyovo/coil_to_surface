@@ -51,6 +51,32 @@ FOLLOWUP_BANDS = (
 )
 
 
+def score_tokens_standalone(
+    library: Path,
+    tokens: np.ndarray,
+    *,
+    nfp: int,
+    device: int,
+) -> tuple[dict[str, Any], float]:
+    from stellarator_gpu import score_coils_native
+
+    values = np.asarray(tokens, dtype=np.float64)
+    if values.ndim != 2 or values.shape[1] != 100:
+        raise ValueError("tokens must have shape (n_base_coils, 100)")
+    started = time.perf_counter()
+    result = score_coils_native(
+        library,
+        values[:, :33],
+        values[:, 33:66],
+        values[:, 66:99],
+        values[:, 99],
+        int(nfp),
+        device_id=int(device),
+        target_helicity=(1, int(nfp)),
+    )
+    return result, time.perf_counter() - started
+
+
 def git_value(*args: str) -> str:
     return subprocess.run(
         ["git", *args],
@@ -162,8 +188,15 @@ def prepare(args: argparse.Namespace) -> None:
             "abi": 10,
             "target": "QH",
             "target_helicity": "(1,nfp)",
-            "iota_degree": 3,
-            "surface_theta_count": 128,
+            "configuration": "standalone library defaults; no Python overrides",
+            "resolved_key_defaults": {
+                "psi_grid": 48,
+                "iota_degree": 3,
+                "surface_selection_mode": 0,
+                "surface_theta_count": 256,
+                "surface_trace_steps": 800,
+                "surface_confidence_periods": 2,
+            },
             "axis_history": "independent global search; no continuation hint",
         },
         "sampling": {
@@ -282,7 +315,6 @@ def compact_failure(error: Exception) -> dict[str, Any]:
 def worker(args: argparse.Namespace) -> None:
     import torch
 
-    from scripts.optimize_flow_latent import result_valid, score_center
     from scripts.optimize_native_score_cem import compact_score_diagnostics
 
     manifest_path = args.run_root / "survey_manifest.json"
@@ -405,19 +437,16 @@ def worker(args: argparse.Namespace) -> None:
             score_started = time.perf_counter()
             error: str | None = None
             try:
-                native, score_wall = score_center(
+                native, score_wall = score_tokens_standalone(
                     library_path,
                     tokens,
                     nfp=nfp,
-                    score_device=args.device,
-                    iota_degree=int(manifest["evaluator"]["iota_degree"]),
-                    surface_theta_count=int(
-                        manifest["evaluator"]["surface_theta_count"]
-                    ),
-                    previous_result=None,
+                    device=args.device,
                 )
                 compact = compact_score_diagnostics(native)
-                valid = bool(result_valid(native))
+                valid = str(native.get("status")) == "ok" and math.isfinite(
+                    float(native.get("score", math.nan))
+                )
             except Exception as exc:
                 score_wall = time.perf_counter() - score_started
                 compact = compact_failure(exc)

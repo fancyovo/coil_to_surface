@@ -16,7 +16,7 @@ for search_path in (REPO_ROOT, REPO_ROOT / "gpu_backend" / "python"):
 
 from flow_matching.data import file_sha256  # noqa: E402
 from flow_matching.trajectory_dataset import atomic_write_json  # noqa: E402
-from scripts.optimize_flow_latent import score_center  # noqa: E402
+from scripts.qh_data_space_random_survey import score_tokens_standalone  # noqa: E402
 
 
 def case_tokens(payload: dict) -> tuple[np.ndarray, int]:
@@ -58,14 +58,11 @@ def main() -> None:
         raise ValueError(f"score-library SHA-256 mismatch: {library_sha}")
     tokens, nfp = case_tokens(json.loads(args.case.read_text(encoding="utf-8")))
     started = time.perf_counter()
-    result, score_wall_s = score_center(
+    result, score_wall_s = score_tokens_standalone(
         args.lib,
         tokens,
         nfp=nfp,
-        score_device=args.device,
-        iota_degree=3,
-        surface_theta_count=128,
-        previous_result=None,
+        device=args.device,
     )
     score = float(result["score"])
     abi = int(result["diagnostics"]["abi_version"])
@@ -87,6 +84,7 @@ def main() -> None:
         "score_delta": score - args.expected_score,
         "status": result["status"],
         "abi": abi,
+        "score_mode": "standalone library defaults; no Python overrides",
         "score_wall_s": score_wall_s,
         "process_wall_s": time.perf_counter() - started,
         "components": result["components"],

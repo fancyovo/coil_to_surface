@@ -114,6 +114,24 @@ An open critical correction blocks promotion and external reporting.
   `94.6368681663` reference score. The survey manifest must then pin the hash
   recorded by that validation artifact; it may not trigger another rebuild.
 
+## CORR-20260828-07 - Reference gate mixed standalone and optimizer score modes
+
+- Severity/status: high / contained in code; replacement validation pending.
+- Discovered by: model from job `46853` component diagnostics and the frozen
+  2026-08-19 scoring script.
+- Error: the first numerical gate compared a reference created with standalone
+  library defaults against a new call using optimizer center-score overrides
+  (`surface_selection_mode=1`, theta 128, trace 400). The resulting `93.2054`
+  was therefore compared with incompatible `94.6369` evidence.
+- Impact: job `46853` was rejected and no random survey ran. Its score is a
+  configuration diagnostic, not evidence of a source or evaluator regression.
+- Corrected fact: the frozen reference used `batch_native_score.py` with no
+  overrides: continuous standalone surface mode, theta 256, trace 800, and two
+  confidence periods. Main contains the reference commit's GPU source.
+- Containment: reference validation and random global workers now share one
+  standalone helper that passes no config overrides. The deferred Adam200 stage
+  remains separately labeled and uses its own frozen optimizer configuration.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

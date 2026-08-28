@@ -1,6 +1,6 @@
 # Local Surface Evaluator Project Memory
 
-> **Living source of truth. Last updated: 2026-08-27 (Asia/Shanghai).**
+> **Living source of truth. Last updated: 2026-08-28 (Asia/Shanghai).**
 >
 > This file was compacted on 2026-08-08. The exact pre-compaction memory is
 > preserved as `MEMORY_archive_20260808.md` (2,884 lines, 198,359 bytes,
@@ -463,29 +463,21 @@ Only current decisions are retained here; exact history is in
 
 ## 10. Active Next Action
 
-- 2026-08-27 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `02fe6e6`. The package contains
-  three visually verified PDFs, an exactly 300-second subtitled 1920x1080 demo,
-  deployable source, checkpoint, sample, Slurm evidence, and license notes.
-- 2026-08-27 subtitle packaging correction: the MP4 already contains burned-in
-  captions in its dedicated bottom band. A same-stem SRT beside the MP4 caused
-  media players to auto-load a second, oversized subtitle track. The SRT source
-  now lives at `03_演示视频/字幕稿/演示字幕稿.srt`, and the package builder
-  rejects any `StellCoilOpt_演示.srt` sidecar beside the video.
-- Project accounting evidence must retain the original per-job records and Job
-  IDs as an audit trail. The frozen submission contains 678 authenticated SCOW
-  raw detail records for 2026-08-05 through 2026-08-27, the normalized web TSV,
-  583 earlier `sacct` records, a 1261-row merged ledger with 1261 unique Job IDs,
-  and a selection/hash report. Recomputed totals are 1132 GPU jobs, 965.0633 GPU
-  hours, and 5284.1122 CPU core-hours. Canonical files are under
-  `../StellCoilOpt_107Cup_Submission/06_运行证据/Slurm/`; the package-level
-  verifier is `05_算力集群运行数据/verify_project_accounting.py`.
-- Final archive:
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 547770976 bytes,
-  SHA-256 `c4919d123976bac9b3296467b80e0d2d5c64055a637fc92bb83889c30fda542e`.
-  ZIP CRC, all 214 internal manifest hashes, the five accounting evidence files,
-  checkpoint/sample verification, Python/JSON/Bash checks, and all 81 tests pass.
-  Runtime Slurm jobs completed without residual processes; no project job is active.
+- 2026-08-28 competition materials are complete in sibling repository
+  `../StellCoilOpt_107Cup_Submission`, commit `6f124d1`. Three PDFs were rendered
+  and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
+  exactly 300 seconds with one burned-in bottom caption layer and an original,
+  low-volume AAC music track. The builder rejects any same-name external SRT.
+- Accounting evidence retains 678 authenticated SCOW details, 583 earlier
+  `sacct` records, and a 1261-row merged ledger with unique Job IDs. The new
+  `06_运行证据/Slurm/项目作业流水与汇总.xlsx` is the human-readable
+  six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
+  1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
+- Final archive is
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 554225640 bytes,
+  SHA-256 `c913e27f914fbff690bfdd3364bc08379d42420fb4ebf3f1fc70d4a97d9fd726`.
+  ZIP CRC, all 216 internal hashes, six required package-path checks, checkpoint
+  and sample verification, accounting verification, and all 81 tests pass.
 - QUASR's Zenodo record has no declared dataset license. The package therefore
   includes the trained checkpoint and a project-generated sample, while raw
   QUASR data remains external. No team-name field is required by the notice;

@@ -74,6 +74,19 @@ An open critical correction blocks promotion and external reporting.
   count when the exact inventory matters, avoiding another stale snapshot.
 - Verification: tracked status remained clean after the consolidation commit.
 
+## CORR-20260828-04 - Zero-hit Wilson lower endpoint retained roundoff
+
+- Severity/status: low / contained before experiment submission.
+- Discovered by: model through the new random-survey unit tests.
+- Error: the first implementation of the score-tail Wilson interval returned a
+  lower endpoint of `2.17e-19` for zero successes in 1000 trials. The exact
+  probability boundary for a zero-hit report must be 0.
+- Impact: no remote survey, report, numerical conclusion, or saved artifact used
+  the faulty formatter. The error existed only in uncommitted code and was
+  caught by the zero-success regression test.
+- Containment: zero successes now force the lower endpoint to 0, all successes
+  force the upper endpoint to 1, and the focused test suite passes.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

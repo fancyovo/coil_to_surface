@@ -65,6 +65,32 @@ explicitly requests a future two-direction study, create a new protocol on a
 dedicated branch, write a new launcher and manifest, and deliberately review
 the guard. Do not edit, copy, or re-enable a historical launcher.
 
+## Registered Experimental Protocols
+
+### `qh-data-gaussian-global-survey-v1`
+
+Status: `registered-experimental` on
+`codex/qh-basin-atlas-random-survey` (2026-08-28).
+
+This initialization survey draws independent standard Gaussians in the fixed
+per-coordinate coil-data normalization. It applies the condition-specific
+current L1 and dominant-sign projection, then runs one history-independent
+current ABI-10 QH global evaluation. The sampling prior is exactly balanced
+over all 33 QUASR-supported `(nfp,n_base_coils)` groups. Six one-GPU workers use
+disjoint machine-recorded random streams and atomic resumable output chunks.
+
+The global survey records score-tail prevalence and retains every candidate at
+score 20 or above. It does not classify a start as optimizable. After the
+survey, a separate score-stratified follow-up must run 200 data-space Adam
+updates with 64 fresh random-orthogonal centered directions, perturbation
+`0.0025`, learning rate `0.01`, and beta `(0.7,0.999)`. The final basin-rate
+estimate combines condition-balanced score-band prevalence with weighted Adam
+success rates. Its cost report includes both global evaluations and conditional
+Adam200 work.
+
+This protocol neither uses Flow decoding nor changes
+`qh-flow-screen32-adam200-64d-v1`. Exactly two directions remain prohibited.
+
 ## Deprecated 2D Registry
 
 All entries below are `historical-deprecated`; an entry may also have an

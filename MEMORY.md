@@ -8,14 +8,18 @@
 - The authoritative private development baseline is `main` after the
   2026-08-28 consolidation. Verify the actual checkout and HEAD with Git at the
   start of repository work; do not infer them from this file.
+- The active checkout is the exploration branch
+  `codex/qh-basin-atlas-random-survey`, created from
+  `main@4c446b6d3c923d2ace38a6be7b6e57b31cf6285a`. It studies QUASR geometric
+  structure and independent standardized-data random starts; it does not
+  replace the current QH default.
 - The sanitized open-source sibling `../opensource_staging` was verified clean
   on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
-- No experiment is selected as the next exploration and no remote job is
-  declared active by this baseline. Before remote work, inspect the scheduler
-  and read `REMOTE_CODEX_INSTRUCTIONS.md`; old logs and run directories do not
-  establish current job state.
+- Before remote work, inspect the scheduler and read
+  `REMOTE_CODEX_INSTRUCTIONS.md`. Old logs and run directories never establish
+  current job state; only job IDs recorded under Active Exploration do.
 - Many thousands of pre-existing untracked audit, bundle, run, and generated
   files are present. Preserve them and stage source changes explicitly; verify
   the live count instead of treating a recorded count as stable.
@@ -42,6 +46,22 @@
   branch, launcher, and review of the guard; historical 2D files remain inert.
 - Full rules, manifest fields, and the historical protocol registry are in
   `memory/PROTOCOLS.md`.
+
+## Active Exploration
+
+- Registered experimental protocol `qh-data-gaussian-global-survey-v1` draws
+  independent `N(0,1)` values in standardized coil-data coordinates and scores
+  them with independent current ABI-10 global evaluations. All 33 supported
+  `(nfp,n_base_coils)` groups are sampled exactly evenly across six workers.
+- This survey measures score-tail prevalence. It preserves the `score >= 20`
+  tail and deterministic reconstruction metadata for every sample. A separate
+  stratified 64-direction, 200-step data-space Adam follow-up is required to
+  estimate the optimizable-basin rate and its additional accelerator cost;
+  score thresholds alone are not that rate.
+- QUASR structure analysis uses all 170,755 QH entries, condition-stratified
+  permutation/rotation/parameterization-robust geometric descriptors, stable
+  partitions, nearest-neighbor density, medoids, and a reusable novelty
+  reference. No remote job has been submitted yet.
 
 ## Current Evaluator And Physical Contract
 

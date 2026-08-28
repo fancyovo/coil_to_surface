@@ -464,7 +464,7 @@ Only current decisions are retained here; exact history is in
 ## 10. Active Next Action
 
 - 2026-08-28 competition materials are complete in sibling repository
-  `../StellCoilOpt_107Cup_Submission`, commit `2dd8893`. Three PDFs were rendered
+  `../StellCoilOpt_107Cup_Submission`, commit `e057d0f`. Three PDFs were rendered
   and visually checked; Figure 2 arrows were corrected. The 1920x1080 demo is
   exactly 300 seconds with one burned-in bottom caption layer and no audio track.
   The archive's video directory contains only the final MP4; video generators,
@@ -475,11 +475,16 @@ Only current decisions are retained here; exact history is in
   six-sheet view; raw JSON/TSV remains the audit source. Recomputed totals are
   1132 GPU jobs, 965.0633 GPU hours, and 5284.1122 CPU core-hours.
 - Final archive is
-  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541726943 bytes,
-  SHA-256 `407ed66a802b0c12e95bda4e479d433adf9f518d8a3ffd999fffebe1bd547739`.
+  `package/PB24511935+17855136690+算力平台赛道+本科生队伍.zip`, 541731227 bytes,
+  SHA-256 `5d28f6f3ac5f3499457f0a3ef5b73113b12ab53b86b1c0eb7e9eaea861d3d1d3`.
   ZIP CRC, all 172 internal hashes, six required package-path checks, checkpoint
   and sample verification, accounting verification, and all 81 tests pass.
-- QUASR's Zenodo record has no declared dataset license. The package therefore
-  includes the trained checkpoint and a project-generated sample, while raw
-  QUASR data remains external. No team-name field is required by the notice;
-  submission documents state only the category `本科生队伍` and entrant name.
+- 2026-08-28 official-source recheck identifies the training source as QUASR
+  v4, file `QUASR_08072024.tar.gz`, version DOI `10.5281/zenodo.13717741`, and
+  concept DOI `10.5281/zenodo.10050655`. Its Zenodo Rights section displays no
+  license value. Raw QUASR data remains external; the competition checkpoint is
+  documented at `04_部署程序/StellCoilOpt/THIRD_PARTY_DATA.md`. The former
+  top-level `07_许可与引用/` was removed so this supporting notice no longer
+  appears as a peer of required submission items. No team-name field is required
+  by the notice; submission documents state only category `本科生队伍` and the
+  entrant name.

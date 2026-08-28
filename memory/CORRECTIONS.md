@@ -174,6 +174,9 @@ An open critical correction blocks promotion and external reporting.
   reference preflight, requires the current value within `1e-5`, and records
   GPU UUID plus driver version. The six-GPU pilot will detect device-level
   differences before the formal sample count is calibrated.
+- Verification: current-runtime gate job `46869` passed with three values equal
+  to `94.6254147736` within `1.42e-14`, ABI 10, production library SHA-256
+  `565c3207...c729`, and driver `580.173.02`.
 
 ## Required Entry Template
 

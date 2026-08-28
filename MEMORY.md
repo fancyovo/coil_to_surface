@@ -84,8 +84,10 @@
   `94.6254148` identically three times, disproving the warmup explanation. The
   2026-08-19 `94.6368682` remains a historical recorded observation; its runtime
   environment was not captured sufficiently to reproduce the small difference.
-  No random survey or clustering job has been submitted yet; test-only
-  prediction numbers are not jobs.
+  Current-runtime gate job `46869` passed on driver `580.173.02`: three scores
+  matched `94.6254147736` with maximum spread `1.42e-14`, using the frozen input
+  and production-library hashes. No random survey or clustering job has been
+  submitted yet; test-only prediction numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

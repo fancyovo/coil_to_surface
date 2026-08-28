@@ -36,6 +36,7 @@ def test_manifest_conditions_are_numeric_and_sorted() -> None:
 def test_worker_count_parsing_supports_uniform_and_calibrated_counts() -> None:
     assert parse_worker_counts("7", 3) == [7, 7, 7]
     assert parse_worker_counts("7,8,9", 3) == [7, 8, 9]
+    assert parse_worker_counts("7:8:9", 3) == [7, 8, 9]
 
 
 def test_existing_rows_must_be_contiguous_without_duplicates() -> None:

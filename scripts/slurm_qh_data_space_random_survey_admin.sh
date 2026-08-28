@@ -39,6 +39,7 @@ case "$admin_mode" in
       --data-dir "${DATA_DIR:?DATA_DIR is required}" \
       --worker-count "${WORKER_COUNT:-6}" \
       --worker-samples-per-condition "${WORKER_SAMPLES_PER_CONDITION:-2}" \
+      --expected-target-sample-count "${EXPECTED_TARGET_SAMPLE_COUNT:?EXPECTED_TARGET_SAMPLE_COUNT is required}" \
       --seed-base "${SEED_BASE:-2026082801}" \
       --tail-retention-score "${TAIL_RETENTION_SCORE:-20.0}" \
       --expected-checkpoint-sha "${EXPECTED_CHECKPOINT_SHA:-39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f}" \

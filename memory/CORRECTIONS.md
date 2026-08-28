@@ -178,6 +178,25 @@ An open critical correction blocks promotion and external reporting.
   to `94.6254147736` within `1.42e-14`, ABI 10, production library SHA-256
   `565c3207...c729`, and driver `580.173.02`.
 
+## CORR-20260828-10 - Slurm export truncated calibrated worker counts
+
+- Severity/status: medium / contained before formal sampling.
+- Discovered by: model from prepare job `46890` stdout and its generated
+  manifest, before any formal GPU worker submission.
+- Error: the calibrated list `223,231,233,234,238,240` was passed inside
+  Slurm's comma-delimited `--export` argument. Slurm assigned only `223` to the
+  value and parsed the remaining numbers as separate export entries, so the
+  prepare script expanded a uniform count of 223 to all six workers.
+- Impact: job `46890` created a 44,154-sample manifest with six equal 7,359
+  targets. It produced no global evaluation, candidate, clustering result, or
+  numerical conclusion. The run directory is retained and classified invalid.
+- Corrected fact: the pilot calibration requires per-condition counts
+  `[223,231,233,234,238,240]`, whose sum is 1,399 and whose 33-condition total
+  is 46,167 samples.
+- Containment: the parser now accepts colon-delimited counts for Slurm export,
+  and `prepare` requires an independent expected total sample count before it
+  creates a run directory. The replacement formal run uses a new `v2` path.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

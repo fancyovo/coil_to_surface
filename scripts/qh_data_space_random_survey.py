@@ -123,13 +123,17 @@ def git_dirty() -> bool:
 
 
 def parse_worker_counts(text: str, worker_count: int) -> list[int]:
-    counts = [int(value.strip()) for value in text.split(",") if value.strip()]
+    counts = [
+        int(value.strip())
+        for value in re.split(r"[,:]", text)
+        if value.strip()
+    ]
     if len(counts) == 1:
         counts *= worker_count
     if len(counts) != worker_count or any(value < 1 for value in counts):
         raise ValueError(
             "worker samples per condition must be one positive integer or one "
-            "positive integer per worker"
+            "comma/colon-separated positive integer per worker"
         )
     return counts
 
@@ -176,6 +180,12 @@ def prepare(args: argparse.Namespace) -> None:
     worker_samples = parse_worker_counts(
         args.worker_samples_per_condition, args.worker_count
     )
+    target_sample_count = len(conditions) * sum(worker_samples)
+    if target_sample_count != args.expected_target_sample_count:
+        raise ValueError(
+            "computed target sample count does not match the required total: "
+            f"{target_sample_count} != {args.expected_target_sample_count}"
+        )
 
     args.run_root.mkdir(parents=True)
     for name in ("workers", "candidates", "logs"):
@@ -266,7 +276,7 @@ def prepare(args: argparse.Namespace) -> None:
             for index in range(args.worker_count)
         ],
         "worker_count": args.worker_count,
-        "target_sample_count": len(conditions) * sum(worker_samples),
+        "target_sample_count": target_sample_count,
         "deferred_adam_followup": {
             "reason": (
                 "Adam200 is scheduled separately so its candidate-dependent cost "
@@ -829,6 +839,9 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--data-dir", type=Path, required=True)
     prepare_parser.add_argument("--worker-count", type=int, default=6)
     prepare_parser.add_argument("--worker-samples-per-condition", default="2")
+    prepare_parser.add_argument(
+        "--expected-target-sample-count", type=int, required=True
+    )
     prepare_parser.add_argument("--seed-base", type=int, default=2026082801)
     prepare_parser.add_argument("--tail-retention-score", type=float, default=20.0)
     prepare_parser.add_argument(

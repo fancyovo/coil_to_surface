@@ -93,8 +93,12 @@
   `5.88136`, with zero scores at least 10. Calibration jobs `46886` and `46887`
   set the formal worker samples per condition to `[223,231,233,234,238,240]`,
   totaling 46,167 global evaluations with predicted per-worker wall times
-  `35246`--`35292` seconds. No formal survey or clustering job has been
-  submitted yet; test-only prediction numbers are not jobs.
+  `35246`--`35292` seconds. Prepare job `46890` produced an invalid 44,154-sample
+  manifest because Slurm split the comma-delimited worker-count environment
+  value; the manifest is retained as invalid and no worker used it. A colon
+  encoding and required total-count gate now prevent recurrence. No formal
+  survey worker or clustering job has been submitted yet; test-only prediction
+  numbers are not jobs.
 
 ## Current Evaluator And Physical Contract
 

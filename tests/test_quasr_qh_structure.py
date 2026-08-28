@@ -154,4 +154,14 @@ def test_small_atlas_runs_end_to_end(tmp_path: Path) -> None:
     summary = json.loads((output / "atlas_summary.json").read_text(encoding="utf-8"))
     assert summary["aggregate"]["sample_count"] == 40
     assert summary["groups"][0]["selected_k"] in {2, 3}
+    assert summary["aggregate"]["hard_group_count"] == 1
+    assert summary["aggregate"]["n_base_coils_values"] == [2]
+    assert summary["aggregate"]["leaf_cluster_count"] == summary["groups"][0]["selected_k"]
+    assert summary["aggregate"]["leaf_cluster_count_by_n_base_coils"] == {
+        "2": summary["groups"][0]["selected_k"]
+    }
+    assert summary["aggregate"]["selected_k_per_hard_group_range"] == [
+        summary["groups"][0]["selected_k"],
+        summary["groups"][0]["selected_k"],
+    ]
     assert (output / "novelty_reference.json").is_file()

@@ -539,14 +539,16 @@ def plot_overview(groups: list[dict[str, Any]], output_dir: Path) -> None:
     )
     for row in groups:
         axes[0].text(row["nfp"] + 0.06, row["n_base_coils"] + 0.06, str(row["selected_k"]), fontsize=7)
+    hard_group_count = len(groups)
+    leaf_cluster_count = sum(int(row["selected_k"]) for row in groups)
     axes[0].set(
         xlabel="Field periods (nfp)",
         ylabel="Base-coil count",
-        title="Condition groups and selected atlas partitions",
+        title="Hard condition groups and within-group partitions",
         xticks=range(2, 9),
         yticks=range(1, 6),
     )
-    figure.colorbar(scatter, ax=axes[0], label="Selected partition count")
+    figure.colorbar(scatter, ax=axes[0], label="Within-group partition count")
 
     ordered = sorted(groups, key=lambda row: (-row["sample_count"], row["group"]))
     x = np.arange(len(ordered))
@@ -565,6 +567,11 @@ def plot_overview(groups: list[dict[str, Any]], output_dir: Path) -> None:
     axes[1].tick_params(axis="x", labelrotation=90, labelsize=6)
     twin.set_ylabel("Largest-cluster share")
     twin.set_ylim(0.0, 1.0)
+    figure.suptitle(
+        f"{hard_group_count} hard (nfp, base-coil count) groups; "
+        f"{leaf_cluster_count} total leaf partitions",
+        fontsize=12,
+    )
     figure.savefig(output_dir / "group_structure_overview.png", dpi=190)
     plt.close(figure)
 
@@ -779,6 +786,14 @@ def main() -> None:
         models[summary["group"]] = model
         print(json.dumps({"event": "group_complete", **{name: summary[name] for name in ("group", "sample_count", "selected_k", "wall_s")}}), flush=True)
     plot_overview(summaries, args.output_dir)
+    leaf_cluster_count_by_n_base_coils = {
+        str(ncoils): sum(
+            int(row["selected_k"])
+            for row in summaries
+            if int(row["n_base_coils"]) == ncoils
+        )
+        for ncoils in sorted({int(row["n_base_coils"]) for row in summaries})
+    }
     atlas = {
         "format": FORMAT,
         "created_unix_s": time.time(),
@@ -813,6 +828,18 @@ def main() -> None:
         "groups": summaries,
         "aggregate": {
             "sample_count": sum(row["sample_count"] for row in summaries),
+            "hard_group_count": len(summaries),
+            "n_base_coils_values": sorted(
+                {int(row["n_base_coils"]) for row in summaries}
+            ),
+            "leaf_cluster_count": sum(
+                int(row["selected_k"]) for row in summaries
+            ),
+            "leaf_cluster_count_by_n_base_coils": leaf_cluster_count_by_n_base_coils,
+            "selected_k_per_hard_group_range": [
+                min(row["selected_k"] for row in summaries),
+                max(row["selected_k"] for row in summaries),
+            ],
             "selected_k_range": [min(row["selected_k"] for row in summaries), max(row["selected_k"] for row in summaries)],
             "sample_weighted_effective_cluster_count": float(
                 np.average(

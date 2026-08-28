@@ -66,7 +66,12 @@
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty
-  reference.
+  reference. The hierarchy first hard-splits 33 supported
+  `(nfp,n_base_coils)` groups, then selects 2--3 geometric partitions inside
+  each group. The 2026-08-28 atlas therefore has 72 leaf partitions; its leaf
+  counts for `n_base_coils=1..5` are `[11,15,14,17,15]`. Different base-coil
+  counts never share a group or leaf. The sample-weighted within-group effective
+  count is 1.599 and the sample-weighted largest-partition share is 81.28%.
 - Remote build/reference-validation gate job `46832` ran on 2026-08-28 and
   failed before configuration because CMake was not on the compute-node PATH.
   It produced no library or numerical result. The launcher now activates the
@@ -97,8 +102,13 @@
   manifest because Slurm split the comma-delimited worker-count environment
   value; the manifest is retained as invalid and no worker used it. A colon
   encoding and required total-count gate now prevent recurrence. No formal
-  survey worker or clustering job has been submitted yet; test-only prediction
-  numbers are not jobs.
+  worker used the invalid manifest. Corrected formal run
+  `qh_data_gaussian_global_formal_10h_v2_20260828` targets 46,167 samples.
+  P107 array `46898` runs workers 0--2 and Students array `46901` runs workers
+  4--5. CPU clustering job `46903` completed in 83.29 seconds, after which P107
+  job `46905` started worker 3. All six GPU workers passed the per-process
+  `94.6254148` reference gate and are running. Test-only prediction numbers are
+  not jobs.
 
 ## Current Evaluator And Physical Contract
 

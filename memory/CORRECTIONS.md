@@ -197,6 +197,32 @@ An open critical correction blocks promotion and external reporting.
   and `prepare` requires an independent expected total sample count before it
   creates a run directory. The replacement formal run uses a new `v2` path.
 
+## CORR-20260828-11 - Per-condition cluster counts were described as a global count
+
+- Severity/status: medium / contained before the clustering report.
+- Discovered by: user review of the first clustering status interpretation.
+- Error: an interim update stated that the selected cluster count ranged from
+  2 to 3 without naming its per-`(nfp,n_base_coils)` scope. That wording could
+  be read as a global taxonomy and ignored the physical distinction among five
+  base-coil counts.
+- Primary evidence: `atlas_summary.json` contains 33 separately analyzed
+  `(nfp,n_base_coils)` groups. Summing each group's `selected_k` gives 72 leaf
+  partitions. The leaf totals for `n_base_coils=1..5` are
+  `[11,15,14,17,15]`.
+- Corrected fact: the atlas is hierarchical. Level 1 contains 33 hard physical
+  condition groups; level 2 contains 2--3 geometric partitions per hard group;
+  the complete atlas contains 72 leaves. Samples with different base-coil
+  counts never enter the same group or leaf.
+- Scope and retained conclusions: clustering assignments and numerical output
+  remain valid. Only the interim verbal interpretation was wrong. The strong
+  within-group concentration result also remains valid.
+- Containment: future atlas summaries explicitly record hard-group count,
+  total leaf count, leaf count by base-coil count, and the per-hard-group range.
+  The overview figure names its colors as within-group partition counts and
+  prints both global totals. End-to-end tests assert the hierarchy fields.
+- Reporting blocker: resolved once the corrected atlas is regenerated and the
+  report uses the two-level terminology throughout.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

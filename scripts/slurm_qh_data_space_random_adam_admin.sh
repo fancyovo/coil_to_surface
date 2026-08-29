@@ -21,6 +21,9 @@ source "${VENV:-$HOME/coil/.venv}/bin/activate"
 cd "$project"
 test "$(git rev-parse HEAD)" = "$expected_commit"
 test -z "$(git status --porcelain --untracked-files=no)"
+cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(torch.__file__).resolve().parents[1] / "nvidia" / "cu13" / "lib")')"
+test -f "$cuda_wheel_lib/libcusolver.so.12"
+export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
@@ -35,6 +38,8 @@ case "$admin_mode" in
       --run-label "${RUN_LABEL:?RUN_LABEL is required}" \
       --checkpoint "${CHECKPOINT:?CHECKPOINT is required}" \
       --lib "${SCORE_LIB:?SCORE_LIB is required}" \
+      --gradient-lib "${GRADIENT_LIB:?GRADIENT_LIB is required}" \
+      --expected-gradient-lib-sha "${EXPECTED_GRADIENT_LIB_SHA:?EXPECTED_GRADIENT_LIB_SHA is required}" \
       --reference-case "${REFERENCE_CASE:?REFERENCE_CASE is required}" \
       --worker-count "${WORKER_COUNT:-6}" \
       --selection-seed "${SELECTION_SEED:-2026082901}" \

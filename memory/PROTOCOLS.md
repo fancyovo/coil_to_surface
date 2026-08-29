@@ -30,7 +30,8 @@ Protocol ID: `qh-flow-screen32-adam200-64d-v1`.
 | Learning rate | `0.02` |
 | Adam beta | `(0.7, 0.999)` |
 | Flow decode | FP32 RK4-128 |
-| Evaluator | current ABI-10 cubic-iota native library |
+| Formal evaluator | current compressed ABI-10 cubic-iota native library |
+| Local-gradient oracle | query-batched ABI-10 library, separately identified |
 | Axis handling | strict continuation, mode 2, within an optimization only |
 
 The shared constants and classifier are in `flow_matching/optimization.py`.
@@ -38,13 +39,21 @@ Canonical commands are implemented by `scripts/screen_flow_starts.py` and
 `scripts/optimize_flow_latent.py`. Compatibility wrappers and Slurm launchers
 must inherit the shared values rather than defining another default.
 
+The current compressed formal library SHA-256 `565c3207...c729` does not export
+the query-batched field API. `CORR-20260829-15` therefore blocks new default
+launches until the dual-library execution contract is validated and promoted:
+the formal library scores every accepted center, while a separately hashed
+batch library supplies only the approximate local-gradient oracle. This
+corrects artifact plumbing without changing the 32/200/64D method definition.
+
 ## Run Gate
 
 Every new run must write a machine-readable protocol block containing at least:
 
 - protocol ID and status;
 - code commit and dirty-state declaration;
-- score-library ABI and SHA-256;
+- formal score-library ABI, SHA-256, and role;
+- local-gradient library ABI, SHA-256, required batch symbols, and role;
 - Flow checkpoint SHA-256 and decoder discretization;
 - input identity, `nfp`, base-coil count, and random seeds;
 - parameter space and optimizer;
@@ -91,6 +100,14 @@ updates with 64 fresh random-orthogonal centered directions, perturbation
 estimate combines condition-balanced score-band prevalence with weighted Adam
 success rates. Its cost report includes both global evaluations and conditional
 Adam200 work.
+
+The follow-up uses an explicit dual-library contract. Formal initial and trial
+centers use compressed ABI-10 library SHA-256 `565c3207...c729`, preserving the
+global-survey scale and `94.6254147736` reference. The local endpoint oracle
+uses current-source query-batch library SHA-256 `b6697f54...48d6`; its separate
+ABI-10 reference is `94.6368686721`. The optimizer manifest records both roles
+and hashes. Only formal-library scores define improvements, thresholds, and
+basin success; the batch library cannot contribute a reported candidate score.
 
 The immutable first selection contains all 10 `score >= 20` samples and four
 uniform `[0,20)` controls. The four controls happened to have `no_axis` status,

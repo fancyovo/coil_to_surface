@@ -19,6 +19,8 @@ asset_root="${ASSET_ROOT:-$HOME/local_surface_evaluator}"
 checkpoint="${FLOW_CHECKPOINT:-$asset_root/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt}"
 lib="${SCORE_LIB:?SCORE_LIB must name the validated experimental score library}"
 expected_lib_sha="${EXPECTED_SCORE_LIB_SHA:-565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729}"
+gradient_lib="${GRADIENT_LIB:-$lib}"
+expected_gradient_lib_sha="${EXPECTED_GRADIENT_LIB_SHA:-$expected_lib_sha}"
 initial_case="${INITIAL_CASE:?INITIAL_CASE must name selected_start.json from screen_flow_starts.py}"
 run_root="${RUN_ROOT:-$project/runs/qh_flow_latent/${SLURM_JOB_ID}}"
 iterations="${ITERATIONS:-200}"
@@ -46,9 +48,15 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$run_root"
 cd "$project"
+if [[ -n "${EXPECTED_COMMIT:-}" ]]; then
+  test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+fi
+test -z "$(git status --porcelain --untracked-files=no)"
 test -f "$checkpoint"
 test -f "$lib"
 test "$(sha256sum "$lib" | awk '{print $1}')" = "$expected_lib_sha"
+test -f "$gradient_lib"
+test "$(sha256sum "$gradient_lib" | awk '{print $1}')" = "$expected_gradient_lib_sha"
 test -f "$initial_case"
 : "${gpu_selector:?CUDA_VISIBLE_DEVICES is required}"
 
@@ -103,7 +111,10 @@ python "$project/scripts/optimize_flow_latent.py" \
   --checkpoint "$checkpoint" \
   --initial-case "$initial_case" \
   --lib "$lib" \
+  --gradient-lib "$gradient_lib" \
   --out-dir "$run_root" \
+  --nfp "${NFP:-4}" \
+  --n-base-coils "${N_BASE_COILS:-3}" \
   --iterations "$iterations" \
   --max-wall-s "$max_wall_s" \
   --flow-steps "${FLOW_STEPS:-128}" \

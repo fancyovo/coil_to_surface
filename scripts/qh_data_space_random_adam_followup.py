@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+import ctypes
 import json
 import math
 import os
@@ -61,6 +62,19 @@ ADAM_SETTINGS = {
     "formal_surface_theta_count": 128,
     "local_surface_theta_count": 64,
 }
+OPTIMIZER_LIBRARY_SYMBOLS = (
+    "sgpu_create_field_batch_f32",
+    "sgpu_destroy_field_batch",
+    "sgpu_batch_eval_B_f32",
+    "sgpu_batch_eval_B_grad_f32",
+    "sgpu_batch_trace_period_mixed",
+    "sgpu_batch_trace_axis_samples",
+    "sgpu_batch_refine_axis_hint",
+    "sgpu_score_coils_capture_psi_center",
+    "sgpu_fit_psi_batch_pcgls_f32",
+    "sgpu_score_coils_local_batch",
+    "sgpu_clear_psi_warm_preconditioner",
+)
 
 
 def git_value(*args: str) -> str:
@@ -75,6 +89,21 @@ def git_value(*args: str) -> str:
 
 def git_dirty() -> bool:
     return bool(git_value("status", "--porcelain", "--untracked-files=no"))
+
+
+def validate_optimizer_library_api(path: Path) -> None:
+    try:
+        library = ctypes.CDLL(str(path))
+    except OSError as exc:
+        raise RuntimeError(f"optimizer library cannot be loaded: {path}: {exc}") from exc
+    missing = [
+        symbol for symbol in OPTIMIZER_LIBRARY_SYMBOLS if not hasattr(library, symbol)
+    ]
+    if missing:
+        raise RuntimeError(
+            "optimizer library lacks required batch API symbols: "
+            + ", ".join(missing)
+        )
 
 
 def parse_low_ok_quotas(text: str) -> dict[int, int]:
@@ -433,6 +462,9 @@ def prepare(args: argparse.Namespace) -> None:
         raise ValueError("normalizer checkpoint SHA-256 changed")
     if file_sha256(args.lib) != args.expected_lib_sha:
         raise ValueError("score-library SHA-256 changed")
+    if file_sha256(args.gradient_lib) != args.expected_gradient_lib_sha:
+        raise ValueError("gradient-library SHA-256 changed")
+    validate_optimizer_library_api(args.gradient_lib)
     if file_sha256(args.reference_case) != args.expected_reference_case_sha:
         raise ValueError("reference-case SHA-256 changed")
 
@@ -525,6 +557,11 @@ def prepare(args: argparse.Namespace) -> None:
         "evaluator": {
             "library": str(args.lib.resolve()),
             "library_sha256": args.expected_lib_sha,
+            "library_role": "formal center and survey-reproduction score",
+            "gradient_library": str(args.gradient_lib.resolve()),
+            "gradient_library_sha256": args.expected_gradient_lib_sha,
+            "gradient_library_role": "query-batched local-gradient oracle only",
+            "optimizer_required_symbols": list(OPTIMIZER_LIBRARY_SYMBOLS),
             "abi": 10,
             "reference_case": str(args.reference_case.resolve()),
             "reference_case_sha256": args.expected_reference_case_sha,
@@ -606,7 +643,12 @@ def _log_tail(path: Path, line_count: int = 30) -> str:
     return "\n".join(lines[-line_count:])
 
 
-def validate_optimizer_summary(summary: dict[str, Any]) -> None:
+def validate_optimizer_summary(
+    summary: dict[str, Any],
+    *,
+    expected_formal_library_sha: str | None = None,
+    expected_gradient_library_sha: str | None = None,
+) -> None:
     if (
         summary.get("status") != "ok"
         or summary.get("stop_reason") != "completed_iterations"
@@ -643,6 +685,14 @@ def validate_optimizer_summary(summary: dict[str, Any]) -> None:
         "beta2": math.isclose(float(adam["beta2"]), ADAM_SETTINGS["beta2"]),
     }
     failed = [name for name, valid in checks.items() if not valid]
+    if expected_formal_library_sha is not None and str(
+        manifest.get("formal_score_library", {}).get("sha256")
+    ) != expected_formal_library_sha:
+        failed.append("formal_score_library")
+    if expected_gradient_library_sha is not None and str(
+        manifest.get("gradient_library", {}).get("sha256")
+    ) != expected_gradient_library_sha:
+        failed.append("gradient_library")
     if failed:
         raise RuntimeError(f"optimizer manifest mismatch: {failed}")
 
@@ -676,11 +726,16 @@ def worker(args: argparse.Namespace) -> None:
 
     checkpoint_path = Path(manifest["normalizer"]["checkpoint"])
     library_path = Path(manifest["evaluator"]["library"])
+    gradient_library_path = Path(manifest["evaluator"]["gradient_library"])
     reference_path = Path(manifest["evaluator"]["reference_case"])
     source_manifest_path = Path(manifest["source_survey"]["manifest"])
     source_paths = (
         (checkpoint_path, manifest["normalizer"]["checkpoint_sha256"]),
         (library_path, manifest["evaluator"]["library_sha256"]),
+        (
+            gradient_library_path,
+            manifest["evaluator"]["gradient_library_sha256"],
+        ),
         (reference_path, manifest["evaluator"]["reference_case_sha256"]),
         (source_manifest_path, manifest["source_survey"]["manifest_sha256"]),
         (
@@ -699,6 +754,7 @@ def worker(args: argparse.Namespace) -> None:
     for path, expected_sha in source_paths:
         if file_sha256(path) != expected_sha:
             raise ValueError(f"frozen dependency changed: {path}")
+    validate_optimizer_library_api(gradient_library_path)
 
     torch.cuda.set_device(args.device)
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
@@ -840,6 +896,8 @@ def worker(args: argparse.Namespace) -> None:
                     str(initial_case_path),
                     "--lib",
                     str(library_path),
+                    "--gradient-lib",
+                    str(gradient_library_path),
                     "--out-dir",
                     str(optimization_dir),
                     "--nfp",
@@ -905,7 +963,15 @@ def worker(args: argparse.Namespace) -> None:
                     summary = json.loads(
                         (optimization_dir / "summary.json").read_text(encoding="utf-8")
                     )
-                    validate_optimizer_summary(summary)
+                    validate_optimizer_summary(
+                        summary,
+                        expected_formal_library_sha=manifest["evaluator"][
+                            "library_sha256"
+                        ],
+                        expected_gradient_library_sha=manifest["evaluator"][
+                            "gradient_library_sha256"
+                        ],
+                    )
                     outcome = {
                         **base_outcome,
                         "outcome_status": "adam_complete",
@@ -1141,6 +1207,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--run-label", required=True)
     prepare_parser.add_argument("--checkpoint", type=Path, required=True)
     prepare_parser.add_argument("--lib", type=Path, required=True)
+    prepare_parser.add_argument("--gradient-lib", type=Path, required=True)
     prepare_parser.add_argument("--reference-case", type=Path, required=True)
     prepare_parser.add_argument("--worker-count", type=int, default=6)
     prepare_parser.add_argument("--selection-seed", type=int, default=2026082901)
@@ -1163,6 +1230,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--expected-checkpoint-sha", default=NORMALIZER_CHECKPOINT_SHA256
     )
     prepare_parser.add_argument("--expected-lib-sha", default=CURRENT_SCORE_SHA256)
+    prepare_parser.add_argument("--expected-gradient-lib-sha", required=True)
     prepare_parser.add_argument(
         "--expected-reference-case-sha", default=REFERENCE_CASE_SHA256
     )

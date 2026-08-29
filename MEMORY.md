@@ -35,6 +35,12 @@
   `scripts/optimize_flow_latent.py`. Shared defaults and protocol metadata live
   in `flow_matching/optimization.py`. Compatibility entry points must resolve
   to the same values.
+- The formal-score contract is ABI-10 library SHA-256 `565c3207...c729`.
+  That compressed library lacks the query-batched field API required by the
+  local-gradient oracle. `CORR-20260829-15` blocks new default launches until
+  the explicit formal/gradient dual-library contract passes smoke validation
+  and is promoted to `main`. The 309-pair evidence remains tied to its frozen
+  batch-capable library and does not establish this newer artifact pairing.
 - Exactly two directions is deprecated historical evidence and is hard-blocked
   in current Python entry points. Historical shell launchers exit before their
   old 2D settings can run.
@@ -74,8 +80,25 @@
   arrays `47488` and `47489` are invalid infrastructure attempts: all 72 Adam
   cases exited before iteration 1 because the consolidated optimizer referenced
   undefined `PROJECT_ROOT`; four expected `no_axis` diagnostics were recorded.
-  No optimization result exists from those arrays. A clean replacement run is
-  required after `CORR-20260829-13`.
+  No optimization result exists from those arrays. Replacement preparation job
+  `47902` passed on corrected commit
+  `6f084a5a9b6799c01d57d4fe4ae0945573765d25`, reproducing the same 76/72
+  selection and `[12,12,12,12,12,12]` eligible worker loads in the new frozen
+  root `qh_data_gaussian_adam200_stratified_3h_v2_20260829`. Worker arrays
+  `47903` (P107 tasks 0--3) and `47904` (Students tasks 0--1, worker offsets
+  4--5) are a second invalid infrastructure attempt: the frozen production
+  score library provides ABI-10 standalone scoring but lacks the optimizer's
+  query-batched field API. The corrected fail-fast stopped each worker after
+  three identical failures, leaving 18 failed launches, four valid diagnostic
+  outcomes, 54 untouched eligible cases, and zero Adam updates. Build job
+  `47911` produced current-source batch library SHA-256 `b6697f54...48d6`.
+  It is ABI 10 and reproduces the batch-library reference
+  `94.6368686721` exactly across three calls in validation job `47933`; it
+  deliberately cannot replace formal library
+  `565c3207...c729`, whose current-runtime reference is `94.6254147736`.
+  The corrected experimental interface assigns the former only to the local
+  gradient and the latter to every formal center score. A one-case dual-library
+  smoke must pass before a third frozen run; see `CORR-20260829-14` and `-15`.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty
@@ -143,7 +166,11 @@
   optimization won 201/309 pairs; median paired best-score advantage was 0.997
   with 95% interval `[0.799, 1.312]`; score-at-least-92 rates were 23.0% versus
   0.32%. Latent/data settings differed in learning rate and perturbation, so
-  this result does not prove an intrinsic coordinate effect.
+  this result does not prove an intrinsic coordinate effect. It used frozen
+  batch-capable library SHA-256 `7834a88d...9a3`, predating the current
+  compressed formal library `565c3207...c729`; the within-corpus comparison is
+  valid, while exact execution under the newer formal artifact needs the
+  dual-library correction in `CORR-20260829-15`.
 - The 32-case 2026-08-24 coordinate control used 2 directions and 100 steps.
   Its coordinate-causality conclusion is retracted. Its separate 48-condition
   initialization evidence remains usable.

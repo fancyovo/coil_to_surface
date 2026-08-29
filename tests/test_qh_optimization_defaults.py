@@ -82,6 +82,24 @@ def test_command_line_defaults_use_the_validated_protocol() -> None:
     assert optimization.beta1 == QH_OPTIMIZATION_DEFAULTS.beta1
     assert optimization.beta2 == QH_OPTIMIZATION_DEFAULTS.beta2
     assert optimization.flow_steps == QH_OPTIMIZATION_DEFAULTS.flow_steps
+    assert optimization.gradient_lib is None
+
+    split_libraries = optimizer_parser().parse_args(
+        [
+            "--checkpoint",
+            "checkpoint.pt",
+            "--initial-case",
+            "screen/selected_start.json",
+            "--lib",
+            "formal.so",
+            "--gradient-lib",
+            "gradient.so",
+            "--out-dir",
+            "optimized",
+        ]
+    )
+    assert split_libraries.lib == Path("formal.so")
+    assert split_libraries.gradient_lib == Path("gradient.so")
 
     compatibility = legacy_arguments(
         ["--checkpoint", "checkpoint.pt", "--out-dir", "optimized"]

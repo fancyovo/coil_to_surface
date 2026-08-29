@@ -44,6 +44,11 @@ reports and immutable archives retain the detailed record.
   expanded the follow-up to 72 executable Adam200 trajectories plus four
   `no_axis` diagnostics. See
   `../reports/qh_data_gaussian_global_survey_acceptance_20260829.md`.
+- 2026-08-29: startup acceptance of the Adam follow-up exposed two independent
+  infrastructure defects before any update: an undefined repository-root name,
+  then a formal score library without the query-batch API. Invalid run roots
+  preserve both failures. The correction separates formal and local-gradient
+  libraries with distinct hashes and roles; see `CORRECTIONS.md` entries 13--15.
 
 ## Evidence Routes
 

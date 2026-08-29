@@ -255,7 +255,7 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260829-13 - Consolidated optimizer referenced an undefined root variable
 
-- Severity/status: high / contained in code; replacement Adam200 run required.
+- Severity/status: high / resolved in code and verified at optimizer entry.
 - Discovered by: model during acceptance of Slurm arrays `47488` and `47489`.
 - Error: `scripts/optimize_flow_latent.py` defined `REPO_ROOT` but called
   `repository_provenance(PROJECT_ROOT)`. The compatibility wrapper defined its
@@ -278,8 +278,72 @@ An open critical correction blocks promotion and external reporting.
   test inspects the executable `main()` binding. Follow-up workers stop after
   three identical failures and return nonzero for every runtime failure;
   `--allow-partial` applies only to a clean wall-time cutoff.
-- Promotion/reporting blocker: replacement Adam200 results must complete and
-  pass the weighted summary before any basin-rate conclusion is reported.
+- Replacement evidence: preparation job `47902` passed on corrected commit
+  `6f084a5a9b6799c01d57d4fe4ae0945573765d25`; worker arrays `47903` and
+  `47904` passed the former failure point and entered the gradient estimator.
+- Promotion/reporting blocker: the undefined-root defect is resolved. The
+  independent library-interface defect is tracked by `CORR-20260829-14`.
+
+## CORR-20260829-14 - Standalone score library lacked the optimizer batch API
+
+- Severity/status: high / contained before any Adam update; dual-library smoke pending.
+- Discovered by: model during startup acceptance of arrays `47903` and `47904`.
+- Error: the follow-up manifest froze production ABI-10 library SHA-256
+  `565c3207...c729`, which reproduces standalone global scores but exports no
+  `sgpu_create_field_batch_f32`. The local-gradient estimator requires that
+  symbol and ten related query-batch symbols. Preparation and worker reference
+  preflights checked only the standalone scoring contract.
+- Primary evidence: every attempted optimizer subprocess in the `v2` run root
+  raised `AttributeError: undefined symbol: sgpu_create_field_batch_f32` while
+  binding `BatchCoilFieldGpu`. Each of six workers stopped after three identical
+  failures. The frozen outcomes contain 18 runtime failures, four expected
+  `ineligible_survey_status` diagnostics, and no completed optimizer result.
+- Corrected fact and scope: arrays `47903` and `47904` contain zero Adam updates
+  and no basin-rate evidence. The global survey and its production-library
+  scores remain valid because they use only the standalone ABI-10 interface.
+  QUASR clustering and all earlier accepted conclusions are unchanged.
+- Containment: preparation and worker startup now load the gradient library and
+  require the full query-batch symbol set before entering any sample loop; the
+  required names are frozen in the run manifest and covered by regression
+  tests. Build job `47911` produced batch library `b6697f54...48d6` and showed
+  three deterministic ABI-10 scores of `94.6368686721`; validation job `47933`
+  passed against that independent gradient-library reference. The interface
+  keeps formal library `565c3207...c729` for every reportable score and assigns
+  the batch library only to local gradients. A one-case dual-library Adam smoke
+  is required before six-card resubmission into a new run root.
+- Promotion/reporting blocker: no random-start optimizability conclusion may be
+  reported until the smoke, complete third run, and strict weighted summary pass.
+
+## CORR-20260829-15 - Current optimizer combined incompatible library contracts
+
+- Severity/status: high / implementation correction under validation; default
+  launches blocked.
+- Discovered by: model while containing `CORR-20260829-14`.
+- Error: the 2026-08-28 consolidation described the 64D/200 optimizer and the
+  current compressed formal evaluator as one executable default. The canonical
+  optimizer used a single `--lib` for formal center scores and its query-batched
+  local-gradient oracle. Current formal library `565c3207...c729` implements the
+  former contract and lacks the latter API.
+- Primary evidence: `nm -D` finds no `sgpu_create_field_batch_f32` in
+  `565c3207...c729`; arrays `47903/47904` fail at that exact binding. The
+  historical 309-trajectory report records batch-capable library
+  `7834a88d...9a3`. Both that library and current-source build
+  `b6697f54...48d6` reproduce `94.6368686721`, while the compressed formal
+  library reproduces `94.6254147736` under the same runtime.
+- Corrected fact and scope: the 309-pair settings, direction count, trajectories,
+  and within-corpus Flow/data comparison remain valid under their frozen batch
+  library. They do not demonstrate that the later compressed formal library can
+  serve as the same optimizer binary. The current method definition remains
+  32-screen/64D/200; its executable artifact pairing required correction.
+- Containment: `scripts/optimize_flow_latent.py` now accepts a separately hashed
+  `--gradient-lib`, records formal and gradient roles independently, and checks
+  both hashes on resume. The random-start follow-up freezes both dependencies,
+  validates the batch API before sample work, and accepts success metrics only
+  from formal-library scores. Regression tests cover the split interface.
+- Promotion/reporting blocker: a dual-library one-case smoke and the complete
+  follow-up must pass before this pairing can support experimental conclusions.
+  Promotion of the corrected default execution contract to `main` remains a
+  separate required step after validation.
 
 ## Required Entry Template
 

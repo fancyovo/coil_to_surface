@@ -565,6 +565,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--initial-case", type=Path, required=True)
     parser.add_argument("--lib", type=Path, required=True)
+    parser.add_argument(
+        "--gradient-lib",
+        type=Path,
+        help=(
+            "Query-batched local-gradient library. Defaults to --lib when one "
+            "library implements both the formal score and batch APIs."
+        ),
+    )
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--nfp", type=int, default=4)
     parser.add_argument("--n-base-coils", type=int, default=3)
@@ -649,6 +657,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main() -> None:
     args = parse_arguments()
+    gradient_lib = args.lib if args.gradient_lib is None else args.gradient_lib
     if args.parameter_space == "data":
         args.flow_pipeline = False
     if torch.cuda.device_count() <= max(args.flow_device, args.score_device):
@@ -823,6 +832,16 @@ def main() -> None:
             "checkpoint_sha256": file_sha256(args.checkpoint),
             "native_lib": str(args.lib.resolve()),
             "native_lib_sha256": file_sha256(args.lib),
+            "formal_score_library": {
+                "path": str(args.lib.resolve()),
+                "sha256": file_sha256(args.lib),
+                "role": "complete native QH score for every accepted center",
+            },
+            "gradient_library": {
+                "path": str(gradient_lib.resolve()),
+                "sha256": file_sha256(gradient_lib),
+                "role": "query-batched local-gradient oracle only",
+            },
             "native_score": {
                 "abi": CURRENT_NATIVE_SCORE_ABI,
                 "validated_default_library_sha256": (
@@ -900,6 +919,18 @@ def main() -> None:
                 "resume repository commit or tracked dirty state does not match "
                 "the saved manifest"
             )
+        saved_formal_sha = str(
+            manifest.get("formal_score_library", {}).get(
+                "sha256", manifest.get("native_lib_sha256", "")
+            )
+        )
+        saved_gradient_sha = str(
+            manifest.get("gradient_library", {}).get("sha256", saved_formal_sha)
+        )
+        if file_sha256(args.lib) != saved_formal_sha:
+            raise ValueError("resume formal score library does not match the manifest")
+        if file_sha256(gradient_lib) != saved_gradient_sha:
+            raise ValueError("resume gradient library does not match the manifest")
         initial_payload = json.loads(args.initial_case.read_text(encoding="utf-8"))
         direct_data_start = args.parameter_space == "data"
         saved_space = manifest.get("parameter_space", "latent")
@@ -923,7 +954,7 @@ def main() -> None:
     if int(checkpoint["step"]) != 30000:
         raise RuntimeError("unexpected flow checkpoint step")
     estimator = LocalFullGradientEstimator(
-        args.lib,
+        gradient_lib,
         nfp=args.nfp,
         score_device=args.score_device,
         segments_per_coil=args.segments_per_coil,

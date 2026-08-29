@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from flow_matching.data import CoilNormalizer
+import scripts.qh_data_space_random_adam_followup as followup
 from scripts.qh_data_space_random_adam_followup import (
+    OPTIMIZER_LIBRARY_SYMBOLS,
     assign_workers,
     make_start_payload,
     parse_low_ok_quotas,
     reconstruct_sample,
     select_followup_cases,
     validate_optimizer_summary,
+    validate_optimizer_library_api,
 )
 
 
@@ -215,3 +220,28 @@ def test_optimizer_summary_must_match_the_frozen_64_direction_recipe() -> None:
     summary["manifest"]["coordinate_gradient"]["random_directions"] = 32
     with pytest.raises(RuntimeError, match="directions"):
         validate_optimizer_summary(summary)
+
+
+def test_optimizer_library_api_gate_lists_missing_batch_symbols(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class IncompleteLibrary:
+        pass
+
+    monkeypatch.setattr(followup.ctypes, "CDLL", lambda _path: IncompleteLibrary())
+
+    with pytest.raises(RuntimeError, match="sgpu_create_field_batch_f32"):
+        validate_optimizer_library_api(Path("incomplete.so"))
+
+
+def test_optimizer_library_api_gate_accepts_complete_symbol_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    library = type(
+        "CompleteLibrary",
+        (),
+        {symbol: object() for symbol in OPTIMIZER_LIBRARY_SYMBOLS},
+    )()
+    monkeypatch.setattr(followup.ctypes, "CDLL", lambda _path: library)
+
+    validate_optimizer_library_api(Path("complete.so"))

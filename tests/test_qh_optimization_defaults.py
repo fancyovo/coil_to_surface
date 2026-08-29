@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 import re
 
@@ -16,6 +17,7 @@ from flow_matching.optimization import (
 )
 from scripts.optimize_flow_latent import (
     build_parser as optimizer_parser,
+    main as optimizer_main,
     parse_arguments as optimizer_arguments,
 )
 from scripts.optimize_flow_prior_standard_adam import parse_arguments as legacy_arguments
@@ -202,6 +204,12 @@ def test_repository_provenance_records_commit_and_tracked_state() -> None:
     assert provenance["available"] is True
     assert len(provenance["commit"]) == 40
     assert isinstance(provenance["tracked_dirty"], bool)
+
+
+def test_optimizer_main_uses_its_defined_repository_root() -> None:
+    source = inspect.getsource(optimizer_main)
+    assert "repository_provenance(REPO_ROOT)" in source
+    assert "REPO_ROOT" in optimizer_main.__globals__
 
 
 def test_historical_two_direction_launchers_cannot_run() -> None:

@@ -69,8 +69,13 @@
   additional `score < 10,status=ok` controls by base-coil count. It therefore
   contains 76 records and 72 actual Adam200 trajectories, with 12 trajectories
   per GPU across six workers. The estimated cost is 17.59 serial GPU-hours and
-  2.93 parallel hours from the prior 309-case mean; no result exists until the
-  new Slurm jobs complete.
+  2.93 parallel hours from the prior 309-case mean. Preparation job `47487`
+  validated the full 76/72 selection, reconstruction, and hashes. First worker
+  arrays `47488` and `47489` are invalid infrastructure attempts: all 72 Adam
+  cases exited before iteration 1 because the consolidated optimizer referenced
+  undefined `PROJECT_ROOT`; four expected `no_axis` diagnostics were recorded.
+  No optimization result exists from those arrays. A clean replacement run is
+  required after `CORR-20260829-13`.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty

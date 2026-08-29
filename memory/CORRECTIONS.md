@@ -253,6 +253,34 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved for submission; final basin-rate claims
   remain blocked until all six workers and the weighted summary are accepted.
 
+## CORR-20260829-13 - Consolidated optimizer referenced an undefined root variable
+
+- Severity/status: high / contained in code; replacement Adam200 run required.
+- Discovered by: model during acceptance of Slurm arrays `47488` and `47489`.
+- Error: `scripts/optimize_flow_latent.py` defined `REPO_ROOT` but called
+  `repository_provenance(PROJECT_ROOT)`. The compatibility wrapper defined its
+  own `PROJECT_ROOT`, yet the imported `main()` retained the canonical module's
+  globals, so every optimizer subprocess raised `NameError` before loading its
+  initial case or starting iteration 1.
+- Primary evidence: all 72 failure records under
+  `qh_data_gaussian_adam200_stratified_3h_20260829/failures/` have the same
+  traceback at optimizer line 696. Prepare job `47487` passed with 76 selected,
+  72 eligible, and `[12,12,12,12,12,12]` eligible cases per worker. Each worker
+  also reproduced the ABI-10 reference score `94.6254147736`.
+- Corrected fact and scope: arrays `47488` and `47489` contain no Adam update,
+  score improvement, or convergence evidence. Their four
+  `ineligible_survey_status` outcomes remain valid diagnostics; the replacement
+  run will recreate the same deterministic selection in a new frozen root.
+- Impact: global-survey, QUASR-clustering, current-default, and earlier 309-case
+  conclusions are unchanged. The failure exposes an execution regression in
+  the consolidated canonical optimizer and compatibility entry point.
+- Containment: the optimizer now passes its defined `REPO_ROOT`; a regression
+  test inspects the executable `main()` binding. Follow-up workers stop after
+  three identical failures and return nonzero for every runtime failure;
+  `--allow-partial` applies only to a clean wall-time cutoff.
+- Promotion/reporting blocker: replacement Adam200 results must complete and
+  pass the weighted summary before any basin-rate conclusion is reported.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

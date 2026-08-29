@@ -693,7 +693,7 @@ def main() -> None:
         gradient_mode=args.gradient_mode,
         difference="centered",
     )
-    current_repository = repository_provenance(PROJECT_ROOT)
+    current_repository = repository_provenance(REPO_ROOT)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.out_dir / "trajectory"

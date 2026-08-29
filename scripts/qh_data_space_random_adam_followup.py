@@ -737,6 +737,8 @@ def worker(args: argparse.Namespace) -> None:
     durations: list[float] = []
     outcomes: Counter[str] = Counter()
     stop_reason = "all_assigned_cases_complete"
+    previous_failure_signature: str | None = None
+    consecutive_failure_count = 0
 
     for case in cases:
         result_dir = args.run_root / "results" / str(case["sample_id"])
@@ -820,6 +822,8 @@ def worker(args: argparse.Namespace) -> None:
                 completed += 1
                 outcomes[outcome["outcome_status"]] += 1
                 durations.append(float(outcome["case_wall_s"]))
+                previous_failure_signature = None
+                consecutive_failure_count = 0
             else:
                 optimization_dir = partial / "optimization"
                 optimization_log = partial / "optimization.log"
@@ -924,6 +928,8 @@ def worker(args: argparse.Namespace) -> None:
                 completed += 1
                 outcomes[outcome["outcome_status"]] += 1
                 durations.append(float(outcome["case_wall_s"]))
+                previous_failure_signature = None
+                consecutive_failure_count = 0
 
             replace_json(
                 worker_dir / "progress.json",
@@ -955,11 +961,12 @@ def worker(args: argparse.Namespace) -> None:
                 flush=True,
             )
         except Exception as exc:
+            failure_signature = f"{type(exc).__name__}: {exc}"
             failure = {
                 "format": "qh_data_space_random_adam_runtime_failure_v1",
                 "sample_id": case["sample_id"],
                 "worker_index": args.worker_index,
-                "error": f"{type(exc).__name__}: {exc}",
+                "error": failure_signature,
                 "wall_s": time.perf_counter() - case_started,
             }
             atomic_write_json(partial / "failure.json", failure)
@@ -969,6 +976,14 @@ def worker(args: argparse.Namespace) -> None:
             os.replace(partial, failure_destination)
             outcomes["runtime_failure"] += 1
             print(json.dumps({"event": "adam_followup_case_failed", **failure}), flush=True)
+            if failure_signature == previous_failure_signature:
+                consecutive_failure_count += 1
+            else:
+                previous_failure_signature = failure_signature
+                consecutive_failure_count = 1
+            if consecutive_failure_count >= 3:
+                stop_reason = "three_identical_consecutive_failures"
+                break
 
     finished_ids = {
         path.name for path in (args.run_root / "results").iterdir() if path.is_dir()
@@ -996,8 +1011,16 @@ def worker(args: argparse.Namespace) -> None:
     }
     replace_json(worker_dir / "progress.json", final)
     print(json.dumps(final, indent=2), flush=True)
+    if outcomes["runtime_failure"]:
+        raise RuntimeError(
+            f"worker recorded {outcomes['runtime_failure']} runtime failures"
+        )
     if missing and not args.allow_partial:
         raise RuntimeError(f"worker left {len(missing)} assigned cases incomplete")
+    if missing and stop_reason != "max_wall_s":
+        raise RuntimeError(
+            f"worker stopped with {len(missing)} missing cases: {stop_reason}"
+        )
 
 
 def _case_weight(case: dict[str, Any]) -> float:

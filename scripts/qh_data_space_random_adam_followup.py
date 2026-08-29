@@ -648,6 +648,7 @@ def validate_optimizer_summary(
     *,
     expected_formal_library_sha: str | None = None,
     expected_gradient_library_sha: str | None = None,
+    expected_repository_commit: str | None = None,
 ) -> None:
     if (
         summary.get("status") != "ok"
@@ -693,6 +694,13 @@ def validate_optimizer_summary(
         manifest.get("gradient_library", {}).get("sha256")
     ) != expected_gradient_library_sha:
         failed.append("gradient_library")
+    if expected_repository_commit is not None:
+        repository = manifest.get("repository", {})
+        if (
+            str(repository.get("commit")) != expected_repository_commit
+            or bool(repository.get("tracked_dirty"))
+        ):
+            failed.append("repository")
     if failed:
         raise RuntimeError(f"optimizer manifest mismatch: {failed}")
 
@@ -1098,6 +1106,200 @@ def _case_weight(case: dict[str, Any]) -> float:
     return max(weights, default=0.0)
 
 
+def audit_optimizer_history(path: Path) -> dict[str, Any]:
+    expected_iterations = int(ADAM_SETTINGS["iterations"])
+    expected_directions = int(ADAM_SETTINGS["directions"])
+    expected_endpoints = 2 * expected_directions
+    endpoint_statuses: Counter[str] = Counter()
+    previous_best = float("-inf")
+    previous_adam_step = 0
+    accepted_center_updates = 0
+    gradient_steps_applied = 0
+    temporal_gradient_outliers = 0
+    temporal_update_outliers = 0
+    invalid_endpoint_iterations = 0
+    iteration_count = 0
+
+    with path.open(encoding="utf-8") as stream:
+        for iteration_count, line in enumerate(stream, start=1):
+            row = json.loads(line)
+            if int(row.get("iteration", -1)) != iteration_count:
+                raise RuntimeError(f"nonsequential optimizer history: {path}")
+            if (
+                row.get("gradient_mode") != ADAM_SETTINGS["gradient_mode"]
+                or int(row.get("random_direction_count", -1))
+                != expected_directions
+                or int(row.get("gradient_endpoint_count", -1))
+                != expected_endpoints
+            ):
+                raise RuntimeError(f"optimizer direction mismatch: {path}")
+            statuses = Counter(
+                {
+                    str(status): int(count)
+                    for status, count in row.get(
+                        "gradient_endpoint_statuses", {}
+                    ).items()
+                }
+            )
+            if sum(statuses.values()) != expected_endpoints:
+                raise RuntimeError(f"optimizer endpoint count mismatch: {path}")
+            endpoint_statuses.update(statuses)
+            if statuses != {"ok": expected_endpoints}:
+                invalid_endpoint_iterations += 1
+
+            current_score = float(row["current_score"])
+            best_score = float(row["best_score"])
+            if (
+                row.get("current_status") != "ok"
+                or not math.isfinite(current_score)
+                or not math.isfinite(best_score)
+                or best_score + 1.0e-12 < previous_best
+            ):
+                raise RuntimeError(f"invalid formal score history: {path}")
+            previous_best = best_score
+
+            gradient_applied = bool(row.get("gradient_step_applied"))
+            center_accepted = bool(row.get("center_update_accepted"))
+            if center_accepted and not gradient_applied:
+                raise RuntimeError(f"accepted center without gradient step: {path}")
+            gradient_steps_applied += int(gradient_applied)
+            accepted_center_updates += int(center_accepted)
+            temporal_gradient_outliers += int(
+                bool(row.get("temporal_gradient_outlier"))
+            )
+            temporal_update_outliers += int(
+                bool(row.get("temporal_update_outlier"))
+            )
+
+            adam_step = int(row.get("adam_step", -1))
+            expected_adam_step = previous_adam_step + int(center_accepted)
+            if adam_step != expected_adam_step:
+                raise RuntimeError(f"inconsistent accepted Adam step count: {path}")
+            previous_adam_step = adam_step
+
+    if iteration_count != expected_iterations:
+        raise RuntimeError(
+            f"optimizer history has {iteration_count} iterations, "
+            f"expected {expected_iterations}: {path}"
+        )
+    return {
+        "iteration_count": iteration_count,
+        "direction_count": iteration_count * expected_directions,
+        "endpoint_count": iteration_count * expected_endpoints,
+        "endpoint_status_counts": dict(sorted(endpoint_statuses.items())),
+        "invalid_endpoint_iterations": invalid_endpoint_iterations,
+        "gradient_steps_applied": gradient_steps_applied,
+        "accepted_center_updates": accepted_center_updates,
+        "temporal_gradient_outliers": temporal_gradient_outliers,
+        "temporal_update_outliers": temporal_update_outliers,
+        "final_adam_step": previous_adam_step,
+        "final_best_score": previous_best,
+    }
+
+
+def audit_completed_outcome(
+    run_root: Path,
+    case: dict[str, Any],
+    outcome: dict[str, Any],
+    manifest: dict[str, Any],
+) -> dict[str, Any]:
+    sample_id = str(case["sample_id"])
+    if (
+        str(outcome.get("sample_id")) != sample_id
+        or int(outcome.get("nfp", -1)) != int(case["nfp"])
+        or int(outcome.get("n_base_coils", -1))
+        != int(case["n_base_coils"])
+        or outcome.get("outcome_status") != "adam_complete"
+        or not bool(outcome.get("adam_completed"))
+    ):
+        raise RuntimeError(f"invalid completed outcome for {sample_id}")
+
+    result_root = run_root / "results" / sample_id
+    optimizer_root = result_root / "optimization"
+    summary_path = optimizer_root / "summary.json"
+    manifest_path = optimizer_root / "manifest.json"
+    history_path = optimizer_root / "history.jsonl"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    validate_optimizer_summary(
+        summary,
+        expected_formal_library_sha=manifest["evaluator"]["library_sha256"],
+        expected_gradient_library_sha=manifest["evaluator"][
+            "gradient_library_sha256"
+        ],
+        expected_repository_commit=manifest["code"]["commit"],
+    )
+    history_audit = audit_optimizer_history(history_path)
+
+    reduced = outcome["optimizer"]
+    exact_integer_fields = (
+        "completed_iterations",
+        "completed_adam_steps",
+        "best_iteration",
+    )
+    for field in exact_integer_fields:
+        if int(reduced[field]) != int(summary[field]):
+            raise RuntimeError(f"optimizer {field} mismatch for {sample_id}")
+    for field in ("initial_score", "final_score", "best_score", "total_wall_s"):
+        if not math.isclose(
+            float(reduced[field]),
+            float(summary[field]),
+            rel_tol=1.0e-12,
+            abs_tol=1.0e-12,
+        ):
+            raise RuntimeError(f"optimizer {field} mismatch for {sample_id}")
+    if (
+        int(summary["completed_adam_steps"])
+        != int(history_audit["accepted_center_updates"])
+        or not math.isclose(
+            float(summary["best_score"]),
+            float(history_audit["final_best_score"]),
+            rel_tol=1.0e-12,
+            abs_tol=1.0e-12,
+        )
+    ):
+        raise RuntimeError(f"optimizer history summary mismatch for {sample_id}")
+
+    return {
+        "sample_id": sample_id,
+        "nfp": int(case["nfp"]),
+        "n_base_coils": int(case["n_base_coils"]),
+        "survey_score": float(outcome["survey"]["score"]),
+        "initial_score": float(summary["initial_score"]),
+        "final_score": float(summary["final_score"]),
+        "best_score": float(summary["best_score"]),
+        "best_iteration": int(summary["best_iteration"]),
+        "completed_adam_steps": int(summary["completed_adam_steps"]),
+        "case_wall_s": float(outcome["case_wall_s"]),
+        "optimizer_process_wall_s": float(outcome["optimizer_process_wall_s"]),
+        "history": history_audit,
+        "sha256": {
+            "outcome": file_sha256(result_root / "outcome.json"),
+            "optimizer_manifest": file_sha256(manifest_path),
+            "optimizer_summary": file_sha256(summary_path),
+            "optimizer_history": file_sha256(history_path),
+        },
+    }
+
+
+def _distribution(values: list[float]) -> dict[str, float | int | None]:
+    if not values:
+        return {
+            "count": 0,
+            "minimum": None,
+            "median": None,
+            "mean": None,
+            "maximum": None,
+        }
+    array = np.asarray(values, dtype=np.float64)
+    return {
+        "count": int(array.size),
+        "minimum": float(np.min(array)),
+        "median": float(np.median(array)),
+        "mean": float(np.mean(array)),
+        "maximum": float(np.max(array)),
+    }
+
+
 def summarize(args: argparse.Namespace) -> None:
     manifest = json.loads(
         (args.run_root / "run_manifest.json").read_text(encoding="utf-8")
@@ -1115,13 +1317,117 @@ def summarize(args: argparse.Namespace) -> None:
     if missing and not args.allow_partial:
         raise RuntimeError(f"follow-up is missing {len(missing)} case outcomes")
 
+    expected_ids = {str(case["sample_id"]) for case in manifest["cases"]}
+    result_ids = {
+        path.name
+        for path in (args.run_root / "results").iterdir()
+        if path.is_dir()
+    }
+    unexpected_result_ids = sorted(result_ids - expected_ids)
+    failure_files = sorted(
+        str(path.relative_to(args.run_root))
+        for path in (args.run_root / "failures").rglob("*")
+        if path.is_file()
+    )
+    incomplete_entries = sorted(
+        str(path.relative_to(args.run_root))
+        for path in (args.run_root / "incomplete").iterdir()
+    )
+    if not args.allow_partial and (
+        unexpected_result_ids or failure_files or incomplete_entries
+    ):
+        raise RuntimeError(
+            "follow-up contains unexpected result, failure, or incomplete artifacts"
+        )
+
+    worker_audits = []
+    for worker_index in range(int(manifest["worker_count"])):
+        progress_path = (
+            args.run_root / "workers" / f"worker_{worker_index:02d}" / "progress.json"
+        )
+        if not progress_path.is_file():
+            if args.allow_partial:
+                continue
+            raise RuntimeError(f"missing worker progress: {progress_path}")
+        progress = json.loads(progress_path.read_text(encoding="utf-8"))
+        worker_audits.append(
+            {
+                **progress,
+                "progress_sha256": file_sha256(progress_path),
+            }
+        )
+        if not args.allow_partial and (
+            progress.get("stage") != "complete"
+            or progress.get("missing_cases")
+            or int(progress.get("new_completed", 0))
+            + int(progress.get("skipped_existing", 0))
+            != int(progress.get("assigned_cases", -1))
+        ):
+            raise RuntimeError(f"worker {worker_index} did not finish its assignment")
+
+    trajectory_audits = []
+    diagnostic_audits = []
+    scientific_zero_outcomes = []
+    for case in manifest["cases"]:
+        sample_id = str(case["sample_id"])
+        outcome = outcomes.get(sample_id)
+        if outcome is None:
+            continue
+        if bool(case["adam_eligible"]):
+            if outcome.get("outcome_status") == "adam_complete":
+                trajectory_audits.append(
+                    audit_completed_outcome(args.run_root, case, outcome, manifest)
+                )
+            elif outcome.get("outcome_status") == "optimizer_initial_invalid":
+                if (
+                    not bool(outcome.get("adam_started"))
+                    or bool(outcome.get("adam_completed"))
+                ):
+                    raise RuntimeError(f"invalid initial-center outcome for {sample_id}")
+                scientific_zero_outcomes.append(
+                    {
+                        "sample_id": sample_id,
+                        "nfp": int(case["nfp"]),
+                        "n_base_coils": int(case["n_base_coils"]),
+                        "outcome_status": outcome["outcome_status"],
+                        "optimizer_initial_status": outcome.get(
+                            "optimizer_initial_status"
+                        ),
+                        "outcome_sha256": file_sha256(
+                            args.run_root / "results" / sample_id / "outcome.json"
+                        ),
+                    }
+                )
+            else:
+                raise RuntimeError(f"unexpected eligible outcome for {sample_id}")
+        else:
+            if (
+                outcome.get("outcome_status") != "ineligible_survey_status"
+                or bool(outcome.get("adam_started"))
+                or bool(outcome.get("adam_completed"))
+            ):
+                raise RuntimeError(f"invalid diagnostic outcome for {sample_id}")
+            diagnostic_audits.append(
+                {
+                    "sample_id": sample_id,
+                    "nfp": int(case["nfp"]),
+                    "n_base_coils": int(case["n_base_coils"]),
+                    "survey_status": outcome["survey"]["status"],
+                    "outcome_sha256": file_sha256(
+                        args.run_root / "results" / sample_id / "outcome.json"
+                    ),
+                }
+            )
+
     source_summary = json.loads(
         Path(manifest["source_survey"]["summary"]).read_text(encoding="utf-8")
     )
     denominators: Counter[int] = Counter()
+    ok_denominators: Counter[int] = Counter()
     for key, group in source_summary["by_condition"].items():
         ncoils = int(key.rsplit("_nc", 1)[1])
         denominators[ncoils] += int(group["count"])
+        ok_denominators[ncoils] += int(group["status_counts"].get("ok", 0))
 
     thresholds = (20.0, 30.0, 40.0, 50.0)
     estimates = {}
@@ -1143,14 +1449,87 @@ def summarize(args: argparse.Namespace) -> None:
         estimates[str(int(threshold))] = {
             "estimated_population_success_count": total_weighted,
             "estimated_rate": total_weighted / int(source_summary["saved_sample_count"]),
+            "estimated_rate_among_survey_ok": (
+                total_weighted
+                / int(source_summary["aggregate"]["status_counts"]["ok"])
+            ),
             "by_n_base_coils": {
                 str(ncoils): {
                     "estimated_population_success_count": float(weighted_by_nc[ncoils]),
                     "estimated_rate": float(weighted_by_nc[ncoils]) / count,
+                    "estimated_rate_among_survey_ok": (
+                        float(weighted_by_nc[ncoils]) / ok_denominators[ncoils]
+                        if ok_denominators[ncoils]
+                        else None
+                    ),
                 }
                 for ncoils, count in sorted(denominators.items())
             },
         }
+
+    by_n_base_coils = {}
+    for ncoils, source_count in sorted(denominators.items()):
+        selected_cases = [
+            case
+            for case in manifest["cases"]
+            if int(case["n_base_coils"]) == ncoils
+        ]
+        completed = [
+            row for row in trajectory_audits if row["n_base_coils"] == ncoils
+        ]
+        by_n_base_coils[str(ncoils)] = {
+            "source_sample_count": source_count,
+            "source_ok_count": int(ok_denominators[ncoils]),
+            "selected_count": len(selected_cases),
+            "adam_eligible_count": sum(
+                bool(case["adam_eligible"]) for case in selected_cases
+            ),
+            "adam_complete_count": len(completed),
+            "diagnostic_only_count": sum(
+                not bool(case["adam_eligible"]) for case in selected_cases
+            ),
+            "observed_threshold_counts": {
+                str(int(threshold)): sum(
+                    float(row["best_score"]) >= threshold for row in completed
+                )
+                for threshold in thresholds
+            },
+            "accepted_adam_steps": _distribution(
+                [float(row["completed_adam_steps"]) for row in completed]
+            ),
+            "case_wall_s": _distribution(
+                [float(row["case_wall_s"]) for row in completed]
+            ),
+        }
+
+    history_totals: Counter[str] = Counter()
+    endpoint_status_totals: Counter[str] = Counter()
+    for row in trajectory_audits:
+        history = row["history"]
+        for key in (
+            "iteration_count",
+            "direction_count",
+            "endpoint_count",
+            "invalid_endpoint_iterations",
+            "gradient_steps_applied",
+            "accepted_center_updates",
+            "temporal_gradient_outliers",
+            "temporal_update_outliers",
+        ):
+            history_totals[key] += int(history[key])
+        endpoint_status_totals.update(history["endpoint_status_counts"])
+
+    trajectory_audits.sort(key=lambda row: row["sample_id"])
+    top_by_best_score = sorted(
+        trajectory_audits, key=lambda row: row["best_score"], reverse=True
+    )[:10]
+    case_wall_values = [float(row["case_wall_s"]) for row in trajectory_audits]
+    process_wall_values = [
+        float(row["optimizer_process_wall_s"]) for row in trajectory_audits
+    ]
+    accepted_step_values = [
+        float(row["completed_adam_steps"]) for row in trajectory_audits
+    ]
 
     payload = {
         "format": "qh_data_space_random_adam_followup_summary_v1",
@@ -1165,6 +1544,19 @@ def summarize(args: argparse.Namespace) -> None:
         "adam_complete_count": sum(
             bool(row.get("adam_completed")) for row in outcomes.values()
         ),
+        "integrity_audit": {
+            "unexpected_result_ids": unexpected_result_ids,
+            "failure_files": failure_files,
+            "incomplete_entries": incomplete_entries,
+            "workers": worker_audits,
+            "trajectory_count": len(trajectory_audits),
+            "diagnostic_count": len(diagnostic_audits),
+            "scientific_zero_outcomes": scientific_zero_outcomes,
+            "history_totals": dict(sorted(history_totals.items())),
+            "endpoint_status_counts": dict(sorted(endpoint_status_totals.items())),
+            "trajectory_artifacts": trajectory_audits,
+            "diagnostic_artifacts": diagnostic_audits,
+        },
         "observed_best_score": {
             "maximum": max(
                 (
@@ -1182,8 +1574,36 @@ def summarize(args: argparse.Namespace) -> None:
                 )
                 for threshold in thresholds
             },
+            "top_10": [
+                {
+                    key: row[key]
+                    for key in (
+                        "sample_id",
+                        "nfp",
+                        "n_base_coils",
+                        "survey_score",
+                        "initial_score",
+                        "final_score",
+                        "best_score",
+                        "best_iteration",
+                        "completed_adam_steps",
+                    )
+                }
+                for row in top_by_best_score
+            ],
         },
         "weighted_population_estimates": estimates,
+        "by_n_base_coils": by_n_base_coils,
+        "runtime": {
+            "trajectory_case_wall_s": _distribution(case_wall_values),
+            "trajectory_case_gpu_hours": sum(case_wall_values) / 3600.0,
+            "optimizer_process_wall_s": _distribution(process_wall_values),
+            "optimizer_process_gpu_hours": sum(process_wall_values) / 3600.0,
+            "accepted_adam_steps": _distribution(accepted_step_values),
+            "accepted_adam_steps_below_200": sum(
+                value < ADAM_SETTINGS["iterations"] for value in accepted_step_values
+            ),
+        },
         "estimator_scope": (
             "Score>=10 is a census; score<10,status=ok is inverse-probability "
             "weighted within n_base_coils; non-ok survey starts have zero success "

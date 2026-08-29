@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,7 @@ from flow_matching.data import CoilNormalizer
 import scripts.qh_data_space_random_adam_followup as followup
 from scripts.qh_data_space_random_adam_followup import (
     OPTIMIZER_LIBRARY_SYMBOLS,
+    audit_optimizer_history,
     assign_workers,
     make_start_payload,
     parse_low_ok_quotas,
@@ -213,13 +215,63 @@ def test_optimizer_summary_must_match_the_frozen_64_direction_recipe() -> None:
                 "beta1": 0.7,
                 "beta2": 0.999,
             },
+            "repository": {
+                "commit": "frozen-commit",
+                "tracked_dirty": False,
+            },
+            "formal_score_library": {"sha256": "formal-sha"},
+            "gradient_library": {"sha256": "gradient-sha"},
         },
     }
 
-    validate_optimizer_summary(summary)
+    validate_optimizer_summary(
+        summary,
+        expected_formal_library_sha="formal-sha",
+        expected_gradient_library_sha="gradient-sha",
+        expected_repository_commit="frozen-commit",
+    )
     summary["manifest"]["coordinate_gradient"]["random_directions"] = 32
     with pytest.raises(RuntimeError, match="directions"):
         validate_optimizer_summary(summary)
+
+
+def test_optimizer_history_audit_counts_iterations_endpoints_and_steps(
+    tmp_path: Path,
+) -> None:
+    history_path = tmp_path / "history.jsonl"
+    adam_step = 0
+    rows = []
+    for iteration in range(1, 201):
+        accepted = iteration % 2 == 0
+        adam_step += int(accepted)
+        rows.append(
+            {
+                "iteration": iteration,
+                "current_score": 1.0 + iteration / 1000.0,
+                "best_score": 1.0 + iteration / 1000.0,
+                "current_status": "ok",
+                "gradient_endpoint_count": 128,
+                "gradient_mode": "random-orthogonal",
+                "random_direction_count": 64,
+                "gradient_endpoint_statuses": {"ok": 128},
+                "gradient_step_applied": accepted,
+                "center_update_accepted": accepted,
+                "temporal_gradient_outlier": False,
+                "temporal_update_outlier": False,
+                "adam_step": adam_step,
+            }
+        )
+    history_path.write_text(
+        "".join(f"{json.dumps(row)}\n" for row in rows), encoding="utf-8"
+    )
+
+    audit = audit_optimizer_history(history_path)
+
+    assert audit["iteration_count"] == 200
+    assert audit["direction_count"] == 12_800
+    assert audit["endpoint_count"] == 25_600
+    assert audit["accepted_center_updates"] == 100
+    assert audit["endpoint_status_counts"] == {"ok": 25_600}
 
 
 def test_optimizer_library_api_gate_lists_missing_batch_symbols(

@@ -108,6 +108,8 @@ uses current-source query-batch library SHA-256 `b6697f54...48d6`; its separate
 ABI-10 reference is `94.6368686721`. The optimizer manifest records both roles
 and hashes. Only formal-library scores define improvements, thresholds, and
 basin success; the batch library cannot contribute a reported candidate score.
+One-step validation job `47937` completed all 128 endpoints and the subsequent
+formal rescore under this split contract.
 
 The immutable first selection contains all 10 `score >= 20` samples and four
 uniform `[0,20)` controls. The four controls happened to have `no_axis` status,

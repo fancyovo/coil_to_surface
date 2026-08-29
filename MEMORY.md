@@ -98,7 +98,13 @@
   `565c3207...c729`, whose current-runtime reference is `94.6254147736`.
   The corrected experimental interface assigns the former only to the local
   gradient and the latter to every formal center score. A one-case dual-library
-  smoke must pass before a third frozen run; see `CORR-20260829-14` and `-15`.
+  smoke job `47937` then completed one 64-direction Adam step on the survey
+  maximum sample: all 128 endpoints were `ok`, and the optimizer-formal score
+  rose from `48.5949558` to `53.4776601`. The survey score `47.2301782` and
+  optimizer initial score differ because the registered standalone survey uses
+  the library-default 256 surface angles while the frozen optimizer uses 128;
+  both values remain labeled by mode. A third frozen run may now be prepared;
+  see `CORR-20260829-14` and `-15`.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty

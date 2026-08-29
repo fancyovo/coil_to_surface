@@ -286,7 +286,7 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260829-14 - Standalone score library lacked the optimizer batch API
 
-- Severity/status: high / contained before any Adam update; dual-library smoke pending.
+- Severity/status: high / contained; corrected dual-library smoke passed.
 - Discovered by: model during startup acceptance of arrays `47903` and `47904`.
 - Error: the follow-up manifest froze production ABI-10 library SHA-256
   `565c3207...c729`, which reproduces standalone global scores but exports no
@@ -309,15 +309,16 @@ An open critical correction blocks promotion and external reporting.
   three deterministic ABI-10 scores of `94.6368686721`; validation job `47933`
   passed against that independent gradient-library reference. The interface
   keeps formal library `565c3207...c729` for every reportable score and assigns
-  the batch library only to local gradients. A one-case dual-library Adam smoke
-  is required before six-card resubmission into a new run root.
+  the batch library only to local gradients. Smoke job `47937` completed one
+  64-direction Adam step with all 128 endpoints `ok`; its optimizer-formal score
+  improved from `48.5949558` to `53.4776601` and both hashes matched.
 - Promotion/reporting blocker: no random-start optimizability conclusion may be
   reported until the smoke, complete third run, and strict weighted summary pass.
 
 ## CORR-20260829-15 - Current optimizer combined incompatible library contracts
 
-- Severity/status: high / implementation correction under validation; default
-  launches blocked.
+- Severity/status: high / dual-library execution verified on the exploration
+  branch; default launches remain blocked pending mainline promotion.
 - Discovered by: model while containing `CORR-20260829-14`.
 - Error: the 2026-08-28 consolidation described the 64D/200 optimizer and the
   current compressed formal evaluator as one executable default. The canonical
@@ -340,10 +341,10 @@ An open critical correction blocks promotion and external reporting.
   both hashes on resume. The random-start follow-up freezes both dependencies,
   validates the batch API before sample work, and accepts success metrics only
   from formal-library scores. Regression tests cover the split interface.
-- Promotion/reporting blocker: a dual-library one-case smoke and the complete
-  follow-up must pass before this pairing can support experimental conclusions.
-  Promotion of the corrected default execution contract to `main` remains a
-  separate required step after validation.
+  Smoke job `47937` verified one complete gradient/update/formal-rescore cycle.
+- Promotion/reporting blocker: the complete follow-up must pass before this
+  pairing supports random-basin conclusions. Promotion of the corrected default
+  execution contract to `main` remains a separate required step.
 
 ## Required Entry Template
 

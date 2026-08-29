@@ -48,7 +48,8 @@ reports and immutable archives retain the detailed record.
   infrastructure defects before any update: an undefined repository-root name,
   then a formal score library without the query-batch API. Invalid run roots
   preserve both failures. The correction separates formal and local-gradient
-  libraries with distinct hashes and roles; see `CORRECTIONS.md` entries 13--15.
+  libraries with distinct hashes and roles. One-step job `47937` verified the
+  split contract; see `CORRECTIONS.md` entries 13--15.
 
 ## Evidence Routes
 

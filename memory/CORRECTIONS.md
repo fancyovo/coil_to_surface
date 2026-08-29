@@ -346,6 +346,27 @@ An open critical correction blocks promotion and external reporting.
   pairing supports random-basin conclusions. Promotion of the corrected default
   execution contract to `main` remains a separate required step.
 
+## CORR-20260829-16 - Test-only start estimates were treated as scheduling data
+
+- Severity/status: low / corrected in the remote operating procedure.
+- Discovered by: user during submission of the third Adam200 follow-up.
+- Error: the remote instructions told the model to compare the estimated start
+  timestamps printed by `sbatch --test-only`. Those timestamps are inaccurate
+  on this cluster and have no operational meaning.
+- Primary evidence: test-only probes printed future dates for synthetic jobs
+  `47940`--`47942`, while formal preparation job `47943` and all six array tasks
+  in `47946/47947` started within seconds on `anode02/03`.
+- Corrected fact and scope: `sbatch --test-only` is only a syntax, permission,
+  QOS, and resource-request gate. Actual state and timing come from `squeue`,
+  `scontrol`, `sacct`, logs, and result timestamps after formal submission.
+- Impact: no numerical data, frozen selection, optimizer setting, or scientific
+  conclusion is affected. Believing the estimate could delay or misroute later
+  submissions.
+- Containment: the dynamic-selection and pre-submission rules in
+  `REMOTE_CODEX_INSTRUCTIONS.md` now explicitly ignore predicted start times.
+- Promotion/reporting blocker: none; use actual scheduler state in all future
+  remote work.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

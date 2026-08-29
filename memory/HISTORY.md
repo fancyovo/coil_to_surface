@@ -50,6 +50,11 @@ reports and immutable archives retain the detailed record.
   preserve both failures. The correction separates formal and local-gradient
   libraries with distinct hashes and roles. One-step job `47937` verified the
   split contract; see `CORRECTIONS.md` entries 13--15.
+- 2026-08-29: preparation job `47943` created the third frozen 76-record,
+  72-trajectory follow-up root on the verified dual-library contract. Six-card
+  arrays `47946/47947` started immediately and remain subject to strict final
+  acceptance. Test-only start estimates were removed from scheduling decisions;
+  see `CORRECTIONS.md` entry 16.
 
 ## Evidence Routes
 

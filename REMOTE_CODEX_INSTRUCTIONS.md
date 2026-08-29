@@ -27,6 +27,11 @@
 
 `competition` association 已明确授予 `qos_p107-rtx5090` 和 `qos_p107-a100`；两个 P107 最大规格的 test-only 均通过。普通 `GPU-RTX5090/GPU-A100/CPU-*` 分区要求的 `qos_gpu-*`/`qos_cpu-*` 未授予，仍不可使用。
 
+本集群的 `sbatch --test-only` 预计启动时间已确认不准确，不得用于判断
+等待时长、比较分区或决定是否提交。该命令只验证脚本、account、partition、
+QOS 和资源请求能否被调度器接受；实际启动与运行状态只看正式提交后的
+`squeue`、`scontrol`、`sacct` 和作业日志。
+
 P107 QOS 没有 `DenyOnLimit`，因此超过 16 CPU/4 GPU/4 天的请求可能被 `sbatch` 接受却永久 pending；最大值以 `sacctmgr` 的 QOS 字段为准，不能以“提交命令返回 0”判断可运行。
 
 ## 安全边界
@@ -135,7 +140,7 @@ wsl.exe -d Ubuntu -- ssh ustc107 -- sacctmgr -nP show assoc where user=pb2451193
 ### 动态选择准则
 
 1. 先排除不满足作业时长、内存和 GPU 型号的通道。
-2. 比较 `squeue` reason 和 `sbatch --test-only` 预计开始时间；优先预计最早启动的同型号 GPU。
+2. 正式提交后用 `squeue` reason 和实际状态判断是否启动；忽略 `sbatch --test-only` 输出的预计开始时间。
 3. RTX5090 与 A100 结果需保持数值口径一致，但性能测速不得跨型号混合；正式训练可以跨型号，必须在结果元数据中记录硬件。
 4. 已运行作业不为迁移而取消；只迁移尚未启动且由本项目提交的 pending 作业，并先确认目标通道有空余 submit slot。
 5. 同一 run 的 checkpoint/resume 路径保持不变；迁移前确认旧作业从未启动，避免两个作业同时写同一目录。
@@ -183,7 +188,7 @@ cd /远端项目绝对路径
 
 1. 将资源缩减到任务实际需要的数量。
 2. 确保远端项目中的 `logs/` 存在。
-3. 使用 `sbatch --test-only 脚本路径` 做语法和调度校验。
+3. 使用 `sbatch --test-only 脚本路径` 校验脚本、权限和资源请求，并忽略其预计启动时间。
 4. 校验成功后才运行 `sbatch 脚本路径`。
 5. 立即记录返回的 Job ID、脚本路径、日志路径和提交时间。
 

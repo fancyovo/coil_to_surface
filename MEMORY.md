@@ -103,8 +103,16 @@
   rose from `48.5949558` to `53.4776601`. The survey score `47.2301782` and
   optimizer initial score differ because the registered standalone survey uses
   the library-default 256 surface angles while the frozen optimizer uses 128;
-  both values remain labeled by mode. A third frozen run may now be prepared;
-  see `CORR-20260829-14` and `-15`.
+  both values remain labeled by mode. Third-run preparation job `47943` passed
+  on commit `570e1d90441d5a1debaad100751e54f80daed356`, reproducing the
+  76/72 selection and six equal 12-trajectory worker loads in frozen root
+  `qh_data_gaussian_adam200_stratified_3h_v3_20260829`. Arrays `47946`
+  (P107 tasks 0--3) and `47947` (Students tasks 0--1, worker offsets 4--5)
+  all started within seconds of submission and were running on `anode02/03`
+  at the latest 2026-08-29 check. No final Adam conclusion exists yet. The
+  cluster's `sbatch --test-only` start estimates are invalid operational data;
+  only actual queue, accounting, logs, and result files establish job state.
+  See `CORR-20260829-14` through `-16`.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty

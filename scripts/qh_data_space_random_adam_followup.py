@@ -1533,6 +1533,10 @@ def summarize(args: argparse.Namespace) -> None:
 
     payload = {
         "format": "qh_data_space_random_adam_followup_summary_v1",
+        "analysis_repository": {
+            "commit": git_value("rev-parse", "HEAD"),
+            "tracked_dirty": git_dirty(),
+        },
         "run_manifest_sha256": file_sha256(args.run_root / "run_manifest.json"),
         "complete": not missing,
         "selected_count": len(manifest["cases"]),

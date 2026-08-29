@@ -61,8 +61,10 @@
   tail and deterministic reconstruction metadata for every sample. A separate
   stratified 64-direction, 200-step data-space Adam follow-up is required to
   estimate the optimizable-basin rate and its additional accelerator cost;
-  score thresholds alone are not that rate. Its pre-registered cap is 56
-  candidates, or 18.7 serial GPU-hours at the provisional 20 minutes each.
+  score thresholds alone are not that rate. The completed survey selected all
+  10 samples at score at least 20 plus four uniform low-band controls. Adam200
+  has not run; its provisional cost is 4.67 serial GPU-hours at 20 minutes per
+  candidate.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty
@@ -81,43 +83,21 @@
   normalized mutual information is 0.0932. Strict and aggressive references
   are complementary novelty checks. Full results and artifact hashes are in
   `reports/quasr_qh_structure_atlas_20260829.md`.
-- Remote build/reference-validation gate job `46832` ran on 2026-08-28 and
-  failed before configuration because CMake was not on the compute-node PATH.
-  It produced no library or numerical result. The launcher now activates the
-  pinned virtual environment before CMake. Replacement job `46845` built commit
-  `af9db1d9`, producing SHA-256 `227b76f7274891c1866594683653ad5a45f045a016aab12c0293934aec396d62`,
-  then stopped at the intentional stored-binary hash gate before numerical
-  validation because the rebuilt bytes differ from the production archive.
-  Numerical reference-validation job `46850` also stopped before scoring
-  because relinking generated another build ID and therefore another byte hash.
-  The corrected gate validates and records one rebuilt file in the same job.
-  Same-process build/reference gate job `46853` was submitted for commit
-  `ed832462`; it correctly rejected the first numerical comparison because the
-  validator had used optimizer center-score overrides against a standalone
-  reference. Production-library gate job `46861` then exposed the reference
-  script's explicit solver-mode pins. Repeated-reference job `46865` returned
-  `94.6254148` identically three times, disproving the warmup explanation. The
-  2026-08-19 `94.6368682` remains a historical recorded observation; its runtime
-  environment was not captured sufficiently to reproduce the small difference.
-  Current-runtime gate job `46869` passed on driver `580.173.02`: three scores
-  matched `94.6254147736` with maximum spread `1.42e-14`, using the frozen input
-  and production-library hashes. Six-GPU pilot arrays `46876` and `46877`
-  completed 396/396 samples; status counts were 287 `no_axis`, 78 `no_surface`,
-  18 `drift_rejected`, 2 `flux_rejected`, and 11 `ok`. Its maximum score was
-  `5.88136`, with zero scores at least 10. Calibration jobs `46886` and `46887`
-  set the formal worker samples per condition to `[223,231,233,234,238,240]`,
-  totaling 46,167 global evaluations with predicted per-worker wall times
-  `35246`--`35292` seconds. Prepare job `46890` produced an invalid 44,154-sample
-  manifest because Slurm split the comma-delimited worker-count environment
-  value; the manifest is retained as invalid and no worker used it. A colon
-  encoding and required total-count gate now prevent recurrence. No formal
-  worker used the invalid manifest. Corrected formal run
-  `qh_data_gaussian_global_formal_10h_v2_20260828` targets 46,167 samples.
-  P107 array `46898` runs workers 0--2 and Students array `46901` runs workers
-  4--5. Initial CPU clustering job `46903`, hierarchy-explicit strict job
-  `46913`, and cross-`nfp` job `46927` completed successfully. P107 job `46905`
-  runs worker 3. All six GPU workers passed the per-process `94.6254148`
-  reference gate and are running. Test-only prediction numbers are not jobs.
+- Current-runtime validation job `46869` established the frozen-case reference
+  `94.6254147736` on driver `580.173.02` with production-library SHA-256
+  `565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729`.
+  Failed setup/gate attempts and the invalid 44,154-sample preparation are
+  contained and recorded in `memory/CORRECTIONS.md`; none produced formal data.
+- Formal run `qh_data_gaussian_global_formal_10h_v2_20260828` completed
+  46,167/46,167 evaluations on jobs `46898`, `46901`, and `46905`. Every one of
+  the 33 conditions has 1,399 samples. Status counts are 33,107 `no_axis`,
+  10,182 `no_surface`, 1,887 `drift_rejected`, 104 `flux_rejected`, and 887
+  `ok`. Scores at least 10/20/30/40/50 occurred 34/10/5/3/0 times; maximum score
+  is `47.2301782`. The score-at-least-50 rate has 95% Wilson upper bound
+  `8.3201e-5`. Six workers consumed 58.17 GPU-hours over 10.02 hours elapsed.
+  Summary job `47462` completed with empty stderr; all 10 retained candidate
+  hashes match. Full evidence and limitations are in
+  `reports/qh_data_gaussian_global_survey_acceptance_20260829.md`.
 
 ## Current Evaluator And Physical Contract
 

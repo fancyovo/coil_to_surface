@@ -37,6 +37,11 @@ reports and immutable archives retain the detailed record.
   The strict `(nfp,n_base_coils)` atlas has 33 hard groups and 72 leaves. The
   base-coil-only atlas has five hard groups and 10 cross-`nfp` leaves. See
   `../reports/quasr_qh_structure_atlas_20260829.md`.
+- 2026-08-29: the registered standardized-data Gaussian survey completed
+  46,167 condition-balanced global evaluations. It found 10 scores at least 20,
+  no score at least 50, and a maximum of `47.2301782`. The 14-case Adam200
+  follow-up remains selected and unrun. See
+  `../reports/qh_data_gaussian_global_survey_acceptance_20260829.md`.
 
 ## Evidence Routes
 
@@ -53,5 +58,7 @@ reports and immutable archives retain the detailed record.
   `../evaluation/full_physical/README.md`.
 - QUASR QH structure and novelty references:
   `../reports/quasr_qh_structure_atlas_20260829.md`.
+- Standardized-data Gaussian global survey acceptance:
+  `../reports/qh_data_gaussian_global_survey_acceptance_20260829.md`.
 - Early DESC handoff:
   `archive/CODEX_HANDOFF_pre_restructure_20260828.md`.

@@ -1,0 +1,344 @@
+{
+  "format": "qh_data_space_random_global_survey_v1",
+  "stage": "prepared",
+  "run_label": "qh_data_gaussian_global_formal_10h_v2_20260828",
+  "protocol": {
+    "id": "qh-data-gaussian-global-survey-v1",
+    "status": "registered-experimental",
+    "purpose": "Estimate the condition-balanced probability that an independent standardized-data Gaussian QH start reaches score tails under the current global evaluator.",
+    "relationship_to_default": "Global initialization survey only; it does not alter the current Flow-screen32/Adam200/64-direction optimization default."
+  },
+  "created_unix_s": 1787931640.5408478,
+  "code": {
+    "commit": "4de19dad5957b00249cd0efa3f5dcd4e97a9d3f9",
+    "tracked_dirty": false,
+    "branch": "codex/qh-basin-atlas-random-survey"
+  },
+  "dataset": {
+    "root": "/home/scc/pb24511935/local_surface_evaluator_data/quasr_qh_flow_v1",
+    "manifest": "/home/scc/pb24511935/local_surface_evaluator_data/quasr_qh_flow_v1/manifest.json",
+    "manifest_sha256": "3e73f3cb5a25b3168f88f8f8486705fc6453696637b5fab2046cc7cb30d451ac",
+    "format": "quasr_qh_flow_v1",
+    "sample_count": 170755,
+    "group_counts": {
+      "nfp2_nc2": 1613,
+      "nfp2_nc3": 2710,
+      "nfp2_nc4": 3623,
+      "nfp2_nc5": 4150,
+      "nfp3_nc2": 4453,
+      "nfp3_nc3": 12752,
+      "nfp3_nc4": 16373,
+      "nfp3_nc5": 11572,
+      "nfp4_nc1": 64,
+      "nfp4_nc2": 17365,
+      "nfp4_nc3": 21053,
+      "nfp4_nc4": 12571,
+      "nfp4_nc5": 6807,
+      "nfp5_nc1": 529,
+      "nfp5_nc2": 18349,
+      "nfp5_nc3": 14313,
+      "nfp5_nc4": 6397,
+      "nfp5_nc5": 2305,
+      "nfp6_nc1": 257,
+      "nfp6_nc2": 2272,
+      "nfp6_nc3": 1435,
+      "nfp6_nc4": 1062,
+      "nfp6_nc5": 596,
+      "nfp7_nc1": 756,
+      "nfp7_nc2": 2180,
+      "nfp7_nc3": 1348,
+      "nfp7_nc4": 759,
+      "nfp7_nc5": 270,
+      "nfp8_nc1": 812,
+      "nfp8_nc2": 1142,
+      "nfp8_nc3": 562,
+      "nfp8_nc4": 248,
+      "nfp8_nc5": 57
+    }
+  },
+  "normalizer": {
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "role": "normalizer only; no Flow model decoding is used"
+  },
+  "evaluator": {
+    "library": "/home/scc/pb24511935/local_surface_evaluator_qrbench/gpu_backend/build_iota_cubic_cuda13/libstellarator_gpu.so",
+    "library_sha256": "565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729",
+    "abi": 10,
+    "target": "QH",
+    "target_helicity": "(1,nfp)",
+    "configuration": "standalone library defaults with psi_solver_mode=2 and alpha_solver_mode=2 explicitly pinned",
+    "explicit_overrides": {
+      "psi_solver_mode": 2,
+      "alpha_solver_mode": 2
+    },
+    "resolved_key_defaults": {
+      "psi_grid": 48,
+      "iota_degree": 3,
+      "surface_selection_mode": 0,
+      "surface_theta_count": 256,
+      "surface_trace_steps": 800,
+      "surface_confidence_periods": 2
+    },
+    "axis_history": "independent global search; no continuation hint",
+    "process_reference_preflight": {
+      "case": "/home/scc/pb24511935/local_surface_evaluator_worktrees/qh-basin-atlas-random-survey/reports/assets/qh_min_face_qh_full_evaluation_20260819/input_case.json",
+      "case_sha256": "6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1",
+      "expected_score": 94.62541477362565,
+      "score_atol": 1e-05,
+      "evaluations_per_worker_process": 1,
+      "reason": "detect evaluator environment or device drift before sampling"
+    }
+  },
+  "sampling": {
+    "prior": "independent N(0,1) per standardized coil-data coordinate",
+    "current_projection": "condition-specific current L1 normalization and dominant-current sign",
+    "condition_prior": "exactly balanced across supported (nfp,n_base_coils) groups",
+    "condition_count": 33,
+    "conditions": [
+      {
+        "nfp": 2,
+        "n_base_coils": 2,
+        "quasr_count": 1613
+      },
+      {
+        "nfp": 2,
+        "n_base_coils": 3,
+        "quasr_count": 2710
+      },
+      {
+        "nfp": 2,
+        "n_base_coils": 4,
+        "quasr_count": 3623
+      },
+      {
+        "nfp": 2,
+        "n_base_coils": 5,
+        "quasr_count": 4150
+      },
+      {
+        "nfp": 3,
+        "n_base_coils": 2,
+        "quasr_count": 4453
+      },
+      {
+        "nfp": 3,
+        "n_base_coils": 3,
+        "quasr_count": 12752
+      },
+      {
+        "nfp": 3,
+        "n_base_coils": 4,
+        "quasr_count": 16373
+      },
+      {
+        "nfp": 3,
+        "n_base_coils": 5,
+        "quasr_count": 11572
+      },
+      {
+        "nfp": 4,
+        "n_base_coils": 1,
+        "quasr_count": 64
+      },
+      {
+        "nfp": 4,
+        "n_base_coils": 2,
+        "quasr_count": 17365
+      },
+      {
+        "nfp": 4,
+        "n_base_coils": 3,
+        "quasr_count": 21053
+      },
+      {
+        "nfp": 4,
+        "n_base_coils": 4,
+        "quasr_count": 12571
+      },
+      {
+        "nfp": 4,
+        "n_base_coils": 5,
+        "quasr_count": 6807
+      },
+      {
+        "nfp": 5,
+        "n_base_coils": 1,
+        "quasr_count": 529
+      },
+      {
+        "nfp": 5,
+        "n_base_coils": 2,
+        "quasr_count": 18349
+      },
+      {
+        "nfp": 5,
+        "n_base_coils": 3,
+        "quasr_count": 14313
+      },
+      {
+        "nfp": 5,
+        "n_base_coils": 4,
+        "quasr_count": 6397
+      },
+      {
+        "nfp": 5,
+        "n_base_coils": 5,
+        "quasr_count": 2305
+      },
+      {
+        "nfp": 6,
+        "n_base_coils": 1,
+        "quasr_count": 257
+      },
+      {
+        "nfp": 6,
+        "n_base_coils": 2,
+        "quasr_count": 2272
+      },
+      {
+        "nfp": 6,
+        "n_base_coils": 3,
+        "quasr_count": 1435
+      },
+      {
+        "nfp": 6,
+        "n_base_coils": 4,
+        "quasr_count": 1062
+      },
+      {
+        "nfp": 6,
+        "n_base_coils": 5,
+        "quasr_count": 596
+      },
+      {
+        "nfp": 7,
+        "n_base_coils": 1,
+        "quasr_count": 756
+      },
+      {
+        "nfp": 7,
+        "n_base_coils": 2,
+        "quasr_count": 2180
+      },
+      {
+        "nfp": 7,
+        "n_base_coils": 3,
+        "quasr_count": 1348
+      },
+      {
+        "nfp": 7,
+        "n_base_coils": 4,
+        "quasr_count": 759
+      },
+      {
+        "nfp": 7,
+        "n_base_coils": 5,
+        "quasr_count": 270
+      },
+      {
+        "nfp": 8,
+        "n_base_coils": 1,
+        "quasr_count": 812
+      },
+      {
+        "nfp": 8,
+        "n_base_coils": 2,
+        "quasr_count": 1142
+      },
+      {
+        "nfp": 8,
+        "n_base_coils": 3,
+        "quasr_count": 562
+      },
+      {
+        "nfp": 8,
+        "n_base_coils": 4,
+        "quasr_count": 248
+      },
+      {
+        "nfp": 8,
+        "n_base_coils": 5,
+        "quasr_count": 57
+      }
+    ],
+    "seed_base": 2026082803,
+    "numpy_generator": "PCG64 via numpy.random.default_rng(SeedSequence)",
+    "tail_retention_score": 20.0
+  },
+  "workers": [
+    {
+      "worker_index": 0,
+      "samples_per_condition": 223,
+      "target_count": 7359
+    },
+    {
+      "worker_index": 1,
+      "samples_per_condition": 231,
+      "target_count": 7623
+    },
+    {
+      "worker_index": 2,
+      "samples_per_condition": 233,
+      "target_count": 7689
+    },
+    {
+      "worker_index": 3,
+      "samples_per_condition": 234,
+      "target_count": 7722
+    },
+    {
+      "worker_index": 4,
+      "samples_per_condition": 238,
+      "target_count": 7854
+    },
+    {
+      "worker_index": 5,
+      "samples_per_condition": 240,
+      "target_count": 7920
+    }
+  ],
+  "worker_count": 6,
+  "target_sample_count": 46167,
+  "deferred_adam_followup": {
+    "reason": "Adam200 is scheduled separately so its candidate-dependent cost cannot change the wall time or sample count of this global survey.",
+    "parameter_space": "standardized coil data",
+    "iterations": 200,
+    "directions": 64,
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [
+      0.7,
+      0.999
+    ],
+    "selection_bands": [
+      {
+        "score_low_inclusive": 0.0,
+        "score_high_exclusive": 20.0,
+        "maximum_selected": 4
+      },
+      {
+        "score_low_inclusive": 20.0,
+        "score_high_exclusive": 30.0,
+        "maximum_selected": 8
+      },
+      {
+        "score_low_inclusive": 30.0,
+        "score_high_exclusive": 40.0,
+        "maximum_selected": 8
+      },
+      {
+        "score_low_inclusive": 40.0,
+        "score_high_exclusive": 50.0,
+        "maximum_selected": 12
+      },
+      {
+        "score_low_inclusive": 50.0,
+        "score_high_exclusive": null,
+        "maximum_selected": 24
+      }
+    ],
+    "interpretation": "The global-score tail rate and the Adam-validated convergence-basin rate are distinct quantities."
+  }
+}

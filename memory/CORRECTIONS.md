@@ -225,6 +225,34 @@ An open critical correction blocks promotion and external reporting.
   `reports/quasr_qh_structure_atlas_20260829.md` uses the two-level terminology
   and adds a separate five-hard-group/10-leaf cross-`nfp` atlas.
 
+## CORR-20260829-12 - Low-band Adam controls were not required to be valid starts
+
+- Severity/status: medium / contained before Adam200 execution.
+- Discovered by: model while preparing the user-authorized three-hour follow-up.
+- Error: the first follow-up selector sampled four controls uniformly from
+  `[0,20)` without requiring evaluator status `ok`. All four selected controls
+  have status `no_axis`, while the frozen local-gradient optimizer rejects any
+  initial center whose status is not `ok`. The provisional 4.67 GPU-hour cost
+  also treated all 14 selected records as full Adam200 trajectories.
+- Primary evidence: all four low-band entries in
+  `reports/assets/qh_data_gaussian_global_survey_20260829/adam_followup_selection.json`
+  record `status=no_axis`; `scripts/optimize_flow_latent.py` raises on an
+  invalid initial center before its first update.
+- Corrected fact and scope: the immutable 14-record selection remains the
+  pre-registered provenance. Its four invalid controls are reproducible
+  optimizer-ineligible events. The post-acceptance extension adds 38
+  `score < 10,status=ok` controls stratified by base-coil count and includes all
+  34 `score >= 10` samples, yielding 72 executable Adam200 trajectories.
+- Impact: the 46,167 global scores, score-tail rates, retained candidates, and
+  clustering conclusions are unchanged. No Adam result requires invalidation
+  because Adam200 had not started when the flaw was found.
+- Containment: the new preparation command freezes source hashes, verifies
+  deterministic sample reconstruction, preserves original membership, records
+  inclusion probabilities, requires exactly 76 selected and 72 eligible
+  records, and tests that random starts do not reuse a recorded axis hint.
+- Promotion/reporting blocker: resolved for submission; final basin-rate claims
+  remain blocked until all six workers and the weighted summary are accepted.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

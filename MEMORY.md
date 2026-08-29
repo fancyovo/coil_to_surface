@@ -61,10 +61,16 @@
   tail and deterministic reconstruction metadata for every sample. A separate
   stratified 64-direction, 200-step data-space Adam follow-up is required to
   estimate the optimizable-basin rate and its additional accelerator cost;
-  score thresholds alone are not that rate. The completed survey selected all
-  10 samples at score at least 20 plus four uniform low-band controls. Adam200
-  has not run; its provisional cost is 4.67 serial GPU-hours at 20 minutes per
-  candidate.
+  score thresholds alone are not that rate. The immutable original selection
+  contains all 10 samples at score at least 20 plus four uniform low-band
+  controls; all four controls have `no_axis` status and cannot enter the frozen
+  optimizer. The user-authorized 2026-08-29 extension preserves those four as
+  diagnostics, takes a census of all 34 `score >= 10` samples, and samples 38
+  additional `score < 10,status=ok` controls by base-coil count. It therefore
+  contains 76 records and 72 actual Adam200 trajectories, with 12 trajectories
+  per GPU across six workers. The estimated cost is 17.59 serial GPU-hours and
+  2.93 parallel hours from the prior 309-case mean; no result exists until the
+  new Slurm jobs complete.
 - QUASR structure analysis uses all 170,755 QH entries, condition-stratified
   permutation/rotation/parameterization-robust geometric descriptors, stable
   partitions, nearest-neighbor density, medoids, and a reusable novelty
@@ -98,6 +104,11 @@
   Summary job `47462` completed with empty stderr; all 10 retained candidate
   hashes match. Full evidence and limitations are in
   `reports/qh_data_gaussian_global_survey_acceptance_20260829.md`.
+- Aggregating the frozen survey by `n_base_coils` gives sample counts
+  `[6995,9793,9793,9793,9793]` and evaluator-`ok` rates
+  `[4.3746%,2.3180%,1.6951%,1.1539%,0.7659%]`. Score-at-least-20 counts are
+  `[7,1,1,1,0]`; their small-count Wilson intervals and all other thresholds
+  are recorded in the survey acceptance report and `n_coils_breakdown.json`.
 
 ## Current Evaluator And Physical Contract
 

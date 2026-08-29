@@ -39,8 +39,10 @@ reports and immutable archives retain the detailed record.
   `../reports/quasr_qh_structure_atlas_20260829.md`.
 - 2026-08-29: the registered standardized-data Gaussian survey completed
   46,167 condition-balanced global evaluations. It found 10 scores at least 20,
-  no score at least 50, and a maximum of `47.2301782`. The 14-case Adam200
-  follow-up remains selected and unrun. See
+  no score at least 50, and a maximum of `47.2301782`. A user-authorized
+  post-acceptance extension preserved the original 14-case selection and
+  expanded the follow-up to 72 executable Adam200 trajectories plus four
+  `no_axis` diagnostics. See
   `../reports/qh_data_gaussian_global_survey_acceptance_20260829.md`.
 
 ## Evidence Routes

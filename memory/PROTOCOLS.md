@@ -92,6 +92,17 @@ estimate combines condition-balanced score-band prevalence with weighted Adam
 success rates. Its cost report includes both global evaluations and conditional
 Adam200 work.
 
+The immutable first selection contains all 10 `score >= 20` samples and four
+uniform `[0,20)` controls. The four controls happened to have `no_axis` status,
+which makes them ineligible for this optimizer's required valid initial center.
+On 2026-08-29 the user authorized a post-acceptance extension for an
+approximately three-hour, six-GPU window: retain the original 14 records, take
+a census of all 34 `score >= 10` samples, and add 38 uniformly sampled
+`score < 10,status=ok` controls stratified by `n_base_coils` with quotas
+`[4,8,7,7,12]`. The expanded manifest must label this as a post-acceptance
+extension, record every inclusion probability, and preserve the original
+selection file unchanged. It contains 76 records, of which 72 run Adam200.
+
 This protocol neither uses Flow decoding nor changes
 `qh-flow-screen32-adam200-64d-v1`. Exactly two directions remain prohibited.
 

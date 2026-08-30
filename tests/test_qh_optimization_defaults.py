@@ -43,7 +43,7 @@ def test_current_qh_protocol_is_the_public_default() -> None:
     assert CURRENT_QH_PROTOCOL_ID == "qh-flow-screen32-adam200-64d-abi11-v1"
     assert CURRENT_NATIVE_SCORE_ABI == 11
     assert CURRENT_NATIVE_SCORE_LIBRARY_SHA256 == (
-        "921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668"
+        "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
     )
 
 

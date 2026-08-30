@@ -31,7 +31,7 @@ Protocol ID: `qh-flow-screen32-adam200-64d-abi11-v1`.
 | Adam beta | `(0.7, 0.999)` |
 | Flow decode | FP32 RK4-128 |
 | Evaluator | ABI-11 axis-circulation, cubic-iota native library |
-| Evaluator SHA-256 | `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668` |
+| Evaluator SHA-256 | `1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed` |
 | Axis handling | strict continuation, mode 2, within an optimization only |
 
 The shared constants and classifier are in `flow_matching/optimization.py`.

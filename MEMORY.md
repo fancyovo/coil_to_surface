@@ -32,7 +32,7 @@
   in `flow_matching/optimization.py`. Compatibility entry points must resolve
   to the same values.
 - The default evaluator is ABI 11, score-library SHA-256
-  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`.
+  `1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed`.
   Protocol classification includes the actual library hash. ABI 10 cannot
   launch or resume from current entry points.
 - Exactly two directions is deprecated historical evidence and is hard-blocked
@@ -51,7 +51,7 @@
 
 - The production native evaluator is C++/CUDA ABI 11. Current score-library
   SHA-256 is
-  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`.
+  `1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed`.
   Intentional rebuilds require fresh numerical validation before promotion.
 - Vacuum `G` uses the selected magnetic axis Ampere circulation. Equivalently,
   it sums signed physical-coil currents weighted by their oriented linking

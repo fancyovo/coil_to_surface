@@ -106,8 +106,11 @@ An open critical correction blocks promotion and external reporting.
   formal native, fixed-front, query-batch, Python volume-QS, saved-QS, and
   Simsopt-initialization paths. ABI versioning, protocol identity, actual
   library-hash classification, resume checks, and active launchers block ABI-10.
-  The corrected library SHA-256 is
-  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`.
+  The canonical `main` library SHA-256 is
+  `1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed`.
+  The earlier exploration-worktree build SHA-256 is
+  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`;
+  both builds produced the same 44 scores and components within `1.85e-13`.
   Forty-four strict-axis replays matched independent topology-predicted `G`
   within `1.0921e-8`; all 38 Adam200 endpoints remained at score 50 or above.
   See `reports/abi11_default_promotion_20260830.md`.

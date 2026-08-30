@@ -13,7 +13,7 @@
 
 原生链路依次完成批量磁轴追踪、局部不变量 $s$、物理磁通 $\psi(s)$、$\alpha$ 与 $\iota$ 联合拟合和体 QA/QH/QP 统计。训练后的 flow matching 同时提供有限筛选先验和可逆搜索坐标。正式评分与完整评估中的批量前端使用 GPU，并对失败返回结构化状态；只有明确允许的 DESC 等步骤可以使用 CPU。
 
-快速 score 是有物理含义的排序代理，但不是平衡存在性的证明。正式结论必须来自完整评估支线。
+快速 score 是有物理含义的排序代理。平衡存在性与正式物理结论由完整评估支线确定。
 
 ## 计算流程
 
@@ -36,7 +36,7 @@ $$
 
 1. **磁轴**：在一个场周期的 Poincare 映射上批量搜索椭圆固定点，再作有界 Newton 精修和轴追踪。
 2. **局部磁面标签 $s$**：在磁轴附近用完整的二维多项式和环向 Fourier 基底拟合 $\boldsymbol B\cdot\nabla s=0$。
-3. **物理磁通 $\psi$**：通过多截面环向磁通积分标定 $\psi(s)=\Phi_t(s)/(2\pi)$。$s$ 是几何标签，不是物理磁通。
+3. **物理磁通 $\psi$**：通过多截面环向磁通积分标定 $\psi(s)=\Phi_t(s)/(2\pi)$。$s$ 表示几何标签，$\psi$ 表示物理磁通。
 4. **$\alpha$ 与 $\iota$**：以 Zernike--Fourier 基底对 $\boldsymbol B\cdot\nabla\alpha=0$ 做一次联合线性最小二乘，直接得到全体积直线场线角修正和旋转变换。
 5. **快速 score 分支**：不求 $\nu$，直接用 $\psi$、$\iota$、$\boldsymbol B$ 和 $\nabla\boldsymbol B$ 计算体微分 QA/QH/QP。
 6. **完整评估分支**：求环向修正 $\nu$，构造近 Boozer 面，再交给标准 Simsopt LS/Newton 和 DESC 独立验收。
@@ -216,7 +216,7 @@ export S_EDGES=0.12,0.20,0.30,0.36,0.49
 bash evaluation/full_physical/submit_surface_candidates.sh
 ```
 
-默认每个候选使用 1 张 GPU 和 4 核 CPU，可在四卡上并行四个候选。`SERIAL_CANDIDATES=1` 只用于明确的资源限制，不是保守默认值。候选先走 GPU FP32 $\alpha+\nu$，最终是否存在磁面只由标准 LS/Newton、独立密网格残差和嵌套分支连续性决定。
+默认每个候选使用 1 张 GPU 和 4 核 CPU，可在四卡上并行四个候选。`SERIAL_CANDIDATES=1` 仅用于明确的资源限制；常规默认保持并行。候选先走 GPU FP32 $\alpha+\nu$，最终磁面存在性由标准 LS/Newton、独立密网格残差和嵌套分支连续性决定。
 
 ### 3. 选择最大已测通过面并运行下游
 
@@ -329,6 +329,6 @@ python -m stellarator_eval.cli \
 
 - 固定成本 score 的 `a=0.05` 和定长筛面只适合排序；完整评估必须按样本重新选择 $a$ 和较大的可行面。
 - `drift_rejected` 表示快速场线筛选未通过，不等价于“没有磁轴”，也不能证明标准 LS/Newton 一定找不到磁面。
-- score 含候选选择、拓扑和有效性分支，不是全局光滑目标；高分区仍可能出现可行性边界和离散跳变。
+- score 含候选选择、拓扑和有效性分支，目标仅分段光滑；高分区仍可能出现可行性边界和离散跳变。
 - ABI-10 及更早版本的 score、landscape、proxy 标签和优化结果均为历史结果，不能与 ABI-11 分数直接比较。冻结复现必须使用原始 manifest 和评分库，不能通过当前入口续跑。
 - flow checkpoint、score 动态库和代码 commit 共同定义一次实验；缺少其中任一哈希时，结果不能作为可复现实验基线。

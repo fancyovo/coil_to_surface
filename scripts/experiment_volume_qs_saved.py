@@ -31,8 +31,8 @@ from stellarator_eval.volume_qs import (
     sample_volume_points,
     summarize_volume_qs,
     subset_volume_points,
-    vacuum_G,
 )
+from stellarator_eval.linked_current import magnetic_axis_circulation, vacuum_G_from_circulation
 from stellarator_gpu import CoilFieldGpu
 
 
@@ -163,6 +163,10 @@ def main() -> None:
             timings["flux_calibration_s"] = float(time.perf_counter() - start)
         start = time.perf_counter()
         B, grad_B = gpu.eval_B_grad(points["xyz"], precision=args.precision)
+        axis_circulation = magnetic_axis_circulation(
+            model,
+            lambda xyz: gpu.eval_B(xyz, precision=args.precision),
+        )
         timings["B_grad_B_s"] = float(time.perf_counter() - start)
     finally:
         gpu.close()
@@ -199,7 +203,7 @@ def main() -> None:
         if args.alpha_validation_points > 0 and len(validation_indices)
         else None
     )
-    G = vacuum_G(currents_a, field_input.nfp, flux.psi_edge)
+    G = vacuum_G_from_circulation(axis_circulation, flux.psi_edge)
     metrics = {}
     start = time.perf_counter()
     for name, M, N in (

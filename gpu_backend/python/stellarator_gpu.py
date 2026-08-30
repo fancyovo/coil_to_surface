@@ -27,7 +27,7 @@ class GpuError(RuntimeError):
     pass
 
 
-SGPU_SCORE_ABI_VERSION = 10
+SGPU_SCORE_ABI_VERSION = 11
 SGPU_SCORE_COMPONENT_NAMES = (
     "axis",
     "psi",

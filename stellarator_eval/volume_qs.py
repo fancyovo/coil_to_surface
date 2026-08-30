@@ -908,16 +908,6 @@ def fit_flux_scale(points: dict, B, alpha_fit: StraightFieldFit, config: VolumeQ
     return fit
 
 
-def vacuum_G(currents_a, nfp: int, toroidal_flux: float) -> float:
-    """Return the vacuum Boozer G for radian angular coordinates."""
-    toroidal_flux = float(toroidal_flux)
-    if not np.isfinite(toroidal_flux) or toroidal_flux == 0.0:
-        raise ValueError("vacuum G requires nonzero signed toroidal flux")
-    linked_current = 2 * int(nfp) * np.sum(np.abs(np.asarray(currents_a, dtype=float)))
-    magnitude = MU0 * linked_current / TWOPI
-    return float(np.copysign(magnitude, toroidal_flux))
-
-
 def compute_f_c(points: dict, B, grad_B, alpha_fit: StraightFieldFit, flux_fit: FluxScaleFit, *, M: int, N: int, G: float, I: float = 0.0):
     B = np.asarray(B, dtype=float)
     grad_B = np.asarray(grad_B, dtype=float)
@@ -1006,6 +996,7 @@ def evaluate_volume_qs_model(
     import sys
 
     from .field import normalize_currents
+    from .linked_current import magnetic_axis_circulation, vacuum_G_from_circulation
 
     gpu_python = Path(__file__).resolve().parents[1] / "gpu_backend" / "python"
     if str(gpu_python) not in sys.path:
@@ -1090,6 +1081,11 @@ def evaluate_volume_qs_model(
         timings["volume_points_s"] = float(time.perf_counter() - points_start)
         field_start = time.perf_counter()
         B, grad_B = gpu.eval_B_grad(points["xyz"], precision=selected_config.precision)
+        axis_circulation = magnetic_axis_circulation(
+            model,
+            lambda xyz: gpu.eval_B(xyz, precision=selected_config.precision),
+        )
+        G = vacuum_G_from_circulation(axis_circulation, calibration.psi_edge)
         timings["B_grad_B_s"] = float(time.perf_counter() - field_start)
     finally:
         gpu.close()
@@ -1113,7 +1109,6 @@ def evaluate_volume_qs_model(
         "QH_minus": (1, -int(field_input.nfp)),
         "QP": (0, int(field_input.nfp)),
     }
-    G = vacuum_G(currents_a, field_input.nfp, calibration.psi_edge)
     metric_start = time.perf_counter()
     metrics = {}
     for name, (M, N) in specs.items():
@@ -1123,6 +1118,8 @@ def evaluate_volume_qs_model(
     timings["downstream_total_s"] = float(time.perf_counter() - started)
     return {
         "status": "ok",
+        "magnetic_axis_circulation": float(axis_circulation),
+        "vacuum_G": float(G),
         "target_helicity": list(target_helicity),
         "s_edge": float(selected_config.s_edge),
         "sampling_extent": float(extent),

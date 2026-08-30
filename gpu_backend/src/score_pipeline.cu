@@ -789,6 +789,64 @@ struct AxisData {
     double hint_distance = std::numeric_limits<double>::quiet_NaN();
 };
 
+bool magnetic_axis_circulation_native(
+    void* field,
+    const AxisData& axis,
+    int nfp,
+    double& circulation
+) {
+    const int count = static_cast<int>(axis.R.size());
+    if (!field || nfp <= 0 || count < 16 || axis.Z.size() != axis.R.size() ||
+        axis.R_phi.size() != axis.R.size() || axis.Z_phi.size() != axis.R.size()) {
+        sgpu_internal_set_error("invalid magnetic-axis circulation input");
+        return false;
+    }
+    std::vector<double> xyz(static_cast<size_t>(count) * 3);
+    std::vector<double> B(xyz.size());
+    for (int index = 0; index < count; ++index) {
+        const double phi = TWOPI * index / static_cast<double>(nfp * count);
+        const double cosine = std::cos(phi);
+        const double sine = std::sin(phi);
+        xyz[3 * index] = axis.R[index] * cosine;
+        xyz[3 * index + 1] = axis.R[index] * sine;
+        xyz[3 * index + 2] = axis.Z[index];
+    }
+    if (sgpu_eval_B(field, xyz.data(), B.data(), count)) return false;
+    double sum = 0.0;
+    for (int index = 0; index < count; ++index) {
+        const double phi = TWOPI * index / static_cast<double>(nfp * count);
+        const double cosine = std::cos(phi);
+        const double sine = std::sin(phi);
+        const double tangent_x = axis.R_phi[index] * cosine - axis.R[index] * sine;
+        const double tangent_y = axis.R_phi[index] * sine + axis.R[index] * cosine;
+        sum += B[3 * index] * tangent_x + B[3 * index + 1] * tangent_y +
+            B[3 * index + 2] * axis.Z_phi[index];
+    }
+    circulation = TWOPI * sum / count;
+    if (!std::isfinite(circulation)) {
+        sgpu_internal_set_error("magnetic-axis circulation is not finite");
+        return false;
+    }
+    return true;
+}
+
+bool vacuum_G_native(
+    void* field,
+    const AxisData& axis,
+    int nfp,
+    double edge_toroidal_flux,
+    double& G
+) {
+    if (!std::isfinite(edge_toroidal_flux) || edge_toroidal_flux == 0.0) {
+        sgpu_internal_set_error("vacuum G requires nonzero signed toroidal flux");
+        return false;
+    }
+    double circulation = 0.0;
+    if (!magnetic_axis_circulation_native(field, axis, nfp, circulation)) return false;
+    G = std::copysign(std::abs(circulation) / TWOPI, edge_toroidal_flux);
+    return true;
+}
+
 bool find_axis_native(
     void* field,
     const double* coeffs_x,
@@ -4008,10 +4066,8 @@ bool compute_qs_metric_native(
     const float* d_B,
     const float* d_grad_B,
     const AlphaFitNative& alpha,
-    const double* currents_a,
-    int n_base_coils,
     int nfp,
-    double edge_toroidal_flux,
+    double G,
     const SgpuScoreConfig& config,
     SgpuScoreResult& result,
     std::array<double, 9>* raw_sums
@@ -4024,15 +4080,10 @@ bool compute_qs_metric_native(
         if (result.status != SGPU_SCORE_INTERNAL_ERROR) fail_result(&result, "QS allocation failed");
         return false;
     }
-    double current_sum = 0.0;
-    for (int index = 0; index < n_base_coils; ++index) current_sum += std::abs(currents_a[index]);
-    if (!std::isfinite(edge_toroidal_flux) || edge_toroidal_flux == 0.0) {
-        fail_result(&result, "QS metric requires nonzero signed toroidal flux");
+    if (!std::isfinite(G)) {
+        fail_result(&result, "QS metric requires finite vacuum G");
         return false;
     }
-    // The volume coordinates use radian angles, so G = mu0 I_link / (2 pi).
-    const double G_magnitude = 2.0e-7 * 2.0 * nfp * current_sum;
-    const double G = std::copysign(G_magnitude, edge_toroidal_flux);
     const float edge_threshold = static_cast<float>(
         config.volume_rho_min + (1.0 - config.volume_rho_min) *
         (config.radial_bin_count - 1.0) / config.radial_bin_count
@@ -4285,9 +4336,13 @@ bool run_downstream_gpu(
     result.stage_completed = SCORE_STAGE_ALPHA;
     started = Clock::now();
     std::array<double, 9> qs_sums{};
+    double G = 0.0;
+    if (!vacuum_G_native(field, axis, nfp, flux.edge_flux, G)) {
+        fail_from_backend(&result, "magnetic-axis Ampere circulation");
+        return false;
+    }
     if (!compute_qs_metric_native(
-            points, d_B.data(), d_grad_B.data(), alpha, currents_a,
-            n_base_coils, nfp, flux.edge_flux, config, result,
+            points, d_B.data(), d_grad_B.data(), alpha, nfp, G, config, result,
             g_active_g2_cache ? &qs_sums : nullptr)) {
         return false;
     }
@@ -4965,11 +5020,40 @@ bool map_fixed_front_field_adjoint(
         fail_result(&result, "fixed-front segment count mismatch");
         return false;
     }
-    const double G_current_scale = std::copysign(4.0e-7 * nfp, cache.G);
-    for (int coil = 0; coil < n_base_coils; ++coil) {
-        if (currents_a[coil] != 0.0) {
-            output.current[coil] +=
-                adj_G * G_current_scale * std::copysign(1.0, currents_a[coil]);
+    if (adj_G != 0.0) {
+        std::vector<double> circulation_per_amp(n_base_coils, 0.0);
+        std::vector<double> unit_currents(n_base_coils, 0.0);
+        for (int coil = 0; coil < n_base_coils; ++coil) {
+            unit_currents[coil] = 1.0;
+            void* unit_field = nullptr;
+            if (sgpu_create_field(
+                    coeffs_x, coeffs_y, coeffs_z, unit_currents.data(),
+                    n_base_coils, n_coeff, nfp, config.segments_per_coil,
+                    config.device_id, &unit_field)) {
+                fail_from_backend(&result, "vacuum-G current derivative field creation");
+                return false;
+            }
+            const bool circulation_ok = magnetic_axis_circulation_native(
+                unit_field, cache.axis, nfp, circulation_per_amp[coil]
+            );
+            sgpu_destroy_field(unit_field);
+            unit_currents[coil] = 0.0;
+            if (!circulation_ok) {
+                fail_from_backend(&result, "vacuum-G current derivative circulation");
+                return false;
+            }
+        }
+        double total_circulation = 0.0;
+        for (int coil = 0; coil < n_base_coils; ++coil) {
+            total_circulation += currents_a[coil] * circulation_per_amp[coil];
+        }
+        if (std::abs(total_circulation) > 1.0e-30) {
+            const double sign = std::copysign(1.0, result.flux_edge) *
+                std::copysign(1.0, total_circulation);
+            for (int coil = 0; coil < n_base_coils; ++coil) {
+                output.current[coil] += adj_G * sign *
+                    circulation_per_amp[coil] / TWOPI;
+            }
         }
     }
     output.parameter_map_s = seconds_since(started);
@@ -5076,13 +5160,18 @@ bool evaluate_fixed_front_g2_scalar(
         error = query.error_message[0]
             ? query.error_message : "fixed-front query B/grad(B) failed";
         ok = false;
-    } else if (!compute_qs_metric_native(
-                   cache.points, d_B.data(), d_grad_B.data(), cache.alpha,
-                   currents_a, n_base_coils, nfp, center.flux_edge, config,
-                   query, nullptr)) {
-        error = query.error_message[0]
-            ? query.error_message : "fixed-front query QS metric failed";
-        ok = false;
+    } else {
+        double G = 0.0;
+        if (!vacuum_G_native(field, cache.axis, nfp, center.flux_edge, G)) {
+            error = "fixed-front query magnetic-axis circulation failed";
+            ok = false;
+        } else if (!compute_qs_metric_native(
+                       cache.points, d_B.data(), d_grad_B.data(), cache.alpha,
+                       nfp, G, config, query, nullptr)) {
+            error = query.error_message[0]
+                ? query.error_message : "fixed-front query QS metric failed";
+            ok = false;
+        }
     }
     sgpu_destroy_field(field);
     if (!ok) return false;
@@ -5201,13 +5290,18 @@ bool evaluate_fixed_front_g3_scalar(
         error = query.error_message[0]
             ? query.error_message : "fixed-front G3 query alpha/iota fit failed";
         ok = false;
-    } else if (!compute_qs_metric_native(
-                   cache.points, d_B.data(), d_grad_B.data(), alpha,
-                   currents_a, n_base_coils, nfp, center.flux_edge, config,
-                   query, nullptr)) {
-        error = query.error_message[0]
-            ? query.error_message : "fixed-front G3 query QS metric failed";
-        ok = false;
+    } else {
+        double G = 0.0;
+        if (!vacuum_G_native(field, cache.axis, nfp, center.flux_edge, G)) {
+            error = "fixed-front G3 query magnetic-axis circulation failed";
+            ok = false;
+        } else if (!compute_qs_metric_native(
+                       cache.points, d_B.data(), d_grad_B.data(), alpha,
+                       nfp, G, config, query, nullptr)) {
+            error = query.error_message[0]
+                ? query.error_message : "fixed-front G3 query QS metric failed";
+            ok = false;
+        }
     }
     sgpu_destroy_field(field);
     if (!ok) return false;
@@ -6468,6 +6562,66 @@ __global__ void local_batch_qs_metric_kernel(
     atomicAdd(psi_histogram + static_cast<size_t>(query) * histogram_bins + bin, 1u);
 }
 
+bool vacuum_G_batch_native(
+    void* batch_field,
+    const double* axis_R,
+    const double* axis_Z,
+    const double* axis_R_phi,
+    const double* axis_Z_phi,
+    int query_count,
+    int axis_count,
+    int nfp,
+    const std::vector<float>& edge_flux,
+    std::vector<double>& G
+) {
+    if (!batch_field || !axis_R || !axis_Z || !axis_R_phi || !axis_Z_phi ||
+        query_count <= 0 || axis_count < 16 || nfp <= 0 ||
+        static_cast<int>(edge_flux.size()) != query_count) {
+        sgpu_internal_set_error("invalid local-batch magnetic-axis circulation input");
+        return false;
+    }
+    const size_t total = static_cast<size_t>(query_count) * axis_count;
+    std::vector<float> xyz(total * 3);
+    std::vector<float> B(xyz.size());
+    for (int query = 0; query < query_count; ++query) {
+        for (int index = 0; index < axis_count; ++index) {
+            const size_t flat = static_cast<size_t>(query) * axis_count + index;
+            const double phi = TWOPI * index / static_cast<double>(nfp * axis_count);
+            const double cosine = std::cos(phi);
+            const double sine = std::sin(phi);
+            xyz[3 * flat] = static_cast<float>(axis_R[flat] * cosine);
+            xyz[3 * flat + 1] = static_cast<float>(axis_R[flat] * sine);
+            xyz[3 * flat + 2] = static_cast<float>(axis_Z[flat]);
+        }
+    }
+    if (sgpu_batch_eval_B_f32(batch_field, xyz.data(), B.data(), axis_count)) return false;
+    G.resize(query_count);
+    for (int query = 0; query < query_count; ++query) {
+        if (!std::isfinite(edge_flux[query]) || edge_flux[query] == 0.0f) {
+            sgpu_internal_set_error("local-batch vacuum G requires nonzero signed toroidal flux");
+            return false;
+        }
+        double sum = 0.0;
+        for (int index = 0; index < axis_count; ++index) {
+            const size_t flat = static_cast<size_t>(query) * axis_count + index;
+            const double phi = TWOPI * index / static_cast<double>(nfp * axis_count);
+            const double cosine = std::cos(phi);
+            const double sine = std::sin(phi);
+            const double tangent_x = axis_R_phi[flat] * cosine - axis_R[flat] * sine;
+            const double tangent_y = axis_R_phi[flat] * sine + axis_R[flat] * cosine;
+            sum += B[3 * flat] * tangent_x + B[3 * flat + 1] * tangent_y +
+                B[3 * flat + 2] * axis_Z_phi[flat];
+        }
+        const double circulation = TWOPI * sum / axis_count;
+        if (!std::isfinite(circulation)) {
+            sgpu_internal_set_error("local-batch magnetic-axis circulation is not finite");
+            return false;
+        }
+        G[query] = std::copysign(std::abs(circulation) / TWOPI, edge_flux[query]);
+    }
+    return true;
+}
+
 bool score_local_batch_impl(
     void* batch_field,
     const double* currents_a,
@@ -7186,16 +7340,11 @@ bool score_local_batch_impl(
     ).count();
 
     const auto qs_started = LocalClock::now();
-    std::vector<double> G(query_count);
-    for (int query = 0; query < query_count; ++query) {
-        double current_sum = 0.0;
-        for (int coil = 0; coil < n_base_coils; ++coil) {
-            current_sum += std::abs(
-                currents_a[static_cast<size_t>(query) * n_base_coils + coil]
-            );
-        }
-        const double magnitude = 2.0e-7 * 2.0 * nfp * current_sum;
-        G[query] = std::copysign(magnitude, static_cast<double>(edge_flux[query]));
+    std::vector<double> G;
+    if (!vacuum_G_batch_native(
+            batch_field, axis_R_host, axis_Z_host, axis_R_phi_host,
+            axis_Z_phi_host, query_count, axis_count, nfp, edge_flux, G)) {
+        return false;
     }
     constexpr int histogram_bins = 256;
     DeviceBuffer<double> d_G, d_qs_sums(static_cast<size_t>(query_count) * 9);

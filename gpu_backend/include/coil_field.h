@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#define SGPU_SCORE_ABI_VERSION 10u
+#define SGPU_SCORE_ABI_VERSION 11u
 #define SGPU_SCORE_MAX_SURFACE_LEVELS 16
 #define SGPU_SCORE_COMPONENT_COUNT 7
 #define SGPU_SCORE_TIMING_COUNT 32

@@ -1,6 +1,7 @@
 import numpy as np
 
 from stellarator_eval.config import VolumeQSConfig
+from stellarator_eval.linked_current import magnetic_axis_circulation, vacuum_G_from_circulation
 from stellarator_eval.psi import PolyMode, PsiModel, build_modes, psi_and_gradient
 from stellarator_eval.volume_qs import (
     _volume_candidate_lattice_shape,
@@ -13,7 +14,6 @@ from stellarator_eval.volume_qs import (
     _physical_volume_weights,
     _surface_radius_on_rays,
     _budget_flux_levels,
-    vacuum_G,
 )
 
 
@@ -251,14 +251,45 @@ def test_compute_f_c_matches_direct_formula():
     np.testing.assert_allclose(result["f_C"], expected)
 
 
-def test_vacuum_G_uses_signed_toroidal_flux():
-    currents = np.asarray([2.0, -3.0, 5.0])
-    positive = vacuum_G(currents, 4, 0.02)
-    negative = vacuum_G(currents, 4, -0.02)
-    linked_current = 2 * 4 * np.sum(np.abs(currents))
-    expected = 4.0e-7 * np.pi * linked_current / (2.0 * np.pi)
-    np.testing.assert_allclose(positive, expected, rtol=0.0, atol=1.0e-20)
+def test_vacuum_G_uses_axis_ampere_circulation_and_flux_sign():
+    circulation = -7.5
+    positive = vacuum_G_from_circulation(circulation, 0.02)
+    negative = vacuum_G_from_circulation(circulation, -0.02)
+    expected = abs(circulation) / (2.0 * np.pi)
+    np.testing.assert_allclose(positive, expected, rtol=0.0, atol=1.0e-15)
     np.testing.assert_allclose(negative, -positive)
+
+
+def test_axis_circulation_integrates_full_device_loop_from_one_period():
+    major_radius = 1.35
+    toroidal_field = 2.4
+    phi_axis = np.linspace(0.0, 2.0 * np.pi / 7.0, 96, endpoint=False)
+    model = PsiModel(
+        coeffs=np.asarray([1.0]),
+        modes=[PolyMode(2, 0, 0, "cos")],
+        nfp=7,
+        a=0.2,
+        phi_axis=phi_axis,
+        R_axis=np.full_like(phi_axis, major_radius),
+        Z_axis=np.zeros_like(phi_axis),
+        R_axis_phi=np.zeros_like(phi_axis),
+        Z_axis_phi=np.zeros_like(phi_axis),
+        fit_info={},
+    )
+
+    def evaluate(points):
+        phi = np.arctan2(points[:, 1], points[:, 0])
+        return toroidal_field * np.column_stack(
+            (-np.sin(phi), np.cos(phi), np.zeros_like(phi))
+        )
+
+    circulation = magnetic_axis_circulation(model, evaluate)
+    np.testing.assert_allclose(
+        circulation,
+        2.0 * np.pi * major_radius * toroidal_field,
+        rtol=0.0,
+        atol=2.0e-14,
+    )
 
 
 def test_normalized_f_c_is_invariant_under_global_current_reversal():

@@ -17,9 +17,9 @@ from scipy.spatial import cKDTree
 from .axis import b_components, rk4_one_period
 from .config import BoozerConfig, SurfaceScanConfig
 from .psi import PsiModel, psi_and_gradient, psi_ray_value_and_derivative
+from .linked_current import simsopt_axis_circulation
 
 TWOPI = 2.0 * np.pi
-MU0 = 4.0e-7 * np.pi
 
 
 @dataclass
@@ -497,8 +497,9 @@ def evaluate_boozer_surface(field, model: PsiModel, psi_level: float, scan_cfg: 
     result["surface_fit_rms"] = float(fit_rms)
     result["initial_volume"] = float(Volume(surf).J())
 
-    current_sum = float(sum(abs(c.current.get_value()) for c in field.coils))
-    g0 = MU0 * current_sum
+    axis_circulation = simsopt_axis_circulation(field, model)
+    g0 = abs(axis_circulation)
+    result["magnetic_axis_circulation"] = float(axis_circulation)
     result["G0"] = float(g0)
     try:
         r0 = boozer_surface_residual(surf, boozer_cfg.initial_iota, g0, field, derivatives=0)[0]

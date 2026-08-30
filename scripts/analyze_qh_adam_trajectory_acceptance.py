@@ -236,7 +236,7 @@ def plot_score_overview(
         ordered = np.sort(values)
         survival = (len(ordered) - np.arange(len(ordered))) / max(len(ordered), 1)
         axes[0, 1].plot(ordered, survival, color=colors[name], linewidth=2, label=labels[name])
-    axes[0, 0].set(xlabel="native score", ylabel="density", title="Current ABI-10 score distributions")
+    axes[0, 0].set(xlabel="native score", ylabel="density", title="Historical ABI-10 score distributions")
     axes[0, 1].set(
         xlabel="native score",
         ylabel="fraction at or above score",

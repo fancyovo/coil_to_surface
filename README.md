@@ -2,13 +2,13 @@
 
 从 Fourier 线圈参数出发，快速评估局部磁面、旋转变换和体准对称性，并为高价值样本执行完整的 Boozer 磁面与 DESC 物理验收。
 
-当前 `main` 的 QH 默认协议与公开 StellCoilOpt 主线一致：独立评分 32 个 Flow 候选并选择最高有效起点，随后执行 200 步 Adam；每步使用 64 个新正交方向、128 个中心差分端点、$h=0.005$、学习率 0.02、$(\beta_1,\beta_2)=(0.7,0.999)$ 和 FP32 RK4-128。仓库中所有既有 2 方向配置均为废弃历史协议，当前入口会拒绝运行。
+当前 `main` 的 QH 默认协议 `qh-flow-screen32-adam200-64d-abi11-v1` 与公开 StellCoilOpt 优化设置一致：独立评分 32 个 Flow 候选并选择最高有效起点，随后执行 200 步 Adam；每步使用 64 个新正交方向、128 个中心差分端点、$h=0.005$、学习率 0.02、$(\beta_1,\beta_2)=(0.7,0.999)$ 和 FP32 RK4-128。仓库中所有既有 2 方向配置及 ABI-10 评分协议均为废弃历史，当前入口会拒绝运行。
 
 当前项目有两条边界清晰、互不替代的正式路径：
 
 | 路径 | 用途 | 数值方法 | 典型成本 |
 |---|---|---|---:|
-| ABI-10 原生 score | 大批量筛选和优化 | C++/CUDA 有界追踪、FP32 QR、固定规模归约 | 严格磁轴续接约 0.55--1.01 s/次，取决于提示误差 |
+| ABI-11 原生 score | 大批量筛选和优化 | C++/CUDA 有界追踪、FP32 QR、磁轴安培环流、固定规模归约 | 严格磁轴续接约 0.55--1.01 s/次，取决于提示误差 |
 | 完整物理评估 | 验收单个高分样本 | 样本自适应 $\psi$、GPU FP32 $\alpha+\nu$、Simsopt LS/Newton、DESC | 通常数分钟，DESC 可使用 CPU |
 
 原生链路依次完成批量磁轴追踪、局部不变量 $s$、物理磁通 $\psi(s)$、$\alpha$ 与 $\iota$ 联合拟合和体 QA/QH/QP 统计。训练后的 flow matching 同时提供有限筛选先验和可逆搜索坐标。正式评分与完整评估中的批量前端使用 GPU，并对失败返回结构化状态；只有明确允许的 DESC 等步骤可以使用 CPU。
@@ -45,9 +45,9 @@ $$
 
 ## 当前状态
 
-当前正式评分接口为 **ABI 10**。当前生产默认还包括：
+当前正式评分接口为 **ABI 11**。当前生产默认还包括：
 
-- 真空协变电流函数使用 $G=\mu_0 I_{\rm link}/(2\pi)$，且电流整体符号约定已经统一。
+- 真空协变电流函数沿选定磁轴计算安培环流，$G=\operatorname{sign}(\Phi_t)|\oint_{\rm axis}\boldsymbol B\cdot d\boldsymbol l|/(2\pi)$；未链接线圈不会进入该轴包围的电流。
 - 体 QS 使用柱坐标物理体积权重；达到预算后固定压紧为 100000 个点，不能通过减少有效点数刷低误差。
 - 椭圆磁轴存在性使用严格的 $|\operatorname{tr}J|/\sqrt{\det J}<2$，拓扑 margin 只参与连续质量评分。
 - QH score 对 $\iota\simeq0$、过小磁面和错误 helicity 优势施加显式门控，磁面尺寸达到有效逆纵横比 0.03 后饱和。
@@ -55,7 +55,7 @@ $$
 - 联合坐标拟合使用 $u=\rho^2=\psi/\psi_{\rm edge}$ 上的三次 $\iota(u)$，不再把 $\iota$ 固定为常数。
 - 独立评分保持全局磁轴搜索；优化端点默认使用 mode 2 严格续接，保留 mixed Newton 闭合残差、四条扰动线拓扑检查和分支距离门，但删除低并行度的五线 FP64 重放。
 
-早期 ABI-9 校准曾在 1024 个 QUASR QH 样本与 1024 个同条件随机 flow 样本上显示明确区分梯度；这些数值只保留为 score 设计证据，不能作为当前 ABI-10 分布基线。当前 `48^3` 网格在 69 个严格续接样本上的 score 排序与 `80^3` 基线 Spearman 相关系数为 0.999927，最高一成完全重合；三次 $\iota(u)$ 在全部 69 例中降低了联合拟合残差。
+早期 ABI-9 校准曾在 1024 个 QUASR QH 样本与 1024 个同条件随机 flow 样本上显示明确区分梯度；这些数值只保留为 score 设计证据。ABI-10 及更早结果均不能作为 ABI-11 分布基线。`48^3` 网格和三次 $\iota(u)$ 的数值结论来自冻结旧评分器，只保留为相应组件的历史验证。
 
 flow matching 为有限候选筛选提供生成先验，并以可逆映射提供潜空间搜索坐标。修正后的 landscape 实验中，潜空间相对随机原空间方向的下降 5 分盆地宽度中位数放大 8.63 倍，且 FP32 RK4-256 的反向--正向线圈位置闭环 RMS 为 $2.26\times10^{-8}$--$4.57\times10^{-8}\,\mathrm m$。309 组同起点实验进一步支持当前潜空间完整配置的高分尾部优势；由于两种参数空间使用了不同学习率和扰动半径，该结果保留为完整配置比较，纯坐标因果效应仍待同协议消融。
 
@@ -110,7 +110,7 @@ python -m pip install -e '.[simsopt]'
 
 完整 Boozer/QS 评估需要 `simsopt`。正式评分和完整评估中的可批量并行前端禁止静默回退到慢速 CPU 实现；CPU 路径只保留给显式选择的历史对照、后处理和允许使用 CPU 的 DESC。
 
-ABI-10 score 需要 CUDA、CMake、cuBLAS 和 cuSOLVER。RTX 5090 的参考构建命令为：
+ABI-11 score 需要 CUDA、CMake、cuBLAS 和 cuSOLVER。RTX 5090 的参考构建命令为：
 
 ```bash
 cmake -S gpu_backend -B gpu_backend/build_native_score \
@@ -300,13 +300,13 @@ python -m stellarator_eval.cli \
   --a 0.05
 ```
 
-该入口属于历史 Python 研究 API。ABI-10 批量筛选使用 `scripts/smoke_native_score.py` / `scripts/batch_native_score.py`，当前物理验收使用 `evaluation/full_physical/`。
+该入口属于历史 Python 研究 API。ABI-11 批量筛选使用 `scripts/smoke_native_score.py` / `scripts/batch_native_score.py`，当前物理验收使用 `evaluation/full_physical/`。
 
 ## 仓库结构
 
 | 目录 | 内容 |
 |---|---|
-| `gpu_backend/` | CUDA 磁场、追踪、QR 和 ABI-10 score；ctypes 包装层 |
+| `gpu_backend/` | CUDA 磁场、追踪、QR 和 ABI-11 score；ctypes 包装层 |
 | `stellarator_eval/` | Python 物理模块、旧研究 API 和完整评估支撑代码 |
 | `flow_matching/` | flow 模型、归一化、ODE 正反向积分 |
 | `evaluation/full_physical/` | 正式单样本完整评估固定入口 |
@@ -318,7 +318,7 @@ python -m stellarator_eval.cli \
 
 ## 文档索引
 
-- [QH 原生评分与潜空间优化：方法与实验](docs/QH原生评分与潜空间优化方法.md)：当前核心方法、ABI-10 定义和主要实验结论。
+- [QH 原生评分与潜空间优化：方法与实验](docs/QH原生评分与潜空间优化方法.md)：当前核心方法、ABI-11 定义和主要实验结论。
 - [完整评估固定流程](docs/精简线圈评估流程.md)：从样本自适应 $\psi$ 到 $\alpha+\nu$、LS/Newton、Poincare 和 DESC 的唯一正式流程。
 - [小条件潜空间 Adam 实验](reports/qh_small_condition_adam_report.md)：两线圈条件、脏梯度修复、续跑与完整验收。
 - [修正后潜空间 landscape](reports/qh_flow_landscape_report.md)：FP32 RK4 闭环、潜空间/原空间宽度与平滑性对照。
@@ -330,5 +330,5 @@ python -m stellarator_eval.cli \
 - 固定成本 score 的 `a=0.05` 和定长筛面只适合排序；完整评估必须按样本重新选择 $a$ 和较大的可行面。
 - `drift_rejected` 表示快速场线筛选未通过，不等价于“没有磁轴”，也不能证明标准 LS/Newton 一定找不到磁面。
 - score 含候选选择、拓扑和有效性分支，不是全局光滑目标；高分区仍可能出现可行性边界和离散跳变。
-- ABI-10 之前，以及 ABI-10 中仍使用常数 $\iota$、旧 $\psi$ 网格或旧磁轴续接方式的 score、landscape、proxy 标签和优化结果均为历史结果，不能与当前分数直接比较。
+- ABI-10 及更早版本的 score、landscape、proxy 标签和优化结果均为历史结果，不能与 ABI-11 分数直接比较。冻结复现必须使用原始 manifest 和评分库，不能通过当前入口续跑。
 - flow checkpoint、score 动态库和代码 commit 共同定义一次实验；缺少其中任一哈希时，结果不能作为可复现实验基线。

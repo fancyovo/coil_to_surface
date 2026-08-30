@@ -1,12 +1,12 @@
 # Active Decisions
 
-Last reviewed: 2026-08-28 (Asia/Shanghai).
+Last reviewed: 2026-08-30 (Asia/Shanghai).
 
 ## DEC-20260828-01 - One current optimization default
 
 Status: active.
 
-Protocol `qh-flow-screen32-adam200-64d-v1` is the sole implicit QH default.
+Protocol `qh-flow-screen32-adam200-64d-abi11-v1` is the sole implicit QH default.
 Two-direction work is historical and hard-blocked. Nondefault work must be a
 named experiment with manifest differences. See `PROTOCOLS.md`.
 
@@ -21,11 +21,19 @@ perturbations leave pure coordinate causality unresolved.
 
 ## DEC-20260810-01 - Current native evaluator settings
 
-Status: active.
+Status: superseded by `DEC-20260830-01`.
 
-Use ABI 10 with psi grid 48, cubic iota, strict axis-hint mode 2 in optimizer
-continuation, continuous surface confidence, and the current signed linked-
-current convention. Standalone and corpus scoring remains history-independent.
+ABI 10 was the production evaluator before the unlinked-coil current audit.
+Its settings and scores are frozen historical evidence.
+
+## DEC-20260830-01 - ABI 11 is the production evaluator
+
+Status: active; explicitly accepted by the user on 2026-08-30.
+
+Use ABI 11 with selected-axis Ampere circulation for vacuum `G`, psi grid 48,
+cubic iota, strict axis-hint mode 2 in optimizer continuation, and continuous
+surface confidence. ABI 10 is historical and cannot launch or resume through
+current entry points. Standalone and corpus scoring remain history-independent.
 Complete physical acceptance remains separate from native score.
 
 ## DEC-20260828-02 - Exploration and default promotion

@@ -22,8 +22,8 @@ for path in (REPO_ROOT, GPU_PYTHON):
         sys.path.insert(0, str(path))
 
 DEFAULT_IDS = (1446077, 1826200, 2419096)
-SCORE_DEFINITION = "abi10_production_continuous_surface_cubic_iota"
-SCORE_LABEL = "current ABI-10 production score"
+SCORE_DEFINITION = "abi11_axis_circulation_continuous_surface_cubic_iota"
+SCORE_LABEL = "current ABI-11 axis-circulation score"
 _POSITIVE_ALPHAS = (
     0.001,
     0.002,

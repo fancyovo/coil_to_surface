@@ -4,17 +4,18 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 
-CURRENT_QH_PROTOCOL_ID = "qh-flow-screen32-adam200-64d-v1"
+CURRENT_QH_PROTOCOL_ID = "qh-flow-screen32-adam200-64d-abi11-v1"
 DEPRECATED_QH_DIRECTION_COUNT = 2
-CURRENT_NATIVE_SCORE_ABI = 10
+DEPRECATED_NATIVE_SCORE_ABI = 10
+CURRENT_NATIVE_SCORE_ABI = 11
 CURRENT_NATIVE_SCORE_LIBRARY_SHA256 = (
-    "565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729"
+    "921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668"
 )
 
 
 @dataclass(frozen=True)
 class QHOptimizationDefaults:
-    """Validated defaults used by the 309-trajectory QH experiment."""
+    """Accepted shared settings for the current QH optimization protocol."""
 
     candidate_count: int = 32
     iterations: int = 200
@@ -43,6 +44,16 @@ def validate_qh_direction_count(directions: int) -> None:
         raise ValueError("direction count must be positive")
 
 
+def validate_qh_native_score_abi(native_score_abi: int) -> None:
+    """Prevent a historical native score ABI from entering a current run."""
+
+    if int(native_score_abi) == DEPRECATED_NATIVE_SCORE_ABI:
+        raise ValueError(
+            "native score ABI-10 is deprecated historical evidence and cannot "
+            "be launched or resumed from current main"
+        )
+
+
 def validate_qh_resume_protocol(
     saved_protocol: Any, requested_protocol: dict[str, Any]
 ) -> None:
@@ -52,6 +63,21 @@ def validate_qh_resume_protocol(
         raise ValueError(
             "legacy or unclassified optimizer manifests cannot resume on current "
             "main; preserve the run as history and start a new named experiment"
+        )
+    saved_requirements = saved_protocol.get("requirements")
+    if not isinstance(saved_requirements, dict):
+        raise ValueError("saved optimizer protocol is missing native score requirements")
+    saved_abi = saved_requirements.get("native_score_abi")
+    if not isinstance(saved_abi, int):
+        raise ValueError("saved optimizer protocol has no integer native score ABI")
+    validate_qh_native_score_abi(saved_abi)
+    current_requirements = {
+        "native_score_abi": CURRENT_NATIVE_SCORE_ABI,
+        "native_score_library_sha256": CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
+    }
+    if saved_requirements != current_requirements:
+        raise ValueError(
+            "saved optimizer protocol does not use the current ABI-11 score contract"
         )
     saved_actual = saved_protocol.get("actual")
     if not isinstance(saved_actual, dict):
@@ -91,15 +117,24 @@ def _protocol_description(
 
 
 def describe_qh_screening_protocol(
-    *, candidate_count: int, flow_steps: int
+    *,
+    candidate_count: int,
+    flow_steps: int,
+    native_score_abi: int = CURRENT_NATIVE_SCORE_ABI,
+    native_score_library_sha256: str = CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
 ) -> dict[str, Any]:
+    validate_qh_native_score_abi(native_score_abi)
     expected = {
         "candidate_count": QH_OPTIMIZATION_DEFAULTS.candidate_count,
         "flow_steps": QH_OPTIMIZATION_DEFAULTS.flow_steps,
+        "native_score_abi": CURRENT_NATIVE_SCORE_ABI,
+        "native_score_library_sha256": CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
     }
     actual = {
         "candidate_count": int(candidate_count),
         "flow_steps": int(flow_steps),
+        "native_score_abi": int(native_score_abi),
+        "native_score_library_sha256": str(native_score_library_sha256),
     }
     return _protocol_description(stage="screening", actual=actual, expected=expected)
 
@@ -117,8 +152,11 @@ def describe_qh_optimization_protocol(
     flow_steps: int,
     gradient_mode: str,
     difference: str,
+    native_score_abi: int = CURRENT_NATIVE_SCORE_ABI,
+    native_score_library_sha256: str = CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
 ) -> dict[str, Any]:
     validate_qh_direction_count(directions)
+    validate_qh_native_score_abi(native_score_abi)
     expected = asdict(QH_OPTIMIZATION_DEFAULTS)
     expected.pop("candidate_count")
     expected.update(
@@ -126,6 +164,8 @@ def describe_qh_optimization_protocol(
             "parameter_space": "latent",
             "optimizer": "adam",
             "difference": "centered",
+            "native_score_abi": CURRENT_NATIVE_SCORE_ABI,
+            "native_score_library_sha256": CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
         }
     )
     actual = {
@@ -140,6 +180,8 @@ def describe_qh_optimization_protocol(
         "flow_steps": int(flow_steps),
         "gradient_mode": str(gradient_mode),
         "difference": str(difference),
+        "native_score_abi": int(native_score_abi),
+        "native_score_library_sha256": str(native_score_library_sha256),
     }
     return _protocol_description(stage="optimization", actual=actual, expected=expected)
 
@@ -148,11 +190,13 @@ __all__ = [
     "CURRENT_QH_PROTOCOL_ID",
     "CURRENT_NATIVE_SCORE_ABI",
     "CURRENT_NATIVE_SCORE_LIBRARY_SHA256",
+    "DEPRECATED_NATIVE_SCORE_ABI",
     "DEPRECATED_QH_DIRECTION_COUNT",
     "QHOptimizationDefaults",
     "QH_OPTIMIZATION_DEFAULTS",
     "describe_qh_optimization_protocol",
     "describe_qh_screening_protocol",
     "validate_qh_direction_count",
+    "validate_qh_native_score_abi",
     "validate_qh_resume_protocol",
 ]

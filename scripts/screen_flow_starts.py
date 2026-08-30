@@ -192,6 +192,7 @@ def main() -> None:
         "protocol": describe_qh_screening_protocol(
             candidate_count=args.candidate_count,
             flow_steps=args.flow_steps,
+            native_score_library_sha256=file_sha256(args.lib),
         ),
         "status": "ok" if selected_index is not None else "no_valid_candidate",
         "nfp": args.nfp,

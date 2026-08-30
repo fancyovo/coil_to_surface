@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=24G
 #SBATCH --time=00:20:00
-#SBATCH --exclude=anode02
+#SBATCH --exclude=anode01
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -17,6 +17,7 @@ set -euo pipefail
 
 project="${PROJECT:-$HOME/local_surface_evaluator}"
 build_dir="${BUILD_DIR:-gpu_backend/build_native_score}"
+source "${VENV:-$HOME/coil/.venv}/bin/activate"
 cd "$project"
 module load cuda/13.0 2>/dev/null || true
 export CUDA_HOME=/public/app/cuda/13.0

@@ -9,9 +9,12 @@ from flow_matching.optimization import (
     CURRENT_NATIVE_SCORE_ABI,
     CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
     CURRENT_QH_PROTOCOL_ID,
+    DEPRECATED_NATIVE_SCORE_ABI,
     QH_OPTIMIZATION_DEFAULTS,
     describe_qh_optimization_protocol,
+    describe_qh_screening_protocol,
     validate_qh_direction_count,
+    validate_qh_native_score_abi,
     validate_qh_resume_protocol,
 )
 from scripts.optimize_flow_latent import (
@@ -26,7 +29,7 @@ from scripts.flow_runtime import repository_provenance
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_validated_309_trajectory_protocol_is_the_public_default() -> None:
+def test_current_qh_protocol_is_the_public_default() -> None:
     defaults = QH_OPTIMIZATION_DEFAULTS
     assert defaults.candidate_count == 32
     assert defaults.iterations == 200
@@ -37,6 +40,11 @@ def test_validated_309_trajectory_protocol_is_the_public_default() -> None:
     assert defaults.beta2 == 0.999
     assert defaults.flow_steps == 128
     assert defaults.gradient_mode == "random-orthogonal"
+    assert CURRENT_QH_PROTOCOL_ID == "qh-flow-screen32-adam200-64d-abi11-v1"
+    assert CURRENT_NATIVE_SCORE_ABI == 11
+    assert CURRENT_NATIVE_SCORE_LIBRARY_SHA256 == (
+        "921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668"
+    )
 
 
 def test_command_line_defaults_use_the_validated_protocol() -> None:
@@ -166,6 +174,33 @@ def test_nondefault_protocol_is_explicitly_unregistered() -> None:
     }
 
 
+def test_native_score_contract_controls_protocol_identity() -> None:
+    with pytest.raises(ValueError, match="ABI-10 is deprecated historical"):
+        validate_qh_native_score_abi(DEPRECATED_NATIVE_SCORE_ABI)
+    with pytest.raises(ValueError, match="ABI-10 is deprecated historical"):
+        describe_qh_screening_protocol(
+            candidate_count=QH_OPTIMIZATION_DEFAULTS.candidate_count,
+            flow_steps=QH_OPTIMIZATION_DEFAULTS.flow_steps,
+            native_score_abi=DEPRECATED_NATIVE_SCORE_ABI,
+            native_score_library_sha256=(
+                "565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729"
+            ),
+        )
+
+    rebuilt = describe_qh_screening_protocol(
+        candidate_count=QH_OPTIMIZATION_DEFAULTS.candidate_count,
+        flow_steps=QH_OPTIMIZATION_DEFAULTS.flow_steps,
+        native_score_library_sha256="0" * 64,
+    )
+    assert rebuilt["id"] == "unregistered-experimental"
+    assert rebuilt["differences_from_current"] == {
+        "native_score_library_sha256": {
+            "expected": CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
+            "actual": "0" * 64,
+        }
+    }
+
+
 def test_resume_requires_an_exact_nonhistorical_protocol() -> None:
     defaults = QH_OPTIMIZATION_DEFAULTS
 
@@ -195,6 +230,39 @@ def test_resume_requires_an_exact_nonhistorical_protocol() -> None:
     historical = {**current, "actual": {**current["actual"], "directions": 2}}
     with pytest.raises(ValueError, match="deprecated historical evidence"):
         validate_qh_resume_protocol(historical, current)
+
+    abi10 = {
+        **current,
+        "requirements": {
+            "native_score_abi": 10,
+            "native_score_library_sha256": (
+                "565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729"
+            ),
+        },
+    }
+    with pytest.raises(ValueError, match="ABI-10 is deprecated historical"):
+        validate_qh_resume_protocol(abi10, current)
+
+
+def test_active_runtime_contract_contains_no_abi10_default() -> None:
+    header = (REPO_ROOT / "gpu_backend" / "include" / "coil_field.h").read_text(
+        encoding="utf-8"
+    )
+    wrapper = (
+        REPO_ROOT / "gpu_backend" / "python" / "stellarator_gpu.py"
+    ).read_text(encoding="utf-8")
+    assert "#define SGPU_SCORE_ABI_VERSION 11u" in header
+    assert "SGPU_SCORE_ABI_VERSION = 11" in wrapper
+
+    historical_hash = (
+        "565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729"
+    )
+    for relative in (
+        "flow_matching/optimization.py",
+        "scripts/slurm_flow_prior_standard_adam.sh",
+        "scripts/slurm_flow_prior_local_full_gradient_adam.sh",
+    ):
+        assert historical_hash not in (REPO_ROOT / relative).read_text(encoding="utf-8")
 
 
 def test_repository_provenance_records_commit_and_tracked_state() -> None:

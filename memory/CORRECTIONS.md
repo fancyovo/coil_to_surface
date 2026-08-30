@@ -1,6 +1,6 @@
 # Correction Ledger
 
-Last reviewed: 2026-08-28 (Asia/Shanghai).
+Last reviewed: 2026-08-30 (Asia/Shanghai).
 
 This ledger is append-only at the entry level. Record both model-discovered and
 user-reported errors. Keep the erroneous artifact for provenance, add a visible
@@ -73,6 +73,47 @@ An open critical correction blocks promotion and external reporting.
 - Corrected state: root memory now says "many thousands" and requires a live
   count when the exact inventory matters, avoiding another stale snapshot.
 - Verification: tracked status remained clean after the consolidation commit.
+
+## CORR-20260830-33 - Vacuum G counted coils that did not link the selected axis
+
+- Severity/status: critical / resolved and promoted to `main`.
+- Reported by: user while reviewing special unlinked-coil geometries.
+- Error: native ABI-10 and Python volume-QS computed
+  `G = sign(flux)*2e-7*2*nfp*sum(abs(base currents))`. This assigned every
+  physical coil the conventional unit linking number. Simsopt surface setup
+  used the corresponding all-coil current sum as its initial Boozer `G`.
+- Primary evidence: `G` enters
+  `f_C=(M*iota-N)A-(M*G+N*I)C`, so the shortcut changed target and competitor
+  QS errors, the volume-QS component, helicity gates, and total score. Exact
+  linking found 468/1276 unlinked physical coils in 21/38 Adam200 cases and
+  76/284 in four of six Adam2000 cases.
+- Corrected fact: ABI-11 uses
+  `sign(flux)*abs(integral_axis(B dl))/(2*pi)`, equivalent to
+  `sign(flux)*mu0*abs(sum_j(I_j*Lk_j))/(2*pi)` for signed physical currents and
+  oriented linking integers.
+- Affected conclusions: ABI-10 scores for geometries violating its linking
+  assumption are superseded as physical scores. ABI-10 trajectories remain
+  frozen evidence for the objective that generated them. Population rates,
+  score thresholds, rankings, and gains measured under ABI-10 remain historical
+  until an ABI-11 experiment measures them.
+- Retained conclusions: coil geometry, Biot-Savart fields, exact linking
+  audits, magnetic surfaces, Poincare plots, DESC equilibria, resource costs,
+  frozen trajectory integrity, and geometry-only novelty classifications do
+  not use the shortcut. Converged standard Simsopt LS/Newton runs optimized
+  `G` after initialization and are not invalidated solely by the old initial
+  guess.
+- Containment and verification: ABI-11 computes magnetic-axis circulation in
+  formal native, fixed-front, query-batch, Python volume-QS, saved-QS, and
+  Simsopt-initialization paths. ABI versioning, protocol identity, actual
+  library-hash classification, resume checks, and active launchers block ABI-10.
+  The corrected library SHA-256 is
+  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`.
+  Forty-four strict-axis replays matched independent topology-predicted `G`
+  within `1.0921e-8`; all 38 Adam200 endpoints remained at score 50 or above.
+  See `reports/abi11_default_promotion_20260830.md`.
+- Promotion/reporting blocker: resolved by the user-accepted ABI-11 mainline
+  promotion. ABI-10 remains reproducible only through its frozen historical
+  manifest and library outside current run state.
 
 ## Required Entry Template
 

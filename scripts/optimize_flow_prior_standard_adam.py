@@ -849,6 +849,7 @@ def main() -> None:
             difference=(
                 "centered" if args.gradient_estimator == "central" else "one-sided"
             ),
+            native_score_library_sha256=file_sha256(args.lib),
         ),
         "repository": repository_provenance(REPO_ROOT),
         "algorithm": (

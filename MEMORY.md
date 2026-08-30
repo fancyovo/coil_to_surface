@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-08-28 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-08-30 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -22,7 +22,7 @@
 
 ## Current QH Default
 
-- Protocol ID: `qh-flow-screen32-adam200-64d-v1`.
+- Protocol ID: `qh-flow-screen32-adam200-64d-abi11-v1`.
 - Screen 32 random Flow starts. Optimize the selected latent with 200 Adam
   updates, 64 fresh random-orthogonal centered directions per update,
   perturbation `0.005`, learning rate `0.02`, beta `(0.7, 0.999)`, and FP32
@@ -31,6 +31,10 @@
   `scripts/optimize_flow_latent.py`. Shared defaults and protocol metadata live
   in `flow_matching/optimization.py`. Compatibility entry points must resolve
   to the same values.
+- The default evaluator is ABI 11, score-library SHA-256
+  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`.
+  Protocol classification includes the actual library hash. ABI 10 cannot
+  launch or resume from current entry points.
 - Exactly two directions is deprecated historical evidence and is hard-blocked
   in current Python entry points. Historical shell launchers exit before their
   old 2D settings can run.
@@ -45,10 +49,13 @@
 
 ## Current Evaluator And Physical Contract
 
-- The production native evaluator is C++/CUDA ABI 10. Current score-library
+- The production native evaluator is C++/CUDA ABI 11. Current score-library
   SHA-256 is
-  `565c32073b145d97a1f2244705fb06e4b3458ce798cd74d0c97ee4e0129dc729`.
+  `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668`.
   Intentional rebuilds require fresh numerical validation before promotion.
+- Vacuum `G` uses the selected magnetic axis Ampere circulation. Equivalently,
+  it sums signed physical-coil currents weighted by their oriented linking
+  numbers. Unlinked coils make no contribution to that axis current.
 - Current evaluator defaults include psi grid 48, cubic
   `iota(u)` with `u=psi/psi_edge`, strict axis-hint mode 2, continuous surface
   confidence, and history-independent standalone/corpus axis search. Optimizer
@@ -66,19 +73,20 @@
   high-score optimization method. Direct standardized-data optimization is a
   valid, faster baseline, but the current 309-pair evidence compares complete
   recipes rather than isolating coordinate causality.
-- The 309-pair corpus actually used 64 directions and 200 steps. Its manifest
+- The frozen ABI-10 309-pair corpus actually used 64 directions and 200 steps.
+  Its manifest
   and aggregate count of 3,955,200 orthogonal directions support this. Latent
   optimization won 201/309 pairs; median paired best-score advantage was 0.997
   with 95% interval `[0.799, 1.312]`; score-at-least-92 rates were 23.0% versus
   0.32%. Latent/data settings differed in learning rate and perturbation, so
-  this result does not prove an intrinsic coordinate effect.
+  this result does not prove an intrinsic coordinate effect or ABI-11 outcomes.
 - The 32-case 2026-08-24 coordinate control used 2 directions and 100 steps.
   Its coordinate-causality conclusion is retracted. Its separate 48-condition
   initialization evidence remains usable.
-- Under the current ABI-10 cubic-iota library, fully evaluated sample
-  `p107_37034_3_000018_step0150` scores `94.6368682`; input SHA-256 is
-  `6ee6f8e1f0290ec49093596a5f95b7f2aac98c61d51af3cad59410a771b7e8c1`.
-  See `reports/qh_min_face_qh_full_evaluation_20260819.md`.
+- ABI-11 strict-axis replay validated 44 linked and unlinked samples against
+  independent linking-number current sums; maximum absolute `G` discrepancy
+  was `1.0921e-8`. All 38 replayed Adam200 endpoints remained at score 50 or
+  above. See `reports/abi11_default_promotion_20260830.md`.
 - The 10,000-step run whose best was `93.3672653` at step 4341 remains valid
   evidence for its historical constant-iota objective and for stagnation under
   that frozen recipe. Its score is not the current maximum and is not directly
@@ -89,6 +97,11 @@
 - Every 2-direction optimization result and launcher is historical. Labels such
   as "default", "production", or "standard" inside an old artifact describe
   its old local context and have no authority over the current method.
+- ABI 10 is historical. Its all-current vacuum-`G` shortcut is invalid for
+  geometries containing coils that do not link the selected magnetic axis.
+  ABI-10 trajectories remain frozen evidence for their original objective and
+  cannot resume through current entry points. ABI-10 scores cannot be mixed
+  numerically with ABI-11 scores.
 - `reports/qh_flow_initialization_vs_optimization_control_20260824.md` preserves
   the erroneous 2D/100 coordinate-control history. Only its explicitly retained
   initialization evidence may be cited.
@@ -98,6 +111,9 @@
 - Old CEM, hybrid Adam, analytic-gradient G2-G5, BFGS, proxy, trust-region,
   reduced-zero-tail, and constant-iota routes are research history, not current
   defaults. Their artifacts remain available for provenance.
+- Fully evaluated sample `p107_37034_3_000018_step0150` recorded ABI-10 score
+  `94.6368682`. Its physical-evaluation artifacts remain valid; the score is a
+  historical ABI-10 value.
 - `CODEX_HANDOFF.md` is a tombstone for a July DESC handoff, not current task
   state. Its exact former contents are archived.
 

@@ -1,6 +1,6 @@
 # QH Protocol Registry
 
-Last verified: 2026-08-28 (Asia/Shanghai).
+Last verified: 2026-08-30 (Asia/Shanghai).
 
 ## Status Vocabulary
 
@@ -16,7 +16,7 @@ Last verified: 2026-08-28 (Asia/Shanghai).
 
 ## Current Default
 
-Protocol ID: `qh-flow-screen32-adam200-64d-v1`.
+Protocol ID: `qh-flow-screen32-adam200-64d-abi11-v1`.
 
 | Stage or setting | Current value |
 | --- | --- |
@@ -30,7 +30,8 @@ Protocol ID: `qh-flow-screen32-adam200-64d-v1`.
 | Learning rate | `0.02` |
 | Adam beta | `(0.7, 0.999)` |
 | Flow decode | FP32 RK4-128 |
-| Evaluator | current ABI-10 cubic-iota native library |
+| Evaluator | ABI-11 axis-circulation, cubic-iota native library |
+| Evaluator SHA-256 | `921a51683ba6b2d17ef16daa63207d47f91c4dd55faea918675542c05d5d1668` |
 | Axis handling | strict continuation, mode 2, within an optimization only |
 
 The shared constants and classifier are in `flow_matching/optimization.py`.
@@ -55,6 +56,12 @@ Every new run must write a machine-readable protocol block containing at least:
 A reproduction uses the frozen original manifest. A new run using modified
 settings is an experiment, even when it starts from a historical sample.
 
+The current protocol classifier compares the actual score-library hash with
+the accepted ABI-11 hash. A different ABI-11 rebuild is experimental until its
+numerical contract is validated and promoted. Native ABI 10 is
+`historical-deprecated`; current Python wrappers reject its ABI and current
+resume checks reject its manifest requirements.
+
 `--resume` is reserved for an interrupted run whose saved machine protocol and
 repository commit/dirty state exactly match the requested continuation. Legacy
 or unclassified manifests are historical inputs and cannot resume on current
@@ -64,6 +71,18 @@ Exactly two directions is rejected by current Python entry points. If the user
 explicitly requests a future two-direction study, create a new protocol on a
 dedicated branch, write a new launcher and manifest, and deliberately review
 the guard. Do not edit, copy, or re-enable a historical launcher.
+
+## Deprecated Evaluator Registry
+
+| Protocol or evaluator | Status | Interpretation |
+| --- | --- | --- |
+| `qh-flow-screen32-adam200-64d-v1` with ABI 10 | `historical-deprecated` | Former default; frozen trajectories reproduce the old all-current `G` objective |
+| Native ABI 10, SHA-256 `565c3207...c729` | `historical-deprecated` | Counts every physical coil in vacuum `G`; invalid for unlinked-coil geometries and prohibited for new runs |
+| ABI 9 and earlier | `historical-deprecated` | Earlier score definitions retained only with their frozen manifests |
+
+ABI-11 defines vacuum `G` from the full selected-axis circulation,
+`sign(flux)*abs(integral_axis(B dl))/(2*pi)`. This is equivalent to the signed
+physical-current sum weighted by oriented coil-axis linking numbers.
 
 ## Deprecated 2D Registry
 
@@ -93,3 +112,7 @@ canonical and compatibility entry points, manifests, launchers, tests, current
 documentation, `DECISIONS.md`, and affected correction entries. The former
 default then moves to the historical registry; it is never left as a competing
 implicit default.
+
+The 2026-08-30 ABI-11 promotion completed this process. The unchanged 32/200/64D
+optimizer settings now belong to `qh-flow-screen32-adam200-64d-abi11-v1`; the
+former ABI-10 protocol ID remains historical and cannot resume as the new ID.

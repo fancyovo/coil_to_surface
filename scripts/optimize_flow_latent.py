@@ -692,6 +692,7 @@ def main() -> None:
         flow_steps=args.flow_steps,
         gradient_mode=args.gradient_mode,
         difference="centered",
+        native_score_library_sha256=file_sha256(args.lib),
     )
     current_repository = repository_provenance(PROJECT_ROOT)
 

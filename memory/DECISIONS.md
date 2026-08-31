@@ -1,6 +1,6 @@
 # Active Decisions
 
-Last reviewed: 2026-08-30 (Asia/Shanghai).
+Last reviewed: 2026-08-31 (Asia/Shanghai).
 
 ## DEC-20260828-01 - One current optimization default
 
@@ -62,3 +62,18 @@ External documents and multimodal deliverables use direct affirmative prose,
 explicit versioned references, and only claims relevant to the core argument.
 They receive a second semantic audit after generation. Detailed rules are in
 `WRITING.md`.
+
+## DEC-20260831-01 - Exploration checkout and shared report delivery
+
+Status: active; explicitly requested by the user on 2026-08-31.
+
+A request to explore establishes a dedicated `codex/` branch and switches the
+primary user-visible repository checkout to it before substantive work. A
+secondary worktree is reserved for cases where preserved changes or concurrent
+work make the primary switch unsafe; the exception must be reported explicitly.
+
+The canonical report and its referenced assets remain tracked on the branch
+that owns the experiment. At delivery they are mirrored into `_shared_reports/`
+in the primary checkout. That directory is excluded through the repository's
+local Git metadata, survives branch switches, and provides a stable local file
+surface. The tracked branch copy and commit remain authoritative provenance.

@@ -118,6 +118,26 @@ An open critical correction blocks promotion and external reporting.
   promotion. ABI-10 remains reproducible only through its frozen historical
   manifest and library outside current run state.
 
+## CORR-20260831-40 - Acceptance report was delivered only from a hidden worktree
+
+- Severity/status: medium / resolved during delivery; no numerical impact.
+- Reported by: user after the acceptance response.
+- Error: the model said the report was available locally and linked to the
+  experiment's hidden `.worktrees/qh-online-rwcfm-zero` checkout while the
+  primary user-visible checkout remained on an unrelated exploration branch.
+  The primary checkout's `reports/` directory therefore did not contain the
+  report, and dot-directory hiding made the linked location difficult to find.
+- Corrected fact and scope: the report existed and was committed at `f38c7e9`
+  on `codex/qh-online-rwcfm-zero`; only discoverability and checkout state were
+  wrong. Audit evidence, figures, numerical conclusions, and protocol state
+  remain valid.
+- Containment and verification: move the experiment branch to the primary
+  checkout, mirror the report and assets into the branch-independent
+  `_shared_reports/` directory, open that mirrored file, and require future
+  explorations to switch the primary checkout unless a preserved-state
+  exception is stated explicitly.
+- Promotion/reporting blocker: none after the mirror and checkout verification.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

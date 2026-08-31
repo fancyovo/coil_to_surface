@@ -1,6 +1,6 @@
 # External Writing And Multimodal Review
 
-Last reviewed: 2026-08-28 (Asia/Shanghai).
+Last reviewed: 2026-08-31 (Asia/Shanghai).
 
 These rules apply to documents, reports, README text intended for outsiders,
 submissions, captions, diagrams, slides, video overlays, and generated images.
@@ -48,3 +48,14 @@ Run this review on the rendered deliverable, not only its source:
   of use and cannot be mistaken for the active method.
 
 Delivery is incomplete until this second pass is done.
+
+## Branch-Independent Local Delivery
+
+- Track the canonical document and every referenced local asset on the branch
+  that owns the work.
+- Mirror the finalized document and its local assets to `_shared_reports/` in
+  the primary repository checkout. Preserve the relative layout so images and
+  links render from the mirror.
+- Verify the mirrored paths and open the mirrored document for the user. Treat
+  the mirror as a local delivery copy; use the owning branch and commit for
+  provenance, corrections, and future edits.

@@ -40,10 +40,13 @@
    directions requires a new named protocol, a dedicated exploration branch,
    a new launcher and manifest, and deliberate review of the hard guard. Never
    reactivate or copy a historical 2D launcher.
-9. Put material exploration on a `codex/` branch when isolation is useful.
-   When the user accepts a method as the default, integrate it into `main` and
-   update code defaults, manifests, tests, current documentation, decisions,
-   and corrections together. Earlier methods remain labeled historical.
+9. Put material exploration on a `codex/` branch and switch the primary,
+   user-visible checkout to that branch before substantive work. Use a secondary
+   worktree only when preserved local changes or concurrent work make the switch
+   unsafe, and state that exception explicitly. When the user accepts a method
+   as the default, integrate it into `main` and update code defaults, manifests,
+   tests, current documentation, decisions, and corrections together. Earlier
+   methods remain labeled historical.
 10. Reproductions must load the original machine-readable manifest and pin its
     code, score library, checkpoint, parameter space, and optimizer settings.
     A current CLI default is not a substitute for a frozen historical protocol.
@@ -53,5 +56,10 @@
 11. For external-facing material, follow `memory/WRITING.md` during drafting
     and run its post-generation audit before delivery. Internal status reports
     to the user may be direct and diagnostic.
-12. Preserve unrelated and untracked artifacts. Never store or print passwords,
+12. Keep the canonical report and its assets tracked on the owning branch. At
+    delivery, mirror them into the primary checkout's Git-excluded
+    `_shared_reports/` directory and verify that the mirrored document resolves
+    every local asset. This local mirror persists across branch switches; it is
+    a delivery surface, not the provenance source.
+13. Preserve unrelated and untracked artifacts. Never store or print passwords,
     tokens, private keys, one-time codes, or credential-bearing URLs.

@@ -120,7 +120,13 @@
 ## Work Governance
 
 - Start new exploration from the consolidated `main`. Use a `codex/` branch
-  when an experiment changes methods, defaults, or shared code.
+  when an experiment changes methods, defaults, or shared code, and switch the
+  primary user-visible checkout to that branch before substantive work. A
+  secondary worktree is an explicit exception for preserved or concurrent work.
+- Keep each report's canonical copy on its owning branch and mirror finalized
+  reports plus local assets to the primary checkout's Git-excluded
+  `_shared_reports/` directory. The mirror remains visible across branch
+  switches; branch artifacts and commits remain the provenance source.
 - User acceptance of a method as the default means promotion to `main` and
   coordinated updates to implementation defaults, protocol metadata, launchers,
   tests, current docs, `memory/DECISIONS.md`, and any affected correction entry.

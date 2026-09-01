@@ -16,7 +16,8 @@
   `main@de75f6d`. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
   gate and is invalidated. Jobs `51581/51582/51583` were cancelled after 953
-  partial samples; no analytic-prior GPU job is active.
+  partial samples. Accepted balanced-v2 scoring is active as arrays
+  `51614/51615`, with dependent analysis `51616`.
 - Many thousands of pre-existing untracked audit, bundle, run, and generated
   files are present. Preserve them and stage source changes explicitly; verify
   the live count instead of treating a recorded count as stable.
@@ -155,6 +156,9 @@
   `qh-axis-surface-contour-balanced-score-abi11-v2` covers 6000 samples over the
   existing 26 `nc<=4` conditions with six count-bounded GPU shards and no
   optimization. The other two v2 prototype families remain unaccepted.
+- The frozen scoring commit is `1dcfd18`; arrays `51614` (four P107 GPUs) and
+  `51615` (two Students GPUs) plus analysis `51616` use run root
+  `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_20260901_1dcfd18`.
 - The v2 inner surface is a geometric reference, not a computed magnetic
   surface, and the construction axis is not a verified magnetic axis. The
   registered experiment does not modify the current QH default.

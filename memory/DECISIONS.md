@@ -80,17 +80,16 @@ surface. The tracked branch copy and commit remain authoritative provenance.
 
 ## DEC-20260901-02 - Analytic axis/surface/contour prior study
 
-Status: active registered exploration; not a default promotion.
+Status: v1 invalidated; replacement geometry awaiting visual acceptance.
 
-The first replacement for the failed QUASR-marginal Gaussian prior uses a
-hierarchical analytic construction: a low-order random reference axis, a
-closed rotation-minimizing winding tube, and stratified contours of a monotone
-circle-valued scalar coordinate. The distribution uses no QUASR statistics and
-hard-excludes `nc=5`. Three amplitude families expose the engineering-quality
-and QH-score tradeoff before any RL training is attempted.
+The first replacement for the failed QUASR-marginal Gaussian prior used a
+hierarchical analytic construction, but its axis, tube, and contours were all
+too weakly deformed. The resulting geometry looked like a circular-axis
+tokamak coil set and failed the user's visual requirement.
 
-The construction axis is named a reference axis until the native evaluator
-independently finds a magnetic axis. The first experiment measures native
-ABI-11 score and coil-engineering distributions only; it does not perform Adam,
-surface certification, or full physical evaluation. See protocol
-`qh-axis-surface-contour-prior-score-abi11-v1`.
+The replacement must retain a clearly noncircular reference axis, a winding
+surface that bends with that axis, and cross-section shaping that varies over a
+field period. Prototype views must include the axis, an inner plasma-like
+reference surface, the winding surface, and coils. The reference surface is a
+geometric prior and must not be called a computed magnetic surface. GPU scoring
+remains blocked until the user accepts the initial morphology.

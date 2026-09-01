@@ -13,10 +13,10 @@
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
 - Active exploration branch: `codex/axis-surface-prior`, based directly on
-  `main@de75f6d`. Registered protocol
-  `qh-axis-surface-contour-prior-score-abi11-v1` measures 15,600 analytic-prior
-  starts over six GPUs. Verify live job IDs and filesystem state directly;
-  this line records intent, not scheduler truth.
+  `main@de75f6d`. Protocol
+  `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
+  gate and is invalidated. Jobs `51581/51582/51583` were cancelled after 953
+  partial samples; no analytic-prior GPU job is active.
 - Many thousands of pre-existing untracked audit, bundle, run, and generated
   files are present. Preserve them and stage source changes explicitly; verify
   the live count instead of treating a recorded count as stable.
@@ -147,14 +147,14 @@
   RL limitation for structured physical priors. The canonical failure report
   is on `codex/qh-online-validity-rwcfm-zero@9079fa3` and mirrored in
   `_shared_reports/qh_online_rwcfm_failed_20260901.md`.
-- The replacement prior draws a low-order construction reference axis, a
-  rotation-minimizing winding tube, and stratified contours of a monotone
-  circle-valued scalar coordinate. It uses no QUASR statistics, excludes
-  `nc=5`, and supplies three geometry-amplitude families.
-- The first measurement performs ABI-11 QH native scoring without optimization
-  or full physical evaluation. Report total score and the `coil` engineering
-  component separately, and deliver coil-only HTML views. The construction
-  reference axis must not be called a physical magnetic axis.
+- Analytic-prior v1 contracted axis, surface, and contour amplitudes until the
+  result resembled circular-axis tokamak coils. Its partial ABI-11 scores cannot
+  establish the requested prior's abundance.
+- Replacement work is geometry-only until user acceptance. Preview the visibly
+  bent construction axis, a varying inner plasma-like reference surface, the
+  winding surface, and coils together. The inner surface is not a computed
+  magnetic surface, and the construction axis is not a verified magnetic axis.
+  No GPU batch may launch before explicit visual approval.
 
 ## Memory Map
 

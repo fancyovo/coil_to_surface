@@ -1,6 +1,6 @@
 {
   "protocol_id": "qh-axis-surface-contour-prior-score-abi11-v1",
-  "status": "registered-experimental",
+  "status": "invalidated",
   "registered_date": "2026-09-01",
   "purpose": "Measure QH native-score and coil-engineering distributions for an analytic prior independent of QUASR.",
   "generator": {
@@ -45,6 +45,12 @@
       "coil length, curvature, intercoil distance, axis distance, high-mode energy, and current diagnostics",
       "coil-only HTML views of representative initial configurations"
     ]
+  },
+  "outcome": {
+    "status": "aborted_visual_gate_failed",
+    "partial_count": 953,
+    "cancelled_jobs": ["51581", "51582", "51583"],
+    "interpretation": "The construction was too close to a circular-axis tokamak geometry. Partial scores do not measure the intended stellarator prior."
   },
   "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
 }

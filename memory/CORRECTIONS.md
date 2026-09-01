@@ -202,6 +202,39 @@ An open critical correction blocks promotion and external reporting.
   times are not used as runtime evidence.
 - Promotion/reporting blocker: none after the fresh preflight passes.
 
+## CORR-20260901-47 - Tokamak-like analytic prior was incorrectly passed by the visual gate
+
+- Severity/status: high / v1 stopped and invalidated; replacement under
+  geometry-only review.
+- Reported by: user after viewing the generated full-coil previews.
+- Error: the model declared the visual check successful because the coils were
+  smooth, linked, and low in high-mode energy. The check ignored the core
+  morphology requirement: the reference axis remained almost circular, the
+  winding tube had little toroidal variation, and the contours formed a nearly
+  uniform tokamak TF-coil family.
+- Primary cause: axis Fourier amplitudes scaled as `nfp^-2`; surface
+  corrugation and ellipticity were small perturbations of a circular tube; the
+  contour warp budget was additionally proportional to the already small
+  intercoil level spacing. These three contractions compounded.
+- Affected evidence: protocol
+  `qh-axis-surface-contour-prior-score-abi11-v1`, jobs `51581`, `51582`, and
+  `51583`, and 953 partial rows under run root
+  `axis_surface_prior_20260901_6028de3`. Their code and ABI-11 outputs remain
+  mechanically reproducible, but the rows do not sample the requested prior
+  and support no intended-prior abundance conclusion.
+- Corrected requirement: the reference axis must have visible stellarator
+  bending; the winding surface must follow it; cross-section size, elongation,
+  orientation, or triangularity must vary over a field period; and the coil
+  family must inherit this global shaping while remaining locally smooth.
+- Containment and verification: all six GPU shards and the dependent analysis
+  job were cancelled and fully left the queue. The remote run has
+  `termination.json` with status `aborted_visual_gate_failed` and per-shard
+  counts. Future prototypes must display axis, inner reference surface,
+  winding surface, and coils together and receive explicit user approval before
+  any batch score submission.
+- Promotion/reporting blocker: v1 is invalidated and cannot be resumed or
+  promoted.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

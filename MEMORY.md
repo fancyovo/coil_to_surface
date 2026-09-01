@@ -157,7 +157,10 @@
   existing 26 `nc<=4` conditions with six count-bounded GPU shards and no
   optimization. The other two v2 prototype families remain unaccepted.
 - The frozen scoring commit is `1dcfd18`; arrays `51614` (four P107 GPUs) and
-  `51615` (two Students GPUs) plus analysis `51616` use run root
+  `51615` (two Students GPUs) completed all 6000 rows without scoring errors.
+  Analysis `51616` produced valid summary/table/plots but failed while selecting
+  representative samples because it retained the v1 family list. The repair
+  uses the same run root
   `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_20260901_1dcfd18`.
 - The v2 inner surface is a geometric reference, not a computed magnetic
   surface, and the construction axis is not a verified magnetic axis. The

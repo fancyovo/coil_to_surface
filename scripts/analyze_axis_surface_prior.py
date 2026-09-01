@@ -299,7 +299,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 
 def representative_rows(rows: list[dict[str, Any]]) -> list[tuple[str, dict[str, Any]]]:
     selected: list[tuple[str, dict[str, Any]]] = []
-    for family in ("near_circular", "balanced", "helical"):
+    for family in sorted({str(row["family"]) for row in rows}):
         group = [row for row in rows if row["family"] == family]
         selected.append((f"{family}_top_score", max(group, key=score)))
         median = float(np.median([component(row, "coil") for row in group]))

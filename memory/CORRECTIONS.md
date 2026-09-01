@@ -235,6 +235,25 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: v1 is invalidated and cannot be resumed or
   promoted.
 
+## CORR-20260901-48 - V2 representative analysis retained a hardcoded v1 family list
+
+- Severity/status: medium / fixed; CPU analysis repair required.
+- Discovered by: model during v2 result acceptance.
+- Error: `representative_rows()` still iterated over `near_circular`,
+  `balanced`, and `helical` after the rest of the analyzer had been generalized.
+  The v2 run contains only `balanced_stellarator`, so the dependent analysis
+  failed on `max()` over an empty group.
+- Affected evidence: job `51616` and the first analysis pass under
+  `axis_surface_prior_balanced_v2_20260901_1dcfd18`. The failure occurred after
+  `summary.json`, `condition_summary.csv`, and both distribution PNGs were
+  written. Those four artifacts remain valid; only `representative_samples.json`
+  and its HTML files were absent.
+- Fix and verification: derive the family set from input rows and test the
+  single v2 family explicitly. Rerun the CPU-only analysis against the frozen
+  6000 scored rows and record the repair commit and job separately.
+- Promotion/reporting blocker: representative artifacts must exist before the
+  run is reported as fully accepted.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

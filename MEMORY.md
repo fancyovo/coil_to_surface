@@ -166,6 +166,13 @@
 - The v2 inner surface is a geometric reference, not a computed magnetic
   surface, and the construction axis is not a verified magnetic axis. The
   registered experiment does not modify the current QH default.
+- Registered follow-up
+  `qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1` samples 84
+  of the 2250 initial-`ok` v2 rows without replacement and runs exact-start
+  direct-data Adam200 on six GPUs. It uses 64 directions, `h=0.0025`, learning
+  rate `0.01`, and no Flow calls. Conditional score-at-least-50 abundance must
+  be multiplied by the measured `0.375` initial-valid rate. Launch state is
+  recorded in the frozen runtime manifest rather than inferred from this file.
 
 ## Memory Map
 

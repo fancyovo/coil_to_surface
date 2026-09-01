@@ -113,22 +113,30 @@ def load_flow_checkpoint(
 
 def load_initial_noise(path: Path) -> tuple[np.ndarray, dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    for section in (
-        "flow_prior_start",
-        "flow_prior_screening",
-        "flow_prior_local_full_gradient_adam",
-        "flow_prior_standard_adam",
-    ):
-        if section in payload:
-            noise = payload[section]["noise"]
-            break
+    if "data_prior_screening" in payload:
+        noise = payload["data_prior_screening"]["normalized_coil_tokens"]
     else:
-        if "noise" not in payload:
-            raise ValueError("initial case does not contain flow-prior noise")
-        noise = payload["noise"]
+        for section in (
+            "flow_prior_start",
+            "flow_prior_screening",
+            "flow_prior_zo_adam",
+            "flow_prior_standard_adam",
+            "flow_prior_local_full_gradient_adam",
+            "flow_prior_local_full_gradient_bfgs",
+            "flow_prior_subspace_bfgs",
+            "flow_prior_g3_informed_subspace_adam",
+            "flow_prior_cem",
+        ):
+            if section in payload:
+                noise = payload[section]["noise"]
+                break
+        else:
+            if "noise" not in payload:
+                raise ValueError("initial case does not contain optimizer parameters")
+            noise = payload["noise"]
     value = np.asarray(noise, dtype=np.float32)
     if value.ndim != 2 or value.shape[1] != TOKEN_DIM:
-        raise ValueError(f"initial noise must have shape (coils, {TOKEN_DIM})")
+        raise ValueError(f"initial parameters must have shape (coils, {TOKEN_DIM})")
     return value, payload
 
 

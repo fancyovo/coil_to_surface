@@ -585,6 +585,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--data-start-mode",
+        choices=("training-clipped", "exact-unclipped"),
+        default="training-clipped",
+        help=(
+            "Data-space initialization policy. exact-unclipped preserves a direct "
+            "physical start and fixes its initial current L1 as the run reference."
+        ),
+    )
+    parser.add_argument(
         "--perturbation", type=float, default=QH_OPTIMIZATION_DEFAULTS.perturbation
     )
     parser.add_argument(
@@ -651,6 +660,8 @@ def main() -> None:
     args = parse_arguments()
     if args.parameter_space == "data":
         args.flow_pipeline = False
+    elif args.data_start_mode != "training-clipped":
+        raise ValueError("exact-unclipped data starts require --parameter-space data")
     if torch.cuda.device_count() <= max(args.flow_device, args.score_device):
         raise RuntimeError("requested CUDA device is unavailable")
     if args.n_base_coils < 1:
@@ -694,6 +705,12 @@ def main() -> None:
         difference="centered",
         native_score_library_sha256=file_sha256(args.lib),
     )
+    if args.parameter_space == "data":
+        requested_protocol["actual"]["data_start_mode"] = args.data_start_mode
+        requested_protocol["differences_from_current"]["data_start_mode"] = {
+            "expected": "not-applicable",
+            "actual": args.data_start_mode,
+        }
     current_repository = repository_provenance(PROJECT_ROOT)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -916,6 +933,15 @@ def main() -> None:
             args.checkpoint, map_location="cpu", weights_only=False
         )
         normalizer = CoilNormalizer.from_dict(checkpoint["normalizer"])
+        if args.data_start_mode == "exact-unclipped":
+            metadata = initial_payload.get("data_prior_screening", {})
+            current_l1_a = float(metadata.get("current_l1_a", 0.0))
+            if not math.isfinite(current_l1_a) or current_l1_a <= 0.0:
+                raise ValueError(
+                    "exact-unclipped data start requires a positive finite current_l1_a"
+                )
+            normalizer.current_l1_a[f"{args.nfp}:{args.n_base_coils}"] = current_l1_a
+            normalizer.clip = float("inf")
         model = None
     else:
         model, normalizer, checkpoint = load_flow_checkpoint(
@@ -972,10 +998,13 @@ def main() -> None:
             "definition": "per-coordinate training-set standardization",
             "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
             "initial_source": (
-                "direct standardized-data Gaussian prior"
+                "direct analytic-prior geometry with unclipped coordinates"
+                if direct_data_start and args.data_start_mode == "exact-unclipped"
+                else "direct standardized-data Gaussian prior"
                 if direct_data_start
                 else "one initial Flow decode"
             ),
+            "data_start_mode": args.data_start_mode,
             "initial_clipped_fraction": float(clipped_fraction),
             "initial_roundtrip_relative_rms": reconstruction_relative_rms,
             "flow_calls_after_initialization": 0,

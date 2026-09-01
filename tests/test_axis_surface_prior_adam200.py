@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+import numpy as np
+
+from flow_matching.data import CoilNormalizer
+from scripts.prepare_axis_surface_prior_adam200 import (
+    assign_workers,
+    exact_standardized_parameters,
+    select_valid_rows,
+)
+
+
+def _row(case_id: int, status: str, nc: int) -> dict[str, object]:
+    return {
+        "case_id": case_id,
+        "n_base_coils": nc,
+        "native": {"status": status},
+    }
+
+
+def test_random_selection_uses_only_valid_rows_and_is_reproducible() -> None:
+    rows = [_row(index, "ok" if index % 2 else "no_axis", 1 + index % 4) for index in range(30)]
+    first = select_valid_rows(rows, count=8, seed=73)
+    second = select_valid_rows(rows, count=8, seed=73)
+    assert [row["case_id"] for row in first] == [row["case_id"] for row in second]
+    assert len({row["case_id"] for row in first}) == 8
+    assert all(row["native"]["status"] == "ok" for row in first)
+
+
+def test_worker_assignment_has_equal_counts_and_balances_expensive_cases() -> None:
+    rows = [_row(index, "ok", 1 + index % 4) for index in range(84)]
+    assignment = assign_workers(rows, worker_count=6)
+    counts = [sum(worker == index for worker in assignment.values()) for index in range(6)]
+    assert counts == [14] * 6
+
+
+def test_exact_standardized_parameters_preserve_the_physical_start() -> None:
+    rng = np.random.default_rng(17)
+    tokens = rng.normal(size=(2, 100)).astype(np.float32)
+    tokens[:, -1] = np.asarray([180000.0, 220000.0], dtype=np.float32)
+    normalizer = CoilNormalizer(
+        mean=np.zeros(100, dtype=np.float32),
+        std=np.linspace(0.5, 2.0, 100, dtype=np.float32),
+        current_l1_a={"7:2": 123.0},
+    )
+    parameters, current_l1_a, diagnostics = exact_standardized_parameters(
+        tokens, normalizer, condition=(7, 2)
+    )
+    exact = CoilNormalizer(
+        mean=normalizer.mean,
+        std=normalizer.std,
+        current_l1_a={"7:2": current_l1_a},
+        clip=float("inf"),
+    )
+    reconstructed = exact.inverse(parameters[None], (7, 2))[0]
+    np.testing.assert_allclose(reconstructed, tokens, rtol=2.0e-6, atol=2.0e-6)
+    assert diagnostics["geometry_relative_rms"] < 2.0e-6
+    assert diagnostics["current_relative_rms"] < 2.0e-6

@@ -146,3 +146,16 @@ job's representative selector failure and its verified repair are recorded as
 The `axis_dominant` and `surface_dominant` prototypes remain visual-review
 artifacts and cannot enter this protocol. This experiment does not modify the
 current default.
+
+Protocol
+`qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1` is the
+registered direct-data optimizability follow-up. It draws 84 samples uniformly
+without replacement from the 2250 balanced-v2 rows whose initial ABI-11 status
+is `ok`, assigns 14 to each of six GPUs, and runs 200 Adam updates with 64 fresh
+orthogonal centered directions. Direct-data settings are `h=0.0025`, learning
+rate `0.01`, and beta `(0.7,0.999)`. The exact analytic-prior start is preserved
+with unclipped standardized coordinates and a per-start fixed current-L1
+reference; Flow is never called. The measured 0.375 initial-valid rate is
+multiplied by conditional Adam success to estimate unconditional abundance.
+Frozen specification:
+`evaluation/axis_surface_contour_prior_balanced_adam200_abi11_v1.json`.

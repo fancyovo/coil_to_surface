@@ -108,3 +108,13 @@ also degrades sharply with base-coil count: median clearance falls from
 explicit clearance construction and condition-dependent physical shaping
 before another large score or RL experiment. The v2 result does not change the
 current Flow/Adam default.
+
+The authorized Adam200 follow-up estimates optimizability conditional on an
+initial ABI-11 `ok` status. It samples 84 of those 2250 rows uniformly without
+replacement, then assigns equal counts and balanced `nc` cost to six GPUs. The
+known 0.375 initial-valid probability is retained separately and multiplied by
+conditional score-at-least-50 success for the full-prior estimate. Exact
+unclipped standardized-data coordinates preserve each analytic-prior start;
+the frozen data-space settings are 200 updates, 64 directions, `h=0.0025`, and
+learning rate `0.01`. This follow-up measures the v2 prior and does not alter
+the current default.

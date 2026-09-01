@@ -275,6 +275,29 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved after both delivered HTML files pass
   the responsive rendering check.
 
+## CORR-20260901-50 - Consolidated loader lost standardized-data priority
+
+- Severity/status: high / fixed before the analytic-prior Adam200 launch.
+- Discovered by: model while auditing the direct-data optimizer entry point for
+  the user-requested six-GPU experiment.
+- Error: consolidation commit `c7438c0` replaced the former optimizer-specific
+  loader with `scripts.flow_runtime.load_initial_noise`, whose section list did
+  not include `data_prior_screening`. A payload retaining both standardized
+  data parameters and Flow screening metadata would therefore load the Flow
+  latent as normalized coil coordinates.
+- Affected scope: no accepted default Flow-latent run, balanced-v2 score, or
+  historical frozen result is changed. The bug would affect a new current-code
+  direct-data launch using such a mixed payload; no such launch is accepted as
+  evidence.
+- Fix and verification: the shared loader now reads
+  `data_prior_screening.normalized_coil_tokens` first and restores the complete
+  optimizer-output fallback list. A regression test covers a payload containing
+  both standardized-data and Flow metadata. The new analytic-prior experiment
+  additionally uses an exact, unclipped start mode and checks step-0 roundtrip
+  error before formal submission.
+- Promotion/reporting blocker: the six-GPU run may launch only after the loader
+  test, exact-start preflight, and ABI-11 manifest checks pass.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

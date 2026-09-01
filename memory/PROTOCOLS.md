@@ -195,7 +195,12 @@ learning rate `0.01`, and beta `(0.7,0.999)`. Initial submission `52174` did
 not enter optimization because result JSON files lacked the required exact-data
 start wrapper; `CORR-20260901-62` records the contained failure. Replacement
 array `52206` uses prepared and hashed continuation starts from commit `35a04b4`.
-No continuation conclusion is accepted until both workers finish.
+Both workers completed 200 updates. `axisv2_case_02986` improved from its
+`69.6472` continuation re-evaluation to `70.0929` at step 63 and finished at
+`69.8508`;
+`axisv2_case_04428` improved from `69.1175` to `69.6224` at step 164 and
+finished at `67.3170`. These are ABI-11 screening results; no new full physical
+evaluation is implied.
 
 Protocol `qh-axis-surface-contour-compact-flexible-score-abi11-v3` is a
 registered score-only prior experiment. It keeps the independent analytic
@@ -204,7 +209,9 @@ minor radius at `0.20 m` with a `[0.18,0.22] m` generator range, and broadens
 size, elongation, cross-section rotation, triangularity, helical ripple, and
 contour harmonics relative to balanced-v2. It samples 3600 cases across the 26
 supported `nc<=4` conditions without Adam. Arrays `52244` (four P107 GPUs) and
-`52245` (two Students GPUs) start together after continuation array `52206`;
+`52245` (two Students GPUs) started together after continuation array `52206`;
 each shard has 600 cases and a hard one-hour limit. Analysis job `52246`
 produces score, status, coil-engineering, condition, and representative-HTML
-outputs. The experiment does not change the current QH default.
+outputs. All six shards passed their initial runtime check with zero scoring
+errors in the first logged batches. The experiment does not change the current
+QH default.

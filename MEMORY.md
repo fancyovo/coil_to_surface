@@ -185,17 +185,20 @@
   about 360-fold and 834-fold but reached the 50-iteration limit. See
   `reports/axis_surface_prior_balanced_v2_adam200_results_20260901.md`.
 - Direct-data continuation protocol
-  `qh-axis-surface-balanced-top2-continue-adam200-64d-abi11-v1` is running two
-  independent Adam200 workers in array `52206`, starting from the saved best
-  states of `axisv2_case_02986` (`nc=4`) and `axisv2_case_04428` (`nc=2`). The
-  failed wrapper-less attempt `52174` performed no optimizer step and is
-  quarantined under `CORR-20260901-62`.
+  `qh-axis-surface-balanced-top2-continue-adam200-64d-abi11-v1` completed two
+  independent Adam200 workers in array `52206`. `axisv2_case_02986` (`nc=4`)
+  improved from its `69.6472` continuation re-evaluation to `70.0929`;
+  `axisv2_case_04428` (`nc=2`) improved
+  from `69.1175` to `69.6224`. These are ABI-11 screening values. The failed
+  wrapper-less attempt `52174` performed no optimizer step and is quarantined
+  under `CORR-20260901-62`.
 - Compact-flexible v3 score-only sampling centers winding radius at `0.20 m`,
   widens noncircular shape variation, excludes `nc=5`, and has no Adam stage.
-  Six-card arrays `52244/52245` are dependency-gated to start together after
-  `52206`; they contain 3600 total samples, 600 per card, with a one-hour shard
-  limit. Analysis job is `52246`. This is a registered experiment and does not
-  alter the current Flow default.
+  Six-card arrays `52244/52245` started together after `52206`; they contain
+  3600 total samples, 600 per card, with a one-hour shard limit. Initial logs
+  show zero errors and about 4.22--4.35 seconds per sample. Analysis job is
+  `52246`. This is a registered experiment and does not alter the current Flow
+  default.
 
 ## Memory Map
 

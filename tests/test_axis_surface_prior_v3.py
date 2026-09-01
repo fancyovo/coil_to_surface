@@ -30,6 +30,7 @@ def test_compact_flexible_v3_launcher_uses_six_gpus_and_one_hour_limit() -> None
     assert "--array=0-3" in submit
     assert "--array=0-1" in submit
     assert 'total_count=3600' in submit
+    assert 'START_DEPENDENCY' in submit
     assert "#SBATCH --time=01:00:00" in worker
     assert "sample_axis_surface_prior_v3.py" in worker
     assert "adam" not in worker.lower()

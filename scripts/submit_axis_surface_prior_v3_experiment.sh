@@ -23,15 +23,20 @@ export PROTOCOL_ID="$protocol_id" TOTAL_COUNT="$total_count" PRIOR_SEED="$prior_
 
 p107=(--account=competition --partition=P107-RTX5090 --qos=qos_p107-rtx5090 --cpus-per-task=4 --mem=24G --array=0-3 --job-name=axis-v3-p107 --export=ALL,SHARD_OFFSET=0)
 students=(--account=stu --partition=Students --qos=qos_stu_medium_2gpu --cpus-per-task=12 --mem=48G --array=0-1 --job-name=axis-v3-stu --export=ALL,SHARD_OFFSET=4)
+start_dependency="${START_DEPENDENCY:-}"
+dependency_args=()
+if [[ -n "$start_dependency" ]]; then
+  dependency_args=(--dependency="$start_dependency")
+fi
 
-sbatch --test-only "${p107[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh
-sbatch --test-only "${students[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh
+sbatch --test-only "${dependency_args[@]}" "${p107[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh
+sbatch --test-only "${dependency_args[@]}" "${students[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh
 sbatch --test-only --export=ALL scripts/slurm_analyze_axis_surface_prior.sh
 
 mkdir -p "$RUN_ROOT" logs
 cp evaluation/axis_surface_contour_prior_compact_flexible_abi11_v3.json "$RUN_ROOT/protocol.json"
-p107_job=$(sbatch --parsable "${p107[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh)
-student_job=$(sbatch --parsable "${students[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh)
+p107_job=$(sbatch --parsable "${dependency_args[@]}" "${p107[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh)
+student_job=$(sbatch --parsable "${dependency_args[@]}" "${students[@]}" scripts/slurm_axis_surface_prior_v3_worker.sh)
 analysis_job=$(sbatch --parsable --dependency="afterok:$p107_job:$student_job" --export=ALL scripts/slurm_analyze_axis_surface_prior.sh)
 submitted_at=$(date --iso-8601=seconds)
 cat > "$RUN_ROOT/runtime_manifest.json" <<EOF
@@ -51,6 +56,7 @@ cat > "$RUN_ROOT/runtime_manifest.json" <<EOF
   "shard_count": $shard_count,
   "per_shard_count": 600,
   "slurm_wall_limit": "01:00:00",
+  "start_dependency": "$start_dependency",
   "optimizer": null,
   "full_physical_evaluation": false,
   "jobs": {

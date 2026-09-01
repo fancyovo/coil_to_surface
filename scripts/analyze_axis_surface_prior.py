@@ -5,6 +5,7 @@ from collections import Counter
 import csv
 import json
 import math
+import os
 from pathlib import Path
 import sys
 from typing import Any, Iterable
@@ -204,7 +205,22 @@ def physical_curves(row: dict[str, Any], samples: int = 192) -> list[tuple[np.nd
 
 
 def write_coil_html(row: dict[str, Any], output_path: Path, label: str) -> None:
-    import plotly.graph_objects as go
+    backend = os.environ.get("AXIS_PRIOR_HTML_BACKEND", "auto").lower()
+    if backend not in {"auto", "plotly", "three"}:
+        raise ValueError("AXIS_PRIOR_HTML_BACKEND must be auto, plotly, or three")
+    if backend != "three":
+        try:
+            import plotly.graph_objects as go
+        except ModuleNotFoundError:
+            if backend == "plotly":
+                raise
+        else:
+            _write_plotly_coil_html(row, output_path, label, go)
+            return
+    _write_three_coil_html(row, output_path, label)
+
+
+def _write_plotly_coil_html(row: dict[str, Any], output_path: Path, label: str, go: Any) -> None:
 
     palette = ("#1f4e79", "#b04a3a", "#3f7d20", "#7b4f9d")
     traces = []
@@ -238,6 +254,41 @@ def write_coil_html(row: dict[str, Any], output_path: Path, label: str) -> None:
         },
     )
     figure.write_html(output_path, include_plotlyjs=True, full_html=True)
+
+
+def _write_three_coil_html(row: dict[str, Any], output_path: Path, label: str) -> None:
+    curves = [
+        {"points": curve.astype(np.float32).reshape(-1).tolist(), "base": base_index}
+        for curve, base_index in physical_curves(row)
+    ]
+    title = (
+        f"{label}: case {row['case_id']} | {row['family']} | nfp={row['nfp']}, nc={row['n_base_coils']} | "
+        f"score={score(row):.3f}, coil={component(row, 'coil'):.3f}"
+    )
+    data = json.dumps({"curves": curves, "title": title}, separators=(",", ":"), allow_nan=False)
+    template = """<!doctype html>
+<html><head><meta charset="utf-8"><title>__TITLE__</title>
+<style>html,body,#view{width:100%;height:100%;margin:0;overflow:hidden;background:#f4f4f0}
+#label{position:fixed;left:16px;top:14px;padding:9px 11px;background:#fffffff0;border:1px solid #2223;
+font:14px/1.35 system-ui,sans-serif;color:#171717;z-index:2;max-width:calc(100vw - 56px)}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+</head><body><div id="view"></div><div id="label">__TITLE__</div><script type="module">
+import * as THREE from 'three'; import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const data=__DATA__, palette=[0x1f4e79,0xb04a3a,0x3f7d20,0x7b4f9d], root=document.getElementById('view');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xf4f4f0);
+for(const item of data.curves){const values=item.points.slice();values.push(...values.slice(0,3));const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(values,3));scene.add(new THREE.Line(geometry,new THREE.LineBasicMaterial({color:palette[item.base%palette.length]})));}
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.001,100), renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);root.appendChild(renderer.domElement);
+const bounds=new THREE.Box3().setFromObject(scene), center=bounds.getCenter(new THREE.Vector3()), size=bounds.getSize(new THREE.Vector3()).length();
+camera.position.set(center.x+0.95*size,center.y-1.25*size,center.z+0.8*size);camera.near=size/1000;camera.far=size*20;camera.updateProjectionMatrix();
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.copy(center);controls.enableDamping=true;
+function draw(){controls.update();renderer.render(scene,camera);requestAnimationFrame(draw)}draw();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>"""
+    output_path.write_text(
+        template.replace("__DATA__", data).replace("__TITLE__", title),
+        encoding="utf-8",
+    )
 
 
 def representative_rows(rows: list[dict[str, Any]]) -> list[tuple[str, dict[str, Any]]]:

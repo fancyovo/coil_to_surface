@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-08-30 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-09-01 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -12,10 +12,11 @@
   on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
-- No experiment is selected as the next exploration and no remote job is
-  declared active by this baseline. Before remote work, inspect the scheduler
-  and read `REMOTE_CODEX_INSTRUCTIONS.md`; old logs and run directories do not
-  establish current job state.
+- Active exploration branch: `codex/axis-surface-prior`, based directly on
+  `main@de75f6d`. Registered protocol
+  `qh-axis-surface-contour-prior-score-abi11-v1` measures 15,600 analytic-prior
+  starts over six GPUs. Verify live job IDs and filesystem state directly;
+  this line records intent, not scheduler truth.
 - Many thousands of pre-existing untracked audit, bundle, run, and generated
   files are present. Preserve them and stage source changes explicitly; verify
   the live count instead of treating a recorded count as stable.
@@ -138,6 +139,22 @@
 - External documents and figures must pass `memory/WRITING.md`. Use direct,
   affirmative explanations; remove defensive contrast, ambiguous references,
   version leakage, and irrelevant claims after generation.
+
+## Active Analytic-Prior Exploration
+
+- The failed Online RWCFM evidence is specific to an independent Gaussian in
+  QUASR featurewise-standardized Fourier coordinates. It does not establish an
+  RL limitation for structured physical priors. The canonical failure report
+  is on `codex/qh-online-validity-rwcfm-zero@9079fa3` and mirrored in
+  `_shared_reports/qh_online_rwcfm_failed_20260901.md`.
+- The replacement prior draws a low-order construction reference axis, a
+  rotation-minimizing winding tube, and stratified contours of a monotone
+  circle-valued scalar coordinate. It uses no QUASR statistics, excludes
+  `nc=5`, and supplies three geometry-amplitude families.
+- The first measurement performs ABI-11 QH native scoring without optimization
+  or full physical evaluation. Report total score and the `coil` engineering
+  component separately, and deliver coil-only HTML views. The construction
+  reference axis must not be called a physical magnetic axis.
 
 ## Memory Map
 

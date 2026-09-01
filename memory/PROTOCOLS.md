@@ -1,6 +1,6 @@
 # QH Protocol Registry
 
-Last verified: 2026-08-30 (Asia/Shanghai).
+Last verified: 2026-09-01 (Asia/Shanghai).
 
 ## Status Vocabulary
 
@@ -116,3 +116,17 @@ implicit default.
 The 2026-08-30 ABI-11 promotion completed this process. The unchanged 32/200/64D
 optimizer settings now belong to `qh-flow-screen32-adam200-64d-abi11-v1`; the
 former ABI-10 protocol ID remains historical and cannot resume as the new ID.
+
+## Registered Experiments
+
+Protocol `qh-axis-surface-contour-prior-score-abi11-v1` is a
+`registered-experimental` prior study on branch `codex/axis-surface-prior`.
+It samples 15,600 analytic axis/surface/contour configurations, independent of
+QUASR, across 26 balanced `(nfp,nc)` conditions and three geometry families.
+It excludes `nc=5`, performs no optimization, and measures the ABI-11 QH score,
+the `coil` component, and its engineering diagnostics. The construction axis
+is a prior coordinate and is not reported as the evaluator's magnetic axis.
+The frozen specification is
+`evaluation/axis_surface_contour_prior_v1.json`; each result shard records the
+actual code commit and score-library hash. This experiment does not modify the
+current default.

@@ -1,0 +1,50 @@
+{
+  "protocol_id": "qh-axis-surface-contour-prior-score-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-01",
+  "purpose": "Measure QH native-score and coil-engineering distributions for an analytic prior independent of QUASR.",
+  "generator": {
+    "format": "axis_surface_contour_prior_v1",
+    "implementation": "flow_matching/axis_surface_prior.py",
+    "construction": [
+      "random low-order stellarator-symmetric reference axis",
+      "closed rotation-minimizing frame and random low-order winding tube",
+      "monotone circle-valued scalar coordinate",
+      "stratified contour levels fitted to order-16 Cartesian Fourier curves"
+    ],
+    "reference_axis_role": "construction_reference_only",
+    "quasr_dependency": false,
+    "families": [
+      "near_circular",
+      "balanced",
+      "helical"
+    ],
+    "current_scale": "2*pi*R0*B0/mu0 divided over 2*nfp*nc linked physical coils",
+    "R0_m": 1.0,
+    "B0_t": 1.0,
+    "curve_order": 16
+  },
+  "sample_design": {
+    "total_count": 15600,
+    "conditions": "26 balanced (nfp,nc) conditions: nc=1 with nfp=4..8; nc=2..4 with nfp=2..8",
+    "explicit_exclusion": "nc=5",
+    "samples_per_condition": 600,
+    "samples_per_family_per_condition": 200,
+    "seed": 20260901,
+    "shards": 6
+  },
+  "evaluation": {
+    "target": "QH",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "optimizer": null,
+    "full_physical_evaluation": false,
+    "primary_outputs": [
+      "total score distribution",
+      "coil component distribution",
+      "coil length, curvature, intercoil distance, axis distance, high-mode energy, and current diagnostics",
+      "coil-only HTML views of representative initial configurations"
+    ]
+  },
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

@@ -138,6 +138,53 @@ An open critical correction blocks promotion and external reporting.
   exception is stated explicitly.
 - Promotion/reporting blocker: none after the mirror and checkout verification.
 
+## CORR-20260901-44 - QUASR marginal standardization was treated as a suitable geometry prior
+
+- Severity/status: high / corrected interpretation; replacement prior under
+  direct measurement.
+- Reported by: user after inspecting high-scoring Adam2000 coil geometry and
+  the absence of Online RWCFM enrichment.
+- Error: the zero-start experiments treated an independent standard Gaussian
+  in QUASR marginally standardized Fourier coordinates as a broad neutral
+  starting distribution. The inverse normalizer restores featurewise means and
+  standard deviations without restoring cross-mode, XYZ, intercoil, topology,
+  curvature, or torsion structure.
+- Primary evidence: `flow_matching/data.py` defines the featurewise transform;
+  the completed q0-q7 and q0-q9 fixed-prefix audits show no target enrichment.
+  The user's geometry observation motivates the mechanism; those runs did not
+  isolate it causally. Canonical failure report: branch
+  `codex/qh-online-validity-rwcfm-zero`, commit `9079fa3`, file
+  `reports/qh_online_rwcfm_failed_20260901.md`.
+- Corrected fact and scope: both Online RWCFM runs evaluate learning from this
+  specific QUASR-marginal prior. They do not establish that RL fails with a
+  structured physical prior. Their completed ABI-11 abundance measurements
+  remain valid.
+- Containment and verification: jobs `50256` and `50431` are no longer active;
+  the replacement protocol uses a hierarchical analytic reference-axis,
+  winding-surface, and circle-valued-field construction and measures the coil
+  component before RL.
+- Promotion/reporting blocker: q8, q10, and their QUASR-marginal prior cannot be
+  promoted or reused as the default start distribution.
+
+## CORR-20260901-45 - Exploration branch was first created from the closed experiment
+
+- Severity/status: medium / resolved before new source edits or submission.
+- Discovered by: model during branch-baseline verification.
+- Error: `codex/axis-surface-prior` was initially created while the visible
+  checkout still pointed at the closed Online RWCFM branch. The intended base
+  was consolidated `main`; the separate `main` worktree made a direct switch
+  fail and the follow-up branch command inherited the wrong HEAD.
+- Corrected fact and scope: the mistaken branch was renamed and deleted without
+  force after switching to its identical source branch. A new
+  `codex/axis-surface-prior` was created from
+  `main@de75f6d9637a8d728f27b17260fa5959d209257d`. No new-prior edit, result,
+  report, job, or scientific conclusion existed on the mistaken branch.
+- Containment and verification: branch, HEAD, `main`, and merge-base were all
+  checked against `de75f6d` before implementation. Future branch creation after
+  a failed checkout must verify `git rev-parse HEAD` and the intended merge-base
+  before the first edit.
+- Promotion/reporting blocker: none.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

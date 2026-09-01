@@ -1,6 +1,6 @@
 # Active Decisions
 
-Last reviewed: 2026-08-31 (Asia/Shanghai).
+Last reviewed: 2026-09-01 (Asia/Shanghai).
 
 ## DEC-20260828-01 - One current optimization default
 
@@ -77,3 +77,20 @@ that owns the experiment. At delivery they are mirrored into `_shared_reports/`
 in the primary checkout. That directory is excluded through the repository's
 local Git metadata, survives branch switches, and provides a stable local file
 surface. The tracked branch copy and commit remain authoritative provenance.
+
+## DEC-20260901-02 - Analytic axis/surface/contour prior study
+
+Status: active registered exploration; not a default promotion.
+
+The first replacement for the failed QUASR-marginal Gaussian prior uses a
+hierarchical analytic construction: a low-order random reference axis, a
+closed rotation-minimizing winding tube, and stratified contours of a monotone
+circle-valued scalar coordinate. The distribution uses no QUASR statistics and
+hard-excludes `nc=5`. Three amplitude families expose the engineering-quality
+and QH-score tradeoff before any RL training is attempted.
+
+The construction axis is named a reference axis until the native evaluator
+independently finds a magnetic axis. The first experiment measures native
+ABI-11 score and coil-engineering distributions only; it does not perform Adam,
+surface certification, or full physical evaluation. See protocol
+`qh-axis-surface-contour-prior-score-abi11-v1`.

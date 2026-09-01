@@ -15,9 +15,9 @@
 - Active exploration branch: `codex/axis-surface-prior`, based directly on
   `main@de75f6d`. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
-  gate and is invalidated. Jobs `51581/51582/51583` were cancelled after 953
-  partial samples. Accepted balanced-v2 scoring is active as arrays
-  `51614/51615`, with dependent analysis `51616`.
+  gate and is invalidated. The accepted balanced-v2 experiment completed 6000
+  ABI-11 score-only samples under arrays `51614/51615`; repaired analysis job
+  `51627` produced the final report and representative coil views.
 - Many thousands of pre-existing untracked audit, bundle, run, and generated
   files are present. Preserve them and stage source changes explicitly; verify
   the live count instead of treating a recorded count as stable.
@@ -153,15 +153,16 @@
   establish the requested prior's abundance.
 - The user accepted only the `balanced_stellarator` v2 morphology for a short
   scoring batch. Protocol
-  `qh-axis-surface-contour-balanced-score-abi11-v2` covers 6000 samples over the
-  existing 26 `nc<=4` conditions with six count-bounded GPU shards and no
-  optimization. The other two v2 prototype families remain unaccepted.
-- The frozen scoring commit is `1dcfd18`; arrays `51614` (four P107 GPUs) and
-  `51615` (two Students GPUs) completed all 6000 rows without scoring errors.
-  Analysis `51616` produced valid summary/table/plots but failed while selecting
-  representative samples because it retained the v1 family list. The repair
-  uses the same run root
-  `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_20260901_1dcfd18`.
+  `qh-axis-surface-contour-balanced-score-abi11-v2` measured 6000 samples over
+  26 `nc<=4` conditions with no optimization. Its maximum ABI-11 total score was
+  `16.4393`; 56 samples reached 10, and none reached 20 or 50. The coil-component
+  median was `72.4114`, with 22.12% at 80 or above. See
+  `reports/axis_surface_prior_balanced_v2_results_20260901.md`.
+- Scoring commit `1dcfd18` and arrays `51614/51615` produced all 6000 rows with
+  zero scoring errors. Analysis `51616` wrote valid aggregate artifacts before
+  its v1-family selector failed; commit `5cbb97a` and CPU job `51627` repaired
+  representative selection against the unchanged rows. `CORR-20260901-48`
+  records the contained analysis error.
 - The v2 inner surface is a geometric reference, not a computed magnetic
   surface, and the construction axis is not a verified magnetic axis. The
   registered experiment does not modify the current QH default.

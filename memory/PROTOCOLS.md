@@ -129,12 +129,19 @@ must not be used for abundance conclusions. Frozen specification and outcome:
 
 The user accepted only the `balanced_stellarator` v2 morphology on 2026-09-01.
 Protocol `qh-axis-surface-contour-balanced-score-abi11-v2` is a
-`registered-experimental` short scoring run. It samples 6000 configurations
-over the same 26 `nc<=4` conditions, uses six count-bounded shards, performs no
-optimization, and records the ABI-11 total score, coil component, and
-engineering diagnostics. Per-sample variation is restricted to the accepted
-balanced family. Frozen specification:
+`registered-experimental` completed score-only run. It sampled 6000
+configurations over 26 `nc<=4` conditions with six count-bounded shards and no
+optimization. All rows completed under ABI 11. The maximum total score was
+`16.4393`; 56/6000 reached 10, 0/6000 reached 20, and 0/6000 reached 50. The
+coil-component median was `72.4114`, while minimum intercoil distance had a
+`27.27 mm` median and `4.04 mm` p10. Per-sample variation was restricted to the
+accepted balanced family. Frozen specification:
 `evaluation/axis_surface_contour_prior_balanced_abi11_v2.json`.
+
+Canonical result report:
+`reports/axis_surface_prior_balanced_v2_results_20260901.md`. The first analysis
+job's representative selector failure and its verified repair are recorded as
+`CORR-20260901-48`; the 6000 scores and aggregate plots were unaffected.
 
 The `axis_dominant` and `surface_dominant` prototypes remain visual-review
 artifacts and cannot enter this protocol. This experiment does not modify the

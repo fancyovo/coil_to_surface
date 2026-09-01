@@ -1,6 +1,6 @@
 # Correction Ledger
 
-Last reviewed: 2026-08-30 (Asia/Shanghai).
+Last reviewed: 2026-09-01 (Asia/Shanghai).
 
 This ledger is append-only at the entry level. Record both model-discovered and
 user-reported errors. Keep the erroneous artifact for provenance, add a visible
@@ -237,7 +237,7 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260901-48 - V2 representative analysis retained a hardcoded v1 family list
 
-- Severity/status: medium / fixed; CPU analysis repair required.
+- Severity/status: medium / resolved and verified.
 - Discovered by: model during v2 result acceptance.
 - Error: `representative_rows()` still iterated over `near_circular`,
   `balanced`, and `helical` after the rest of the analyzer had been generalized.
@@ -248,11 +248,32 @@ An open critical correction blocks promotion and external reporting.
   `summary.json`, `condition_summary.csv`, and both distribution PNGs were
   written. Those four artifacts remain valid; only `representative_samples.json`
   and its HTML files were absent.
-- Fix and verification: derive the family set from input rows and test the
-  single v2 family explicitly. Rerun the CPU-only analysis against the frozen
-  6000 scored rows and record the repair commit and job separately.
-- Promotion/reporting blocker: representative artifacts must exist before the
-  run is reported as fully accepted.
+- Fix and verification: commit `5cbb97a` derives the family set from input rows
+  and tests the single v2 family explicitly. CPU-only job `51627` reran analysis
+  against the frozen 6000 scored rows and produced
+  `representative_samples.json` plus both requested coil HTML files. The test
+  suite passed 35 tests after the fix.
+- Promotion/reporting blocker: resolved. The aggregate artifacts and repaired
+  representative artifacts are delivered together in the canonical report.
+
+## CORR-20260901-49 - Three.js representative views clipped coils on narrow screens
+
+- Severity/status: low / resolved before report delivery.
+- Discovered by: model during the required rendered-deliverable audit.
+- Error: the representative-coil HTML used a camera distance fixed from the
+  three-dimensional bounding-box diagonal. Narrow viewports reduced horizontal
+  field of view without increasing that distance, clipping the right edge of
+  the coil set.
+- Affected evidence: only the responsive framing of the two v2 representative
+  HTML files. Coil coordinates, scores, tables, figures, and conclusions are
+  unchanged.
+- Fix and verification: the Three.js writer now fits a bounding sphere using
+  the smaller of the vertical and horizontal half-field angles, repeats that
+  fit on resize, and wraps the overlay label. A regression test checks the
+  generated responsive-camera logic; desktop and 390x844 rendered views are
+  checked before delivery.
+- Promotion/reporting blocker: resolved after both delivered HTML files pass
+  the responsive rendering check.
 
 ## Required Entry Template
 

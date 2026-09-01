@@ -80,7 +80,7 @@ surface. The tracked branch copy and commit remain authoritative provenance.
 
 ## DEC-20260901-02 - Analytic axis/surface/contour prior study
 
-Status: v1 invalidated; balanced v2 morphology accepted for short scoring.
+Status: v1 invalidated; balanced v2 measured and retained as a structured-prior baseline.
 
 The first replacement for the failed QUASR-marginal Gaussian prior used a
 hierarchical analytic construction, but its axis, tube, and contours were all
@@ -94,8 +94,17 @@ surface, the winding surface, and coils. The reference surface is a geometric
 prior and must not be called a computed magnetic surface.
 
 The user accepted only the `balanced_stellarator` morphology on 2026-09-01.
-Protocol `qh-axis-surface-contour-balanced-score-abi11-v2` may score a short
-6000-sample, six-GPU batch over the existing 26 `nc<=4` conditions. The
+Protocol `qh-axis-surface-contour-balanced-score-abi11-v2` then measured a
+6000-sample, six-GPU batch over 26 `nc<=4` conditions. The
 `axis_dominant` and `surface_dominant` prototypes remain unaccepted and cannot
 enter this run. This acceptance authorizes the registered experiment and does
 not promote the prior into the current default.
+
+The completed batch measured a maximum ABI-11 score of `16.4393`, with no
+sample at 20 or above. The prior reliably produces low-high-mode coil geometry,
+yet it does not provide evidence of QH-basin abundance. Intercoil clearance
+also degrades sharply with base-coil count: median clearance falls from
+`68.95 mm` at `nc=1` to `9.88 mm` at `nc=4`. Future revisions should include an
+explicit clearance construction and condition-dependent physical shaping
+before another large score or RL experiment. The v2 result does not change the
+current Flow/Adam default.

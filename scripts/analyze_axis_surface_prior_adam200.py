@@ -40,7 +40,7 @@ def summarize_group(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Summarize balanced-v2 random valid Adam200 trajectories.")
+    parser = argparse.ArgumentParser(description="Summarize analytic-prior random valid Adam200 trajectories.")
     parser.add_argument("--run-root", type=Path, required=True)
     args = parser.parse_args()
     output_dir = args.run_root / "analysis"
@@ -90,7 +90,9 @@ def main() -> None:
         by_nfp[str(row["nfp"])].append(row)
     overall = summarize_group(rows)
     summary = {
-        "format": "axis_surface_prior_balanced_v2_adam200_summary_v1",
+        "format": selection.get("artifact_formats", {}).get(
+            "summary", "axis_surface_prior_balanced_v2_adam200_summary_v1"
+        ),
         "protocol_id": selection["protocol_id"],
         "expected_count": len(selection["cases"]),
         "completed_count": len(rows),

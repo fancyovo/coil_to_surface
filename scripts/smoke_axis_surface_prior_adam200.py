@@ -15,7 +15,7 @@ from scripts.native_score_runtime import write_json
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Three-step exact-start smoke test for balanced-v2 Adam200.")
+    parser = argparse.ArgumentParser(description="Three-step exact-start smoke test for analytic-prior Adam200.")
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--device", type=int, default=0)
     args = parser.parse_args()

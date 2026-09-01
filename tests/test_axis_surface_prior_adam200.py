@@ -13,6 +13,7 @@ from scripts.prepare_axis_surface_prior_adam200 import (
     select_valid_rows,
 )
 from scripts.run_axis_surface_prior_adam200 import trajectory_wall_limit
+from scripts.run_axis_surface_prior_adam200 import artifact_format
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -47,16 +48,27 @@ def test_trajectory_wall_limit_allows_slow_nc4_without_exceeding_worker_budget()
     assert trajectory_wall_limit(worker_elapsed_s=14600.0, worker_max_wall_s=17400.0) == 2500.0
 
 
-def _row(case_id: int, status: str, nc: int) -> dict[str, object]:
+def test_artifact_format_defaults_to_frozen_v2_and_accepts_registered_override() -> None:
+    assert artifact_format({}, "trajectory") == (
+        "axis_surface_prior_balanced_v2_adam200_trajectory_v1"
+    )
+    manifest = {"artifact_formats": {"trajectory": "registered_v3_trajectory_v1"}}
+    assert artifact_format(manifest, "trajectory") == "registered_v3_trajectory_v1"
+
+
+def _row(case_id: int, status: str | None, nc: int) -> dict[str, object]:
     return {
         "case_id": case_id,
         "n_base_coils": nc,
-        "native": {"status": status},
+        "native": {"status": status} if status is not None else None,
     }
 
 
 def test_random_selection_uses_only_valid_rows_and_is_reproducible() -> None:
-    rows = [_row(index, "ok" if index % 2 else "no_axis", 1 + index % 4) for index in range(30)]
+    rows = [
+        _row(index, "ok" if index % 2 else (None if index == 0 else "no_axis"), 1 + index % 4)
+        for index in range(30)
+    ]
     first = select_valid_rows(rows, count=8, seed=73)
     second = select_valid_rows(rows, count=8, seed=73)
     assert [row["case_id"] for row in first] == [row["case_id"] for row in second]

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -14,116 +13,77 @@ import torch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-from flow_matching.data import CoilNormalizer, canonicalize_currents, file_sha256
+from flow_matching.data import CoilNormalizer, file_sha256
 from scripts.native_score_runtime import token_case, write_json
+from scripts.prepare_axis_surface_prior_adam200 import (
+    assign_workers,
+    exact_standardized_parameters,
+    load_scored_rows,
+    row_sha256,
+    select_valid_rows,
+)
 
 
-PROTOCOL_ID = "qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1"
-RUNTIME_WEIGHT = {1: 0.78, 2: 0.92, 3: 1.08, 4: 1.22}
+SOURCE_PROTOCOL_ID = "qh-axis-surface-contour-compact-flexible-score-abi11-v3"
+PROTOCOL_ID = (
+    "qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1"
+)
+EXPECTED_ROW_COUNT = 3600
+ARTIFACT_FORMATS = {
+    "selection": "axis_surface_prior_compact_flexible_v3_adam200_selection_v1",
+    "start": "axis_surface_prior_compact_flexible_v3_exact_data_start_v1",
+    "trajectory": "axis_surface_prior_compact_flexible_v3_adam200_trajectory_v1",
+    "failure": "axis_surface_prior_compact_flexible_v3_adam200_failure_v1",
+    "worker": "axis_surface_prior_compact_flexible_v3_adam200_worker_v1",
+    "summary": "axis_surface_prior_compact_flexible_v3_adam200_summary_v1",
+}
 
 
-def row_sha256(row: dict[str, Any]) -> str:
-    payload = json.dumps(row, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def load_scored_rows(input_dir: Path) -> tuple[list[dict[str, Any]], dict[int, str]]:
-    rows: list[dict[str, Any]] = []
-    source_by_case: dict[int, str] = {}
-    for path in sorted(input_dir.glob("shard_*.jsonl")):
-        if path.name.endswith(".done.json"):
-            continue
-        with path.open("r", encoding="utf-8") as stream:
-            for line in stream:
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                case_id = int(row["case_id"])
-                if case_id in source_by_case:
-                    raise ValueError(f"duplicate case_id {case_id}")
-                source_by_case[case_id] = path.name
-                rows.append(row)
-    rows.sort(key=lambda row: int(row["case_id"]))
-    return rows, source_by_case
-
-
-def select_valid_rows(
-    rows: list[dict[str, Any]], *, count: int, seed: int
-) -> list[dict[str, Any]]:
-    valid = [row for row in rows if (row.get("native") or {}).get("status") == "ok"]
-    if count > len(valid):
-        raise ValueError(f"requested {count} rows from only {len(valid)} valid rows")
-    rng = np.random.default_rng(seed)
-    indices = rng.choice(len(valid), size=count, replace=False)
-    return [valid[int(index)] for index in indices]
-
-
-def assign_workers(
-    rows: list[dict[str, Any]], *, worker_count: int
-) -> dict[int, int]:
-    if len(rows) % worker_count:
-        raise ValueError("sample count must be divisible by worker count")
-    capacity = len(rows) // worker_count
-    loads = [0.0] * worker_count
-    counts = [0] * worker_count
-    assignment: dict[int, int] = {}
-    ordered = sorted(
-        enumerate(rows),
-        key=lambda item: (-RUNTIME_WEIGHT[int(item[1]["n_base_coils"])], item[0]),
+def validate_source_rows(rows: list[dict[str, Any]]) -> None:
+    if len(rows) != EXPECTED_ROW_COUNT:
+        raise ValueError(f"expected {EXPECTED_ROW_COUNT} scored rows, found {len(rows)}")
+    protocols = {row.get("protocol_id") for row in rows}
+    if protocols != {SOURCE_PROTOCOL_ID}:
+        raise ValueError(f"source protocol mismatch: {sorted(map(str, protocols))}")
+    unsupported = sorted(
+        {int(row["n_base_coils"]) for row in rows if int(row["n_base_coils"]) > 4}
     )
-    for selection_rank, row in ordered:
-        candidates = [index for index in range(worker_count) if counts[index] < capacity]
-        worker = min(candidates, key=lambda index: (loads[index], counts[index], index))
-        assignment[selection_rank] = worker
-        counts[worker] += 1
-        loads[worker] += RUNTIME_WEIGHT[int(row["n_base_coils"])]
-    return assignment
+    if unsupported:
+        raise ValueError(f"source contains explicitly excluded nc values: {unsupported}")
 
 
-def exact_standardized_parameters(
-    tokens: np.ndarray,
-    normalizer: CoilNormalizer,
-    *,
-    condition: tuple[int, int],
-) -> tuple[np.ndarray, float, dict[str, float]]:
-    values = np.asarray(tokens, dtype=np.float32)
-    current_l1_a = float(np.sum(np.abs(values[:, -1]), dtype=np.float64))
-    canonical = canonicalize_currents(values[None], current_l1_a)[0]
-    parameters = ((canonical - normalizer.mean) / normalizer.std).astype(np.float32)
-    exact = CoilNormalizer(
-        mean=normalizer.mean.copy(),
-        std=normalizer.std.copy(),
-        current_l1_a={f"{condition[0]}:{condition[1]}": current_l1_a},
-        clip=float("inf"),
-    )
-    reconstructed = exact.inverse(parameters[None], condition)[0]
-    geometry = values[:, :-1]
-    geometry_reconstructed = reconstructed[:, :-1]
-    geometry_relative_rms = float(
-        np.linalg.norm(geometry_reconstructed - geometry)
-        / max(np.linalg.norm(geometry), 1.0e-30)
-    )
-    current_relative_rms = float(
-        np.linalg.norm(reconstructed[:, -1] - values[:, -1])
-        / max(np.linalg.norm(values[:, -1]), 1.0e-30)
-    )
-    diagnostics = {
-        "geometry_relative_rms": geometry_relative_rms,
-        "current_relative_rms": current_relative_rms,
-        "max_abs_parameter": float(np.max(np.abs(parameters))),
-    }
-    return parameters, current_l1_a, diagnostics
+def validate_source_shards(input_dir: Path, expected_lib_sha: str) -> list[Path]:
+    row_paths = sorted(input_dir.glob("shard_*.jsonl"))
+    done_paths = sorted(input_dir.glob("shard_*.done.json"))
+    if len(row_paths) != 6 or len(done_paths) != 6:
+        raise ValueError(
+            f"expected six source row shards and six done markers, found "
+            f"{len(row_paths)} and {len(done_paths)}"
+        )
+    for path in done_paths:
+        done = json.loads(path.read_text(encoding="utf-8"))
+        if done.get("protocol_id") != SOURCE_PROTOCOL_ID:
+            raise ValueError(f"source done-marker protocol mismatch in {path.name}")
+        if int(done.get("errors", -1)) != 0:
+            raise ValueError(f"source shard reports scoring errors in {path.name}")
+        if done.get("score_library_sha256") != expected_lib_sha:
+            raise ValueError(f"source score-library hash mismatch in {path.name}")
+        if int(done.get("total_count", -1)) != EXPECTED_ROW_COUNT:
+            raise ValueError(f"source population size mismatch in {path.name}")
+    return done_paths
 
 
 def parser() -> argparse.ArgumentParser:
-    value = argparse.ArgumentParser(description="Prepare balanced-v2 random valid starts for direct-data Adam200.")
+    value = argparse.ArgumentParser(
+        description="Prepare compact-flexible-v3 random valid starts for direct-data Adam200."
+    )
     value.add_argument("--input-dir", type=Path, required=True)
     value.add_argument("--run-root", type=Path, required=True)
     value.add_argument("--checkpoint", type=Path, required=True)
     value.add_argument("--score-lib", type=Path, required=True)
-    value.add_argument("--sample-count", type=int, default=84)
+    value.add_argument("--sample-count", type=int, default=120)
     value.add_argument("--worker-count", type=int, default=6)
-    value.add_argument("--seed", type=int, default=20260902)
+    value.add_argument("--seed", type=int, default=20260904)
     value.add_argument("--expected-commit", required=True)
     value.add_argument("--expected-lib-sha", required=True)
     value.add_argument("--expected-checkpoint-sha", required=True)
@@ -144,9 +104,9 @@ def main() -> None:
     if (args.run_root / "selection_manifest.json").exists():
         raise FileExistsError("selection manifest already exists")
 
+    done_paths = validate_source_shards(args.input_dir, args.expected_lib_sha)
     rows, source_by_case = load_scored_rows(args.input_dir)
-    if len(rows) != 6000:
-        raise ValueError(f"expected 6000 scored rows, found {len(rows)}")
+    validate_source_rows(rows)
     selected = select_valid_rows(rows, count=args.sample_count, seed=args.seed)
     assignment = assign_workers(selected, worker_count=args.worker_count)
 
@@ -169,8 +129,9 @@ def main() -> None:
             raise RuntimeError(f"case {case_id} current roundtrip exceeds tolerance")
         start = token_case(tokens, nfp=nfp, target="QH")
         start["data_prior_screening"] = {
-            "format": "axis_surface_prior_balanced_v2_exact_data_start_v1",
+            "format": ARTIFACT_FORMATS["start"],
             "protocol_id": PROTOCOL_ID,
+            "source_protocol_id": SOURCE_PROTOCOL_ID,
             "normalized_coil_tokens": parameters.tolist(),
             "current_l1_a": current_l1_a,
             "native_score": row["native"],
@@ -185,7 +146,7 @@ def main() -> None:
         write_json(start_path, start)
         cases.append(
             {
-                "trajectory_id": f"axisv2_case_{case_id:05d}",
+                "trajectory_id": f"axisv3_case_{case_id:05d}",
                 "case_id": case_id,
                 "selection_rank": rank,
                 "worker_index": assignment[rank],
@@ -194,7 +155,7 @@ def main() -> None:
                 "initial_score": float(row["native"]["score"]),
                 "initial_coil_component": float(row["native"]["components"]["coil"]),
                 "initial_status": row["native"]["status"],
-                "optimizer_seed": 20270000 + case_id,
+                "optimizer_seed": 20280000 + case_id,
                 "start": str(start_path.resolve()),
                 "start_sha256": file_sha256(start_path),
                 "source_shard": source_by_case[case_id],
@@ -204,11 +165,13 @@ def main() -> None:
 
     valid_rows = [row for row in rows if (row.get("native") or {}).get("status") == "ok"]
     manifest = {
-        "format": "axis_surface_prior_balanced_v2_adam200_selection_v1",
+        "format": ARTIFACT_FORMATS["selection"],
+        "artifact_formats": ARTIFACT_FORMATS,
         "protocol_id": PROTOCOL_ID,
         "status": "prepared",
         "code_commit": commit,
         "input": {
+            "protocol_id": SOURCE_PROTOCOL_ID,
             "run_root": str(args.input_dir.resolve()),
             "row_count": len(rows),
             "valid_count": len(valid_rows),
@@ -216,6 +179,10 @@ def main() -> None:
             "shards": [
                 {"file": path.name, "sha256": file_sha256(path)}
                 for path in sorted(args.input_dir.glob("shard_*.jsonl"))
+            ],
+            "done_markers": [
+                {"file": path.name, "sha256": file_sha256(path)}
+                for path in done_paths
             ],
         },
         "selection": {
@@ -247,7 +214,9 @@ def main() -> None:
             "score_library_abi": 11,
             "score_library_sha256": args.expected_lib_sha,
         },
-        "cases": sorted(cases, key=lambda case: (case["worker_index"], case["selection_rank"])),
+        "cases": sorted(
+            cases, key=lambda case: (case["worker_index"], case["selection_rank"])
+        ),
     }
     write_json(args.run_root / "selection_manifest.json", manifest)
     print(json.dumps(manifest["selection"], indent=2), flush=True)

@@ -16,6 +16,12 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+DEFAULT_ARTIFACT_FORMATS = {
+    "trajectory": "axis_surface_prior_balanced_v2_adam200_trajectory_v1",
+    "failure": "axis_surface_prior_balanced_v2_adam200_failure_v1",
+    "worker": "axis_surface_prior_balanced_v2_adam200_worker_v1",
+}
+
 from flow_matching.collection import replace_json
 from flow_matching.data import file_sha256
 from flow_matching.trajectory_dataset import atomic_write_json
@@ -51,12 +57,19 @@ def trajectory_wall_limit(
     return min(7200.0, max(1.0, available))
 
 
+def artifact_format(manifest: dict[str, Any], name: str) -> str:
+    return str(
+        manifest.get("artifact_formats", {}).get(name, DEFAULT_ARTIFACT_FORMATS[name])
+    )
+
+
 def parser() -> argparse.ArgumentParser:
-    value = argparse.ArgumentParser(description="Run one balanced-v2 direct-data Adam200 worker.")
+    value = argparse.ArgumentParser(description="Run one analytic-prior direct-data Adam200 worker.")
     value.add_argument("--run-root", type=Path, required=True)
     value.add_argument("--worker-index", type=int, required=True)
     value.add_argument("--device", type=int, default=0)
     value.add_argument("--max-wall-s", type=float, default=17400.0)
+    value.add_argument("--minimum-case-reserve-s", type=float, default=2400.0)
     value.add_argument("--max-new-cases", type=int, default=0)
     value.add_argument("--iterations", type=int, default=200)
     value.add_argument("--allow-partial", action="store_true")
@@ -66,6 +79,10 @@ def parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = parser().parse_args()
     manifest = json.loads((args.run_root / "selection_manifest.json").read_text(encoding="utf-8"))
+    formats = {
+        name: artifact_format(manifest, name)
+        for name in ("trajectory", "failure", "worker")
+    }
     cases = worker_cases(manifest, args.worker_index)
     if not cases:
         raise ValueError(f"worker {args.worker_index} has no assigned cases")
@@ -98,7 +115,9 @@ def main() -> None:
             stop_reason = "max_new_cases"
             break
         elapsed = time.perf_counter() - started
-        reserve = max(2400.0, 1.35 * max(durations[-3:], default=0.0))
+        reserve = max(
+            args.minimum_case_reserve_s, 1.35 * max(durations[-3:], default=0.0)
+        )
         if elapsed + reserve >= args.max_wall_s:
             stop_reason = "max_wall_s"
             break
@@ -187,7 +206,7 @@ def main() -> None:
                 raise RuntimeError("optimizer step-0 roundtrip exceeds tolerance")
             trajectory_wall_s = time.perf_counter() - case_started
             trajectory_manifest = {
-                "format": "axis_surface_prior_balanced_v2_adam200_trajectory_v1",
+                "format": formats["trajectory"],
                 "protocol_id": manifest["protocol_id"],
                 "trajectory_id": case["trajectory_id"],
                 "case": case,
@@ -228,7 +247,7 @@ def main() -> None:
         except Exception as exc:
             signature = f"{type(exc).__name__}: {exc}"
             failure = {
-                "format": "axis_surface_prior_balanced_v2_adam200_failure_v1",
+                "format": formats["failure"],
                 "trajectory_id": case["trajectory_id"],
                 "worker_index": args.worker_index,
                 "error": signature,
@@ -247,7 +266,7 @@ def main() -> None:
         replace_json(
             worker_dir / "progress.json",
             {
-                "format": "axis_surface_prior_balanced_v2_adam200_worker_v1",
+                "format": formats["worker"],
                 "worker_index": args.worker_index,
                 "stage": "running",
                 "assigned_cases": len(cases),
@@ -267,7 +286,7 @@ def main() -> None:
     finished = {path.name for path in trajectories_dir.iterdir() if path.is_dir()}
     missing = [case["trajectory_id"] for case in cases if case["trajectory_id"] not in finished]
     final = {
-        "format": "axis_surface_prior_balanced_v2_adam200_worker_v1",
+        "format": formats["worker"],
         "worker_index": args.worker_index,
         "stage": "complete" if not missing else "incomplete",
         "stop_reason": stop_reason,

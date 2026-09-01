@@ -340,6 +340,29 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved only after that replacement smoke gate
   passes and the formal arrays demonstrate live iteration progress.
 
+## CORR-20260901-53 - Per-trajectory cap was shorter than observed nc=4 Adam200
+
+- Severity/status: high / fixed before accepting a formal trajectory.
+- Discovered by: model during the required six-worker live-progress audit of
+  arrays `51664` and `51665`.
+- Error: the worker allowed five hours overall but passed a fixed 2400-second
+  cap to every optimizer. The first `nc=4,nfp=8` case took about 21 seconds per
+  update, projecting roughly 70 minutes for Adam200, so the inner cap would
+  have converted a scientifically valid slow trajectory into a runtime failure.
+  The prior p90 runtime estimate did not cover this balanced-v2 cost tail.
+- Affected scope: arrays `51664` and `51665` were cancelled about four minutes
+  after launch, before any 200-step trajectory was accepted. Their incomplete
+  directories remain operational evidence only. Smoke job `51663` remains
+  valid because it completed all three requested steps and passed every gate.
+- Corrected behavior: each trajectory may use at most 7200 seconds, further
+  bounded by the worker's remaining 17400-second budget minus 300 seconds for
+  cleanup. The worker still stops opening new cases when less than its
+  2400-second reserve remains. A unit test covers both the two-hour cap and the
+  shrinking remaining-budget case.
+- Promotion/reporting blocker: the replacement arrays must show all six first
+  trajectories advancing and must not classify wall-budget truncation as an
+  optimization failure.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

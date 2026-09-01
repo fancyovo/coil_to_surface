@@ -12,6 +12,7 @@ from scripts.prepare_axis_surface_prior_adam200 import (
     exact_standardized_parameters,
     select_valid_rows,
 )
+from scripts.run_axis_surface_prior_adam200 import trajectory_wall_limit
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +40,11 @@ def test_recorded_axis_hint_requires_complete_finite_coordinates() -> None:
         1.2,
         -0.3,
     )
+
+
+def test_trajectory_wall_limit_allows_slow_nc4_without_exceeding_worker_budget() -> None:
+    assert trajectory_wall_limit(worker_elapsed_s=0.0, worker_max_wall_s=17400.0) == 7200.0
+    assert trajectory_wall_limit(worker_elapsed_s=14600.0, worker_max_wall_s=17400.0) == 2500.0
 
 
 def _row(case_id: int, status: str, nc: int) -> dict[str, object]:

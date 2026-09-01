@@ -44,6 +44,13 @@ def run_logged(command: list[str], log_path: Path) -> float:
     return wall_s
 
 
+def trajectory_wall_limit(
+    *, worker_elapsed_s: float, worker_max_wall_s: float
+) -> float:
+    available = worker_max_wall_s - worker_elapsed_s - 300.0
+    return min(7200.0, max(1.0, available))
+
+
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description="Run one balanced-v2 direct-data Adam200 worker.")
     value.add_argument("--run-root", type=Path, required=True)
@@ -95,6 +102,10 @@ def main() -> None:
         if elapsed + reserve >= args.max_wall_s:
             stop_reason = "max_wall_s"
             break
+        case_wall_limit = trajectory_wall_limit(
+            worker_elapsed_s=elapsed,
+            worker_max_wall_s=args.max_wall_s,
+        )
 
         attempted += 1
         partial = incomplete_dir / f"{case['trajectory_id']}.worker{args.worker_index}.{os.getpid()}.partial"
@@ -125,7 +136,7 @@ def main() -> None:
                     "--iterations",
                     str(args.iterations),
                     "--max-wall-s",
-                    "2400",
+                    f"{case_wall_limit:.6f}",
                     "--parameter-space",
                     "data",
                     "--data-start-mode",

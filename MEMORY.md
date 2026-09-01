@@ -173,6 +173,13 @@
   rate `0.01`, and no Flow calls. Conditional score-at-least-50 abundance must
   be multiplied by the measured `0.375` initial-valid rate. Launch state is
   recorded in the frozen runtime manifest rather than inferred from this file.
+- The accepted launch is frozen at `11f703f` under remote root
+  `axis_surface_prior_balanced_v2_adam200_20260901_11f703f`: prepare `51677`,
+  passed three-step smoke `51678`, P107 array `51679`, Students array `51680`,
+  and dependent analysis `51681`. At the 2026-09-01 launch audit all six first
+  trajectories had advanced 3-28 updates, all six per-trajectory limits were
+  7200 seconds, and no formal failure artifact existed. Verify live scheduler
+  and filesystem state directly after any later wakeup.
 
 ## Memory Map
 

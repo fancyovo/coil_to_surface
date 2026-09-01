@@ -295,8 +295,8 @@ An open critical correction blocks promotion and external reporting.
   both standardized-data and Flow metadata. The new analytic-prior experiment
   additionally uses an exact, unclipped start mode and checks step-0 roundtrip
   error before formal submission.
-- Promotion/reporting blocker: the six-GPU run may launch only after the loader
-  test, exact-start preflight, and ABI-11 manifest checks pass.
+- Promotion/reporting blocker: resolved by the exact-start preflight, ABI-11
+  manifest checks, passed smoke `51678`, and six live formal trajectories.
 
 ## CORR-20260901-51 - Optimizer provenance check used an undefined root name
 
@@ -315,8 +315,9 @@ An open critical correction blocks promotion and external reporting.
   rejects any loaded `PROJECT_ROOT` name in the optimizer entry point, in
   addition to the existing compile and protocol tests. A new frozen commit and
   a new smoke-gated job chain are required for the formal experiment.
-- Promotion/reporting blocker: resolved only after the replacement smoke job
-  reproduces the selected initial score and completes its three updates.
+- Promotion/reporting blocker: resolved by final smoke job `51678`, which
+  reproduced the selected initial score within 0.0313 and completed three
+  updates with zero parameter roundtrip error.
 
 ## CORR-20260901-52 - Score-only records were treated as axis-continuation records
 
@@ -337,8 +338,9 @@ An open critical correction blocks promotion and external reporting.
 - Verification: a regression test covers absent, partial, nonfinite, and valid
   recorded diagnostics. A third frozen launch and successful three-update GPU
   smoke are required before six-card optimization begins.
-- Promotion/reporting blocker: resolved only after that replacement smoke gate
-  passes and the formal arrays demonstrate live iteration progress.
+- Promotion/reporting blocker: resolved by final smoke `51678` and formal
+  arrays `51679`/`51680`; every first trajectory produced live iteration
+  history.
 
 ## CORR-20260901-53 - Per-trajectory cap was shorter than observed nc=4 Adam200
 
@@ -359,9 +361,9 @@ An open critical correction blocks promotion and external reporting.
   cleanup. The worker still stops opening new cases when less than its
   2400-second reserve remains. A unit test covers both the two-hour cap and the
   shrinking remaining-budget case.
-- Promotion/reporting blocker: the replacement arrays must show all six first
-  trajectories advancing and must not classify wall-budget truncation as an
-  optimization failure.
+- Promotion/reporting blocker: resolved at launch. Arrays `51679`/`51680`
+  showed all six first trajectories advancing from 3 to 28 updates with
+  7200-second trajectory limits and no failure artifact.
 
 ## Required Entry Template
 

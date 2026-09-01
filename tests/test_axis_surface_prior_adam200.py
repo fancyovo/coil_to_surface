@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from flow_matching.data import CoilNormalizer
+from scripts.optimize_flow_latent import recorded_axis_hint
 from scripts.prepare_axis_surface_prior_adam200 import (
     assign_workers,
     exact_standardized_parameters,
@@ -28,6 +29,16 @@ def test_optimizer_repository_root_reference_is_defined() -> None:
     }
     assert "REPO_ROOT" in loaded_names
     assert "PROJECT_ROOT" not in loaded_names
+
+
+def test_recorded_axis_hint_requires_complete_finite_coordinates() -> None:
+    assert recorded_axis_hint(None) is None
+    assert recorded_axis_hint({"diagnostics": {"score": 12.0}}) is None
+    assert recorded_axis_hint({"diagnostics": {"axis_R": 1.2, "axis_Z": float("nan")}}) is None
+    assert recorded_axis_hint({"diagnostics": {"axis_R": 1.2, "axis_Z": -0.3}}) == (
+        1.2,
+        -0.3,
+    )
 
 
 def _row(case_id: int, status: str, nc: int) -> dict[str, object]:

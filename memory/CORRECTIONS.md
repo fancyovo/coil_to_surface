@@ -318,6 +318,28 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved only after the replacement smoke job
   reproduces the selected initial score and completes its three updates.
 
+## CORR-20260901-52 - Score-only records were treated as axis-continuation records
+
+- Severity/status: medium / fixed before formal Adam200 sampling.
+- Discovered by: model through replacement smoke job `51653`.
+- Error: the shared optimizer passed any recorded native score through the
+  strict axis-continuation path. Balanced-v2 score-only rows intentionally omit
+  `axis_R` and `axis_Z`, so initial evaluation raised `KeyError` before calling
+  the evaluator.
+- Affected scope: smoke job `51653` stopped before the initial native call or
+  any Adam update. Dependent arrays `51654` and `51655` never started and were
+  cancelled with analysis job `51656`. Existing Flow starts with complete axis
+  diagnostics and all accepted historical trajectories are unchanged.
+- Corrected behavior: a recorded result supplies the initial strict hint only
+  when both axis coordinates exist and are finite. Otherwise the initial
+  ABI-11 evaluation performs its standalone axis search. Every subsequently
+  accepted center still supplies a complete strict continuation hint.
+- Verification: a regression test covers absent, partial, nonfinite, and valid
+  recorded diagnostics. A third frozen launch and successful three-update GPU
+  smoke are required before six-card optimization begins.
+- Promotion/reporting blocker: resolved only after that replacement smoke gate
+  passes and the formal arrays demonstrate live iteration progress.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

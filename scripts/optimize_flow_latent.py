@@ -223,6 +223,18 @@ def axis_hint(result: dict[str, Any]) -> tuple[float, float]:
     return value
 
 
+def recorded_axis_hint(result: dict[str, Any] | None) -> tuple[float, float] | None:
+    if result is None:
+        return None
+    diagnostics = result.get("diagnostics")
+    if not isinstance(diagnostics, dict):
+        return None
+    if "axis_R" not in diagnostics or "axis_Z" not in diagnostics:
+        return None
+    value = (float(diagnostics["axis_R"]), float(diagnostics["axis_Z"]))
+    return value if all(math.isfinite(item) for item in value) else None
+
+
 def recorded_native_result(payload: dict[str, Any]) -> dict[str, Any] | None:
     for key in (
         "original_space_local_gradient_adam",
@@ -264,7 +276,7 @@ def score_center(
         config_overrides=score_config(
             iota_degree=iota_degree,
             surface_theta_count=surface_theta_count,
-            axis_hint=None if previous_result is None else axis_hint(previous_result),
+            axis_hint=recorded_axis_hint(previous_result),
         ),
     )
     return result, time.perf_counter() - started

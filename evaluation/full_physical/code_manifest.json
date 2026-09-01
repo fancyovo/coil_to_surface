@@ -5,7 +5,10 @@
     {
       "name": "source_psi_candidate_submission",
       "entrypoint": "evaluation/full_physical/submit_source_psi_candidates.sh",
-      "implementation": "scripts/slurm_fit_source_psi.sh"
+      "implementations": [
+        "scripts/slurm_fit_source_psi.sh",
+        "evaluation/full_physical/write_submission_policy.py"
+      ]
     },
     {
       "name": "code_preflight",
@@ -15,7 +18,10 @@
     {
       "name": "surface_candidate_submission",
       "entrypoint": "evaluation/full_physical/submit_surface_candidates.sh",
-      "implementation": "scripts/slurm_alpha_nu_guarded_boozer.sh"
+      "implementations": [
+        "scripts/slurm_alpha_nu_guarded_boozer.sh",
+        "evaluation/full_physical/write_submission_policy.py"
+      ]
     },
     {
       "name": "alpha",

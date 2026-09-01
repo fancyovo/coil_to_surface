@@ -480,6 +480,64 @@ An open critical correction blocks promotion and external reporting.
   WSL `bash -n` and both full-delivery validators also passed.
 - Promotion/reporting blocker: resolved before staging or delivery.
 
+## CORR-20260901-60 - Independent full-evaluation candidates were serialized
+
+- Severity/status: high / resolved after delivery; numerical results retained.
+- Reported by: user after observing that two full evaluations consumed nearly
+  two hours despite six available GPUs.
+- Error: the formal evaluation explicitly set `SERIAL_CANDIDATES=1` for both
+  source-psi and surface candidates. This converted independent candidates into
+  `afterany` chains. The second sample's main stages were also started after the
+  first sample, even though the two samples had no data dependency. The decision
+  incorrectly extended the workflow's per-job one-GPU rule to the entire batch.
+- Primary evidence: remote log and result timestamps show formal computation
+  from 2026-09-01 19:14:50 to 20:33:57, or 79 minutes 07 seconds. The 14 surface
+  jobs ran sequentially from 19:19:52 to 20:22:32. Their two chain spans were
+  22 minutes 46 seconds and 29 minutes 51 seconds, totaling 52 minutes 37
+  seconds. Downstream CPU jobs took 6 minutes 17 seconds and 5 minutes 24
+  seconds. The incompatible-library attempt began at 19:05:01; the second full
+  summary landed at 20:33:57. Report commit `c08884a` followed at 21:04:31.
+- Corrected estimate: a nonpreemptive LPT replay of the 14 measured surface-job
+  durations gives 13 minutes 12 seconds on four GPUs and 8 minutes 47 seconds
+  on six GPUs. Six-card scheduling would have avoided about 43 minutes 50
+  seconds of candidate wall time. Once code, library, and inputs are ready, the
+  same two-sample scientific workload should take roughly 17--20 minutes plus
+  scheduler latency when independent downstream CPU work is also concurrent.
+- Affected scope: scheduling efficiency and delivery latency only. Every formal
+  candidate completed or failed at its recorded scientific gate, selection was
+  performed after all requested candidates, and the two accepted surfaces,
+  Poincare sections, Boozer diagnostics, DESC results, and report conclusions
+  remain valid. No score or physical result is reinterpreted.
+- Containment: repository-level `AGENTS.md`, the canonical full-evaluation
+  README, and `docs/精简线圈评估流程.md` now require concurrent submission across
+  independent samples and candidates. Candidate launchers support per-candidate
+  `p107`/`students` pool assignment, write a machine-readable submission policy,
+  and reject serial mode without `SERIAL_REASON`. Tests cover parallel policy,
+  serial-reason enforcement, pool validation, launcher guard placement, shell
+  syntax, and the fixed preflight manifest.
+- Promotion/reporting blocker: resolved. Fifty relevant tests pass, fixed full-
+  evaluation preflight validates 21 files, the scheduling postmortem and its
+  machine-readable timeline are in the canonical report, and delivery requires
+  refreshing the shared report mirror after the correction commit.
+
+## CORR-20260901-61 - Scheduling postmortem expanded beyond the requested scope
+
+- Severity/status: medium / resolved before delivery.
+- Reported by: user after the scheduling-error record took much longer than the
+  requested diagnostic and documentation update.
+- Error: after reconstructing the decisive timeline, the model continued into
+  launcher enforcement, resource-pool support, extra tests, and remote Slurm
+  validation before reporting the answer. One inline multi-shell
+  `sbatch --test-only` command also failed on quoting before reaching Slurm.
+- Affected scope: response latency only. No job was submitted by the failed
+  command, and no experiment result or conclusion changed. The replacement
+  LF-only script completed all four P107/Students `sbatch --test-only` checks.
+- Containment: stop a diagnostic/documentation task once the cause, impact,
+  correction record, and requested document rule are complete. Any additional
+  implementation must be narrowly necessary for the requested prevention and
+  reported promptly; remote multi-line commands use LF-only scripts.
+- Promotion/reporting blocker: resolved. No further scope is added in this turn.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

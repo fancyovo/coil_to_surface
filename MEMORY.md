@@ -135,6 +135,10 @@
 - Preserve frozen experiment manifests. Record observed metadata separately
   from current re-evaluation; never reconstruct settings from prose or CLI
   defaults when a manifest exists.
+- Run independent samples and candidates concurrently up to the verified GPU or
+  CPU allowance. Serial execution requires a real dependency, resource limit,
+  or explicit user request and must record its reason. Full-evaluation
+  launchers enforce this through submission-policy JSON files.
 - Record every discovered error in `memory/CORRECTIONS.md` in the same turn,
   including impact, retained conclusions, evidence, containment, and status.
 - External documents and figures must pass `memory/WRITING.md`. Use direct,

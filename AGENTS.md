@@ -51,15 +51,26 @@
     code, score library, checkpoint, parameter space, and optimizer settings.
     A current CLI default is not a substitute for a frozen historical protocol.
 
+## Execution And Scheduling
+
+11. Submit independent jobs concurrently up to the verified resource allowance.
+    This applies across samples, candidate values, seeds, and downstream CPU
+    evaluations. A per-job one-GPU limit never implies serializing the batch
+    when the user has authorized multiple GPUs.
+12. Serial execution requires a true data dependency, a verified scheduler or
+    resource restriction, or an explicit user request. Record the reason in the
+    machine-readable run metadata. Never finish one independent sample before
+    starting another merely for operational convenience.
+
 ## Communication And Hygiene
 
-11. For external-facing material, follow `memory/WRITING.md` during drafting
+13. For external-facing material, follow `memory/WRITING.md` during drafting
     and run its post-generation audit before delivery. Internal status reports
     to the user may be direct and diagnostic.
-12. Keep the canonical report and its assets tracked on the owning branch. At
+14. Keep the canonical report and its assets tracked on the owning branch. At
     delivery, mirror them into the primary checkout's Git-excluded
     `_shared_reports/` directory and verify that the mirrored document resolves
     every local asset. This local mirror persists across branch switches; it is
     a delivery surface, not the provenance source.
-13. Preserve unrelated and untracked artifacts. Never store or print passwords,
+15. Preserve unrelated and untracked artifacts. Never store or print passwords,
     tokens, private keys, one-time codes, or credential-bearing URLs.

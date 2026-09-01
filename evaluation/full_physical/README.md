@@ -3,12 +3,28 @@
 本目录是正式单样本评估的固定入口。底层物理实现仍只保留在 `scripts/` 和 `stellarator_eval/` 中；
 这里提供提交、选面、交付校验和代码清单，禁止评估时临时拼接新脚本。
 
+## 并行调度契约
+
+source-psi 候选、固定列表中的 `s` 候选、不同样本以及不同样本的下游 CPU 评估彼此独立，
+默认并行提交到已核实可用的资源池。单个作业只申请一张 GPU；该单卡限制适用于单作业，
+不会把整批候选限制成单卡串行。多个样本应先提交全部 source-psi 候选，再按各自结果提交
+全部 `s` 候选，禁止等待一个样本完整结束后才启动另一个独立样本。
+
+默认池 `p107` 可同时使用四张卡。`CANDIDATE_POOLS` 可为每个候选指定 `p107` 或
+`students`；已核实 P107 四卡和 Students 两卡均可用时，按约 2:1 的比例分配候选即可使用
+六张卡。调度器负责在各池达到并发上限后排队，不需要人为构造候选依赖链。
+
+`SERIAL_CANDIDATES=1` 只允许用于真实数据依赖、已核实只有一个可用 GPU slot、调度策略限制
+或用户明确要求，同时必须设置非空 `SERIAL_REASON`。启动器在第一次 `sbatch` 前写入
+`source_psi_submission_policy.json` 或 `surface_submission_policy.json`；缺少串行理由时直接
+停止。不同样本之间不得添加串行依赖。
+
 ## 固定阶段
 
-1. `submit_source_psi_candidates.sh`：对样本相关的 `A_VALUES` 运行稳定磁轴与 FP32 GPU QR $\psi$ 拟合；默认并行提交，资源受限时设置 `SERIAL_CANDIDATES=1` 形成单 GPU 依赖链。根据拟合误差、廉价场线筛选所覆盖的物理半径和外侧失败点选择源 $\psi$，不得复用别的样本的 `a`。
+1. `submit_source_psi_candidates.sh`：对样本相关的 `A_VALUES` 运行稳定磁轴与 FP32 GPU QR $\psi$ 拟合；默认并行提交，审计通过的资源限制才允许设置 `SERIAL_CANDIDATES=1` 和 `SERIAL_REASON` 形成单 GPU 依赖链。根据拟合误差、廉价场线筛选所覆盖的物理半径和外侧失败点选择源 $\psi$，不得复用别的样本的 `a`。
 2. `submit_surface_candidates.sh`：对给定的 `S_EDGES` 运行 psi -> alpha -> nu、保守 guard 诊断、标准 LS/Newton 和独立密网格验收。
    默认每个候选申请 4 CPU 和 1 GPU 并行运行；在四卡 P107 上同时评估四个候选。只有资源受限时才显式设置
-   `SERIAL_CANDIDATES=1`。可用 `CANDIDATE_CPUS_PER_TASK` 调整单候选 CPU 数，默认值为 4。
+   `SERIAL_CANDIDATES=1`，并同时记录 `SERIAL_REASON`。可用 `CANDIDATE_CPUS_PER_TASK` 调整单候选 CPU 数，默认值为 4。
    alpha 默认使用 `gpu-ray`，完整评估只要求有效候选足以填满固定的训练点和验证点预算；候选有效比例会作为诊断记录，
    但不能在标准 LS/Newton 之前替代最终磁面判定。生产原生 score 的体采样仍保留 95% 默认门槛。
    禁止因为外层候选的有效比例下降而自行回退到慢一至两个数量级的 `legacy-cartesian` CPU 路径。
@@ -49,7 +65,16 @@ export EVAL_ENV=$HOME/local_surface_evaluator/.venv-desc016-py312
 export CASE_FILE=$PROJECT/runs/<optimizer>/<job>/best.json
 export OUTPUT_ROOT=$PROJECT/runs/<evaluation_name>
 export A_VALUES=0.04,0.05,0.06,0.08
-# 单 GPU 串行评估时启用：export SERIAL_CANDIDATES=1
+# 四个候选跨 P107 与 Students 分配；仅使用 P107 时可省略该变量
+export CANDIDATE_POOLS=p107,p107,students,students
+bash evaluation/full_physical/submit_source_psi_candidates.sh
+```
+
+只有核实可用 GPU slot 为 1 时才使用串行模式：
+
+```bash
+export SERIAL_CANDIDATES=1
+export SERIAL_REASON='scheduler allocation exposes exactly one GPU slot'
 bash evaluation/full_physical/submit_source_psi_candidates.sh
 ```
 
@@ -58,6 +83,7 @@ bash evaluation/full_physical/submit_source_psi_candidates.sh
 ```bash
 export RUN_DIR=$OUTPUT_ROOT/source_psi_candidates/a_<selected>
 export S_EDGES=0.12,0.20,0.24
+export CANDIDATE_POOLS=p107,p107,students
 bash evaluation/full_physical/submit_surface_candidates.sh
 ```
 

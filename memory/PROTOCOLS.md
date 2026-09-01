@@ -177,3 +177,10 @@ showed nested Poincare sections. DESC retained nested boundaries and reduced
 normalized force residuals substantially, while both optimizers stopped at the
 50-iteration cap with `optimizer_success=false`. The report and its full
 machine-readable artifacts preserve the acceptance checks and failure bounds.
+
+Full-evaluation scheduling treats source-psi candidates, fixed surface
+candidates, independent samples, and cross-sample downstream jobs as parallel
+work. Each GPU candidate remains single-GPU, while candidate pools may use four
+P107 and two Students slots concurrently. `SERIAL_CANDIDATES=1` requires a
+nonempty `SERIAL_REASON`; launchers write the mode, reason, candidate count, and
+pool assignment to a submission-policy JSON before the first Slurm submission.

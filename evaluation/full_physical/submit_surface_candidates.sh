@@ -11,6 +11,8 @@ project=${PROJECT:-$HOME/local_surface_evaluator}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 eval_env=${EVAL_ENV:-$HOME/local_surface_evaluator/.venv-desc016-py312}
 serial_candidates=${SERIAL_CANDIDATES:-0}
+serial_reason=${SERIAL_REASON:-}
+candidate_pools_csv=${CANDIDATE_POOLS:-}
 candidate_cpus_per_task=${CANDIDATE_CPUS_PER_TASK:-4}
 alpha_min_candidate_valid_fraction=${ALPHA_MIN_CANDIDATE_VALID_FRACTION:-0.0}
 candidate_root=$OUTPUT_ROOT/candidates
@@ -19,6 +21,14 @@ candidate_root=$OUTPUT_ROOT/candidates
     printf 'SERIAL_CANDIDATES must be 0 or 1\n' >&2
     exit 2
 }
+if [[ $serial_candidates == 1 && -z ${serial_reason//[[:space:]]/} ]]; then
+    printf 'SERIAL_REASON is required when SERIAL_CANDIDATES=1\n' >&2
+    exit 2
+fi
+if [[ $serial_candidates == 0 && -n ${serial_reason//[[:space:]]/} ]]; then
+    printf 'SERIAL_REASON must be empty when candidates are parallel\n' >&2
+    exit 2
+fi
 [[ $candidate_cpus_per_task =~ ^[1-9][0-9]*$ ]] || {
     printf 'CANDIDATE_CPUS_PER_TASK must be a positive integer\n' >&2
     exit 2
@@ -55,22 +65,61 @@ validate_gpu_library(Path(sys.argv[1]))
 print(f"PASS: GPU library exports the required full-evaluation ABI symbols: {sys.argv[1]}")
 PY
 
-manifest=$OUTPUT_ROOT/candidate_jobs.tsv
-printf 's_edge\tjob_id\toutput_dir\n' > "$manifest"
 IFS=',' read -r -a edges <<< "$S_EDGES"
-previous_job=
-
-for edge in "${edges[@]}"; do
-    edge=${edge//[[:space:]]/}
+for index in "${!edges[@]}"; do
+    edge=${edges[$index]//[[:space:]]/}
     [[ $edge =~ ^[0-9]+([.][0-9]+)?$ ]] || {
         printf 'invalid S_EDGE: %s\n' "$edge" >&2
         exit 2
     }
+    edges[$index]=$edge
+done
+
+candidate_pools=()
+if [[ -n $candidate_pools_csv ]]; then
+    IFS=',' read -r -a candidate_pools <<< "$candidate_pools_csv"
+else
+    for _ in "${edges[@]}"; do candidate_pools+=(p107); done
+fi
+[[ ${#candidate_pools[@]} -eq ${#edges[@]} ]] || {
+    printf 'CANDIDATE_POOLS must contain one pool per S_EDGE\n' >&2
+    exit 2
+}
+policy_args=()
+for index in "${!candidate_pools[@]}"; do
+    pool=${candidate_pools[$index]//[[:space:]]/}
+    [[ $pool == p107 || $pool == students ]] || {
+        printf 'invalid candidate pool: %s\n' "$pool" >&2
+        exit 2
+    }
+    candidate_pools[$index]=$pool
+    policy_args+=(--candidate-pool "$pool")
+done
+python3 "$project/evaluation/full_physical/write_submission_policy.py" \
+    --output "$OUTPUT_ROOT/surface_submission_policy.json" \
+    --stage surface_candidates \
+    --serial "$serial_candidates" \
+    --serial-reason "$serial_reason" \
+    --candidate-count "${#edges[@]}" \
+    "${policy_args[@]}"
+
+manifest=$OUTPUT_ROOT/candidate_jobs.tsv
+printf 's_edge\tpool\tjob_id\toutput_dir\n' > "$manifest"
+previous_job=
+
+for index in "${!edges[@]}"; do
+    edge=${edges[$index]}
+    pool=${candidate_pools[$index]}
     slug=${edge//./p}
     output_dir=$candidate_root/s_$slug
     test ! -e "$output_dir"
+    pool_args=()
+    if [[ $pool == students ]]; then
+        pool_args+=(--account=stu --partition=Students --qos=qos_stu_medium_2gpu)
+    fi
     submit_args=(
         --parsable
+        "${pool_args[@]}"
         --cpus-per-task="$candidate_cpus_per_task"
         --export="ALL,PROJECT=$project,GPU_LIB=$gpu_lib,EVAL_ENV=$eval_env,CASE_FILE=$CASE_FILE,RUN_DIR=$RUN_DIR,S_EDGE=$edge,OUTPUT_DIR=$output_dir,ALPHA_MIN_CANDIDATE_VALID_FRACTION=$alpha_min_candidate_valid_fraction"
     )
@@ -80,9 +129,9 @@ for edge in "${edges[@]}"; do
     (cd "$project" && sbatch --test-only "${submit_args[@]:1}" scripts/slurm_alpha_nu_guarded_boozer.sh) >/dev/null
     job_id=$(cd "$project" && sbatch "${submit_args[@]}" scripts/slurm_alpha_nu_guarded_boozer.sh)
     job_id=${job_id%%;*}
-    printf '%s\t%s\t%s\n' "$edge" "$job_id" "$output_dir" | tee -a "$manifest"
+    printf '%s\t%s\t%s\t%s\n' "$edge" "$pool" "$job_id" "$output_dir" | tee -a "$manifest"
     previous_job=$job_id
 done
 
-job_ids=$(tail -n +2 "$manifest" | cut -f2 | paste -sd, -)
+job_ids=$(tail -n +2 "$manifest" | cut -f3 | paste -sd, -)
 printf 'monitor: squeue -j %s -o %s\n' "$job_ids" "'%.18i %.12T %.10M %.30j %R'"

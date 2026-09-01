@@ -50,5 +50,10 @@ def test_full_evaluation_launchers_validate_gpu_abi_before_submission() -> None:
     for name in ("submit_source_psi_candidates.sh", "submit_surface_candidates.sh"):
         text = (ROOT / "evaluation" / "full_physical" / name).read_text(encoding="utf-8")
         guard = text.index("validate_gpu_library(Path(sys.argv[1]))")
+        policy = text.index("write_submission_policy.py")
         manifest = text.index("manifest=$OUTPUT_ROOT/")
-        assert guard < manifest
+        assert "serial_candidates=${SERIAL_CANDIDATES:-0}" in text
+        assert "serial_reason=${SERIAL_REASON:-}" in text
+        assert "SERIAL_REASON is required when SERIAL_CANDIDATES=1" in text
+        assert "CANDIDATE_POOLS" in text
+        assert guard < policy < manifest

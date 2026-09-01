@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "timezone": "+08:00",
+  "evidence_source": "remote log and result-file mtimes",
+  "formal_compute": {
+    "start": "2026-09-01T19:14:50+08:00",
+    "end": "2026-09-01T20:33:57+08:00",
+    "wall_seconds": 4747
+  },
+  "first_failed_submission_to_completion": {
+    "start": "2026-09-01T19:05:01+08:00",
+    "end": "2026-09-01T20:33:57+08:00",
+    "wall_seconds": 5336
+  },
+  "surface_jobs": [
+    {"case_id": "axisv2_case_02986", "job_id": 51894, "start": "2026-09-01T19:19:52+08:00", "end": "2026-09-01T19:24:41+08:00", "elapsed_seconds": 289},
+    {"case_id": "axisv2_case_02986", "job_id": 51896, "start": "2026-09-01T19:24:43+08:00", "end": "2026-09-01T19:29:18+08:00", "elapsed_seconds": 275},
+    {"case_id": "axisv2_case_02986", "job_id": 51898, "start": "2026-09-01T19:29:19+08:00", "end": "2026-09-01T19:33:16+08:00", "elapsed_seconds": 237},
+    {"case_id": "axisv2_case_02986", "job_id": 51900, "start": "2026-09-01T19:33:19+08:00", "end": "2026-09-01T19:37:09+08:00", "elapsed_seconds": 230},
+    {"case_id": "axisv2_case_02986", "job_id": 51902, "start": "2026-09-01T19:37:12+08:00", "end": "2026-09-01T19:41:21+08:00", "elapsed_seconds": 249},
+    {"case_id": "axisv2_case_02986", "job_id": 51904, "start": "2026-09-01T19:41:24+08:00", "end": "2026-09-01T19:42:38+08:00", "elapsed_seconds": 74},
+    {"case_id": "axisv2_case_04428", "job_id": 51923, "start": "2026-09-01T19:53:58+08:00", "end": "2026-09-01T19:58:57+08:00", "elapsed_seconds": 299},
+    {"case_id": "axisv2_case_04428", "job_id": 51925, "start": "2026-09-01T19:58:59+08:00", "end": "2026-09-01T20:03:33+08:00", "elapsed_seconds": 274},
+    {"case_id": "axisv2_case_04428", "job_id": 51927, "start": "2026-09-01T20:03:35+08:00", "end": "2026-09-01T20:08:03+08:00", "elapsed_seconds": 268},
+    {"case_id": "axisv2_case_04428", "job_id": 51929, "start": "2026-09-01T20:08:04+08:00", "end": "2026-09-01T20:12:17+08:00", "elapsed_seconds": 253},
+    {"case_id": "axisv2_case_04428", "job_id": 51931, "start": "2026-09-01T20:12:19+08:00", "end": "2026-09-01T20:16:38+08:00", "elapsed_seconds": 259},
+    {"case_id": "axisv2_case_04428", "job_id": 51933, "start": "2026-09-01T20:16:41+08:00", "end": "2026-09-01T20:21:15+08:00", "elapsed_seconds": 274},
+    {"case_id": "axisv2_case_04428", "job_id": 51935, "start": "2026-09-01T20:21:17+08:00", "end": "2026-09-01T20:22:32+08:00", "elapsed_seconds": 75},
+    {"case_id": "axisv2_case_04428", "job_id": 51937, "start": "2026-09-01T20:22:42+08:00", "end": "2026-09-01T20:23:49+08:00", "elapsed_seconds": 67}
+  ],
+  "observed_surface_chain_seconds": {
+    "axisv2_case_02986": 1366,
+    "axisv2_case_04428": 1791,
+    "total": 3157
+  },
+  "lpt_replay_without_queue_overhead": {
+    "four_gpu_makespan_seconds": 792,
+    "six_gpu_makespan_seconds": 527,
+    "six_gpu_avoidable_seconds_vs_observed_chains": 2630
+  },
+  "downstream_jobs": [
+    {"case_id": "axisv2_case_02986", "job_id": 51919, "start": "2026-09-01T19:47:31+08:00", "end": "2026-09-01T19:53:48+08:00", "elapsed_seconds": 377},
+    {"case_id": "axisv2_case_04428", "job_id": 51984, "start": "2026-09-01T20:28:33+08:00", "end": "2026-09-01T20:33:57+08:00", "elapsed_seconds": 324}
+  ],
+  "conclusion_scope": "Scheduling efficiency only; accepted scientific outputs are unchanged."
+}

@@ -184,3 +184,27 @@ work. Each GPU candidate remains single-GPU, while candidate pools may use four
 P107 and two Students slots concurrently. `SERIAL_CANDIDATES=1` requires a
 nonempty `SERIAL_REASON`; launchers write the mode, reason, candidate count, and
 pool assignment to a submission-policy JSON before the first Slurm submission.
+
+Protocol
+`qh-axis-surface-balanced-top2-continue-adam200-64d-abi11-v1` is a registered
+direct-data continuation experiment. It starts from the saved Adam200 best
+states of `axisv2_case_02986` (`nfp=5,nc=4`) and `axisv2_case_04428`
+(`nfp=5,nc=2`), preserves the fixed current-L1 parameterization, and runs 200
+new Adam updates with 64 fresh orthogonal centered directions, `h=0.0025`,
+learning rate `0.01`, and beta `(0.7,0.999)`. Initial submission `52174` did
+not enter optimization because result JSON files lacked the required exact-data
+start wrapper; `CORR-20260901-62` records the contained failure. Replacement
+array `52206` uses prepared and hashed continuation starts from commit `35a04b4`.
+No continuation conclusion is accepted until both workers finish.
+
+Protocol `qh-axis-surface-contour-compact-flexible-score-abi11-v3` is a
+registered score-only prior experiment. It keeps the independent analytic
+axis/surface/contour construction, excludes `nc=5`, centers the winding-surface
+minor radius at `0.20 m` with a `[0.18,0.22] m` generator range, and broadens
+size, elongation, cross-section rotation, triangularity, helical ripple, and
+contour harmonics relative to balanced-v2. It samples 3600 cases across the 26
+supported `nc<=4` conditions without Adam. Arrays `52244` (four P107 GPUs) and
+`52245` (two Students GPUs) start together after continuation array `52206`;
+each shard has 600 cases and a hard one-hour limit. Analysis job `52246`
+produces score, status, coil-engineering, condition, and representative-HTML
+outputs. The experiment does not change the current QH default.

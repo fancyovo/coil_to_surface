@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-09-01 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-09-02 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -193,12 +193,18 @@
   wrapper-less attempt `52174` performed no optimizer step and is quarantined
   under `CORR-20260901-62`.
 - Compact-flexible v3 score-only sampling centers winding radius at `0.20 m`,
-  widens noncircular shape variation, excludes `nc=5`, and has no Adam stage.
-  Six-card arrays `52244/52245` started together after `52206`; they contain
-  3600 total samples, 600 per card, with a one-hour shard limit. Initial logs
-  show zero errors and about 4.22--4.35 seconds per sample. Analysis job is
-  `52246`. This is a registered experiment and does not alter the current Flow
-  default.
+  widens noncircular shape variation, and excludes `nc=5`. Arrays `52244/52245`
+  completed all 3600 ABI-11 evaluations with zero errors; 569 were `status=ok`
+  (`15.8056%`). The total-score maximum was `46.6289`; the coil-component
+  median and maximum were `72.0143` and `84.5682`. Analysis `52246` completed.
+- Follow-up protocol
+  `qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1`
+  uniformly selected 120 of the 569 valid starts at seed `20260904` and assigned
+  20 cost-balanced trajectories to each of six GPUs. Run commit `08a3c3f`,
+  preparation `52313`, and smoke `52314` passed; P107 array `52315` and Students
+  array `52316` are running concurrently with seven-hour worker limits and zero
+  initial failures. Analysis is `52317`. No Adam200 outcome is established yet.
+  This registered experiment does not alter the current Flow default.
 
 ## Memory Map
 

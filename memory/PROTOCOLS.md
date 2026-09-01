@@ -1,6 +1,6 @@
 # QH Protocol Registry
 
-Last verified: 2026-09-01 (Asia/Shanghai).
+Last verified: 2026-09-02 (Asia/Shanghai).
 
 ## Status Vocabulary
 
@@ -211,7 +211,27 @@ contour harmonics relative to balanced-v2. It samples 3600 cases across the 26
 supported `nc<=4` conditions without Adam. Arrays `52244` (four P107 GPUs) and
 `52245` (two Students GPUs) started together after continuation array `52206`;
 each shard has 600 cases and a hard one-hour limit. Analysis job `52246`
-produces score, status, coil-engineering, condition, and representative-HTML
-outputs. All six shards passed their initial runtime check with zero scoring
-errors in the first logged batches. The experiment does not change the current
-QH default.
+completed after all six shards finished. All 3600 rows were scored with zero
+runtime errors. Native status counts were 569 `ok`, 1982 `no_axis`, 760
+`no_surface`, 267 `drift_rejected`, and 22 `flux_rejected`, giving an initial
+valid rate of `0.1580556`. Total-score median and maximum were `0.1247` and
+`46.6289`; coil-component median and maximum were `72.0143` and `84.5682`.
+Frozen specification:
+`evaluation/axis_surface_contour_prior_compact_flexible_abi11_v3.json`.
+
+Protocol
+`qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1`
+is the registered direct-data optimizability follow-up. It draws 120 samples
+uniformly without replacement from the 569 v3 rows with native `status=ok`
+using seed `20260904`. Selection counts by `nc=1..4` are `48,31,23,18`.
+Runtime-weighted assignment puts 20 trajectories on each of six GPUs with
+nearly equal predicted loads. Every trajectory requests 200 Adam updates with
+64 fresh orthogonal centered directions, `h=0.0025`, learning rate `0.01`, and
+beta `(0.7,0.999)` in exact-unclipped standardized data coordinates. Worker
+arrays `52315/52316` run concurrently with seven-hour limits after preparation
+`52313` and three-step smoke `52314`; final analysis is `52317`. Frozen run
+commit is `08a3c3f`. The six workers passed GPU preflight and wrote independent
+optimization progress with no initial failure. Numerical outcomes remain
+pending. Frozen specification:
+`evaluation/axis_surface_contour_prior_compact_flexible_adam200_abi11_v1.json`.
+Neither compact-flexible experiment changes the current QH default.

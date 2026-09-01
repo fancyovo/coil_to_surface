@@ -561,6 +561,27 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved for replacement submission; numerical
   continuation conclusions remain pending until the replacement jobs finish.
 
+## CORR-20260902-63 - Deployment and GPU-status shell forms were incorrect
+
+- Severity/status: low / resolved before delivery; no experiment impact.
+- Discovered by: model while deploying and validating the compact-flexible-v3
+  Adam200 batch.
+- Error: two `git bundle create` attempts supplied a revision range and then a
+  raw target commit where the installed Git required a named positive ref, so
+  both correctly refused to create an empty bundle. A later read-only remote
+  loop allowed its index variable to expand in the intermediate shell and
+  falsely printed six `missing` GPU-preflight lines.
+- Affected scope: deployment and status-diagnostic latency only. The failed
+  bundle attempts created no usable artifact and made no remote change. The GPU
+  diagnostic did not write state; six preflight files already existed. Scoring,
+  sample selection, smoke, and Adam trajectories are unaffected.
+- Containment and verification: create incremental bundles from the named local
+  branch with an explicit prerequisite, run `git bundle verify`, then transfer.
+  Commit `08a3c3f` was fetched into a clean detached remote worktree. Replace
+  interpolated remote loops with direct glob/list queries; the loop-free check
+  found all six preflight files, six live worker tasks, and zero failures.
+- Promotion/reporting blocker: resolved before delivery.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

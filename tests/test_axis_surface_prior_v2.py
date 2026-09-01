@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from flow_matching.axis_surface_prior import evaluate_fourier, gauss_linking_number
+from flow_matching.axis_surface_prior import evaluate_fourier, gauss_linking_number, supported_conditions
 from flow_matching.axis_surface_prior_v2 import prototype_presets, sample_shaped_prior_prototype
 
 
@@ -29,3 +29,24 @@ def test_v2_prototype_has_visible_axis_and_surface_variation(preset: str) -> Non
     curves = evaluate_fourier(prototype.tokens, samples=128)
     link = gauss_linking_number(curves[0], prototype.reference_axis[::16])
     assert abs(link) > 0.8
+
+
+@pytest.mark.parametrize("nfp,n_base_coils", supported_conditions())
+def test_balanced_v2_scoring_mode_covers_registered_conditions(nfp: int, n_base_coils: int) -> None:
+    sample = sample_shaped_prior_prototype(
+        seed=20260901 + 17 * nfp + n_base_coils,
+        nfp=nfp,
+        n_base_coils=n_base_coils,
+        preset="balanced_stellarator",
+        curve_samples=128,
+        frame_samples=512,
+        surface_phi_samples=32,
+        surface_theta_samples=24,
+        sample_role="registered_scoring",
+    )
+    assert sample.tokens.shape == (n_base_coils, 100)
+    assert sample.metadata["format"] == "axis_surface_contour_prior_balanced_v2"
+    assert sample.metadata["status"] == "registered_experimental_scoring"
+    assert sample.metadata["sample_role"] == "registered_scoring"
+    assert sample.metadata["scalar_monotonicity_lower_bound"] > 0.5
+    assert abs(sample.metadata["reference_linking_number"]) > 0.75

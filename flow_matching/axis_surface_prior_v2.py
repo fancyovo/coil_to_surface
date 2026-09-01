@@ -113,14 +113,24 @@ def _surface_points(
     binormal_at_phi = _periodic_interp(binormal, phi_flat)
 
     field_angle = nfp * phi_flat
-    size = 1.0 + parameters["size_variation"] * np.cos(field_angle)
-    elongation = np.exp(parameters["elongation_variation"] * np.sin(field_angle))
+    size = 1.0 + parameters["size_variation"] * np.cos(
+        field_angle + parameters.get("size_phase", 0.0)
+    )
+    elongation = np.exp(
+        parameters["elongation_variation"]
+        * np.sin(field_angle + parameters.get("elongation_phase", 0.0))
+    )
     normal_radius = scale * parameters["minor_radius"] * size / np.sqrt(elongation)
     binormal_radius = scale * parameters["minor_radius"] * size * np.sqrt(elongation)
-    rotation = parameters["cross_section_rotation"] * np.sin(field_angle)
+    rotation = parameters["cross_section_rotation"] * np.sin(
+        field_angle + parameters.get("rotation_phase", 0.0)
+    )
     poloidal = theta_flat + rotation
-    triangle_phase = 2.0 * theta_flat - field_angle
-    ripple = 1.0 + parameters["helical_ripple"] * np.cos(theta_flat - field_angle)
+    shape_phase = parameters.get("shape_phase", 0.0)
+    triangle_phase = 2.0 * theta_flat - field_angle + shape_phase
+    ripple = 1.0 + parameters["helical_ripple"] * np.cos(
+        theta_flat - field_angle + 0.5 * shape_phase
+    )
 
     normal_offset = ripple * normal_radius * np.cos(poloidal)
     binormal_offset = ripple * binormal_radius * np.sin(poloidal)
@@ -146,6 +156,7 @@ def sample_shaped_prior_prototype(
     surface_phi_samples: int = 192,
     surface_theta_samples: int = 96,
     target_field_t: float = 1.0,
+    sample_role: str = "geometry_review",
 ) -> ShapedPriorPrototype:
     """Construct a visibly three-dimensional stellarator prior for visual review.
 
@@ -156,8 +167,23 @@ def sample_shaped_prior_prototype(
         raise ValueError("unsupported (nfp, n_base_coils); prototypes require nc<=4")
     if preset not in _PRESETS:
         raise ValueError(f"unknown preset {preset!r}")
+    if sample_role not in {"geometry_review", "registered_scoring"}:
+        raise ValueError("sample_role must be geometry_review or registered_scoring")
     parameters = dict(_PRESETS[preset])
     rng = np.random.default_rng(np.random.SeedSequence([int(seed), int(nfp), int(n_base_coils), 2]))
+    if sample_role == "registered_scoring":
+        for name in (
+            "minor_radius",
+            "size_variation",
+            "elongation_variation",
+            "cross_section_rotation",
+            "triangularity",
+            "helical_ripple",
+            "contour_warp",
+        ):
+            parameters[name] *= rng.uniform(0.85, 1.15)
+        for name in ("size_phase", "elongation_phase", "rotation_phase", "shape_phase"):
+            parameters[name] = rng.uniform(0.0, 2.0 * math.pi)
     radial, vertical = _coherent_axis_coefficients(
         rng,
         nfp=nfp,
@@ -244,8 +270,17 @@ def sample_shaped_prior_prototype(
     surface_axis = _periodic_interp(axis, surface_phi)
     surface_radius = np.linalg.norm(winding_surface - surface_axis[:, None, :], axis=2).mean(axis=1)
     metadata: dict[str, Any] = {
-        "format": "axis_surface_contour_prior_visual_v2",
-        "status": "geometry_only_awaiting_user_acceptance",
+        "format": (
+            "axis_surface_contour_prior_visual_v2"
+            if sample_role == "geometry_review"
+            else "axis_surface_contour_prior_balanced_v2"
+        ),
+        "status": (
+            "geometry_only_awaiting_user_acceptance"
+            if sample_role == "geometry_review"
+            else "registered_experimental_scoring"
+        ),
+        "sample_role": sample_role,
         "preset": preset,
         "seed": int(seed),
         "nfp": int(nfp),

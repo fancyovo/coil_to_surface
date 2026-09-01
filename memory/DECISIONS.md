@@ -80,16 +80,22 @@ surface. The tracked branch copy and commit remain authoritative provenance.
 
 ## DEC-20260901-02 - Analytic axis/surface/contour prior study
 
-Status: v1 invalidated; replacement geometry awaiting visual acceptance.
+Status: v1 invalidated; balanced v2 morphology accepted for short scoring.
 
 The first replacement for the failed QUASR-marginal Gaussian prior used a
 hierarchical analytic construction, but its axis, tube, and contours were all
 too weakly deformed. The resulting geometry looked like a circular-axis
 tokamak coil set and failed the user's visual requirement.
 
-The replacement must retain a clearly noncircular reference axis, a winding
+The replacement retains a clearly noncircular reference axis, a winding
 surface that bends with that axis, and cross-section shaping that varies over a
-field period. Prototype views must include the axis, an inner plasma-like
-reference surface, the winding surface, and coils. The reference surface is a
-geometric prior and must not be called a computed magnetic surface. GPU scoring
-remains blocked until the user accepts the initial morphology.
+field period. Prototype views include the axis, an inner plasma-like reference
+surface, the winding surface, and coils. The reference surface is a geometric
+prior and must not be called a computed magnetic surface.
+
+The user accepted only the `balanced_stellarator` morphology on 2026-09-01.
+Protocol `qh-axis-surface-contour-balanced-score-abi11-v2` may score a short
+6000-sample, six-GPU batch over the existing 26 `nc<=4` conditions. The
+`axis_dominant` and `surface_dominant` prototypes remain unaccepted and cannot
+enter this run. This acceptance authorizes the registered experiment and does
+not promote the prior into the current default.

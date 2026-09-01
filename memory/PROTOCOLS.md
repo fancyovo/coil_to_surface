@@ -127,7 +127,15 @@ family. The partial scores do not measure the intended stellarator prior and
 must not be used for abundance conclusions. Frozen specification and outcome:
 `evaluation/axis_surface_contour_prior_v1.json`.
 
-A replacement prior is not registered for scoring. It must first show the
-construction reference axis, shaped inner reference surface, winding surface,
-and coils together and receive explicit user visual acceptance. No GPU batch
-may launch before that gate. This status does not modify the current default.
+The user accepted only the `balanced_stellarator` v2 morphology on 2026-09-01.
+Protocol `qh-axis-surface-contour-balanced-score-abi11-v2` is a
+`registered-experimental` short scoring run. It samples 6000 configurations
+over the same 26 `nc<=4` conditions, uses six count-bounded shards, performs no
+optimization, and records the ABI-11 total score, coil component, and
+engineering diagnostics. Per-sample variation is restricted to the accepted
+balanced family. Frozen specification:
+`evaluation/axis_surface_contour_prior_balanced_abi11_v2.json`.
+
+The `axis_dominant` and `surface_dominant` prototypes remain visual-review
+artifacts and cannot enter this protocol. This experiment does not modify the
+current default.

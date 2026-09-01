@@ -150,11 +150,14 @@
 - Analytic-prior v1 contracted axis, surface, and contour amplitudes until the
   result resembled circular-axis tokamak coils. Its partial ABI-11 scores cannot
   establish the requested prior's abundance.
-- Replacement work is geometry-only until user acceptance. Preview the visibly
-  bent construction axis, a varying inner plasma-like reference surface, the
-  winding surface, and coils together. The inner surface is not a computed
-  magnetic surface, and the construction axis is not a verified magnetic axis.
-  No GPU batch may launch before explicit visual approval.
+- The user accepted only the `balanced_stellarator` v2 morphology for a short
+  scoring batch. Protocol
+  `qh-axis-surface-contour-balanced-score-abi11-v2` covers 6000 samples over the
+  existing 26 `nc<=4` conditions with six count-bounded GPU shards and no
+  optimization. The other two v2 prototype families remain unaccepted.
+- The v2 inner surface is a geometric reference, not a computed magnetic
+  surface, and the construction axis is not a verified magnetic axis. The
+  registered experiment does not modify the current QH default.
 
 ## Memory Map
 

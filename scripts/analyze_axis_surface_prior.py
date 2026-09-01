@@ -139,7 +139,13 @@ def build_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def plot_distributions(rows: list[dict[str, Any]], output_path: Path) -> None:
-    family_colors = {"near_circular": "#2d6a4f", "balanced": "#3d5a80", "helical": "#9c6644"}
+    legacy_colors = {"near_circular": "#2d6a4f", "balanced": "#3d5a80", "helical": "#9c6644"}
+    families = sorted({str(row["family"]) for row in rows})
+    palette = plt.get_cmap("tab10")
+    family_colors = {
+        family: legacy_colors.get(family, palette(index % 10))
+        for index, family in enumerate(families)
+    }
     figure, axes = plt.subplots(2, 2, figsize=(11.6, 8.2), constrained_layout=True)
     for family, color in family_colors.items():
         group = [row for row in rows if row["family"] == family]
@@ -165,7 +171,7 @@ def plot_distributions(rows: list[dict[str, Any]], output_path: Path) -> None:
 
 
 def plot_engineering(rows: list[dict[str, Any]], output_path: Path) -> None:
-    families = ("near_circular", "balanced", "helical")
+    families = tuple(sorted({str(row["family"]) for row in rows}))
     metrics = (
         ("coil", "Coil component", lambda row: component(row, "coil")),
         ("curvature", "Curvature p95 [1/m]", lambda row: diagnostic(row, "coil_curvature_p95")),
@@ -175,7 +181,7 @@ def plot_engineering(rows: list[dict[str, Any]], output_path: Path) -> None:
     figure, axes = plt.subplots(2, 2, figsize=(10.8, 8.0), constrained_layout=True)
     for axis, (_, label, getter) in zip(axes.ravel(), metrics, strict=True):
         values = [finite(getter(row) for row in rows if row["family"] == family) for family in families]
-        axis.boxplot(values, tick_labels=["near circular", "balanced", "helical"], showfliers=False)
+        axis.boxplot(values, tick_labels=[family.replace("_", " ") for family in families], showfliers=False)
         axis.set(ylabel=label)
         axis.grid(axis="y", alpha=0.2)
     figure.suptitle("ABI-11 engineering diagnostics by analytic-prior family")

@@ -1,0 +1,57 @@
+{
+  "protocol_id": "qh-axis-surface-contour-balanced-score-abi11-v2",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-01",
+  "purpose": "Measure QH native-score and coil-engineering distributions for the visually accepted balanced stellarator prior.",
+  "visual_gate": {
+    "status": "accepted",
+    "accepted_date": "2026-09-01",
+    "accepted_preset": "balanced_stellarator",
+    "evidence": "reports/axis_surface_prior_v2_geometry_review_20260901.md"
+  },
+  "generator": {
+    "format": "axis_surface_contour_prior_balanced_v2",
+    "implementation": "flow_matching/axis_surface_prior_v2.py",
+    "sampler": "scripts/sample_axis_surface_prior_v2.py",
+    "preset": "balanced_stellarator",
+    "construction": [
+      "visibly noncircular low-order stellarator-symmetric reference axis",
+      "winding surface with field-period variation in size, elongation, orientation, triangularity, and helical ripple",
+      "monotone circle-valued scalar coordinate",
+      "stratified contour levels fitted to order-16 Cartesian Fourier curves"
+    ],
+    "sample_variation": "Per-sample axis harmonics, surface phases, balanced shape amplitudes within +/-15%, and contour phase.",
+    "reference_axis_role": "construction_reference_only",
+    "inner_surface_role": "geometric_reference_only; not evaluated in native scoring",
+    "quasr_dependency": false,
+    "current_scale": "2*pi*R0*B0/mu0 divided over 2*nfp*nc linked physical coils",
+    "R0_m": 1.0,
+    "B0_t": 1.0,
+    "curve_order": 16
+  },
+  "sample_design": {
+    "total_count": 6000,
+    "conditions": "26 balanced (nfp,nc) conditions: nc=1 with nfp=4..8; nc=2..4 with nfp=2..8",
+    "explicit_exclusion": "nc=5",
+    "samples_per_condition": "230 or 231",
+    "seed": 20260901,
+    "shards": 6,
+    "samples_per_shard": 1000,
+    "duration_basis": "Invalidated v1 produced 953 rows over six GPUs in approximately 9 minutes, with representative shard throughput 3.43 seconds per sample.",
+    "expected_wall_time": "approximately 1 hour; completion is count-bounded rather than wall-time-truncated"
+  },
+  "evaluation": {
+    "target": "QH",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "optimizer": null,
+    "full_physical_evaluation": false,
+    "primary_outputs": [
+      "total score distribution",
+      "coil component distribution",
+      "coil length, curvature, intercoil distance, axis distance, high-mode energy, and current diagnostics",
+      "condition-stratified statistics and representative coil HTML views"
+    ]
+  },
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

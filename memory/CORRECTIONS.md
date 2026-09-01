@@ -185,6 +185,23 @@ An open critical correction blocks promotion and external reporting.
   before the first edit.
 - Promotion/reporting blocker: none.
 
+## CORR-20260901-46 - First analytic-prior analysis request exceeded Students memory QOS
+
+- Severity/status: low / resolved before submission; no remote-state or
+  scientific impact.
+- Discovered by: Slurm `sbatch --test-only` during the six-GPU experiment gate.
+- Error: the dependent CPU analysis task requested `24 GB` under
+  `qos_stu_default`, which returned `QOSMaxMemoryPerUser`.
+- Corrected fact and scope: the generator and both GPU worker requests passed
+  their preflights. The atomic launcher runs all three preflights before making
+  the run directory or submitting a worker, so the failed gate created no job,
+  run artifact, sample, score, or partial experiment.
+- Containment and verification: the analysis task now uses the previously
+  validated `2 CPU / 8 GB` Students summary envelope. The launcher must pass a
+  fresh complete preflight before formal submission. Scheduler-predicted start
+  times are not used as runtime evidence.
+- Promotion/reporting blocker: none after the fresh preflight passes.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

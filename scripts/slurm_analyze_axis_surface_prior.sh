@@ -5,8 +5,8 @@
 #SBATCH --job-name=axis-prior-analysis
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=24G
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
 #SBATCH --time=02:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err

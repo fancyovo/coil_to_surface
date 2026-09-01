@@ -1,0 +1,34 @@
+{
+  "protocol_id": "qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "submitted_at": "2026-09-01T12:53:50+08:00",
+  "code_commit": "11f703f2a3727ed709167e60cc1bb923c46b36a6",
+  "tracked_worktree_dirty": false,
+  "input_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_20260901_1dcfd18",
+  "sample_population": "native status == ok",
+  "sample_count": 84,
+  "selection_seed": 20260902,
+  "worker_count": 6,
+  "samples_per_worker": 14,
+  "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+  "score_library_abi": 11,
+  "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "iterations": 200,
+    "directions": 64,
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999]
+  },
+  "jobs": {
+    "prepare": "51677",
+    "smoke": "51678",
+    "p107": "51679",
+    "students": "51680",
+    "analysis": "51681"
+  }
+}

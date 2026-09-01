@@ -1,0 +1,46 @@
+{
+  "protocol_id": "qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-01",
+  "purpose": "Measure conditional Adam200 optimizability of random valid balanced-stellarator v2 prior samples.",
+  "source": {
+    "protocol_id": "qh-axis-surface-contour-balanced-score-abi11-v2",
+    "completed_count": 6000,
+    "native_status_ok_count": 2250,
+    "native_status_ok_rate": 0.375,
+    "population_for_optimization": "native status == ok",
+    "selection": "84 samples drawn uniformly without replacement with seed 20260902",
+    "reason_for_conditioning": "Invalid initial states are already measured C0 outcomes and cannot start the strict-continuation Adam optimizer."
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "flow_calls": 0,
+    "normalization_scale_source": "frozen Flow checkpoint training-set coordinate standard deviations",
+    "initial_geometry": "preserved by unclipped affine coordinates and a per-start fixed current L1 reference",
+    "algorithm": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "success_threshold": 50.0
+  },
+  "evaluation": {
+    "target": "QH",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "full_physical_evaluation": false
+  },
+  "resources": {
+    "workers": 6,
+    "p107_gpus": 4,
+    "students_gpus": 2,
+    "samples_per_worker": 14,
+    "worker_wall_limit": "5 hours",
+    "historical_runtime_basis": "Direct-data Adam200 wall time p50 825.6 s and p90 1151.4 s over 309 trajectories."
+  },
+  "interpretation": "Conditional success among the 84 optimized valid starts is multiplied by the measured 0.375 initial-valid rate to estimate unconditional prior abundance.",
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

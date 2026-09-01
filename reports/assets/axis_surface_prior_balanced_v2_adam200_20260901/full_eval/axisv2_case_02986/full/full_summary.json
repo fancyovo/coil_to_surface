@@ -1,0 +1,136 @@
+{
+  "case_file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/trajectories/axisv2_case_02986/optimization/best.json",
+  "surface_npz": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/candidates/s_0p64/standard_rho_1/boozer_standard.npz",
+  "surface": {
+    "nfp": 5,
+    "order": 12,
+    "iota": -1.1646703649978898,
+    "G": 6.283185773199729,
+    "rho": 1.0,
+    "s_edge": 0.64,
+    "s_level": 0.64
+  },
+  "desc_preflight": {
+    "jax_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "gpu_available": false
+  },
+  "visualization": {
+    "surface_meta": {
+      "iota": -1.1646703649978898,
+      "G": 6.283185773199729,
+      "psi_level": null
+    },
+    "b_abs_min": 0.6426459528039106,
+    "b_abs_mean": 0.8184736634909041,
+    "b_abs_max": 1.0018361151232809,
+    "poincare": {
+      "hit_counts": [
+        67,
+        67,
+        67,
+        67,
+        67,
+        67,
+        67,
+        67
+      ],
+      "seed_r_min": 1.1210214572763721,
+      "seed_r_max": 1.1817922181891374,
+      "surface_r_outer_phi0": 1.1849906792898093,
+      "edge_fraction": 0.95,
+      "tmax_fl": 20000000.0,
+      "tol": 1e-11,
+      "psi_drift": null,
+      "save_path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/assets/poincare.png"
+    },
+    "boozer_b_png": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/assets/boozer_b.png",
+    "boozer_b_html": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/assets/boozer_b.html",
+    "coils_surface_html": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/assets/coils_surface.html",
+    "coils_surface_png": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/assets/coils_surface.png"
+  },
+  "visualization_time_s": 114.99337628856301,
+  "desc": {
+    "toroidal_flux": 0.00768687639737079,
+    "input": {
+      "mpol": 12,
+      "ntor": 12,
+      "stellsym": true,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/input.check"
+    },
+    "nested_initial": true,
+    "initial_force_compute_success": true,
+    "initial_force_compute_time_s": 6.257612384855747,
+    "initial_force_mean_abs_normalized": 0.9003060066995904,
+    "initial_force_max_abs_normalized": 5.1796789655640225,
+    "initial_force_p95_abs_normalized": 1.7583053982264598,
+    "initial_force_vol_average_raw": 1045078.2547004507,
+    "plots_initial": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/boundary_initial.png",
+        "time_s": 2.600922677665949
+      }
+    },
+    "solve_call_success": true,
+    "solve_return": "(Equilibrium at 0x102b9d7f6bd0 (L=8, M=8, N=8, NFP=5, sym=True, spectral_indexing=ansi),           message: Maximum number of iterations has been exceeded.\n          success: False\n              fun: [ 3.147e-05 -1.526e-04 ... -2.339e-04 -4.665e-04]\n                x: [ 8.786e-04  1.591e-04 ...  7.371e-03  1.371e-01]\n              nit: 50\n             cost: 0.0001554756220438948\n                v: [ 1.000e+00  1.000e+00 ...  1.000e+00  1.000e+00]\n       optimality: 4.845369582037486e-05\n             nfev: 62\n             njev: 51\n             allx: [Array([ 4.804e-05, -6.493e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.246e-05, -4.762e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.826e-05, -5.168e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.172e-05, -5.426e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.152e-05, -5.400e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.114e-05, -5.529e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.021e-05, -5.454e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.031e-05, -5.493e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.005e-05, -5.480e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 5.001e-05, -5.488e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.979e-05, -5.483e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.947e-05, -5.475e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.941e-05, -5.469e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.930e-05, -5.462e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.926e-05, -5.454e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.918e-05, -5.445e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.916e-05, -5.437e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.909e-05, -5.427e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.908e-05, -5.420e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.902e-05, -5.411e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.896e-05, -5.399e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.892e-05, -5.391e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.887e-05, -5.380e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.884e-05, -5.374e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.880e-05, -5.363e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.879e-05, -5.359e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.876e-05, -5.348e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.878e-05, -5.346e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.876e-05, -5.336e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.880e-05, -5.337e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.878e-05, -5.326e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.884e-05, -5.330e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.883e-05, -5.318e-05, ...,  2.395e-05,\n                          -1.008e-05], dtype=float64), Array([ 4.891e-05, -5.326e-05, ...,  2.395e-0",
+    "optimizer_success": false,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "optimizer_cost": 0.0001554756220438948,
+    "optimizer_nit": 50.0,
+    "optimizer_nfev": 62.0,
+    "optimizer_njev": 51.0,
+    "optimizer_optimality": 4.845369582037486e-05,
+    "solve_time_s": 150.6253627166152,
+    "nested_final": true,
+    "final_force_compute_success": true,
+    "final_force_compute_time_s": 0.9726283736526966,
+    "final_force_mean_abs_normalized": 0.0025042414585141797,
+    "final_force_max_abs_normalized": 0.018381608224445987,
+    "final_force_p95_abs_normalized": 0.006310566703093701,
+    "final_force_vol_average_raw": 3174.1018209436647,
+    "equilibrium": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/equilibrium.h5",
+    "plots_final": {
+      "boundary": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/boundary.png",
+        "time_s": 1.0209902226924896
+      },
+      "boozer_modes": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/boozer_modes.png",
+        "time_s": 13.099175162613392
+      },
+      "boozer_B": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/boozer_B.png",
+        "time_s": 9.611770194023848
+      },
+      "qs_QA": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/qs_QA.png",
+        "time_s": 7.330154471099377
+      },
+      "qs_QH": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/qs_QH.png",
+        "time_s": 2.5977365970611572
+      },
+      "qs_QP": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/qs_QP.png",
+        "time_s": 2.1775337494909763
+      },
+      "iota": {
+        "success": true,
+        "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_full_eval_20260901_89206f4/axisv2_case_02986/full/desc/iota.png",
+        "time_s": 4.451203104108572
+      }
+    }
+  },
+  "desc_time_s": 241.6100228652358,
+  "status": "completed",
+  "total_time_s": 382.83469715341926
+}

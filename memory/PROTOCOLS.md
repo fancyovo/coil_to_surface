@@ -159,3 +159,21 @@ reference; Flow is never called. The measured 0.375 initial-valid rate is
 multiplied by conditional Adam success to estimate unconditional abundance.
 Frozen specification:
 `evaluation/axis_surface_contour_prior_balanced_adam200_abi11_v1.json`.
+Frozen run `axis_surface_prior_balanced_v2_adam200_20260901_11f703f` completed
+83 of 84 selected starts; all 83 completed 200 updates with status `ok`, no
+runtime failure occurred, and one `nc=1` sample was never started because a
+worker reached its reserve gate. Historical best reached 50 in 31/83 complete
+trajectories and reached 50 within 50 updates in 13/83. The maximum ABI-11
+score was `69.6456`. Canonical evidence and interpretation are in
+`reports/axis_surface_prior_balanced_v2_adam200_results_20260901.md`.
+
+Representative full evaluation used fixed workflow commit `89206f4` and a GPU
+library built from that exact commit. `axisv2_case_02986` (`nfp=5,nc=4`) accepted
+the largest tested standard surface at `s=0.64`, volume `0.074017 m3`, direct QH
+error `0.017012`; the nearest outer failure was `s=0.81`.
+`axisv2_case_04428` (`nfp=5,nc=2`) accepted `s=0.81`, volume `0.092547 m3`,
+direct QH error `0.017202`; the nearest outer failure was `s=1.00`. Both cases
+showed nested Poincare sections. DESC retained nested boundaries and reduced
+normalized force residuals substantially, while both optimizers stopped at the
+50-iteration cap with `optimizer_success=false`. The report and its full
+machine-readable artifacts preserve the acceptance checks and failure bounds.

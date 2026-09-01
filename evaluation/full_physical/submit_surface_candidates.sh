@@ -45,6 +45,15 @@ test -f "$CASE_FILE"
 test -f "$RUN_DIR/psi_model.npz"
 mkdir -p "$candidate_root" "$project/logs"
 python3 "$project/evaluation/full_physical/preflight.py"
+PYTHONPATH="$project" python3 - "$gpu_lib" <<'PY'
+import sys
+from pathlib import Path
+
+from scripts.run_qh_face_qs_gpu_prepare import validate_gpu_library
+
+validate_gpu_library(Path(sys.argv[1]))
+print(f"PASS: GPU library exports the required full-evaluation ABI symbols: {sys.argv[1]}")
+PY
 
 manifest=$OUTPUT_ROOT/candidate_jobs.tsv
 printf 's_edge\tjob_id\toutput_dir\n' > "$manifest"

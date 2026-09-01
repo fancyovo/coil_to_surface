@@ -166,20 +166,20 @@
 - The v2 inner surface is a geometric reference, not a computed magnetic
   surface, and the construction axis is not a verified magnetic axis. The
   registered experiment does not modify the current QH default.
-- Registered follow-up
-  `qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1` samples 84
-  of the 2250 initial-`ok` v2 rows without replacement and runs exact-start
-  direct-data Adam200 on six GPUs. It uses 64 directions, `h=0.0025`, learning
-  rate `0.01`, and no Flow calls. Conditional score-at-least-50 abundance must
-  be multiplied by the measured `0.375` initial-valid rate. Launch state is
-  recorded in the frozen runtime manifest rather than inferred from this file.
-- The accepted launch is frozen at `11f703f` under remote root
-  `axis_surface_prior_balanced_v2_adam200_20260901_11f703f`: prepare `51677`,
-  passed three-step smoke `51678`, P107 array `51679`, Students array `51680`,
-  and dependent analysis `51681`. At the 2026-09-01 launch audit all six first
-  trajectories had advanced 3-28 updates, all six per-trajectory limits were
-  7200 seconds, and no formal failure artifact existed. Verify live scheduler
-  and filesystem state directly after any later wakeup.
+- Follow-up protocol
+  `qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1` completed
+  83/84 selected valid starts at frozen run commit `11f703f`; every completed
+  trajectory finished Adam200 with status `ok`, no runtime failure occurred,
+  and one `nc=1` sample was not started under the five-hour reserve gate.
+  Historical best reached 50 in 31/83 trajectories, including 13/83 within 50
+  updates; maximum score was `69.6456`. Multiplying by the measured `0.375`
+  initial-valid rate gives estimated all-prior abundance 14.01% for Adam200 and
+  5.87% for best-so-far@50. Full evaluation of representative high-score cases
+  `axisv2_case_02986` and `axisv2_case_04428` accepted nested standard surfaces
+  at `s=0.64` and `s=0.81`, with volumes `0.0740` and `0.0925 m3` and direct QH
+  errors `0.0170` and `0.0172`. The DESC solves reduced mean normalized force by
+  about 360-fold and 834-fold but reached the 50-iteration limit. See
+  `reports/axis_surface_prior_balanced_v2_adam200_results_20260901.md`.
 
 ## Memory Map
 

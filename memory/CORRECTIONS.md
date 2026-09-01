@@ -365,6 +365,121 @@ An open critical correction blocks promotion and external reporting.
   showed all six first trajectories advancing from 3 to 28 updates with
   7200-second trajectory limits and no failure artifact.
 
+## CORR-20260901-54 - Wilson error-bar rounding produced a negative plot length
+
+- Severity/status: low / resolved before report delivery.
+- Discovered by: model during Adam200 report figure generation.
+- Error: subtracting the Wilson endpoint from an observed rate can produce a
+  negative value at floating-point roundoff scale for a zero-success subgroup.
+  Matplotlib rejects any negative `yerr`, so the first rendering pass stopped
+  before the success-rate and runtime figures were written.
+- Affected scope: no experiment data, statistic, or delivered figure is
+  affected. The partially generated score-distribution PNG was regenerated in
+  the complete second pass.
+- Fix and verification: lower and upper error-bar lengths are clipped at zero
+  after computing the Wilson endpoints. Delivery requires all report images to
+  render and pass visual inspection.
+- Promotion/reporting blocker: resolved. Four report figures rendered without
+  clipping or overlap, every label and threshold is explicit, and the report's
+  12 relative asset links resolve.
+
+## CORR-20260901-55 - Delta bundle was requested without a named positive ref
+
+- Severity/status: low / resolved before remote synchronization.
+- Discovered by: model while synchronizing the serial source-candidate change.
+- Error: the first `git bundle create` invocation supplied only two raw commit
+  IDs as a revision range. A bundle requires a named positive reference, so Git
+  rejected the request as empty and the following copy command found no file.
+- Affected scope: no bundle was created or copied, the remote checkout and all
+  experiment artifacts remained unchanged, and no scientific result or report
+  conclusion is affected.
+- Fix and verification: create the delta from the current branch reference
+  while excluding the verified remote baseline, run `git bundle verify`, then
+  fast-forward the clean remote checkout and verify its exact HEAD.
+- Promotion/reporting blocker: resolved. The corrected bundle passed
+  `git bundle verify`, and the remote checkout fast-forwarded from `11f703f` to
+  exact commit `89206f4` with no tracked worktree changes.
+
+## CORR-20260901-56 - PowerShell CR reached the final remote stdin command
+
+- Severity/status: low / resolved before evaluation submission.
+- Discovered by: model during the post-sync full-evaluation preflight.
+- Error: a PowerShell here-string was piped to remote `bash -s` without first
+  removing carriage returns. Bash retained the final `CR` in the Python script
+  argument and attempted to open `preflight.py\r`.
+- Affected scope: the remote checkout had already fast-forwarded correctly;
+  only the read-only preflight invocation failed. No Slurm job was submitted,
+  no output directory was created, and no scientific result is affected.
+- Fix and verification: later multi-line remote commands use an LF-only local
+  script redirected by WSL instead of a PowerShell text pipeline. The fixed
+  preflight passed all 20 files from exact commit `89206f4`, and a separate
+  direct Git command confirmed zero tracked worktree changes.
+- Promotion/reporting blocker: resolved before submission.
+
+## CORR-20260901-57 - Remote `squeue` format string was split by shell layers
+
+- Severity/status: low / resolved during source-candidate monitoring.
+- Discovered by: model on the first status query for jobs `51870--51876`.
+- Error: a custom `squeue -o` string containing spaces was passed directly
+  through PowerShell, WSL, SSH, and the remote command parser. Its quoting did
+  not survive every layer, so Slurm received `%.12P` as an option and rejected
+  this read-only query.
+- Affected scope: the failure occurred only in the monitoring command after all
+  four jobs had been accepted. No job, output, or conclusion was changed.
+- Fix and verification: use default `squeue` output and delimiter-safe `sacct`
+  field lists for direct remote queries; use LF-only scripts when a formatted
+  multi-line query is genuinely needed.
+- Promotion/reporting blocker: resolved. Replacement `squeue` and `sacct`
+  queries returned the submitted job states and exit codes without changing
+  any job.
+
+## CORR-20260901-58 - Shared mixed GPU library lacked the current axis symbol
+
+- Severity/status: high / resolved; failed source-candidate attempt quarantined.
+- Discovered by: model from the four source-candidate logs for
+  `axisv2_case_02986`.
+- Error: the pre-submit check verified that the configured shared
+  `build_mixed/libstellarator_gpu.so` existed and recorded its hash, but did not
+  verify the current evaluator's required exported symbols. At runtime,
+  `CoilFieldGpu._bind()` raised an undefined-symbol error for
+  `sgpu_trace_axis_samples`.
+- Affected scope: jobs `51870`, `51872`, `51874`, and `51876` failed during GPU
+  evaluator construction before magnetic-axis tracing, psi fitting, or surface
+  evaluation. Their output root is invalid operational evidence only. The
+  completed ABI-11 Adam200 experiment and its report statistics are unaffected.
+- Corrected behavior: formal evaluation used a GPU library built from exact
+  commit `89206f4`, SHA-256
+  `23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.
+  All 28 Python binding symbols were present. Source fitting, standard surface
+  selection, Poincare, Boozer diagnostics, and DESC completed for representative
+  samples `axisv2_case_02986` and `axisv2_case_04428` under a fresh output root.
+- Fix and verification: both full-evaluation candidate launchers now call the
+  shared `validate_gpu_library()` guard before writing a job manifest or invoking
+  `sbatch`. The guard requires `sgpu_trace_axis_samples` and
+  `sgpu_fit_psi_fullgpu`; a regression test verifies its position before job
+  submission. Formal downstream jobs `51919` and `51984` completed successfully,
+  and both delivery validators require the full physical artifact set.
+- Promotion/reporting blocker: resolved. The failed jobs `51870`, `51872`,
+  `51874`, and `51876` remain excluded operational evidence, and the report
+  identifies the exact compatible library used by the accepted replacement.
+
+## CORR-20260901-59 - Local report verification used a nonexistent test path
+
+- Severity/status: low / resolved before report delivery.
+- Discovered by: model during the final local verification pass.
+- Error: the first `pytest` command named a nonexistent
+  `tests/test_full_physical_preflight.py`, so pytest collected no tests. A
+  separate Windows-Python preflight invocation also passed Windows paths to WSL
+  `bash`, which removed backslash separators before shell syntax checking.
+- Affected scope: both failures were local verification-command errors after
+  the remote evaluations had completed. They did not run experiment code,
+  change artifacts, or affect any numerical result.
+- Fix and verification: rerun the two existing relevant test files directly;
+  all five tests passed. Run `evaluation/full_physical/preflight.py` inside WSL
+  from the repository's `/mnt/d/...` path; all 20 fixed files passed. Independent
+  WSL `bash -n` and both full-delivery validators also passed.
+- Promotion/reporting blocker: resolved before staging or delivery.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

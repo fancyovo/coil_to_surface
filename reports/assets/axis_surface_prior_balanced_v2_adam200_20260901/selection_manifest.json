@@ -1,0 +1,1755 @@
+{
+  "format": "axis_surface_prior_balanced_v2_adam200_selection_v1",
+  "protocol_id": "qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1",
+  "status": "prepared",
+  "code_commit": "11f703f2a3727ed709167e60cc1bb923c46b36a6",
+  "input": {
+    "run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_20260901_1dcfd18",
+    "row_count": 6000,
+    "valid_count": 2250,
+    "valid_rate": 0.375,
+    "shards": [
+      {
+        "file": "shard_00.jsonl",
+        "sha256": "62cf8aa3772b714817e05316c3060d1e57b37d736ed3b1b8ca88a855ba49e938"
+      },
+      {
+        "file": "shard_01.jsonl",
+        "sha256": "f0cac46480be6730e37ba3109981dec927c37135c9ae74085a05f339fdab4d6a"
+      },
+      {
+        "file": "shard_02.jsonl",
+        "sha256": "a292799a154371313303f78e25015359ca3976b0c0ce9b4060cdbfedd7510bb5"
+      },
+      {
+        "file": "shard_03.jsonl",
+        "sha256": "4842fa149ab03b8dc4e93664dc38c60c247f8deb83c04882195e9298f8629cda"
+      },
+      {
+        "file": "shard_04.jsonl",
+        "sha256": "a7d3a5117fe4d976f19eed95d1bebe8da5dafedb1519dc02ddd123f3bea193da"
+      },
+      {
+        "file": "shard_05.jsonl",
+        "sha256": "1d69973640ca03f95c4103d09b0e683854d8ad70e2867342a5889627f1b8d36a"
+      }
+    ]
+  },
+  "selection": {
+    "population": "native status == ok",
+    "method": "simple random sample without replacement",
+    "seed": 20260902,
+    "sample_count": 84,
+    "worker_count": 6,
+    "samples_per_worker": 14,
+    "selected_by_nc": {
+      "1": 42,
+      "2": 20,
+      "3": 10,
+      "4": 12
+    }
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "iterations": 200,
+    "directions": 64,
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [
+      0.7,
+      0.999
+    ],
+    "flow_calls": 0,
+    "success_threshold": 50.0
+  },
+  "artifacts": {
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "score_library_abi": 11,
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+  },
+  "cases": [
+    {
+      "trajectory_id": "axisv2_case_05488",
+      "case_id": 5488,
+      "selection_rank": 5,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 1.2139725560616195,
+      "initial_coil_component": 80.04747433826053,
+      "initial_status": "ok",
+      "optimizer_seed": 20275488,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05488.json",
+      "start_sha256": "a227f2edc42105512e4a540211dd0f3e0bfaa826cdbf503b773bf871c26a568c",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3866993775479841e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7834930419921875
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02986",
+      "case_id": 2986,
+      "selection_rank": 6,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 4,
+      "initial_score": 7.300428828941994,
+      "initial_coil_component": 68.65858082269595,
+      "initial_status": "ok",
+      "optimizer_seed": 20272986,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02986.json",
+      "start_sha256": "3d6ee947dcf6abdf7dc68c6a8afdffab19c60be283d5fff76c78f34a32b94ae9",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9379928772877975e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4555678367614746
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05937",
+      "case_id": 5937,
+      "selection_rank": 14,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 1.2376337862045954,
+      "initial_coil_component": 70.90744981010147,
+      "initial_status": "ok",
+      "optimizer_seed": 20275937,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05937.json",
+      "start_sha256": "2256bcaa9485ec417e2a5a79c4a561aaf683772a7839f2083c7e709ed2d18b10",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.50687302635788e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.882556438446045
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05722",
+      "case_id": 5722,
+      "selection_rank": 16,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 1.5505110160941291,
+      "initial_coil_component": 77.76185519530162,
+      "initial_status": "ok",
+      "optimizer_seed": 20275722,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05722.json",
+      "start_sha256": "b7c035a0d35c69bc2b358b3d26d371d8b34a6970c4d257bc4eb6c757b2899c43",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.463763421583053e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7602580785751343
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05890",
+      "case_id": 5890,
+      "selection_rank": 19,
+      "worker_index": 0,
+      "nfp": 4,
+      "n_base_coils": 3,
+      "initial_score": 1.2928829692944044,
+      "initial_coil_component": 70.50318874256114,
+      "initial_status": "ok",
+      "optimizer_seed": 20275890,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05890.json",
+      "start_sha256": "39bcd36970d7e27a7547a1d71284298910cb0ad88101ed24d30ef197b45c1a2e",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 5.236729716528998e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.7762155532836914
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04316",
+      "case_id": 4316,
+      "selection_rank": 28,
+      "worker_index": 0,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.5911240439899381,
+      "initial_coil_component": 81.42466173934977,
+      "initial_status": "ok",
+      "optimizer_seed": 20274316,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04316.json",
+      "start_sha256": "a2074478240c1828a92389a41c246a5343f0060b99ed80c7347fcc96fccf24a2",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.035170282825959e-10,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05076",
+      "case_id": 5076,
+      "selection_rank": 38,
+      "worker_index": 0,
+      "nfp": 3,
+      "n_base_coils": 2,
+      "initial_score": 1.0677399750848775,
+      "initial_coil_component": 82.42220348714362,
+      "initial_status": "ok",
+      "optimizer_seed": 20275076,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05076.json",
+      "start_sha256": "37717c15187cd24361502986e62f13b6bd776e58475283cd3a07bbe6ee393264",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.3560081885420914e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.7528483867645264
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00206",
+      "case_id": 206,
+      "selection_rank": 40,
+      "worker_index": 0,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 2.1380104117477283,
+      "initial_coil_component": 68.78149571725635,
+      "initial_status": "ok",
+      "optimizer_seed": 20270206,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00206.json",
+      "start_sha256": "bfc8fbe4a93ca21aedc6b1fcc68d7a8f317de7ad635cbba03358e9430c1e0d1d",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8969180004546615e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.6112916469573975
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02212",
+      "case_id": 2212,
+      "selection_rank": 43,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 1.218819671667574,
+      "initial_coil_component": 76.85644126591554,
+      "initial_status": "ok",
+      "optimizer_seed": 20272212,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02212.json",
+      "start_sha256": "3830159a9b614c813deeb41aa4699527fa859c0f97d5fc8ddd4cc7f64407ed15",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.672160626104869e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9295573234558105
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01236",
+      "case_id": 1236,
+      "selection_rank": 50,
+      "worker_index": 0,
+      "nfp": 4,
+      "n_base_coils": 3,
+      "initial_score": 8.630761221101233,
+      "initial_coil_component": 77.72007288931331,
+      "initial_status": "ok",
+      "optimizer_seed": 20271236,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01236.json",
+      "start_sha256": "8834ba6ba342ac7c0014f9654f4f27b48e18fb186104f307e0e0518cd2813b03",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.539799659473374e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5673515796661377
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05304",
+      "case_id": 5304,
+      "selection_rank": 58,
+      "worker_index": 0,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.758168883457136,
+      "initial_coil_component": 82.288044483078,
+      "initial_status": "ok",
+      "optimizer_seed": 20275304,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05304.json",
+      "start_sha256": "ff5a8eef19f7aa72814560c7a275aaf132e3e96e28bed00490a7ea31837ce8f7",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.309256880688281e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05046",
+      "case_id": 5046,
+      "selection_rank": 66,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 1.9795975618748958,
+      "initial_coil_component": 77.22910226402043,
+      "initial_status": "ok",
+      "optimizer_seed": 20275046,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05046.json",
+      "start_sha256": "f8de1bd65e88b79c00e2cf798f4b809a06e4a0e8119a2de54fac4d7270fa9c5c",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8255651212939483e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0482161045074463
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05313",
+      "case_id": 5313,
+      "selection_rank": 71,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 6.080702649942237,
+      "initial_coil_component": 69.25990410453373,
+      "initial_status": "ok",
+      "optimizer_seed": 20275313,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05313.json",
+      "start_sha256": "f90fdf7c6cc278cc7a935b56b4614099d35375940b985c4a3f350173246ed3f3",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1016846929455824e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.3859071731567383
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05932",
+      "case_id": 5932,
+      "selection_rank": 79,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.143003696929297,
+      "initial_coil_component": 69.50113195199246,
+      "initial_status": "ok",
+      "optimizer_seed": 20275932,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05932.json",
+      "start_sha256": "5f912d162d5f11d38ab67cb8801cdf7cc924af49dd07177699143f3fc79ea910",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.32703971647652e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.110926389694214
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03587",
+      "case_id": 3587,
+      "selection_rank": 7,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 2.0651340027129055,
+      "initial_coil_component": 67.99187333939487,
+      "initial_status": "ok",
+      "optimizer_seed": 20273587,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03587.json",
+      "start_sha256": "bfa3ac131c5ee0c5c66d6eccc6cfa23223ba947f6ab4322399ac61d6a5fc3c57",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.973796415200013e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.6836397647857666
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00705",
+      "case_id": 705,
+      "selection_rank": 9,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 5.931544242486513,
+      "initial_coil_component": 75.38523665778766,
+      "initial_status": "ok",
+      "optimizer_seed": 20270705,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00705.json",
+      "start_sha256": "53b4370497c5fb6991a5f94dbd1f615755c32d679f59603bc55f5815ab0e7236",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3686633160148176e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.080735683441162
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05289",
+      "case_id": 5289,
+      "selection_rank": 18,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 6.64788802454521,
+      "initial_coil_component": 70.97697803182155,
+      "initial_status": "ok",
+      "optimizer_seed": 20275289,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05289.json",
+      "start_sha256": "4f27f582e9e1c08ce3bf0159860204b68b75976d52eabe44badb570712257a76",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3322480008071125e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.7445855140686035
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04932",
+      "case_id": 4932,
+      "selection_rank": 20,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 1.8283615395512482,
+      "initial_coil_component": 70.10362879946983,
+      "initial_status": "ok",
+      "optimizer_seed": 20274932,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04932.json",
+      "start_sha256": "24749511617870a055f24e62177daa1710b4d1a71fc39e317729f0295461b2a2",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8626446163239052e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 2.581421375274658
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02551",
+      "case_id": 2551,
+      "selection_rank": 21,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 7.650145749738715,
+      "initial_coil_component": 72.52641127379052,
+      "initial_status": "ok",
+      "optimizer_seed": 20272551,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02551.json",
+      "start_sha256": "0af9ccc97fa594140a6d631e39c9745229f23149b0bd477661755c288d4f6441",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.7244083494460938e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.1711513996124268
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04969",
+      "case_id": 4969,
+      "selection_rank": 29,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 2.5075534938749944,
+      "initial_coil_component": 73.73345456046161,
+      "initial_status": "ok",
+      "optimizer_seed": 20274969,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04969.json",
+      "start_sha256": "58d53637fe336cf42d8c5eb8b1f11983de5fa57158c309fc198e871adde52067",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.834750307239119e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.154892921447754
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03025",
+      "case_id": 3025,
+      "selection_rank": 44,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 1.649748179758589,
+      "initial_coil_component": 69.822786293475,
+      "initial_status": "ok",
+      "optimizer_seed": 20273025,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03025.json",
+      "start_sha256": "f511f52dcc0cd970823e416543f3b575007f42b17830513c82fe5d6f57019754",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.691001649817281e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.220510482788086
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00781",
+      "case_id": 781,
+      "selection_rank": 45,
+      "worker_index": 1,
+      "nfp": 5,
+      "n_base_coils": 1,
+      "initial_score": 1.903882554675819,
+      "initial_coil_component": 80.23873810521604,
+      "initial_status": "ok",
+      "optimizer_seed": 20270781,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00781.json",
+      "start_sha256": "1c1557b3a470d36bc273e3fa4ee5be25c12567b5630f4bfefbb2d3507b2eb18d",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5184307144977538e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4991230964660645
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01481",
+      "case_id": 1481,
+      "selection_rank": 48,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 2.8015197836077186,
+      "initial_coil_component": 68.84207387009384,
+      "initial_status": "ok",
+      "optimizer_seed": 20271481,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01481.json",
+      "start_sha256": "0469a8e573174031e273d77045b173e30acaf0d279fbbdbaefd6ecb15c8a8106",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9218951763377845e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.0093865394592285
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00979",
+      "case_id": 979,
+      "selection_rank": 51,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 4.103574903761273,
+      "initial_coil_component": 69.12722348556048,
+      "initial_status": "ok",
+      "optimizer_seed": 20270979,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00979.json",
+      "start_sha256": "3e952ab704a8606fa8d0dab11d5dacdb2a40f5b180988f43b2870c6bdb50b863",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8922895250739202e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5616908073425293
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00133",
+      "case_id": 133,
+      "selection_rank": 59,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 2.9479957249289295,
+      "initial_coil_component": 77.7733397211588,
+      "initial_status": "ok",
+      "optimizer_seed": 20270133,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00133.json",
+      "start_sha256": "548005c9b586f846f14ece6ecd41fcfa0998a78343b1f9dfde84c684ce789d4a",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6718980644370163e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.3447389602661133
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04086",
+      "case_id": 4086,
+      "selection_rank": 67,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.801514496599257,
+      "initial_coil_component": 75.46365210919375,
+      "initial_status": "ok",
+      "optimizer_seed": 20274086,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04086.json",
+      "start_sha256": "3be16648e1f19652dc14a94f86872ba01d525f4406cf368cb180b6c1a5d7e62f",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 6.7625429700512996e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.3304102420806885
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01826",
+      "case_id": 1826,
+      "selection_rank": 72,
+      "worker_index": 1,
+      "nfp": 3,
+      "n_base_coils": 2,
+      "initial_score": 0.8147273356795883,
+      "initial_coil_component": 80.63967216778217,
+      "initial_status": "ok",
+      "optimizer_seed": 20271826,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01826.json",
+      "start_sha256": "407cb0dbab34384a4faa89488c5789298c8370360f746a94cd4f15a7d896ae6c",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8217612307580566e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5993478298187256
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01510",
+      "case_id": 1510,
+      "selection_rank": 80,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.551828010462603,
+      "initial_coil_component": 80.03242171840701,
+      "initial_status": "ok",
+      "optimizer_seed": 20271510,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01510.json",
+      "start_sha256": "b200796bed32938119b707fa03304c4a3beed019619dedf5d1d180fa26523d42",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.2130017879030675e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.735314965248108
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02363",
+      "case_id": 2363,
+      "selection_rank": 8,
+      "worker_index": 2,
+      "nfp": 6,
+      "n_base_coils": 4,
+      "initial_score": 1.7450641682921346,
+      "initial_coil_component": 69.71006623198241,
+      "initial_status": "ok",
+      "optimizer_seed": 20272363,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02363.json",
+      "start_sha256": "c27d8c7c280e94e99f45b6515c37a16455fcd7350984d519cc3f9df4b18ad649",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4214069032902898e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 3.3068718910217285
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05798",
+      "case_id": 5798,
+      "selection_rank": 11,
+      "worker_index": 2,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.757969836155172,
+      "initial_coil_component": 75.34454835317081,
+      "initial_status": "ok",
+      "optimizer_seed": 20275798,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05798.json",
+      "start_sha256": "b68b736c97252d2e38d680b6f22fd7423877630ff5587a725e13b700b55a5ec3",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.685758992981846e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02190",
+      "case_id": 2190,
+      "selection_rank": 22,
+      "worker_index": 2,
+      "nfp": 3,
+      "n_base_coils": 2,
+      "initial_score": 1.036573775144711,
+      "initial_coil_component": 81.78067263172846,
+      "initial_status": "ok",
+      "optimizer_seed": 20272190,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02190.json",
+      "start_sha256": "7299e4e5e5ffe8c06c881347c84d49fe32e3b05ba9d9d79dc5df31d82d81810f",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9595022493490433e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.2628471851348877
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01433",
+      "case_id": 1433,
+      "selection_rank": 23,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 2.3617312076894836,
+      "initial_coil_component": 73.44032154509797,
+      "initial_status": "ok",
+      "optimizer_seed": 20271433,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01433.json",
+      "start_sha256": "2f89bd41f550ec051ac238db639a2cd36b72f2d0cc9d55846b36e15d0c193d9d",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.6725237134428426e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.498762607574463
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02852",
+      "case_id": 2852,
+      "selection_rank": 24,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 2.5039386053094677,
+      "initial_coil_component": 69.59619344490386,
+      "initial_status": "ok",
+      "optimizer_seed": 20272852,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02852.json",
+      "start_sha256": "323fab410fb3841b7941d122578b64bf5f2a1c7cbcdbf3227ad4977a94d9f6be",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.2813134553368855e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 2.7098653316497803
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02110",
+      "case_id": 2110,
+      "selection_rank": 37,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 4.328779873489977,
+      "initial_coil_component": 73.04033902272819,
+      "initial_status": "ok",
+      "optimizer_seed": 20272110,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02110.json",
+      "start_sha256": "a9cff6a729a3ab353fbc696525d0197ae93ff278b6276c0af1462d49488ae2df",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 4.150305432659707e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.1278398036956787
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01255",
+      "case_id": 1255,
+      "selection_rank": 46,
+      "worker_index": 2,
+      "nfp": 4,
+      "n_base_coils": 2,
+      "initial_score": 1.060376588038277,
+      "initial_coil_component": 80.98574426734288,
+      "initial_status": "ok",
+      "optimizer_seed": 20271255,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01255.json",
+      "start_sha256": "5d566c168aa305b2b4beabf55ec6af2d7e9fc1eddd475d81e524c485acf26158",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0128791078377617e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.1714813709259033
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01822",
+      "case_id": 1822,
+      "selection_rank": 52,
+      "worker_index": 2,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.280135317980353,
+      "initial_coil_component": 78.95873204996083,
+      "initial_status": "ok",
+      "optimizer_seed": 20271822,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01822.json",
+      "start_sha256": "d925b2d9841436da39f770efc8cf2d082abc09b1ab47c5475c6b7bd7f8b3f2a6",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.042196989293643e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04155",
+      "case_id": 4155,
+      "selection_rank": 54,
+      "worker_index": 2,
+      "nfp": 4,
+      "n_base_coils": 4,
+      "initial_score": 6.725845756183718,
+      "initial_coil_component": 72.52939110312995,
+      "initial_status": "ok",
+      "optimizer_seed": 20274155,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04155.json",
+      "start_sha256": "1d761a1c12dad0fbed6b8847cc1fb9bead0a277822448f8a71d4f971282b5d0c",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.1709369474033338e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.8791847229003906
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03826",
+      "case_id": 3826,
+      "selection_rank": 60,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.551965142666245,
+      "initial_coil_component": 77.53465945228967,
+      "initial_status": "ok",
+      "optimizer_seed": 20273826,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03826.json",
+      "start_sha256": "a3e2bb1a310ad1b7a1c950cf4a550542872d50e111afbf57ee371a1fa2bbf07e",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.412885364260319e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.154326915740967
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01994",
+      "case_id": 1994,
+      "selection_rank": 64,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 3.170762762390001,
+      "initial_coil_component": 69.31201481329971,
+      "initial_status": "ok",
+      "optimizer_seed": 20271994,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01994.json",
+      "start_sha256": "041982a0efa822127d55f50706680f955499881efa9ca6cdf267e9b9f2aa5f2d",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.837267937787601e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 2.6752381324768066
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02444",
+      "case_id": 2444,
+      "selection_rank": 69,
+      "worker_index": 2,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.6091995542196806,
+      "initial_coil_component": 80.54378747248843,
+      "initial_status": "ok",
+      "optimizer_seed": 20272444,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02444.json",
+      "start_sha256": "474e3a21da7cc0665f9db8f0da5ab3bfbd52df81d94a024e9ec3db079f9a3db4",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.1627359519650327e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01571",
+      "case_id": 1571,
+      "selection_rank": 74,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 4.016126089305437,
+      "initial_coil_component": 69.93398308051415,
+      "initial_status": "ok",
+      "optimizer_seed": 20271571,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01571.json",
+      "start_sha256": "453d2810543aeb3df970628689f31d61e79799af4c14801ce05c46550d5a978b",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.6444336498343546e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.628147840499878
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03382",
+      "case_id": 3382,
+      "selection_rank": 82,
+      "worker_index": 2,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 4.837811325587452,
+      "initial_coil_component": 80.90425034783742,
+      "initial_status": "ok",
+      "optimizer_seed": 20273382,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03382.json",
+      "start_sha256": "fcb2290fc5a75af7a6d1c0f872a4f1e8ba2f2fda0687472440d4864f25e335f0",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 4.7797671376415e-10,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9916633367538452
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03381",
+      "case_id": 3381,
+      "selection_rank": 12,
+      "worker_index": 3,
+      "nfp": 5,
+      "n_base_coils": 1,
+      "initial_score": 3.038679815657789,
+      "initial_coil_component": 80.02481565022562,
+      "initial_status": "ok",
+      "optimizer_seed": 20273381,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03381.json",
+      "start_sha256": "b3958a8aed6ebd46d10e7f5900e9f64ae00264e21de8b493140f3b40cf984831",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.278370908077477e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4991230964660645
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01117",
+      "case_id": 1117,
+      "selection_rank": 17,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 3.0728105985944225,
+      "initial_coil_component": 69.64429231968276,
+      "initial_status": "ok",
+      "optimizer_seed": 20271117,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01117.json",
+      "start_sha256": "2103e59487276f332ffa6fb166a91f465a7cbd264007638e580c424a3f6d34f8",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5560821964299976e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.7981929779052734
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05330",
+      "case_id": 5330,
+      "selection_rank": 25,
+      "worker_index": 3,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 2.7484409681975683,
+      "initial_coil_component": 82.0753272599255,
+      "initial_status": "ok",
+      "optimizer_seed": 20275330,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05330.json",
+      "start_sha256": "0ed399752aeb2e25308a4fd6b190312e0b75ff70b106e55112c8af77d3f0e9f6",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4874471432335667e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03831",
+      "case_id": 3831,
+      "selection_rank": 31,
+      "worker_index": 3,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 2.7394042736409534,
+      "initial_coil_component": 72.2409876825022,
+      "initial_status": "ok",
+      "optimizer_seed": 20273831,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03831.json",
+      "start_sha256": "659d2ec65fbed0e3574db7cedeb730166aeffde426f19ddc437714980c78017d",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.6484409332283576e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.032701015472412
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03190",
+      "case_id": 3190,
+      "selection_rank": 33,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 3.3835193660080507,
+      "initial_coil_component": 68.19909646449548,
+      "initial_status": "ok",
+      "optimizer_seed": 20273190,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03190.json",
+      "start_sha256": "04ded17a0846275afc4d472f7f1224b17480397777f39e3da651667a95d52096",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8843831384174337e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 2.9850285053253174
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02733",
+      "case_id": 2733,
+      "selection_rank": 39,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 1.05665942981565,
+      "initial_coil_component": 78.29970763752193,
+      "initial_status": "ok",
+      "optimizer_seed": 20272733,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02733.json",
+      "start_sha256": "528107011fe00044d629cd24f5724d2973374d0d5d10473b955a259aff8b91a0",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3018548017385001e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.2602312564849854
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04428",
+      "case_id": 4428,
+      "selection_rank": 49,
+      "worker_index": 3,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 0.950514636516377,
+      "initial_coil_component": 70.72658658472298,
+      "initial_status": "ok",
+      "optimizer_seed": 20274428,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04428.json",
+      "start_sha256": "0140445b2af1e96ae398c5491a414c1c9cedb5b0b4960e6b31b201fb80145853",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.628975164815529e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.392639398574829
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03874",
+      "case_id": 3874,
+      "selection_rank": 55,
+      "worker_index": 3,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 0.9142847828015717,
+      "initial_coil_component": 83.90959818313999,
+      "initial_status": "ok",
+      "optimizer_seed": 20273874,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03874.json",
+      "start_sha256": "a8b2d1af41d2ccfb4d0e20a2132e66ae67b38980e74c4e54f7f6dc2b9dad6b07",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6194920959833325e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02236",
+      "case_id": 2236,
+      "selection_rank": 61,
+      "worker_index": 3,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.5406466119494335,
+      "initial_coil_component": 82.90772106145657,
+      "initial_status": "ok",
+      "optimizer_seed": 20272236,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02236.json",
+      "start_sha256": "edcf34726343358b58bc0d30e88108a62b9907e815830169dcbb7eb928d66f31",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5734334724015753e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05901",
+      "case_id": 5901,
+      "selection_rank": 62,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 3.4813576789817793,
+      "initial_coil_component": 69.7208604022961,
+      "initial_status": "ok",
+      "optimizer_seed": 20275901,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05901.json",
+      "start_sha256": "6c9f4e179f881dd42ba4e174ada8f9a438560566547f2124b61db050d7a74b75",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1446094677912697e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.3890492916107178
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04006",
+      "case_id": 4006,
+      "selection_rank": 73,
+      "worker_index": 3,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 2.493777896449478,
+      "initial_coil_component": 69.36314700143231,
+      "initial_status": "ok",
+      "optimizer_seed": 20274006,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04006.json",
+      "start_sha256": "2a53201f269f0d9e22859b084724fe1ad2693bb1d4b24a8ab50fd4db99df4742",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 4.245086415721744e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.116685152053833
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01081",
+      "case_id": 1081,
+      "selection_rank": 78,
+      "worker_index": 3,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "initial_score": 1.19375994927009,
+      "initial_coil_component": 68.82286419135426,
+      "initial_status": "ok",
+      "optimizer_seed": 20271081,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01081.json",
+      "start_sha256": "46f4a9e2a8dbb01a5f8886a8a2f112bdc1118268e7baacf25d27e602e1047cdf",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9377893067940022e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.655388116836548
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01284",
+      "case_id": 1284,
+      "selection_rank": 81,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 1.4290297044488511,
+      "initial_coil_component": 72.79299675019021,
+      "initial_status": "ok",
+      "optimizer_seed": 20271284,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01284.json",
+      "start_sha256": "c73c2d22d9a701e985c0f759062fe759f1df0308c7c9c9477dcd8278005061c0",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4169566853183824e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.466247320175171
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05852",
+      "case_id": 5852,
+      "selection_rank": 83,
+      "worker_index": 3,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 4.630202662161147,
+      "initial_coil_component": 80.76805958242626,
+      "initial_status": "ok",
+      "optimizer_seed": 20275852,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05852.json",
+      "start_sha256": "57e7544d5889e6c4c3f1268226db875e512781b07c6bfffb4383caeed7ab225c",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.3721383968222653e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.875903844833374
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02270",
+      "case_id": 2270,
+      "selection_rank": 0,
+      "worker_index": 4,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 1.2228293380013895,
+      "initial_coil_component": 69.90886926023707,
+      "initial_status": "ok",
+      "optimizer_seed": 20272270,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02270.json",
+      "start_sha256": "edf81435608665c2e0f35b39684d241f024d8baef652cde0d6f582a28c07a60e",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.5382872692603087e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5631868839263916
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00108",
+      "case_id": 108,
+      "selection_rank": 1,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 4.36077928374297,
+      "initial_coil_component": 70.57844321389254,
+      "initial_status": "ok",
+      "optimizer_seed": 20270108,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00108.json",
+      "start_sha256": "42e287f120d9bc804f265b6a7038f69128953b9bdda38141fdf8afa02bebf85a",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.0567797182357026e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.06724214553833
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03675",
+      "case_id": 3675,
+      "selection_rank": 4,
+      "worker_index": 4,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 2.164442887468465,
+      "initial_coil_component": 69.4778910986889,
+      "initial_status": "ok",
+      "optimizer_seed": 20273675,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03675.json",
+      "start_sha256": "ead2489e0dcf411652eace8adbb9e026bb3150cd64b0ee788a4a02981622f14d",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6827566895472046e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.285764455795288
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05720",
+      "case_id": 5720,
+      "selection_rank": 13,
+      "worker_index": 4,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 0.8525791060602642,
+      "initial_coil_component": 84.89643217402272,
+      "initial_status": "ok",
+      "optimizer_seed": 20275720,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05720.json",
+      "start_sha256": "954b681e5fd3d5a98df12f64e1e88a0bbe10a0d0730f439f82fc2babd08a7158",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5478960335713055e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05854",
+      "case_id": 5854,
+      "selection_rank": 26,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.057075714147123,
+      "initial_coil_component": 72.24571369180526,
+      "initial_status": "ok",
+      "optimizer_seed": 20275854,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05854.json",
+      "start_sha256": "61e1c11165148db9044b100feeaac7b3e2090b4ef871f36a78eef2538e8eff48",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3516118002598887e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.154829263687134
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01325",
+      "case_id": 1325,
+      "selection_rank": 30,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 10.71545278068488,
+      "initial_coil_component": 67.3631220508307,
+      "initial_status": "ok",
+      "optimizer_seed": 20271325,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01325.json",
+      "start_sha256": "1098329c2a91305697b7b245fc1d215c6618b590776739115e1391f6e6ec361d",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.839356045252316e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.6007308959960938
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05104",
+      "case_id": 5104,
+      "selection_rank": 32,
+      "worker_index": 4,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 2.749818772071955,
+      "initial_coil_component": 68.5879345830912,
+      "initial_status": "ok",
+      "optimizer_seed": 20275104,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05104.json",
+      "start_sha256": "2ff9a0a8484dd160f3ce17cbf1d7bfc440724b6aa734732f8e033e91f48ce1fd",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.546562072325287e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.2795894145965576
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04044",
+      "case_id": 4044,
+      "selection_rank": 35,
+      "worker_index": 4,
+      "nfp": 4,
+      "n_base_coils": 3,
+      "initial_score": 2.4437938585311514,
+      "initial_coil_component": 71.80270002338803,
+      "initial_status": "ok",
+      "optimizer_seed": 20274044,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04044.json",
+      "start_sha256": "64d8ab12f61763e785e8b68884d05dcab3b691baabd8154e997c7cbda07c5562",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.667718585451894e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.677245616912842
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03228",
+      "case_id": 3228,
+      "selection_rank": 41,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.317712391694515,
+      "initial_coil_component": 76.77044434990763,
+      "initial_status": "ok",
+      "optimizer_seed": 20273228,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03228.json",
+      "start_sha256": "9b5e4256df71dc5000717d2900a1cd9458b365cea8bb48cb62b673f5fcf0a020",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.4043302460086124e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9073688983917236
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03569",
+      "case_id": 3569,
+      "selection_rank": 53,
+      "worker_index": 4,
+      "nfp": 4,
+      "n_base_coils": 2,
+      "initial_score": 1.4398051674997792,
+      "initial_coil_component": 80.37845507919734,
+      "initial_status": "ok",
+      "optimizer_seed": 20273569,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03569.json",
+      "start_sha256": "20c1111b1cdc0674001987652199b7091dde7ab7d006be1f7df4327ff3c57d68",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.7457381318308762e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0581753253936768
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04654",
+      "case_id": 4654,
+      "selection_rank": 56,
+      "worker_index": 4,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.3073031191370437,
+      "initial_coil_component": 83.73097070605888,
+      "initial_status": "ok",
+      "optimizer_seed": 20274654,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04654.json",
+      "start_sha256": "104b31960cbdafb68dde8ba88c1cdbbacf6b5b6035d81e01b858d7b19a1351a0",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 7.471800067548884e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_03591",
+      "case_id": 3591,
+      "selection_rank": 63,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 3.8224459846929366,
+      "initial_coil_component": 75.44455943299937,
+      "initial_status": "ok",
+      "optimizer_seed": 20273591,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_03591.json",
+      "start_sha256": "437d4b5abfaf2f6714e991a0ae13e32812d025671606ca13f3a67b32032864e8",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.660760805601626e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9359394311904907
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04053",
+      "case_id": 4053,
+      "selection_rank": 70,
+      "worker_index": 4,
+      "nfp": 6,
+      "n_base_coils": 4,
+      "initial_score": 2.1670453833776766,
+      "initial_coil_component": 68.81845972726988,
+      "initial_status": "ok",
+      "optimizer_seed": 20274053,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04053.json",
+      "start_sha256": "206e187cf8f3e47aec8df0bf7e786edacb8f01dc10e3e1ba86df50507bfd80d2",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.6318202728248252e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 3.1555511951446533
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05204",
+      "case_id": 5204,
+      "selection_rank": 75,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.011488880611935,
+      "initial_coil_component": 75.04237864446962,
+      "initial_status": "ok",
+      "optimizer_seed": 20275204,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05204.json",
+      "start_sha256": "1cb868908600d93b83ef1dca1d382fdc31f65b40d52a13517464d5a159cc4527",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 4.387819174667129e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.151078462600708
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04758",
+      "case_id": 4758,
+      "selection_rank": 2,
+      "worker_index": 5,
+      "nfp": 4,
+      "n_base_coils": 1,
+      "initial_score": 1.8613174106283845,
+      "initial_coil_component": 82.0979128510145,
+      "initial_status": "ok",
+      "optimizer_seed": 20274758,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04758.json",
+      "start_sha256": "a8f855f367e1e95653de9a1dba06030369c48dd12bca10e978f845c35ea108bc",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3734943848930925e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 3.65619158744812
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01831",
+      "case_id": 1831,
+      "selection_rank": 3,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 3.988850214827716,
+      "initial_coil_component": 70.23991132123815,
+      "initial_status": "ok",
+      "optimizer_seed": 20271831,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01831.json",
+      "start_sha256": "fd2b9be38d06d52a49657935141851fed95bda8670fefbf0d9dbab158e14da02",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.5140220571984173e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4708516597747803
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04587",
+      "case_id": 4587,
+      "selection_rank": 10,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 2.8479173344147406,
+      "initial_coil_component": 74.17479173750935,
+      "initial_status": "ok",
+      "optimizer_seed": 20274587,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04587.json",
+      "start_sha256": "4410559508c40707c78a6d183e653ba24ee1e9e50529742a6eb2b51fbcb08ebd",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.49408067531931e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.46045184135437
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00991",
+      "case_id": 991,
+      "selection_rank": 15,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.670109260990134,
+      "initial_coil_component": 73.66177463971547,
+      "initial_status": "ok",
+      "optimizer_seed": 20270991,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00991.json",
+      "start_sha256": "3d09a6277ee1a9b41c2ad2722352cc60edc0604d5eaa09c2ee41367f84400f4e",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.4500543815975107e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8990658521652222
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_01043",
+      "case_id": 1043,
+      "selection_rank": 27,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.2183311147318445,
+      "initial_coil_component": 74.88170280087455,
+      "initial_status": "ok",
+      "optimizer_seed": 20271043,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_01043.json",
+      "start_sha256": "d81b6100599c9c9bec34b1b938ab5a3df3585cc5304f210ec9bdc81553a0ef48",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.196721560210335e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9461685419082642
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02155",
+      "case_id": 2155,
+      "selection_rank": 34,
+      "worker_index": 5,
+      "nfp": 6,
+      "n_base_coils": 4,
+      "initial_score": 2.0337172620531048,
+      "initial_coil_component": 70.21628100267546,
+      "initial_status": "ok",
+      "optimizer_seed": 20272155,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02155.json",
+      "start_sha256": "0301ee4fec772047b51ef7ed64288ba8f0b7d5c47b5385c1af46b54d87d4c58b",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9369243986488982e-08,
+        "current_relative_rms": 7.500000265281415e-08,
+        "max_abs_parameter": 3.046973466873169
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02297",
+      "case_id": 2297,
+      "selection_rank": 36,
+      "worker_index": 5,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 1.800113016432762,
+      "initial_coil_component": 69.55763954103996,
+      "initial_status": "ok",
+      "optimizer_seed": 20272297,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02297.json",
+      "start_sha256": "fed04e7e56687119fece3112fbb1e3494ed76821c4f1ce12a53e3ad1236601b6",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.485192324679474e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5296270847320557
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02809",
+      "case_id": 2809,
+      "selection_rank": 42,
+      "worker_index": 5,
+      "nfp": 5,
+      "n_base_coils": 1,
+      "initial_score": 2.2161312041688506,
+      "initial_coil_component": 78.5338480722285,
+      "initial_status": "ok",
+      "optimizer_seed": 20272809,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02809.json",
+      "start_sha256": "b1585be87094ea2e439a3c345728fdd7fed26d76370a6d43bc483c11a18e8daf",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.8781350636108982e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4991230964660645
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_04773",
+      "case_id": 4773,
+      "selection_rank": 47,
+      "worker_index": 5,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "initial_score": 5.764937401924443,
+      "initial_coil_component": 69.79289879228975,
+      "initial_status": "ok",
+      "optimizer_seed": 20274773,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_04773.json",
+      "start_sha256": "bd30e76f1d77bcb1a2bca4d62e515d0c39d37d0a379bef3d904dd618ad89c64f",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.0499704217181716e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.619556427001953
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00132",
+      "case_id": 132,
+      "selection_rank": 57,
+      "worker_index": 5,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.266539895317906,
+      "initial_coil_component": 72.56485234547338,
+      "initial_status": "ok",
+      "optimizer_seed": 20270132,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00132.json",
+      "start_sha256": "9c586cdc44b40359473d82ca05b92b990d0afe83f7d879bb02a39d372162232e",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.809747101650828e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4895853996276855
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_00574",
+      "case_id": 574,
+      "selection_rank": 65,
+      "worker_index": 5,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.03859758466225,
+      "initial_coil_component": 77.02845129109302,
+      "initial_status": "ok",
+      "optimizer_seed": 20270574,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_00574.json",
+      "start_sha256": "9e5e6d07a49c77019c749bfc4e5fe626c2b416861fb9fe13b08f3e02ecc45653",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 4.697348288118519e-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.867920160293579
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02897",
+      "case_id": 2897,
+      "selection_rank": 68,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 2.139277624755379,
+      "initial_coil_component": 71.91470712993849,
+      "initial_status": "ok",
+      "optimizer_seed": 20272897,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02897.json",
+      "start_sha256": "d947bde6e9930bd9e57b918e66a4778a0e5b9945941813210b59b3da6327f6bb",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.056665676126613e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5700836181640625
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_05926",
+      "case_id": 5926,
+      "selection_rank": 76,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 2.104569118132231,
+      "initial_coil_component": 68.85319318717201,
+      "initial_status": "ok",
+      "optimizer_seed": 20275926,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_05926.json",
+      "start_sha256": "add43f876512f6d82fe04de9bb9fce3211d14ced192c3690f2f5c89d97062018",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.3338706967024336e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.5987892150878906
+      }
+    },
+    {
+      "trajectory_id": "axisv2_case_02005",
+      "case_id": 2005,
+      "selection_rank": 77,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 5.032929710661534,
+      "initial_coil_component": 78.70918204390979,
+      "initial_status": "ok",
+      "optimizer_seed": 20272005,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_balanced_v2_adam200_20260901_11f703f/starts/case_02005.json",
+      "start_sha256": "e764126e755d0af6a054188aa42b16a98391f765fb0772205ba23866f7426a99",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4731783792854003e-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.304953098297119
+      }
+    }
+  ]
+}

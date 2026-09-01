@@ -711,7 +711,7 @@ def main() -> None:
             "expected": "not-applicable",
             "actual": args.data_start_mode,
         }
-    current_repository = repository_provenance(PROJECT_ROOT)
+    current_repository = repository_provenance(REPO_ROOT)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.out_dir / "trajectory"

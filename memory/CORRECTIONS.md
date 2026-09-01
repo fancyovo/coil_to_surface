@@ -298,6 +298,26 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: the six-GPU run may launch only after the loader
   test, exact-start preflight, and ABI-11 manifest checks pass.
 
+## CORR-20260901-51 - Optimizer provenance check used an undefined root name
+
+- Severity/status: medium / fixed before formal Adam200 sampling.
+- Discovered by: model through the mandatory three-step GPU smoke job `51640`.
+- Error: `scripts/optimize_flow_latent.py` defined the repository root as
+  `REPO_ROOT` but passed an undefined `PROJECT_ROOT` to
+  `repository_provenance()`. Static compilation succeeded because the name was
+  resolved only when `main()` reached the provenance check.
+- Affected scope: smoke job `51640` exited before evaluator construction or
+  any optimization update. Dependent arrays `51641` and `51642` never started
+  and were cancelled with analysis job `51643`. No score, trajectory, accepted
+  conclusion, or current default is affected. Prepared selection manifest from
+  job `51639` remains a valid record of its frozen failed-launch attempt.
+- Fix and verification: the call now uses `REPO_ROOT`. An AST regression test
+  rejects any loaded `PROJECT_ROOT` name in the optimizer entry point, in
+  addition to the existing compile and protocol tests. A new frozen commit and
+  a new smoke-gated job chain are required for the formal experiment.
+- Promotion/reporting blocker: resolved only after the replacement smoke job
+  reproduces the selected initial score and completes its three updates.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

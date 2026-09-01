@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 import numpy as np
 
 from flow_matching.data import CoilNormalizer
@@ -8,6 +11,23 @@ from scripts.prepare_axis_surface_prior_adam200 import (
     exact_standardized_parameters,
     select_valid_rows,
 )
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_optimizer_repository_root_reference_is_defined() -> None:
+    source = (REPO_ROOT / "scripts" / "optimize_flow_latent.py").read_text(
+        encoding="utf-8"
+    )
+    tree = ast.parse(source)
+    loaded_names = {
+        node.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    }
+    assert "REPO_ROOT" in loaded_names
+    assert "PROJECT_ROOT" not in loaded_names
 
 
 def _row(case_id: int, status: str, nc: int) -> dict[str, object]:

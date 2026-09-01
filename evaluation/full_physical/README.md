@@ -5,7 +5,7 @@
 
 ## 固定阶段
 
-1. `submit_source_psi_candidates.sh`：对样本相关的 `A_VALUES` 并行运行稳定磁轴与 FP32 GPU QR $\psi$ 拟合；根据拟合误差、廉价场线筛选所覆盖的物理半径和外侧失败点选择源 $\psi$，不得复用别的样本的 `a`。
+1. `submit_source_psi_candidates.sh`：对样本相关的 `A_VALUES` 运行稳定磁轴与 FP32 GPU QR $\psi$ 拟合；默认并行提交，资源受限时设置 `SERIAL_CANDIDATES=1` 形成单 GPU 依赖链。根据拟合误差、廉价场线筛选所覆盖的物理半径和外侧失败点选择源 $\psi$，不得复用别的样本的 `a`。
 2. `submit_surface_candidates.sh`：对给定的 `S_EDGES` 运行 psi -> alpha -> nu、保守 guard 诊断、标准 LS/Newton 和独立密网格验收。
    默认每个候选申请 4 CPU 和 1 GPU 并行运行；在四卡 P107 上同时评估四个候选。只有资源受限时才显式设置
    `SERIAL_CANDIDATES=1`。可用 `CANDIDATE_CPUS_PER_TASK` 调整单候选 CPU 数，默认值为 4。
@@ -49,6 +49,7 @@ export EVAL_ENV=$HOME/local_surface_evaluator/.venv-desc016-py312
 export CASE_FILE=$PROJECT/runs/<optimizer>/<job>/best.json
 export OUTPUT_ROOT=$PROJECT/runs/<evaluation_name>
 export A_VALUES=0.04,0.05,0.06,0.08
+# 单 GPU 串行评估时启用：export SERIAL_CANDIDATES=1
 bash evaluation/full_physical/submit_source_psi_candidates.sh
 ```
 

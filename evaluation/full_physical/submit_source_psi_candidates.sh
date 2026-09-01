@@ -9,7 +9,13 @@ set -euo pipefail
 project=${PROJECT:-$HOME/local_surface_evaluator}
 gpu_lib=${GPU_LIB:-$project/gpu_backend/build_mixed/libstellarator_gpu.so}
 eval_env=${EVAL_ENV:-$HOME/local_surface_evaluator/.venv-desc016-py312}
+serial_candidates=${SERIAL_CANDIDATES:-0}
 candidate_root=$OUTPUT_ROOT/source_psi_candidates
+
+[[ $serial_candidates == 0 || $serial_candidates == 1 ]] || {
+  printf 'SERIAL_CANDIDATES must be 0 or 1\n' >&2
+  exit 2
+}
 
 for path in "$project" "$gpu_lib" "$eval_env" "$CASE_FILE" "$OUTPUT_ROOT"; do
   resolved=$(realpath -m "$path")
@@ -27,6 +33,7 @@ python3 "$project/evaluation/full_physical/preflight.py"
 manifest=$OUTPUT_ROOT/source_psi_jobs.tsv
 printf 'a\tjob_id\toutput_dir\n' > "$manifest"
 IFS=',' read -r -a values <<< "$A_VALUES"
+previous_job=
 for value in "${values[@]}"; do
   value=${value//[[:space:]]/}
   [[ $value =~ ^[0-9]+([.][0-9]+)?$ ]] || {
@@ -37,10 +44,15 @@ for value in "${values[@]}"; do
   output_dir=$candidate_root/a_$slug
   test ! -e "$output_dir"
   exports="ALL,PROJECT=$project,GPU_LIB=$gpu_lib,EVAL_ENV=$eval_env,CASE_FILE=$CASE_FILE,A_VALUE=$value,OUTPUT_DIR=$output_dir"
-  (cd "$project" && sbatch --test-only --export="$exports" scripts/slurm_fit_source_psi.sh) >/dev/null
-  job_id=$(cd "$project" && sbatch --parsable --export="$exports" scripts/slurm_fit_source_psi.sh)
+  submit_args=(--parsable --export="$exports")
+  if [[ $serial_candidates == 1 && -n $previous_job ]]; then
+    submit_args+=(--dependency="afterany:$previous_job")
+  fi
+  (cd "$project" && sbatch --test-only "${submit_args[@]:1}" scripts/slurm_fit_source_psi.sh) >/dev/null
+  job_id=$(cd "$project" && sbatch "${submit_args[@]}" scripts/slurm_fit_source_psi.sh)
   job_id=${job_id%%;*}
   printf '%s\t%s\t%s\n' "$value" "$job_id" "$output_dir" | tee -a "$manifest"
+  previous_job=$job_id
 done
 
 job_ids=$(tail -n +2 "$manifest" | cut -f2 | paste -sd, -)

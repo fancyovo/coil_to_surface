@@ -1,0 +1,53 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-score-abi11-v3",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-01",
+  "purpose": "Measure QH native-score and coil-engineering distributions after reducing the winding-surface minor radius and widening noncircular geometric variation.",
+  "generator": {
+    "format": "axis_surface_contour_prior_compact_flexible_v3",
+    "implementation": "flow_matching/axis_surface_prior_v2.py",
+    "sampler": "scripts/sample_axis_surface_prior_v3.py",
+    "preset": "compact_flexible",
+    "quasr_dependency": false,
+    "winding_surface_minor_radius_center_m": 0.2,
+    "winding_surface_minor_radius_range_m": [0.18, 0.22],
+    "shape_amplitude_relative_range": [0.8, 1.2],
+    "construction": [
+      "balanced-v2-scale noncircular reference axis with a larger second harmonic",
+      "compact winding surface with stronger size, elongation, orientation, triangularity, and helical-ripple variation",
+      "monotone circle-valued scalar coordinate with an added third-poloidal/second-field-period contour term",
+      "stratified contour levels fitted to order-16 Cartesian Fourier curves"
+    ],
+    "reference_axis_role": "construction_reference_only",
+    "inner_surface_role": "geometric_reference_only; not evaluated in native scoring",
+    "current_scale": "2*pi*R0*B0/mu0 divided over 2*nfp*nc linked physical coils",
+    "R0_m": 1.0,
+    "B0_t": 1.0,
+    "curve_order": 16
+  },
+  "sample_design": {
+    "total_count": 3600,
+    "conditions": "26 compact-flexible (nfp,nc) conditions: nc=1 with nfp=4..8; nc=2..4 with nfp=2..8",
+    "explicit_exclusion": "nc=5",
+    "samples_per_condition": "138 or 139",
+    "seed": 20260903,
+    "shards": 6,
+    "samples_per_shard": 600,
+    "duration_basis": "Balanced-v2 measured 4.61--4.73 seconds per sample per GPU.",
+    "expected_wall_time": "46--48 minutes plus short analysis; every scoring shard has a hard one-hour Slurm limit."
+  },
+  "evaluation": {
+    "target": "QH",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "optimizer": null,
+    "full_physical_evaluation": false,
+    "primary_outputs": [
+      "total score and native status distributions",
+      "coil component distribution",
+      "coil length, curvature, intercoil distance, axis distance, high-mode energy, and current diagnostics",
+      "condition-stratified statistics and representative coil HTML views"
+    ]
+  },
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

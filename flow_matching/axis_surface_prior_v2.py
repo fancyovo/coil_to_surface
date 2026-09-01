@@ -66,6 +66,32 @@ _PRESETS = {
         "helical_ripple": 0.120,
         "contour_warp": 0.31,
     },
+    "compact_flexible": {
+        "axis_radial": 0.145,
+        "axis_vertical": 0.130,
+        "axis_second": 0.032,
+        "minor_radius": 0.200,
+        "size_variation": 0.18,
+        "elongation_variation": 0.38,
+        "cross_section_rotation": 0.56,
+        "triangularity": 0.12,
+        "helical_ripple": 0.11,
+        "contour_warp": 0.30,
+    },
+}
+
+_REGISTERED_FORMATS = {
+    "balanced_stellarator": "axis_surface_contour_prior_balanced_v2",
+    "compact_flexible": "axis_surface_contour_prior_compact_flexible_v3",
+}
+
+_SCORING_VARIATION = {
+    "balanced_stellarator": {"minor_radius": 0.15, "shape": 0.15},
+    "compact_flexible": {"minor_radius": 0.10, "shape": 0.20},
+}
+
+_CONTOUR_TERTIARY_FRACTION = {
+    "compact_flexible": 0.08,
 }
 
 
@@ -172,8 +198,10 @@ def sample_shaped_prior_prototype(
     parameters = dict(_PRESETS[preset])
     rng = np.random.default_rng(np.random.SeedSequence([int(seed), int(nfp), int(n_base_coils), 2]))
     if sample_role == "registered_scoring":
+        if preset not in _REGISTERED_FORMATS:
+            raise ValueError(f"preset {preset!r} is not registered for scoring")
+        variation = _SCORING_VARIATION[preset]
         for name in (
-            "minor_radius",
             "size_variation",
             "elongation_variation",
             "cross_section_rotation",
@@ -181,7 +209,10 @@ def sample_shaped_prior_prototype(
             "helical_ripple",
             "contour_warp",
         ):
-            parameters[name] *= rng.uniform(0.85, 1.15)
+            parameters[name] *= rng.uniform(1.0 - variation["shape"], 1.0 + variation["shape"])
+        parameters["minor_radius"] *= rng.uniform(
+            1.0 - variation["minor_radius"], 1.0 + variation["minor_radius"]
+        )
         for name in ("size_phase", "elongation_phase", "rotation_phase", "shape_phase"):
             parameters[name] = rng.uniform(0.0, 2.0 * math.pi)
     radial, vertical = _coherent_axis_coefficients(
@@ -231,6 +262,9 @@ def sample_shaped_prior_prototype(
         (1, 1, amplitude, phase),
         (2, 1, 0.30 * amplitude, -0.7 * phase),
     ]
+    tertiary_fraction = _CONTOUR_TERTIARY_FRACTION.get(preset, 0.0)
+    if tertiary_fraction:
+        terms.append((3, 2, tertiary_fraction * amplitude, 1.1 * phase))
     theta = 2.0 * math.pi * np.arange(curve_samples, dtype=float) / curve_samples
     blocks = []
     fit_rms = []
@@ -269,11 +303,12 @@ def sample_shaped_prior_prototype(
     cylindrical_radius = np.linalg.norm(axis[:, :2], axis=1)
     surface_axis = _periodic_interp(axis, surface_phi)
     surface_radius = np.linalg.norm(winding_surface - surface_axis[:, None, :], axis=2).mean(axis=1)
+    registered_format = _REGISTERED_FORMATS.get(preset)
     metadata: dict[str, Any] = {
         "format": (
             "axis_surface_contour_prior_visual_v2"
             if sample_role == "geometry_review"
-            else "axis_surface_contour_prior_balanced_v2"
+            else registered_format
         ),
         "status": (
             "geometry_only_awaiting_user_acceptance"
@@ -292,6 +327,7 @@ def sample_shaped_prior_prototype(
         "axis_vertical_coefficients": vertical.tolist(),
         "axis_R_peak_to_peak_m": float(np.ptp(cylindrical_radius)),
         "axis_Z_peak_to_peak_m": float(np.ptp(axis[:, 2])),
+        "winding_section_mean_radius_m": float(np.mean(surface_radius)),
         "winding_section_mean_radius_peak_to_peak_m": float(np.ptp(surface_radius)),
         "curve_fit_rms_max_m": float(max(fit_rms)),
         "curve_fit_abs_max_m": float(max(fit_max)),

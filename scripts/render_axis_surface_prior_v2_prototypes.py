@@ -109,7 +109,9 @@ def write_html(prototype: Any, output_path: Path, case_id: int) -> None:
     figure.write_html(output_path, include_plotlyjs=True, full_html=True)
 
 
-def render_contact_sheet(prototypes: list[Any], output_path: Path) -> None:
+def render_contact_sheet(
+    prototypes: list[Any], output_path: Path, *, title: str = "Shaped analytic-prior v2 prototypes"
+) -> None:
     figure = plt.figure(figsize=(15.5, 5.4))
     for panel, prototype in enumerate(prototypes, start=1):
         axis = figure.add_subplot(1, len(prototypes), panel, projection="3d")
@@ -139,7 +141,7 @@ def render_contact_sheet(prototypes: list[Any], output_path: Path) -> None:
         axis.set_axis_off()
         axis.view_init(27, -54)
     figure.suptitle(
-        "Shaped analytic-prior v2 prototypes: black axis, colored coils, gray winding surface, teal geometric inner reference surface",
+        f"{title}: black axis, colored coils, gray winding surface, teal geometric inner reference surface",
         fontsize=13,
         y=0.98,
     )

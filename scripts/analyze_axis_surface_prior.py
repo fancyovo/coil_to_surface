@@ -243,11 +243,16 @@ def _write_plotly_coil_html(row: dict[str, Any], output_path: Path, label: str, 
                 showlegend=False,
             )
         )
+    metrics = (
+        f"score={score(row):.3f}, coil={component(row, 'coil'):.3f}"
+        if row.get("native")
+        else "geometry preview; not scored"
+    )
     figure = go.Figure(traces)
     figure.update_layout(
         title=(
             f"{label}: case {row['case_id']} | {row['family']} | nfp={row['nfp']}, nc={row['n_base_coils']} | "
-            f"score={score(row):.3f}, coil={component(row, 'coil'):.3f}"
+            f"{metrics}"
         ),
         template="plotly_white",
         margin={"l": 0, "r": 0, "t": 55, "b": 0},
@@ -267,9 +272,14 @@ def _write_three_coil_html(row: dict[str, Any], output_path: Path, label: str) -
         {"points": curve.astype(np.float32).reshape(-1).tolist(), "base": base_index}
         for curve, base_index in physical_curves(row)
     ]
+    metrics = (
+        f"score={score(row):.3f}, coil={component(row, 'coil'):.3f}"
+        if row.get("native")
+        else "geometry preview; not scored"
+    )
     title = (
         f"{label}: case {row['case_id']} | {row['family']} | nfp={row['nfp']}, nc={row['n_base_coils']} | "
-        f"score={score(row):.3f}, coil={component(row, 'coil'):.3f}"
+        f"{metrics}"
     )
     data = json.dumps({"curves": curves, "title": title}, separators=(",", ":"), allow_nan=False)
     template = """<!doctype html>

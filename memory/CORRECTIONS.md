@@ -538,6 +538,29 @@ An open critical correction blocks promotion and external reporting.
   reported promptly; remote multi-line commands use LF-only scripts.
 - Promotion/reporting blocker: resolved. No further scope is added in this turn.
 
+## CORR-20260901-62 - Adam continuation received result files instead of prepared data starts
+
+- Severity/status: medium / resolved before the replacement submission.
+- Discovered by: model from both worker logs for job array `52174`.
+- Error: the first continuation submission passed each optimizer `best.json`
+  directly as `--initial-case`. These files retain the best standardized data
+  parameters under `original_space_local_gradient_adam`, while the optimizer's
+  exact-data loader requires a `data_prior_screening` wrapper containing those
+  parameters and the fixed current-L1 scale.
+- Affected scope: both workers exited during initialization after about 13
+  seconds with `initial case does not contain optimizer parameters`. No Adam
+  update or score evaluation ran, and the source Adam200 and full-physical
+  results remain unchanged. Failed output root
+  `axis_surface_prior_top2_continue_adam200_20260901_0ca61e3` is operational
+  failure evidence only.
+- Containment: `scripts/prepare_axis_surface_prior_continuation.py` now builds
+  continuation starts from the saved best parameters plus the original fixed
+  current-L1 metadata, validates shapes and native-score status, hashes every
+  source and prepared start, and writes a fresh selection manifest. A unit test
+  covers the required wrapper and rejects invalid result inputs.
+- Promotion/reporting blocker: resolved for replacement submission; numerical
+  continuation conclusions remain pending until the replacement jobs finish.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

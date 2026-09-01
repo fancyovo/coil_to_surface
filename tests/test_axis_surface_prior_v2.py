@@ -23,7 +23,8 @@ def test_v2_prototype_has_visible_axis_and_surface_variation(preset: str) -> Non
     assert prototype.metadata["axis_R_peak_to_peak_m"] > 0.22
     assert prototype.metadata["axis_Z_peak_to_peak_m"] > 0.20
     assert prototype.metadata["winding_section_mean_radius_peak_to_peak_m"] > 0.04
-    assert prototype.metadata["scalar_monotonicity_lower_bound"] > 0.5
+    monotonicity_floor = 0.3 if preset == "compact_flexible" else 0.5
+    assert prototype.metadata["scalar_monotonicity_lower_bound"] > monotonicity_floor
     assert prototype.metadata["curve_fit_abs_max_m"] < 2.0e-3
 
     curves = evaluate_fourier(prototype.tokens, samples=128)
@@ -50,3 +51,32 @@ def test_balanced_v2_scoring_mode_covers_registered_conditions(nfp: int, n_base_
     assert sample.metadata["sample_role"] == "registered_scoring"
     assert sample.metadata["scalar_monotonicity_lower_bound"] > 0.5
     assert abs(sample.metadata["reference_linking_number"]) > 0.75
+
+
+def test_compact_flexible_v3_has_compact_radius_and_wider_shape_range() -> None:
+    compact = sample_shaped_prior_prototype(
+        seed=20260924,
+        nfp=5,
+        n_base_coils=4,
+        preset="compact_flexible",
+        surface_phi_samples=64,
+        surface_theta_samples=32,
+        sample_role="registered_scoring",
+    )
+    balanced = sample_shaped_prior_prototype(
+        seed=20260924,
+        nfp=5,
+        n_base_coils=4,
+        preset="balanced_stellarator",
+        surface_phi_samples=64,
+        surface_theta_samples=32,
+        sample_role="registered_scoring",
+    )
+    assert compact.metadata["format"] == "axis_surface_contour_prior_compact_flexible_v3"
+    assert 0.18 <= compact.metadata["parameters"]["minor_radius"] <= 0.22
+    assert 0.17 <= compact.metadata["winding_section_mean_radius_m"] <= 0.23
+    assert compact.metadata["parameters"]["elongation_variation"] > balanced.metadata["parameters"]["elongation_variation"]
+    assert compact.metadata["parameters"]["cross_section_rotation"] > balanced.metadata["parameters"]["cross_section_rotation"]
+    assert compact.metadata["parameters"]["helical_ripple"] > balanced.metadata["parameters"]["helical_ripple"]
+    assert compact.metadata["scalar_monotonicity_lower_bound"] > 0.25
+    assert abs(compact.metadata["reference_linking_number"]) > 0.75

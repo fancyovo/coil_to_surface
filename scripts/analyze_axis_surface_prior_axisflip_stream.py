@@ -170,7 +170,7 @@ def main() -> None:
         else None
     )
     summary = {
-        "format": "axis_surface_prior_axisflip_stream_summary_v1",
+        "format": "axis_surface_prior_axisflip_stream_summary_v2",
         "protocol_id": PROTOCOL_ID,
         "screening": screen_group(screening),
         "by_n_base_coils_screening": {

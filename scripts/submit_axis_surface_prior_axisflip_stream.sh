@@ -9,7 +9,7 @@ set -euo pipefail
 : "${EXPECTED_LIB_SHA:?EXPECTED_LIB_SHA is required}"
 : "${EXPECTED_CHECKPOINT_SHA:?EXPECTED_CHECKPOINT_SHA is required}"
 
-protocol_id="qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1"
+protocol_id="qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2"
 prior_seed=20260905
 discovery_wall_s=14400
 hard_wall_s=17700
@@ -35,7 +35,7 @@ sbatch --test-only "${students[@]}" scripts/slurm_axis_surface_prior_axisflip_st
 sbatch --test-only --export=ALL scripts/slurm_analyze_axis_surface_prior_axisflip_stream.sh
 
 mkdir -p "$RUN_ROOT"
-cp evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v1.json "$RUN_ROOT/protocol.json"
+cp evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v2.json "$RUN_ROOT/protocol.json"
 smoke_job=$(sbatch --parsable "${smoke[@]}" scripts/slurm_smoke_axis_surface_prior_axisflip_stream.sh)
 p107_job=$(sbatch --parsable --dependency="afterok:$smoke_job" "${p107[@]}" scripts/slurm_axis_surface_prior_axisflip_stream_worker.sh)
 student_job=$(sbatch --parsable --dependency="afterok:$smoke_job" "${students[@]}" scripts/slurm_axis_surface_prior_axisflip_stream_worker.sh)
@@ -60,7 +60,9 @@ cat > "$RUN_ROOT/runtime_manifest.json" <<EOF
   "screening": {
     "target_helicity": [1, "+nfp"],
     "criterion_for_adam200": "native ABI-11 status == ok",
-    "execution": "one candidate at a time per worker; every valid candidate immediately enters Adam200"
+    "execution": "one candidate at a time per worker; every valid candidate immediately enters Adam200",
+    "axis_continuation": "screening axis_R/axis_Z are retained and required as strict optimizer step-0 hints",
+    "pre_update_consistency_gate": "abs(strict-hint optimizer step-0 score - screening score) <= 0.1"
   },
   "worker_count": 6,
   "parallelization": "four P107 workers plus two Students workers; no cross-worker dependency",

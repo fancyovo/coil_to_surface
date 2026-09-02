@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from scripts.run_axis_surface_prior_axisflip_stream import (
+    PROTOCOL_ID,
     TARGET_HELICITY_SIGN,
     case_id_for_worker,
     classify_iota_interval,
     discovery_is_open,
     optimizer_command,
 )
+from scripts.optimize_flow_latent import validate_recorded_initial_score
+from scripts.sample_axis_surface_prior import compact_result
 
 
 def test_case_streams_are_disjoint_and_cover_the_interleaved_population() -> None:
@@ -64,3 +68,63 @@ def test_optimizer_command_pins_positive_hand_abi11_recipe() -> None:
     assert values["--learning-rate"] == "0.01"
     assert values["--parameter-space"] == "data"
     assert values["--data-start-mode"] == "exact-unclipped"
+    assert values["--recorded-initial-score-tolerance"] == "0.1"
+
+
+def test_compact_result_retains_magnetic_axis_for_optimizer_continuation() -> None:
+    compact = compact_result(
+        {
+            "score": 72.5,
+            "status": "ok",
+            "components": {},
+            "diagnostics": {"axis_R": 1.25, "axis_Z": -0.125},
+        }
+    )
+    assert compact["diagnostics"]["axis_R"] == 1.25
+    assert compact["diagnostics"]["axis_Z"] == -0.125
+
+
+def test_recorded_initial_score_gate_requires_axis_and_checks_before_updates() -> None:
+    recorded = {
+        "score": 72.5,
+        "diagnostics": {"axis_R": 1.25, "axis_Z": -0.125},
+    }
+    current = {
+        "score": 72.55,
+        "diagnostics": {
+            "axis_R": 1.2501,
+            "axis_Z": -0.1249,
+            "axis_hint_distance": 1.4e-4,
+        },
+    }
+    gate = validate_recorded_initial_score(recorded, current, tolerance=0.1)
+    assert gate["absolute_delta"] == pytest.approx(0.05)
+    with pytest.raises(RuntimeError, match="differs from screening"):
+        validate_recorded_initial_score(
+            recorded, {**current, "score": 72.7}, tolerance=0.1
+        )
+    with pytest.raises(RuntimeError, match="axis_R/axis_Z"):
+        validate_recorded_initial_score(
+            {"score": 72.5, "diagnostics": {}},
+            current,
+            tolerance=0.1,
+        )
+
+
+def test_v1_is_invalidated_and_v2_is_the_registered_replacement() -> None:
+    v1 = json.loads(
+        Path(
+            "evaluation/axis_surface_contour_prior_compact_flexible_"
+            "axisflip_stream_adam200_abi11_v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    v2 = json.loads(
+        Path(
+            "evaluation/axis_surface_contour_prior_compact_flexible_"
+            "axisflip_stream_adam200_abi11_v2.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert v1["status"] == "invalidated"
+    assert v1["replacement_protocol_id"] == PROTOCOL_ID
+    assert v2["protocol_id"] == PROTOCOL_ID
+    assert v2["screening"]["pre_update_consistency_tolerance"] == 0.1

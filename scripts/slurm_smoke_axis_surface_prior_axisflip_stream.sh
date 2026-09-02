@@ -49,10 +49,20 @@ python "$PROJECT/scripts/run_axis_surface_prior_axisflip_stream.py" \
   --max-valid-cases 1
 python - "$smoke_root/workers/worker_00/done.json" <<'PY'
 import json
+from pathlib import Path
 import sys
 result = json.load(open(sys.argv[1], encoding="utf-8"))
 if result["valid_count"] != 1 or result["completed_adam_count"] != 1:
     raise SystemExit("axis-flip smoke did not complete exactly one valid trajectory")
 if result["failed_valid_count"] != 0:
     raise SystemExit("axis-flip smoke recorded a valid-trajectory failure")
+trajectory = next(
+    (Path(sys.argv[1]).parents[2] / "trajectories").glob(
+        "*/trajectory_manifest.json"
+    )
+)
+manifest = json.load(open(trajectory, encoding="utf-8"))
+gate = manifest.get("initial_consistency_gate")
+if not isinstance(gate, dict) or gate.get("absolute_delta", 1.0) > 0.1:
+    raise SystemExit("axis-flip smoke did not pass the pre-update consistency gate")
 PY

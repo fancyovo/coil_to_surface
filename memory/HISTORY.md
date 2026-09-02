@@ -49,6 +49,11 @@ reports and immutable archives retain the detailed record.
   fixed-sign construction-axis harmonic as the leading bias and withdrew the
   unisolated scalar-field-only attribution. Canonical evidence is in
   `../reports/axis_surface_prior_handedness_audit_and_negative_optimization_20260902.md`.
+- 2026-09-02: construction-axis-flip stream v1 was invalidated after its compact
+  screening records omitted `axis_R/axis_Z`, allowing optimizer step 0 to select
+  a different magnetic-axis branch. Remaining workers were canceled and all
+  Adam outcomes quarantined. V2 moves the consistency gate before Adam and
+  requires strict continuation from the screened axis; see `CORR-20260902-71`.
 
 ## Evidence Routes
 

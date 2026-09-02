@@ -228,12 +228,12 @@
   bias is the fixed-sign construction-axis harmonic; surface and contour signs
   remain unisolated. Negative-target Adam200 reached `80.8523` and `84.9308`.
   Frozen positive-target scores and non-QS physical results remain valid.
-- Active axis-flip stream Adam200 v1 runs at frozen commit `599dd31`: smoke
-  `52677` passed, six workers are arrays `52678/52679`, and analysis is `52680`.
-  Only construction reference-axis `Z(phi)` is reflected; positive-hand ABI-11
-  scoring sends every valid start into 64-direction Adam200. The first six
-  formal valid starts all had positive iota. Discovery stops softly at four hours
-  and finishes the active trajectory; details are in `memory/PROTOCOLS.md`. This is not a default promotion.
+- Axis-flip stream Adam200 v1 at frozen commit `599dd31` is invalidated: compact
+  records omitted `axis_R/axis_Z`, so optimizer step 0 could choose another
+  magnetic-axis branch. Arrays `52678/52679` were stopped and their Adam results
+  quarantined. All 24 screened valid starts had positive iota, retained only as
+  preliminary screening evidence. V2 preserves the screened axis and moves the
+  consistency gate before Adam; see `CORR-20260902-71`. This is not a default promotion.
 
 ## Memory Map
 

@@ -36,17 +36,17 @@ from scripts.sample_axis_surface_prior import compact_result
 
 PROTOCOL_ID = (
     "qh-axis-surface-contour-compact-flexible-axisflip-stream-"
-    "adam200-64d-abi11-v1"
+    "adam200-64d-abi11-v2"
 )
 GENERATOR_FORMAT = "axis_surface_contour_prior_compact_flexible_axis_flip_v4"
 PRESET = "compact_flexible"
 TARGET_HELICITY_SIGN = 1
 ARTIFACT_FORMATS = {
-    "screening": "axis_surface_prior_axisflip_stream_screening_v1",
-    "start": "axis_surface_prior_axisflip_stream_exact_data_start_v1",
-    "trajectory": "axis_surface_prior_axisflip_stream_adam200_trajectory_v1",
-    "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v1",
-    "worker": "axis_surface_prior_axisflip_stream_worker_v1",
+    "screening": "axis_surface_prior_axisflip_stream_screening_v2",
+    "start": "axis_surface_prior_axisflip_stream_exact_data_start_v2",
+    "trajectory": "axis_surface_prior_axisflip_stream_adam200_trajectory_v2",
+    "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v2",
+    "worker": "axis_surface_prior_axisflip_stream_worker_v2",
 }
 
 
@@ -152,6 +152,8 @@ def optimizer_command(
         "data",
         "--data-start-mode",
         "exact-unclipped",
+        "--recorded-initial-score-tolerance",
+        "0.1",
         "--perturbation",
         "0.0025",
         "--gradient-mode",
@@ -522,6 +524,9 @@ def main() -> None:
                 },
                 "optimization": summary,
                 "optimizer_protocol": optimizer_manifest["protocol"],
+                "initial_consistency_gate": optimizer_manifest[
+                    "initial_consistency_gate"
+                ],
                 "data_parameterization": optimizer_roundtrip,
                 "timing": {
                     "optimization_process_wall_s": optimization_process_wall_s,

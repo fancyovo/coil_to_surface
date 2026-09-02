@@ -19,6 +19,8 @@ for path in (REPO_ROOT, REPO_ROOT / "gpu_backend" / "python"):
 
 
 DIAGNOSTIC_NAMES = (
+    "axis_R",
+    "axis_Z",
     "axis_residual",
     "axis_topology_trace",
     "axis_topology_det",

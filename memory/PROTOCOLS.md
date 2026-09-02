@@ -269,7 +269,7 @@ This audit does not change the current QH default.
 
 Protocol
 `qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1`
-is the registered construction-axis-only handedness experiment. For each seed,
+is the invalidated first construction-axis-only handedness experiment. For each seed,
 it preserves the compact-flexible-v3 sampled radial axis coefficients, surface
 parameters, contour-scalar parameters, current construction, and RNG sequence,
 while multiplying every construction reference-axis vertical Fourier
@@ -285,10 +285,23 @@ sampling budget. Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v1.json`.
 This experiment does not change the current QH default.
 Formal smoke job `52677` passed one positive-iota valid start and three Adam
-updates. P107 array `52678` and Students array `52679` then launched all six
-workers at commit `599dd31`; final analysis job `52680` waits on both arrays.
+updates. P107 array `52678` and Students array `52679` launched all six workers
+at commit `599dd31`, but the runner failed to retain screening `axis_R/axis_Z`.
+Optimizer step 0 could select a different global-search branch, and the score
+consistency check ran only after 200 updates. The remaining workers were
+canceled after the systemic failure was confirmed. All v1 Adam200 outcomes are
+quarantined; initial screening handedness remains preliminary evidence.
 The remote run root is
 `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_20260902_599dd31`.
+
+Replacement protocol
+`qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2`
+keeps the v1 generator, seed streams, positive target, six-worker resources,
+and optimizer recipe. It adds finite screened `axis_R/axis_Z` to every start,
+requires strict mixed-precision continuation from that branch at optimizer step
+0, and checks an absolute screening/step-0 score difference of at most `0.1`
+before any Adam update. Frozen specification:
+`evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v2.json`.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

@@ -1,12 +1,9 @@
 {
-  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1",
-  "status": "invalidated",
-  "invalidated_date": "2026-09-02",
-  "invalidated_reason": "Screening compaction omitted axis_R/axis_Z, so optimizer step 0 repeated a global axis search and could select a different magnetic-axis branch. The consistency gate ran only after all 200 updates.",
-  "replacement_protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2",
-  "retained_evidence": "Initial screening rows remain usable for preliminary handedness evidence. Adam200 aggregate outcomes are quarantined and cannot support formal threshold statistics.",
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2",
+  "status": "registered-experimental",
   "registered_date": "2026-09-02",
-  "purpose": "Test whether flipping only the construction reference-axis chirality changes positive-hand QH validity and Adam200 reachability.",
+  "purpose": "Test whether flipping only the construction reference-axis chirality changes positive-hand QH validity and Adam200 reachability while preserving the screened magnetic-axis branch.",
+  "supersedes": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1",
   "generator": {
     "baseline": "axis_surface_contour_prior_compact_flexible_v3",
     "preset": "compact_flexible",
@@ -23,7 +20,9 @@
     "target_helicity": "(M,N)=(1,+nfp)",
     "evaluator": "native ABI-11",
     "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
-    "adam200_gate": "native status == ok",
+    "adam200_gate": "native status == ok, finite screened axis_R/axis_Z, and strict-hint optimizer step-0 score within 0.1 of screening",
+    "axis_continuation": "retain screened axis_R/axis_Z and require strict mixed-precision continuation before the first Adam update",
+    "pre_update_consistency_tolerance": 0.1,
     "sampling": "independent deterministic streams, one per GPU; no fixed population size"
   },
   "optimizer": {
@@ -49,7 +48,7 @@
     "expected_tail": "usually 10-30 minutes from compact-flexible-v3 Adam200 measurements"
   },
   "monitoring": {
-    "per_worker": "screening status, valid abundance, initial and best iota signs, active trajectory, maximum best score, and count at score>=70",
+    "per_worker": "screening status, strict-hint step-0 consistency, valid abundance, initial and best iota signs, active trajectory, maximum best score, and count at score>=70",
     "final": "aggregate screening abundance, Adam200 outcomes, handedness, thresholds, runtime, and valid-case accounting"
   },
   "full_physical_evaluation": false,

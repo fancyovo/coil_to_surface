@@ -235,6 +235,52 @@ def recorded_axis_hint(result: dict[str, Any] | None) -> tuple[float, float] | N
     return value if all(math.isfinite(item) for item in value) else None
 
 
+def require_recorded_axis_hint(result: dict[str, Any] | None) -> tuple[float, float]:
+    value = recorded_axis_hint(result)
+    if value is None:
+        raise RuntimeError(
+            "recorded initial-score validation requires a finite axis_R/axis_Z hint"
+        )
+    return value
+
+
+def validate_recorded_initial_score(
+    recorded: dict[str, Any] | None,
+    current: dict[str, Any],
+    *,
+    tolerance: float,
+) -> dict[str, float | list[float]]:
+    hint = require_recorded_axis_hint(recorded)
+    current_axis = require_recorded_axis_hint(current)
+    recorded_score = float((recorded or {}).get("score", float("nan")))
+    current_score = float(current.get("score", float("nan")))
+    axis_hint_distance = float(
+        (current.get("diagnostics") or {}).get("axis_hint_distance", float("nan"))
+    )
+    if not math.isfinite(recorded_score) or not math.isfinite(current_score):
+        raise RuntimeError("recorded initial-score validation requires finite scores")
+    if not math.isfinite(axis_hint_distance):
+        raise RuntimeError(
+            "recorded initial-score validation requires a finite axis_hint_distance"
+        )
+    delta = abs(current_score - recorded_score)
+    if delta > tolerance:
+        raise RuntimeError(
+            "optimizer initial score differs from screening by more than "
+            f"{tolerance:g}: screening={recorded_score:.12g}, "
+            f"optimizer={current_score:.12g}, abs_delta={delta:.12g}"
+        )
+    return {
+        "recorded_score": recorded_score,
+        "optimizer_score": current_score,
+        "absolute_delta": delta,
+        "tolerance": float(tolerance),
+        "recorded_axis_hint": [hint[0], hint[1]],
+        "optimizer_axis": [current_axis[0], current_axis[1]],
+        "axis_hint_distance": axis_hint_distance,
+    }
+
+
 def recorded_native_result(payload: dict[str, Any]) -> dict[str, Any] | None:
     for key in (
         "original_space_local_gradient_adam",
@@ -620,6 +666,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--recorded-initial-score-tolerance",
+        type=float,
+        default=None,
+        help=(
+            "Require a finite recorded magnetic-axis hint and compare the strict-hint "
+            "optimizer step-0 score with the recorded screening score before updates."
+        ),
+    )
+    parser.add_argument(
         "--perturbation", type=float, default=QH_OPTIMIZATION_DEFAULTS.perturbation
     )
     parser.add_argument(
@@ -702,6 +757,15 @@ def main() -> None:
         raise ValueError("state-every and progress-every must be positive")
     if args.plot_every < 0 or args.trajectory_every < 0:
         raise ValueError("plot-every and trajectory-every must be nonnegative")
+    if (
+        args.recorded_initial_score_tolerance is not None
+        and args.recorded_initial_score_tolerance < 0.0
+    ):
+        raise ValueError("recorded-initial-score-tolerance must be nonnegative")
+    if args.resume and args.recorded_initial_score_tolerance is not None:
+        raise ValueError(
+            "recorded initial-score validation is only valid before a new run"
+        )
     dimension = args.n_base_coils * TOKEN_DIM
     if not 1 <= args.random_directions <= dimension:
         raise ValueError("random-directions must be in [1, latent dimension]")
@@ -941,7 +1005,12 @@ def main() -> None:
                 "min_improvement": args.bfgs_min_improvement,
             },
             "seed": args.seed,
-            "axis_policy": "initial global search, then strict mixed-precision continuation",
+            "axis_policy": (
+                "recorded strict mixed-precision continuation from step 0"
+                if args.recorded_initial_score_tolerance is not None
+                else "initial global search or recorded hint, then strict continuation"
+            ),
+            "recorded_initial_score_tolerance": args.recorded_initial_score_tolerance,
             "devices": {"flow": args.flow_device, "score": args.score_device},
             "initial_metadata_keys": sorted(initial_payload.keys()),
         }
@@ -1048,6 +1117,8 @@ def main() -> None:
         }
         write_json(paths["manifest.json"], manifest)
     initial_previous_result = recorded_native_result(initial_payload)
+    if args.recorded_initial_score_tolerance is not None:
+        require_recorded_axis_hint(initial_previous_result)
     current_result, initial_score_wall_s = score_center(
         args.lib,
         current_tokens,
@@ -1060,6 +1131,13 @@ def main() -> None:
     )
     if not result_valid(current_result):
         raise RuntimeError(f"initial center is invalid: {current_result.get('status')}")
+    if args.recorded_initial_score_tolerance is not None:
+        manifest["initial_consistency_gate"] = validate_recorded_initial_score(
+            initial_previous_result,
+            current_result,
+            tolerance=args.recorded_initial_score_tolerance,
+        )
+        write_json(paths["manifest.json"], manifest)
     if not args.resume:
         initial_score = result_score(current_result)
         best_score = initial_score

@@ -137,7 +137,11 @@ then regenerate the downstream surface and coils without changing the sampled
 surface/scalar parameters or positive-hand scoring target. The experiment uses
 six concurrent streams, sends every initial ABI-11 `status=ok` candidate into
 Adam200, and stops new discovery after four hours while completing the active
-trajectory. This is an experiment, not a chirality-default promotion.
+trajectory. Its v1 execution is invalidated because screening artifacts omitted
+the selected magnetic axis and optimizer step 0 could repeat global search on a
+different branch. V2 preserves the screened axis, validates its strict-hint
+step-0 score before any update, and repeats the same scientific intervention.
+This is an experiment, not a chirality-default promotion.
 
 Before promotion, independently test winding-surface and contour-scalar
 chirality as remaining factors and retain exact final-coil reflection as the

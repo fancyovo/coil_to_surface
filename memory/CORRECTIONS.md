@@ -844,6 +844,47 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved for submission after all listed guards
   pass; any failed guard reopens the blocker.
 
+## CORR-20260902-71 - Axis-flip v1 lost the screened magnetic-axis branch
+
+- Severity/status: critical / v1 invalidated; v2 code repair pending replacement
+  smoke and formal rerun.
+- Discovered by: Codex from the v1 worker failures after the user requested a
+  status check.
+- Error: `scripts/sample_axis_surface_prior.py::compact_result` omitted
+  `axis_R` and `axis_Z`. The v1 start artifact therefore carried the screening
+  score without its selected magnetic axis. Optimizer step 0 performed another
+  global axis search and could select a different numerical branch; the runner
+  checked the resulting score discrepancy only after all 200 updates.
+- Primary evidence: final analysis job `52680` counted 48 screened cases, 24
+  valid starts, 4 accepted trajectories, 17 quarantined failures, and 3
+  cancellation-incomplete trajectories from formal arrays `52678/52679`.
+  Failures reported `optimizer initial score differs from screening by more
+  than 0.1`. In `axisflip_case_0000025`, screening was `70.5378047418`, optimizer
+  step 0 was `68.7177696520`, and the wasted completed trajectory reached
+  `79.9433`. The frozen run root is
+  `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_20260902_599dd31`.
+- Corrected fact and scope: the v1 Adam200 population is selection-biased and
+  cannot support abundance, threshold, or optimizer-effect conclusions. Its
+  high scores are exploratory quarantined observations. The screening records
+  themselves remain valid; the observed positive iota for all 24 valid starts
+  in the final summary remains preliminary evidence that the isolated
+  construction-axis reflection removed the earlier negative-hand bias.
+- Containment: remaining v1 workers were canceled; all outputs were preserved.
+  Protocol v2 retains finite screened `axis_R/axis_Z`, requires strict mixed-
+  precision continuation from that axis at optimizer step 0, and enforces
+  `abs(step0_score - screening_score) <= 0.1` before the first Adam update. The
+  original post-run check remains as a redundant guard.
+- Regression: unit tests require compact axis retention, the optimizer CLI
+  gate, missing-axis rejection, and score-delta rejection. Remote acceptance
+  requires a new smoke whose trajectory manifest contains the passed pre-update
+  gate, followed by a new six-worker run root and job IDs.
+- Separate contained operational errors: two read-only remote accounting
+  commands suffered CRLF/inline-loop parsing and nested-quote loss across
+  PowerShell, WSL, and SSH. Both exited without changing state. Explicit
+  unformatted commands then confirmed the summary and an empty user queue;
+  subsequent queries avoid here-string compound loops and quoted format strings.
+- Promotion/reporting blocker: open until v2 smoke and formal workers pass.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

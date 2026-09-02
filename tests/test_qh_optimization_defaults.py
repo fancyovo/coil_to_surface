@@ -83,6 +83,7 @@ def test_command_line_defaults_use_the_validated_protocol() -> None:
     assert optimization.random_directions == QH_OPTIMIZATION_DEFAULTS.directions
     assert optimization.gradient_mode == "random-orthogonal"
     assert optimization.optimizer == "adam"
+    assert optimization.target_helicity_sign == 1
     assert optimization.perturbation == QH_OPTIMIZATION_DEFAULTS.perturbation
     assert optimization.learning_rate == QH_OPTIMIZATION_DEFAULTS.learning_rate
     assert optimization.beta1 == QH_OPTIMIZATION_DEFAULTS.beta1

@@ -242,6 +242,19 @@ Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_adam200_abi11_v1.json`.
 Neither compact-flexible experiment changes the current QH default.
 
+Protocol
+`qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1`
+is the registered signed-objective continuation audit. It starts from the
+saved positive-target Adam200 best states of `axisv3_case_01341` and
+`axisv3_case_02832`, immediately rescores each state with native ABI-11 target
+`(M,N)=(1,-nfp)`, and then runs 200 direct-data Adam updates with 64 fresh
+orthogonal centered directions, `h=0.0025`, learning rate `0.01`, and beta
+`(0.7,0.999)`. The two samples run on separate P107 GPUs. Positive- and
+negative-target scores are distinct objectives and must retain their signed
+labels. Frozen specification:
+`evaluation/axis_surface_prior_compact_flexible_negative_hand_continuation_abi11_v1.json`.
+This audit does not change the current QH default.
+
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256
 `23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.

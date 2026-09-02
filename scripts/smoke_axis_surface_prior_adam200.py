@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 from flow_matching.data import file_sha256
 from scripts.native_score_runtime import write_json
+from scripts.run_axis_surface_prior_adam200 import target_helicity_for_case
 
 
 def main() -> None:
@@ -21,6 +22,7 @@ def main() -> None:
     args = parser.parse_args()
     manifest = json.loads((args.run_root / "selection_manifest.json").read_text(encoding="utf-8"))
     case = min(manifest["cases"], key=lambda value: int(value["selection_rank"]))
+    target_helicity = target_helicity_for_case(manifest, nfp=int(case["nfp"]))
     smoke_dir = args.run_root / "smoke"
     smoke_dir.mkdir(exist_ok=False)
     start_path = Path(case["start"])
@@ -42,6 +44,8 @@ def main() -> None:
         str(case["nfp"]),
         "--n-base-coils",
         str(case["n_base_coils"]),
+        "--target-helicity-sign",
+        str(1 if target_helicity[1] > 0 else -1),
         "--iterations",
         "3",
         "--max-wall-s",
@@ -95,14 +99,21 @@ def main() -> None:
     optimizer_manifest = json.loads(
         (smoke_dir / "optimization" / "manifest.json").read_text(encoding="utf-8")
     )
-    score_difference = float(summary["initial_score"]) - float(case["initial_score"])
+    prepared_target_score = case.get("target_score_at_prepare", case.get("initial_score"))
+    score_difference = (
+        float(summary["initial_score"]) - float(prepared_target_score)
+        if prepared_target_score is not None
+        else None
+    )
     roundtrip = float(
         optimizer_manifest["data_parameterization"]["initial_roundtrip_relative_rms"]
     )
     if summary.get("stop_reason") != "completed_iterations":
         raise RuntimeError("smoke did not complete three iterations")
-    if abs(score_difference) > 0.1:
+    if score_difference is not None and abs(score_difference) > 0.1:
         raise RuntimeError(f"smoke step-0 score difference {score_difference} exceeds 0.1")
+    if optimizer_manifest.get("target_helicity") != list(target_helicity):
+        raise RuntimeError("smoke optimizer used the wrong target helicity")
     if roundtrip > 2.0e-6:
         raise RuntimeError("smoke exact-start roundtrip exceeds tolerance")
     result = {
@@ -110,7 +121,9 @@ def main() -> None:
         "case_id": case["case_id"],
         "nfp": case["nfp"],
         "n_base_coils": case["n_base_coils"],
-        "source_initial_score": case["initial_score"],
+        "target_helicity": list(target_helicity),
+        "source_positive_hand_score": case.get("source_score", case.get("initial_score")),
+        "prepared_target_score": prepared_target_score,
         "optimizer_initial_score": summary["initial_score"],
         "initial_score_difference": score_difference,
         "initial_roundtrip_relative_rms": roundtrip,

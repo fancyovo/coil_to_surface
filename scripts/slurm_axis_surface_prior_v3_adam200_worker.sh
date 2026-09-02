@@ -54,7 +54,7 @@ python "$PROJECT/scripts/run_axis_surface_prior_adam200.py" \
   --run-root "$RUN_ROOT" \
   --worker-index "$worker_index" \
   --device 0 \
-  --max-wall-s 24600 \
-  --minimum-case-reserve-s 4200 \
+  --max-wall-s "${WORKER_MAX_WALL_S:-24600}" \
+  --minimum-case-reserve-s "${MINIMUM_CASE_RESERVE_S:-4200}" \
   --iterations 200 \
   --allow-partial

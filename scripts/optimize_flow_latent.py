@@ -261,6 +261,7 @@ def score_center(
     iota_degree: int,
     surface_theta_count: int,
     previous_result: dict[str, Any] | None,
+    target_helicity: tuple[int, int] | None = None,
 ) -> tuple[dict[str, Any], float]:
     x, y, z, current = score_arguments(tokens)
     started = time.perf_counter()
@@ -272,7 +273,7 @@ def score_center(
         current,
         nfp,
         device_id=score_device,
-        target_helicity=(1, nfp),
+        target_helicity=target_helicity or (1, nfp),
         config_overrides=score_config(
             iota_degree=iota_degree,
             surface_theta_count=surface_theta_count,
@@ -295,6 +296,7 @@ class LocalFullGradientEstimator:
         formal_surface_theta_count: int,
         local_surface_theta_count: int,
         iota_degree: int,
+        target_helicity: tuple[int, int] | None = None,
     ) -> None:
         self.lib = lib
         self.nfp = int(nfp)
@@ -305,6 +307,11 @@ class LocalFullGradientEstimator:
         self.formal_surface_theta_count = int(formal_surface_theta_count)
         self.local_surface_theta_count = int(local_surface_theta_count)
         self.iota_degree = int(iota_degree)
+        self.target_helicity = (
+            tuple(int(value) for value in target_helicity)
+            if target_helicity is not None
+            else (1, self.nfp)
+        )
         modes = build_modes(10, 12)
         self.mode_a = np.asarray([mode.a for mode in modes], dtype=np.int32)
         self.mode_b = np.asarray([mode.b for mode in modes], dtype=np.int32)
@@ -344,7 +351,7 @@ class LocalFullGradientEstimator:
                 center_y,
                 center_z,
                 center_current,
-                target_helicity=(1, self.nfp),
+                target_helicity=self.target_helicity,
                 config_overrides=score_config(
                     iota_degree=self.iota_degree,
                     surface_theta_count=self.formal_surface_theta_count,
@@ -581,6 +588,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--nfp", type=int, default=4)
     parser.add_argument("--n-base-coils", type=int, default=3)
     parser.add_argument(
+        "--target-helicity-sign",
+        type=int,
+        choices=(-1, 1),
+        default=1,
+        help="Sign of N in the native QH target (M,N)=(1, sign*nfp).",
+    )
+    parser.add_argument(
         "--iterations", type=int, default=QH_OPTIMIZATION_DEFAULTS.iterations
     )
     parser.add_argument("--max-wall-s", type=float, default=7200.0)
@@ -717,6 +731,15 @@ def main() -> None:
         difference="centered",
         native_score_library_sha256=file_sha256(args.lib),
     )
+    target_helicity = (1, args.target_helicity_sign * args.nfp)
+    if args.target_helicity_sign != 1:
+        requested_protocol["id"] = "unregistered-experimental"
+        requested_protocol["status"] = "unregistered-experimental"
+        requested_protocol["actual"]["target_helicity"] = list(target_helicity)
+        requested_protocol["differences_from_current"]["target_helicity"] = {
+            "expected": [1, args.nfp],
+            "actual": list(target_helicity),
+        }
     if args.parameter_space == "data":
         requested_protocol["actual"]["data_start_mode"] = args.data_start_mode
         requested_protocol["differences_from_current"]["data_start_mode"] = {
@@ -861,6 +884,7 @@ def main() -> None:
             },
             "nfp": args.nfp,
             "n_base_coils": args.n_base_coils,
+            "target_helicity": list(target_helicity),
             "iterations": args.iterations,
             "max_wall_s": args.max_wall_s,
             "flow": {
@@ -971,6 +995,7 @@ def main() -> None:
         formal_surface_theta_count=args.formal_surface_theta_count,
         local_surface_theta_count=args.local_surface_theta_count,
         iota_degree=args.iota_degree,
+        target_helicity=target_helicity,
     )
 
     torch.cuda.set_device(args.flow_device)
@@ -1031,6 +1056,7 @@ def main() -> None:
         iota_degree=args.iota_degree,
         surface_theta_count=args.formal_surface_theta_count,
         previous_result=initial_previous_result,
+        target_helicity=target_helicity,
     )
     if not result_valid(current_result):
         raise RuntimeError(f"initial center is invalid: {current_result.get('status')}")
@@ -1301,6 +1327,7 @@ def main() -> None:
                     iota_degree=args.iota_degree,
                     surface_theta_count=args.formal_surface_theta_count,
                     previous_result=previous_result,
+                    target_helicity=target_helicity,
                 )
                 proposal_decode_wall_s += decode_wall_s
                 pipeline_decode_wall_s += decode_wall_s

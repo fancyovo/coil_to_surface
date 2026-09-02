@@ -643,6 +643,57 @@ An open critical correction blocks promotion and external reporting.
   `test_full_physical_submission_policy.py`, and
   `test_full_cem_evaluation.py`; all 10 tests passed.
 
+## CORR-20260902-66 - Analytic prior and fixed QH target use opposite handedness
+
+- Severity/status: high / open; affected QH interpretations are contained and
+  promotion is blocked pending signed rescoring.
+- Reported by: user after observing that both analytic-prior experiments had
+  negative-slope Boozer `|B|` contours and both Adam batches plateaued near 70.
+- Incorrect interpretation: the balanced-v2 and compact-flexible-v3 reports
+  treated score-at-least-50 rates as direct evidence of QH-basin abundance
+  comparable with the older QUASR/Flow branch, and labeled direct surface
+  values as unsigned `QH` errors.
+- Primary evidence: the plotting path is unchanged and samples `x=NFP*phi`,
+  `y=theta` without an axis reversal. All four fully evaluated analytic-prior
+  endpoints have negative iota (`-1.165`, `-1.071`, `-1.023`, `-1.175`) and a
+  dominant `|B|` Fourier mode with equal-sign `(k_zeta,k_theta)`, corresponding
+  to `B(theta+zeta)`. Their equal-sign diagonal Fourier-energy fractions are
+  `0.810`, `0.857`, `0.835`, and `0.920`; opposite-sign fractions are `0.033`,
+  `0.035`, `0.048`, and `0.027`. The historical high-QH reference
+  `qh_score_fast_beta1_0p7_best933673_full_eval_20260808` has positive iota,
+  `0.9994` on the opposite-sign diagonal, and `9.4e-6` on the equal-sign
+  diagonal. Dense reconstruction from the saved HTML color fields also makes
+  the analytic endpoints' `QH_(1,-1)` residual approximately 5--14 times lower
+  than `QH_(1,+1)`; the old reference has the reverse ordering by over three
+  orders of magnitude.
+- Cause: `flow_matching/axis_surface_prior_v2.py` fixes the winding-surface and
+  contour phases to `theta-nfp*phi` forms and has no chirality parameter. It
+  also chooses the current sign from the contour-axis linking number, producing
+  positive axis circulation for these samples. The plot itself has no changed
+  normalization. The native evaluator defaults to `(M,N)=(1,+nfp)`, and its
+  `f_C=(M*iota-N)A-M*G*C` residual depends on the sign of `N`; squaring the
+  residual does not make `+N` and `-N` equivalent. Full surface evaluation
+  likewise reports only `QH_(1,+1)`.
+- Affected scope: all v2/v3 ABI-11 scores remain exact values for their frozen
+  fixed-`+N` objective. Counts, timings, coil metrics, accepted surface
+  geometry, Poincare data, and DESC results remain valid. The same-handed QH
+  abundance claim, comparison with the old QUASR/Flow basin, and attribution of
+  the 60--70 plateau solely to intrinsic QS/coil limitations are withdrawn.
+  Four endpoint evaluations establish the mismatch at the high-score end; they
+  do not by themselves prove the handedness of every generated sample.
+- Containment: both canonical experiment reports now state the signed target,
+  label direct values as `QH_(1,+1)`, and mark the QH-abundance interpretation
+  superseded. Hot memory carries the promotion blocker. No evaluator or prior
+  code is changed during this diagnostic turn.
+- Required resolution and regression check: rescore saved initial and optimized
+  endpoints under `(1,+nfp)` and `(1,-nfp)`, test a geometrically mirrored pair
+  for score equivalence, then choose and document one contract: canonicalize the
+  prior to the current positive-hand target, or make signed/best-hand QH an
+  explicit protocol dimension. Add tests that plotting labels, direct metrics,
+  native target metadata, and prior chirality agree before another batch.
+- Promotion/reporting blocker: open. Do not use the two abundance estimates to
+  train or validate a QH reward model until the signed rescoring is complete.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

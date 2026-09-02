@@ -180,8 +180,8 @@
   initial-valid rate gives estimated all-prior abundance 14.01% for Adam200 and
   5.87% for best-so-far@50. Full evaluation of representative high-score cases
   `axisv2_case_02986` and `axisv2_case_04428` accepted nested standard surfaces
-  at `s=0.64` and `s=0.81`, with volumes `0.0740` and `0.0925 m3` and direct QH
-  errors `0.0170` and `0.0172`. The DESC solves reduced mean normalized force by
+  at `s=0.64` and `s=0.81`, with volumes `0.0740` and `0.0925 m3` and direct
+  `QH_(1,+1)` errors `0.0170` and `0.0172`. The DESC solves reduced mean normalized force by
   about 360-fold and 834-fold but reached the 50-iteration limit. See
   `reports/axis_surface_prior_balanced_v2_adam200_results_20260901.md`.
 - Direct-data continuation protocol
@@ -207,14 +207,23 @@
   estimated all-prior abundances of `8.56%` at Adam50 and `12.78%` at Adam200.
   See `reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
   Representative full evaluations accepted `axisv3_case_01341` at `s=0.24`,
-  volume `0.026633 m3`, direct QH error `0.009187`, with nearest outer failure
+  volume `0.026633 m3`, direct `QH_(1,+1)` error `0.009187`, with nearest outer failure
   `s=0.36`; and `axisv3_case_02832` at `s=0.36`, volume `0.046051 m3`, direct
-  QH error `0.009728`, with nearest outer failure `s=0.49`. Both DESC solves
+  `QH_(1,+1)` error `0.009728`, with nearest outer failure `s=0.49`. Both DESC solves
   retained nested boundaries and reduced mean normalized force by 333-fold and
   891-fold while reaching the 50-iteration limit. The first Poincare map stays
   radially ordered; the second shows a pronounced multi-lobed/island-chain
   pattern, so it is not evidence for a clean globally nested vacuum interior.
   This registered experiment does not alter the current Flow default.
+- A 2026-09-02 signed-helicity audit found that all four fully evaluated v2/v3
+  endpoints occupy the mirror-handed `theta+zeta` branch, while the old
+  QUASR/Flow reference and the frozen ABI-11 target use `theta-zeta` /
+  `(M,N)=(1,+nfp)`. The analytic prior contains fixed-sign helical construction
+  terms and no chirality parameter. Frozen scores and non-QS physical results
+  remain valid, but the reported score-at-least-50 rates do not yet establish
+  same-handed QH abundance, and the 60--70 plateau cannot be attributed solely
+  to intrinsic QS difficulty. Dual-sign endpoint rescoring and a mirror control
+  are promotion blockers. See `CORR-20260902-66`.
 
 ## Memory Map
 

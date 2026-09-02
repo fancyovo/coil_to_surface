@@ -19,14 +19,26 @@ def test_continuation_payload_wraps_saved_direct_data_parameters() -> None:
         },
     }
     source = {"data_prior_screening": {"current_l1_a": 500000.0}}
-    prepared = continuation_payload(best, source, protocol_id="continuation-test")
+    prepared = continuation_payload(
+        best,
+        source,
+        protocol_id="continuation-test",
+        target_helicity=(1, -5),
+    )
     metadata = prepared["data_prior_screening"]
     assert metadata["protocol_id"] == "continuation-test"
     assert metadata["current_l1_a"] == 500000.0
     assert metadata["source_best_iteration"] == 170
+    assert metadata["native_score_target_helicity"] == [1, 5]
+    assert metadata["continuation_target_helicity"] == [1, -5]
     np.testing.assert_array_equal(metadata["normalized_coil_tokens"], parameters)
 
 
 def test_continuation_payload_rejects_unwrapped_or_invalid_inputs() -> None:
     with pytest.raises(ValueError, match="direct-data"):
-        continuation_payload({"raw": {"current": [1.0]}}, {}, protocol_id="test")
+        continuation_payload(
+            {"raw": {"current": [1.0]}},
+            {},
+            protocol_id="test",
+            target_helicity=(1, -5),
+        )

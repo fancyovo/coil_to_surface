@@ -1,0 +1,52 @@
+{
+  "protocol_id": "qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-02",
+  "purpose": "Test whether the two highest compact-flexible-v3 Adam200 endpoints cross score 70 when the native QH target matches their observed negative handedness.",
+  "source": {
+    "protocol_id": "qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1",
+    "code_commit": "08a3c3fd15e61232eb0eed7cc359679c8d471810",
+    "cases": [
+      {
+        "sample_id": "axisv3_case_01341",
+        "case_id": 1341,
+        "nfp": 5,
+        "nc": 3,
+        "positive_hand_best_score": 68.880425
+      },
+      {
+        "sample_id": "axisv3_case_02832",
+        "case_id": 2832,
+        "nfp": 7,
+        "nc": 4,
+        "positive_hand_best_score": 67.244587
+      }
+    ]
+  },
+  "evaluation": {
+    "target_helicity": "(M,N)=(1,-nfp)",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "full_physical_evaluation": false
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "flow_calls": 0,
+    "algorithm": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "threshold_of_interest": 70.0
+  },
+  "resources": {
+    "workers": 2,
+    "p107_gpus": 2,
+    "execution": "one independent sample per GPU, concurrently"
+  },
+  "interpretation": "This is a signed-objective continuation test. Its scores are not numerically interchangeable with the frozen positive-hand trajectories.",
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

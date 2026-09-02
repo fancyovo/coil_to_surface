@@ -18,7 +18,11 @@ from scripts.native_score_runtime import write_json
 
 
 def continuation_payload(
-    best: dict[str, Any], source_start: dict[str, Any], *, protocol_id: str
+    best: dict[str, Any],
+    source_start: dict[str, Any],
+    *,
+    protocol_id: str,
+    target_helicity: tuple[int, int],
 ) -> dict[str, Any]:
     optimizer = best.get("original_space_local_gradient_adam")
     if not isinstance(optimizer, dict) or optimizer.get("parameter_space") != "data":
@@ -37,6 +41,11 @@ def continuation_payload(
     native_score = optimizer.get("native_score")
     if not isinstance(native_score, dict) or native_score.get("status") != "ok":
         raise ValueError("best case lacks a valid native score")
+    source_target = (
+        optimizer.get("manifest", {}).get("target_helicity", [1, int(best["nfp"])])
+    )
+    if source_target != [1, int(best["nfp"])]:
+        raise ValueError("source best was not scored with the expected positive-hand target")
 
     payload = copy.deepcopy(best)
     payload["data_prior_screening"] = {
@@ -45,6 +54,8 @@ def continuation_payload(
         "normalized_coil_tokens": parameters.tolist(),
         "current_l1_a": current_l1_a,
         "native_score": native_score,
+        "native_score_target_helicity": source_target,
+        "continuation_target_helicity": list(target_helicity),
         "source_best_iteration": int(optimizer["best_iteration"]),
     }
     return payload
@@ -58,6 +69,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--protocol-id", required=True)
     value.add_argument("--expected-commit", required=True)
     value.add_argument("--optimizer-seed-base", type=int, default=20290901)
+    value.add_argument("--target-helicity-sign", type=int, choices=(-1, 1), default=1)
     return value
 
 
@@ -85,7 +97,14 @@ def main() -> None:
         source_start_path = Path(source_case["start"])
         best = json.loads(best_path.read_text(encoding="utf-8"))
         source_start = json.loads(source_start_path.read_text(encoding="utf-8"))
-        prepared = continuation_payload(best, source_start, protocol_id=args.protocol_id)
+        nfp = int(source_case["nfp"])
+        target_helicity = (1, args.target_helicity_sign * nfp)
+        prepared = continuation_payload(
+            best,
+            source_start,
+            protocol_id=args.protocol_id,
+            target_helicity=target_helicity,
+        )
         start_path = starts_dir / f"case_{case_id:05d}_best.json"
         write_json(start_path, prepared)
         native_score = prepared["data_prior_screening"]["native_score"]
@@ -95,11 +114,18 @@ def main() -> None:
                 "case_id": case_id,
                 "selection_rank": worker_index,
                 "worker_index": worker_index,
-                "nfp": int(source_case["nfp"]),
+                "nfp": nfp,
                 "n_base_coils": int(source_case["n_base_coils"]),
-                "initial_score": float(native_score["score"]),
-                "initial_coil_component": float(native_score["components"]["coil"]),
-                "initial_status": str(native_score["status"]),
+                "target_helicity": list(target_helicity),
+                "source_score": float(native_score["score"]),
+                "source_score_target_helicity": [1, nfp],
+                "target_score_at_prepare": (
+                    float(native_score["score"])
+                    if args.target_helicity_sign == 1
+                    else None
+                ),
+                "source_coil_component": float(native_score["components"]["coil"]),
+                "source_status": str(native_score["status"]),
                 "optimizer_seed": args.optimizer_seed_base + worker_index,
                 "start": str(start_path.resolve()),
                 "start_sha256": file_sha256(start_path),
@@ -113,6 +139,8 @@ def main() -> None:
         "protocol_id": args.protocol_id,
         "status": "prepared",
         "code_commit": commit,
+        "target_helicity_sign": args.target_helicity_sign,
+        "target_helicity_contract": "(M,N)=(1,target_helicity_sign*nfp)",
         "source": {
             "run_root": str(args.source_run_root.resolve()),
             "selection_manifest": str(source_manifest_path.resolve()),

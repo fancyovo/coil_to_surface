@@ -12,8 +12,9 @@ from scripts.prepare_axis_surface_prior_adam200 import (
     exact_standardized_parameters,
     select_valid_rows,
 )
-from scripts.run_axis_surface_prior_adam200 import trajectory_wall_limit
 from scripts.run_axis_surface_prior_adam200 import artifact_format
+from scripts.run_axis_surface_prior_adam200 import target_helicity_for_case
+from scripts.run_axis_surface_prior_adam200 import trajectory_wall_limit
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +55,19 @@ def test_artifact_format_defaults_to_frozen_v2_and_accepts_registered_override()
     )
     manifest = {"artifact_formats": {"trajectory": "registered_v3_trajectory_v1"}}
     assert artifact_format(manifest, "trajectory") == "registered_v3_trajectory_v1"
+
+
+def test_target_helicity_defaults_positive_and_accepts_explicit_negative() -> None:
+    assert target_helicity_for_case({}, nfp=5) == (1, 5)
+    assert target_helicity_for_case({"target_helicity_sign": -1}, nfp=7) == (
+        1,
+        -7,
+    )
+
+
+def test_target_helicity_rejects_invalid_sign() -> None:
+    with np.testing.assert_raises_regex(ValueError, "must be -1 or 1"):
+        target_helicity_for_case({"target_helicity_sign": 0}, nfp=7)
 
 
 def _row(case_id: int, status: str | None, nc: int) -> dict[str, object]:

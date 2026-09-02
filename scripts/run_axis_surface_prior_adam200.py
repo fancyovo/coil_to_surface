@@ -63,6 +63,15 @@ def artifact_format(manifest: dict[str, Any], name: str) -> str:
     )
 
 
+def target_helicity_for_case(
+    manifest: dict[str, Any], *, nfp: int
+) -> tuple[int, int]:
+    sign = int(manifest.get("target_helicity_sign", 1))
+    if sign not in (-1, 1):
+        raise ValueError("selection manifest target_helicity_sign must be -1 or 1")
+    return 1, sign * nfp
+
+
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description="Run one analytic-prior direct-data Adam200 worker.")
     value.add_argument("--run-root", type=Path, required=True)
@@ -107,6 +116,9 @@ def main() -> None:
     repeated_failure_count = 0
 
     for case in cases:
+        target_helicity = target_helicity_for_case(
+            manifest, nfp=int(case["nfp"])
+        )
         destination = trajectories_dir / case["trajectory_id"]
         if destination.exists():
             skipped += 1
@@ -152,6 +164,8 @@ def main() -> None:
                     str(case["nfp"]),
                     "--n-base-coils",
                     str(case["n_base_coils"]),
+                    "--target-helicity-sign",
+                    str(1 if target_helicity[1] > 0 else -1),
                     "--iterations",
                     str(args.iterations),
                     "--max-wall-s",
@@ -212,6 +226,7 @@ def main() -> None:
                 "case": case,
                 "optimization": summary,
                 "optimizer_protocol": optimizer_manifest["protocol"],
+                "target_helicity": list(target_helicity),
                 "data_parameterization": roundtrip,
                 "timing": {
                     "optimization_process_wall_s": optimization_wall_s,

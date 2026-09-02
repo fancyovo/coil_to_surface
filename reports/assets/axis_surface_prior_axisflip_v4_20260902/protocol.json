@@ -1,0 +1,74 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-02",
+  "purpose": "Test construction-axis chirality reflection with identical optimizer-representable tokens, score configuration, and magnetic-axis branch between screening and Adam step 0.",
+  "supersedes": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3",
+  "generator": {
+    "baseline": "axis_surface_contour_prior_compact_flexible_v3",
+    "preset": "compact_flexible",
+    "sample_role": "registered_scoring",
+    "only_explicit_physical_input_change": "multiply every construction reference-axis vertical Fourier coefficient by -1",
+    "construction_axis_chirality": -1,
+    "construction_axis_transform": "Z(phi) is reflected for the same seed while radial coefficients and all sampled scalar parameters are unchanged",
+    "result_format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+    "conditions": "all 26 registered (nfp,nc) conditions with nc<=4",
+    "seed": 20260905
+  },
+  "start_representation": {
+    "order": "generate float64 analytic tokens, map to exact-unclipped float32 standardized data coordinates, reconstruct physical tokens, then screen and optimize those same reconstructed tokens",
+    "screened_representation": "the optimizer-representable reconstruction",
+    "source_quantization_diagnostics": "record source-to-start geometry and current relative RMS separately from the float32 self-roundtrip",
+    "flow_calls": 0
+  },
+  "score_configuration": {
+    "shared_constructor": "scripts.optimize_flow_latent.score_config",
+    "iota_degree": 3,
+    "surface_selection_mode": 1,
+    "surface_confidence_periods": 1,
+    "surface_theta_count": 128,
+    "surface_trace_steps": 400,
+    "surface_flux_bisection_iters": 6,
+    "screening_axis_policy": "global search",
+    "optimizer_step0_axis_policy": "strict mixed-precision continuation from screened axis_R/axis_Z"
+  },
+  "screening": {
+    "target": "QH",
+    "target_helicity": "(M,N)=(1,+nfp)",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "adam200_gate": "native status == ok, finite screened axis_R/axis_Z, and strict-hint optimizer step-0 score within 0.1 of screening",
+    "pre_update_consistency_tolerance": 0.1,
+    "sampling": "independent deterministic streams, one per GPU; no fixed population size"
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "algorithm": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "target_helicity": "(M,N)=(1,+nfp)"
+  },
+  "resources": {
+    "workers": 6,
+    "p107_gpus": 4,
+    "students_gpus": 2,
+    "discovery_soft_deadline": "4 hours per worker",
+    "soft_deadline_behavior": "finish the active Adam200 trajectory, then exit without sampling another candidate",
+    "slurm_wall_limit": "5 hours"
+  },
+  "smoke": {
+    "known_regression_case_id": 25,
+    "reason": "This case differed by about 1.85 under v2 and v3 and therefore exercises axis, representation, and score-configuration consistency."
+  },
+  "monitoring": {
+    "per_worker": "screening status, strict-hint step-0 consistency, valid abundance, initial and best iota signs, active trajectory, maximum best score, and count at score>=70",
+    "final": "aggregate screening abundance, Adam200 outcomes, handedness, thresholds, runtime, and valid-case accounting"
+  },
+  "full_physical_evaluation": false,
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

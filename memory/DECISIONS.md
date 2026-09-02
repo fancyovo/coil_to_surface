@@ -149,6 +149,18 @@ the optimizer's formal score configuration across both stages while retaining
 the same physical chirality intervention, represented start, and pre-update
 axis/score gate. This is an experiment, not a chirality-default promotion.
 
+The v4 stream was drained at the user's early-stop request after every active
+trajectory completed. Final analysis contains 110 screened samples, 56 valid
+positive-iota starts, 50 complete Adam200 trajectories, zero failures, and six
+explicitly excluded successor partials. Of the complete trajectories, 37
+reached 70 and 9 reached 80; the maximum was `81.8258373`. Median volume-QS
+score increased from `19.4311` to `59.1199`, while median coil-engineering score
+changed from `69.3725` to `69.1066`. This supports the axis sign as the dominant
+source of the previous one-sided handedness and shows access to the positive-QH
+high-score basin. It does not isolate the axis sign's paired causal effect or
+promote a new default. Canonical evidence is in
+`../reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
+
 Before promotion, independently test winding-surface and contour-scalar
 chirality as remaining factors and retain exact final-coil reflection as the
 sign-flipping control. Promotion still requires mirror-pair regression tests

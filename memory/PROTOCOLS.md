@@ -325,13 +325,18 @@ before the same six-worker arrays can start. Frozen specification:
 Frozen run commit `d8de349`; smoke `52758` passed case 25 with score delta
 `0.0133273260`, identical axis coordinates, positive iota, and three Adam
 updates. P107 array `52759` and Students array `52760` started all six formal
-workers; analysis dependency `52761` waits for both arrays. Every formal worker
-passed its pre-update gate, with score deltas in
+workers. Every worker passed its pre-update gate, with score deltas in
 `[0.0007109622, 0.0133273260]`, identical saved/continued axes, and positive
-initial iota. The run root is
+initial iota. At the user's early-stop request, all six workers finished their
+active Adam200 trajectory and stopped after about 2.3 hours of discovery.
+Analysis `52761` accounted for 110 screened samples, 56 valid starts, 50
+complete trajectories, zero failures, and six successor partials excluded from
+formal statistics. All 56 valid starts had positive iota; 37/50 complete
+trajectories reached 70, 9/50 reached 80, and the maximum was `81.8258373`.
+The component analysis found median volume-QS score `19.4311 -> 59.1199` and
+median coil-engineering score `69.3725 -> 69.1066`. Canonical report:
+`reports/axis_surface_prior_axisflip_v4_results_20260902.md`. The run root is
 `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v4_20260902_d8de349`.
-Discovery lasts four hours per worker; each worker then finishes only its active
-Adam200 trajectory under the five-hour Slurm tail allowance.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

@@ -1,0 +1,54 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4",
+  "status": "registered-experimental",
+  "submitted_at": "2026-09-02T18:41:48+08:00",
+  "code_commit": "d8de349b7d0d457f10402c8517e5930ddd260c7c",
+  "tracked_worktree_dirty": false,
+  "generator": {
+    "baseline_format": "axis_surface_contour_prior_compact_flexible_v3",
+    "format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+    "only_explicit_input_change": "construction reference-axis vertical Fourier coefficients multiplied by -1",
+    "construction_axis_chirality": -1,
+    "preset": "compact_flexible",
+    "seed": 20260905,
+    "conditions": "all 26 registered (nfp,nc) conditions with nc<=4"
+  },
+  "screening": {
+    "target_helicity": [1, "+nfp"],
+    "criterion_for_adam200": "native ABI-11 status == ok on the exact optimizer-representable start",
+    "representation_order": "construct exact-unclipped float32 standardized start, reconstruct physical tokens, then screen those same tokens",
+    "configuration": "the same score_config(iota_degree=3, surface_theta_count=128) used by optimizer formal centers, with global axis search only for screening",
+    "execution": "one candidate at a time per worker; every valid candidate immediately enters Adam200",
+    "axis_continuation": "screening axis_R/axis_Z are retained and required as strict optimizer step-0 hints",
+    "pre_update_consistency_gate": "abs(strict-hint optimizer step-0 score - screening score) <= 0.1"
+  },
+  "worker_count": 6,
+  "parallelization": "four P107 workers plus two Students workers; no cross-worker dependency",
+  "serial_reason_within_worker": "screening determines whether that candidate has a valid Adam start and the same GPU runs its immediate optimizer",
+  "discovery_soft_deadline_s": 14400,
+  "finish_inflight_after_soft_deadline": true,
+  "slurm_wall_limit_s": 18000,
+  "worker_internal_hard_wall_s": 17700,
+  "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+  "score_library_abi": 11,
+  "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "flow_calls": 0,
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999]
+  },
+  "jobs": {
+    "smoke": "52758",
+    "p107": "52759",
+    "students": "52760",
+    "analysis": "52761"
+  }
+}

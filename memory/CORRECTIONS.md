@@ -944,7 +944,7 @@ An open critical correction blocks promotion and external reporting.
 ## CORR-20260902-73 - Screening and optimizer used different score configurations
 
 - Severity/status: critical / v3 invalidated; score-configuration defect fixed
-  and launch-verified in v4. The v4 population outcome remains in progress.
+  and outcome-verified in v4.
 - Discovered by: Codex after the case-25 v3 smoke failed despite byte-identical
   optimizer-representable tokens and strict continuation from the saved axis.
 - Error: the stream runner called `score_coils_native` with ABI-11 library
@@ -977,8 +977,10 @@ An open critical correction blocks promotion and external reporting.
   completed Adam updates. All six formal workers in arrays `52759/52760` then
   passed their pre-update gates with deltas from `0.0007109622` to
   `0.0133273260`; their axes were identical and all six initial iotas positive.
-  Analysis dependency `52761` remains pending until the workers finish. The
-  frozen v4 run root is
+  Analysis `52761` then accounted for 110 screened samples, 56 valid starts,
+  50 complete Adam200 trajectories, zero failed trajectories, and six drained
+  successor partials. All 56 valid starts and all 50 complete trajectories had
+  positive initial iota. The frozen v4 run root is
   `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v4_20260902_d8de349`.
 - Separate contained test error: the first uncommitted registry assertion
   skipped the preserved `v2 -> v3` link and expected `v2 -> v4`. The expanded
@@ -986,9 +988,11 @@ An open critical correction blocks promotion and external reporting.
   `v1 -> v2 -> v3 -> v4` chain, and no remote file used the bad assertion. One
   read-only source search also named a nonexistent `gpu_backend/tests` path;
   it changed no state and was rerun only against verified existing paths.
-- Promotion/reporting blocker: cross-stage consistency is resolved for launch.
-  Do not report v4 abundance or optimization outcomes until all six workers and
-  analysis `52761` complete successfully.
+- Promotion/reporting blocker: resolved. The six workers drained after their
+  active trajectories completed, analysis `52761` finished successfully, and
+  `reports/axis_surface_prior_axisflip_v4_results_20260902.md` contains the
+  final population and component analysis. The six successor partials remain
+  excluded under `CORR-20260902-75`.
 
 ## CORR-20260902-74 - Axis-flip report error bars admitted negative roundoff
 
@@ -1034,6 +1038,9 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved for this report by explicit accounting
   and exclusion of every successor partial; the runner improvement remains open
   before another interruptible stream protocol is launched.
+- Separate contained edit error: a combined finalization patch used an inexact
+  `memory/DECISIONS.md` context and was rejected atomically. It changed no file;
+  the retry split the updates by exact verified context.
 
 ## Required Entry Template
 

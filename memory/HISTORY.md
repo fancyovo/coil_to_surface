@@ -62,6 +62,14 @@ reports and immutable archives retain the detailed record.
   from ABI defaults in screening versus optimizer formal surface-selection
   overrides. V3 formal arrays never started. V4 shares the exact configuration
   constructor across both stages; see `CORR-20260902-73`.
+- 2026-09-02: the corrected axis-flip v4 stream screened 110 cases and found 56
+  valid positive-iota starts. User-directed draining left 50 complete Adam200
+  trajectories and six preserved successor partials; analysis `52761` reported
+  zero complete-trajectory failures. Thirty-seven complete trajectories reached
+  70, nine reached 80, and the maximum was `81.8258373`. Median volume-QS score
+  rose from `19.4311` to `59.1199`, while median coil-engineering score remained
+  near 69. Canonical evidence is in
+  `../reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
 
 ## Evidence Routes
 

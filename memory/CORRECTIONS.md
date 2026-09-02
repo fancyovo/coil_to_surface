@@ -696,8 +696,8 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260902-67 - Remote work bypassed the documented WSL master preflight
 
-- Severity/status: high / contained before experiment submission; recurrence
-  guard added.
+- Severity/status: high / resolved after the mandatory preflight passed;
+  recurrence guard added.
 - Reported by: user when Codex attempted the wrong server connection route.
 - Error: Codex did not read `REMOTE_CODEX_INSTRUCTIONS.md` before remote work.
   It tried direct SSH aliases and started a temporary local SSH-agent/key-unlock
@@ -722,8 +722,18 @@ An open critical correction blocks promotion and external reporting.
   WSL-master rule, `AGENTS.md` requires the full remote document before every
   fresh/post-compaction remote session, and `memory/README.md` routes all remote
   operations to it. The next remote action must begin at preflight step 1.
-- Promotion/reporting blocker: no numerical blocker from this incident. Remote
-  experiment submission remains blocked until the mandatory preflight passes.
+- Verification follow-up: after the corrected connection preflight, one local
+  fixed-path search first used invalid PowerShell quoting, one read-only remote
+  query inserted a nonexistent `shards/` child below a manifest-supplied run
+  root, and one local read guessed the wrong Adam-analysis filename. All three
+  failed before changing state. The corrected checks used fixed-string search,
+  an exact root file listing, and `rg --files`. Future diagnostics must resolve
+  manifest-relative files or enumerate the containing directory before access;
+  a remembered directory layout or filename is not evidence.
+- Promotion/reporting blocker: resolved. The documented WSL, master-socket,
+  BatchMode identity, exact-path, and live Slurm checks all passed before the
+  first experiment submission; jobs `52565` and `52566` were submitted only
+  through that authenticated master. This incident has no numerical impact.
 
 ## Required Entry Template
 

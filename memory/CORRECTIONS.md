@@ -1129,6 +1129,21 @@ An open critical correction blocks promotion and external reporting.
   Two subsequent read-only `rg` probes used an unclosed regular expression and
   a PowerShell-incompatible glob, followed by one over-escaped fixed string;
   all failed without modifying state and were rerun with simple verified terms.
+  One remote `find -printf` listing also lost its newline escape and produced a
+  concatenated display; file existence was then checked with direct commands,
+  and no conclusion relied on the malformed listing.
+- First formal-start correction: P107 job `52970` showed that the 200-epoch
+  distillation safety bound was too close to the observed validation plateau.
+  At epoch 151 the loss was still making cumulative `0.3%` improvements before
+  ten stale checks, so Codex canceled it before the bound and before q0 was
+  accepted or any online round began. The preserved run root is incomplete and
+  supports throughput/convergence diagnostics only. The failing runaway guard
+  is now 5000 epochs, while convergence remains the only successful exit. The
+  one-hour Slurm reserve now includes distillation and q0 audit time instead of
+  beginning only after them.
+- Contained edit error: the first safety-bound patch included an empty hunk
+  header and was rejected before changing a file. The correction was split by
+  verified context and then applied.
 - Primary evidence: the failed commands returned nonzero before changing
   experiment state. The repository-root imports were fixed before commit
   `b03af40`; the bundle was recreated from the named branch and transferred by

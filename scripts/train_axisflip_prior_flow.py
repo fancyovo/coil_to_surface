@@ -497,7 +497,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--learning-rate", type=float, default=1.0e-4)
     value.add_argument("--ema-decay", type=float, default=0.999)
     value.add_argument("--minimum-epochs", type=int, default=10)
-    value.add_argument("--maximum-epochs", type=int, default=200)
+    value.add_argument("--maximum-epochs", type=int, default=5000)
     value.add_argument("--patience", type=int, default=10)
     value.add_argument("--minimum-relative-improvement", type=float, default=0.003)
     value.add_argument("--monitor-count", type=int, default=512)

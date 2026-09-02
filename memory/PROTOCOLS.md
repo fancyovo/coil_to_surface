@@ -345,7 +345,7 @@ teacher corpus is generated from the compact-flexible v4 construction with
 `axis_chirality=-1`, split deterministically 90/5/5, and used to train the
 5,761,380-parameter `CoilFlowTransformer`. Distillation stops only after the
 validation-loss plateau and generated-distribution stability gates both pass;
-the 200-epoch limit is a failing safety bound, not an accepted training target.
+the 5000-epoch limit is a failing runaway guard, not an accepted training target.
 An independent ABI-11 teacher-versus-Flow audit gates entry into online rounds.
 
 Each online round samples 64 starts through four concurrent one-GPU workers.

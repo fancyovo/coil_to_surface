@@ -76,6 +76,7 @@ if (( idle_streak < 3 )); then
 fi
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader \
   > "$run_root/gpu_preflight.csv"
+job_started=$SECONDS
 
 python -m torch.distributed.run --standalone --nproc-per-node=4 \
   scripts/train_axisflip_prior_flow.py \
@@ -87,7 +88,7 @@ python -m torch.distributed.run --standalone --nproc-per-node=4 \
   --learning-rate 1e-4 \
   --ema-decay 0.999 \
   --minimum-epochs 10 \
-  --maximum-epochs 200 \
+  --maximum-epochs 5000 \
   --patience 10 \
   --minimum-relative-improvement 0.003 \
   --monitor-count 512 \
@@ -131,7 +132,6 @@ if (( audit_status != 0 )); then
 fi
 python scripts/axisflip_prior_online_rl.py summarize-audit --run-root "$run_root"
 
-job_started=$SECONDS
 for ((round_index=0; round_index<max_rounds; round_index+=1)); do
   if [[ -f "$run_root/STOP_AFTER_ROUND" ]]; then
     echo "graceful stop sentinel observed before round $round_index"

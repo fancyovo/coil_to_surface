@@ -36,7 +36,10 @@ reports and immutable archives retain the detailed record.
 - 2026-09-02: compact-flexible-v3 analytic-prior scoring completed 3600 ABI-11
   samples and measured a `15.8056%` initial-valid rate. A frozen random sample
   of 120 valid starts completed direct-data Adam200; 65 reached score 50 by
-  update 50 and 97 by update 200. Canonical evidence is in
+  update 50 and 97 by update 200. Full evaluation then accepted representative
+  samples `axisv3_case_01341` and `axisv3_case_02832` at standard surfaces
+  `s=0.24` and `s=0.36`; the latter's vacuum Poincare map retained an internal
+  island-chain signature. Canonical evidence is in
   `../reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
 
 ## Evidence Routes

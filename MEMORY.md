@@ -206,6 +206,14 @@
   Combining these conditional rates with the `15.8056%` initial-valid rate gives
   estimated all-prior abundances of `8.56%` at Adam50 and `12.78%` at Adam200.
   See `reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
+  Representative full evaluations accepted `axisv3_case_01341` at `s=0.24`,
+  volume `0.026633 m3`, direct QH error `0.009187`, with nearest outer failure
+  `s=0.36`; and `axisv3_case_02832` at `s=0.36`, volume `0.046051 m3`, direct
+  QH error `0.009728`, with nearest outer failure `s=0.49`. Both DESC solves
+  retained nested boundaries and reduced mean normalized force by 333-fold and
+  891-fold while reaching the 50-iteration limit. The first Poincare map stays
+  radially ordered; the second shows a pronounced multi-lobed/island-chain
+  pattern, so it is not evidence for a clean globally nested vacuum interior.
   This registered experiment does not alter the current Flow default.
 
 ## Memory Map

@@ -607,6 +607,42 @@ An open critical correction blocks promotion and external reporting.
   must pass values as command arguments or use a transferred script when a
   command needs variables; nested quoted variable expansion is prohibited.
 
+## CORR-20260902-65 - Full-evaluation submission initially omitted the login-node CUDA library path
+
+- Severity/status: low / resolved before the first Slurm submission; no
+  numerical impact.
+- Discovered by: model while launching the compact-flexible-v3 representative
+  full evaluations.
+- Error: one read-only status command embedded a Slurm format string inside a
+  nested PowerShell/WSL shell and was parsed locally before reaching the
+  cluster. A later read-only `find -printf` query suffered the same local
+  backslash rewriting. The first two full-evaluation launcher invocations also
+  omitted the login-node CUDA wheel and toolkit paths from `LD_LIBRARY_PATH`,
+  so the launchers could not load `libcublas.so.13` during their
+  pre-submission GPU library validation.
+- Affected scope: launch latency only. The status command made no remote call.
+  Both launcher attempts stopped before their first `sbatch`; they created only
+  empty candidate-root directories. No candidate result, optimizer result, or
+  physical conclusion changed.
+- Containment and verification: subsequent remote commands pass explicit
+  arguments without nested formatting. The replacement launch exported
+  `/home/scc/pb24511935/.local/lib/python3.12/site-packages/nvidia/cu13/lib`
+  and `/public/app/cuda/13.0/lib64`, passed the fixed-code and GPU-ABI
+  preflights, wrote parallel submission policies, and submitted eight
+  independent source-psi candidates. Slurm then showed four live P107 jobs,
+  two live Students jobs, and two P107 jobs queued solely by the verified
+  four-job QOS limit.
+- Promotion/reporting blocker: resolved before numerical evaluation began.
+  Future login-node validation of the full-evaluation GPU library must export
+  the same CUDA runtime paths used by the Slurm worker scripts.
+- Acceptance follow-up: one local validation command named the nonexistent
+  `tests/test_full_physical_evaluation.py`, so pytest stopped during collection
+  without running a test. This changed no artifact or numerical conclusion.
+  The corrected repository-native suite ran
+  `test_axis_surface_prior_adam200_report.py`,
+  `test_full_physical_submission_policy.py`, and
+  `test_full_cem_evaluation.py`; all 10 tests passed.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "evaluation_date": "2026-09-02",
+  "status": "completed",
+  "workflow_code_commit": "e4590aebb7d06d6ad9e24f3e1d3dee2b722f3939",
+  "optimizer_code_commit": "08a3c3fd15e61232eb0eed7cc359679c8d471810",
+  "gpu_library": {
+    "build_code_commit": "89206f4278155bc1c3b06db8bbe59aaea0e3ae9e",
+    "sha256": "23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0"
+  },
+  "source_psi_a_values": [0.04, 0.05, 0.06, 0.08],
+  "surface_s_values": [0.12, 0.24, 0.36, 0.49, 0.64, 0.81],
+  "samples": [
+    {
+      "sample_id": "axisv3_case_01341",
+      "nfp": 5,
+      "nc": 3,
+      "adam200_best_score": 68.880425,
+      "input_sha256": "399d3d197cb1e527043ea6d0798d28d342dedb0498519fd103f85fb9f2a19606",
+      "source_psi_job_ids": [52395, 52399, 52403, 52407],
+      "selected_a": 0.08,
+      "surface_job_ids": [52412, 52416, 52420, 52424, 52428, 52432],
+      "selected_s": 0.24,
+      "nearest_outer_failure_s": 0.36,
+      "downstream": {
+        "initial_cancelled_pending_job_id": 52436,
+        "completed_job_id": 52438,
+        "backend": "cpu-students",
+        "slurm_elapsed_s": 362,
+        "pipeline_total_time_s": 353.224274076521
+      }
+    },
+    {
+      "sample_id": "axisv3_case_02832",
+      "nfp": 7,
+      "nc": 4,
+      "adam200_best_score": 67.244587,
+      "input_sha256": "9e412f20b037490e264c65bf369a8f28857ca4fba023225347e004511c161b54",
+      "source_psi_job_ids": [52396, 52400, 52404, 52408],
+      "selected_a": 0.08,
+      "surface_job_ids": [52411, 52415, 52418, 52422, 52426, 52430],
+      "selected_s": 0.36,
+      "nearest_outer_failure_s": 0.49,
+      "downstream": {
+        "completed_job_id": 52434,
+        "backend": "cpu-p107",
+        "slurm_elapsed_s": 588,
+        "pipeline_total_time_s": 575.058272331022
+      }
+    }
+  ],
+  "scheduling": {
+    "source_psi_parallel": true,
+    "surface_candidates_parallel": true,
+    "verified_gpu_concurrency": {
+      "p107": 4,
+      "students": 2
+    },
+    "downstream_parallel": true,
+    "downstream_pool_fallback_reason": "P107 QOS limited the user to 16 CPUs, so the second pending 16-core job was resubmitted to the Students CPU backend."
+  }
+}

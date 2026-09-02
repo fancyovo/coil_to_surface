@@ -204,7 +204,7 @@ Adam100 已覆盖 89/97 个最终成功起点。8 条成功轨迹在第 100 步�
 没有单独预测 QH 可达性；`nc`、`nfp` 和几何结构共同影响优化结果。
 
 本批次的最佳分数低于 balanced-v2 的 69.6456，两个先验都形成约 60--70 分平台。
-高分端的新颖性需要通过 QUASR 聚类距离和代表性样本的完整物理评估判断。
+高分端的 QUASR 聚类新颖性仍待分析；本报告末尾已补充两个代表性样本的完整物理评估。
 
 ## 与 balanced-v2 的同口径比较
 
@@ -232,15 +232,16 @@ balanced-v2 接近的水平。后续先验改进应优先提升磁轴和初始�
 
 ## 证据边界和后续用途
 
-1. 97 个高分状态属于 ABI-11 筛选结果。标准 Simsopt 曲面、独立稠密残差、Poincare、
-   Boozer `|B|` 和 DESC 评估尚未在本批次执行。
+1. 97 个高分状态中的 95 个仍只有 ABI-11 筛选证据。`axisv3_case_01341` 和
+   `axisv3_case_02832` 已完成标准 Simsopt 曲面、独立稠密残差、Poincare、Boozer
+   `|B|` 和 DESC 评估，结果见报告末尾的补充评估。
 2. `best-so-far@50 >= 50` 的 8.56% 全先验估计可作为后续 RL 起步阶段的 C2 丰度。
    同口径 C0/C1/C2 估计为 84.19%/7.24%/8.56%。
 3. Adam100 已覆盖 91.75% 的最终成功轨迹，可作为精度和计算成本之间的主要审计点。
 4. `nc=3/4` 适合快速获得 C2，`nc=1` 提供较高初始合法率和更慢的收敛轨迹。训练与
    评估应固定或显式报告 `nc/nfp` 组成，防止条件分布变化被解释为策略改进。
-5. `axisv3_case_01341` 是本批次总分最高候选；`axisv3_case_02832` 提供 `nc=4` 的
-   高分代表。两者适合作为后续完整物理评估和 QUASR 聚类新颖性分析的候选。
+5. `axisv3_case_01341` 是本批次总分最高样本；`axisv3_case_02832` 是 `nc=4` 的
+   高分代表。两者已完成完整物理评估，后续仍可进入 QUASR 聚类新颖性分析。
 
 该实验属于解析先验探索。项目默认协议保持
 `qh-flow-screen32-adam200-64d-abi11-v1`。
@@ -263,3 +264,110 @@ balanced-v2 接近的水平。后续先验改进应优先提升磁轴和初始�
 Adam200 轨迹来自代码提交 `08a3c3fd15e61232eb0eed7cc359679c8d471810`。报告绘图
 脚本从 120 条冻结 history 重新计算首次跨阈值统计，生成代码提交为
 `e4590aebb7d06d6ad9e24f3e1d3dee2b722f3939`。
+
+## 补充完整物理评估（2026-09-02）
+
+完整评估使用两条 Adam200 轨迹各自的历史最佳状态：本批次总分最高的
+`axisv3_case_01341`（`nfp=5, nc=3`）和最高分 `nc=4` 样本
+`axisv3_case_02832`（`nfp=7`）。两例先在 `a=0.04,0.05,0.06,0.08` 上独立拟合
+psi，再并行测试 `s=0.12,0.24,0.36,0.49,0.64,0.81`。两例均选择覆盖物理半径
+最大的 `a=0.08`，最大曲面由标准 Simsopt LS/Newton、97×97 独立稠密网格和
+外侧失败边界共同确定。
+
+| 样本 | Adam200 最佳分数 | `a` | 最大接受 `s` | 最近外侧失败 `s` | `iota` | `G` | 体积 (m³) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `axisv3_case_01341` | 68.8804 | 0.08 | 0.24 | 0.36 | -1.02289 | 6.28319 | 0.026633 |
+| `axisv3_case_02832` | 67.2446 | 0.08 | 0.36 | 0.49 | -1.17462 | 6.28319 | 0.046051 |
+
+`axisv3_case_01341` 的 `s=0.36` 候选完成 Newton，但独立稠密相对 L2 和法向场
+p95 未通过；`axisv3_case_02832` 的 `s=0.49` 候选完成 Newton且稠密相对 L2
+通过，法向场 p95 未通过。两例的最大接受曲面均有紧邻的外侧失败点。
+
+| 样本 | 稠密相对 L2 | 法向场比 p95 | 直接 QA | 直接 QH | 直接 QP | `|B|` 范围 (T) | Poincare hits |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `axisv3_case_01341` | 8.27e-5 | 8.03e-5 | 0.00434 | 0.00919 | 0.00458 | 0.7425--0.9665 | 8×55 |
+| `axisv3_case_02832` | 4.29e-5 | 6.20e-5 | 0.00953 | 0.00973 | 0.00994 | 0.7102--1.0021 | 8×103 |
+
+### `axisv3_case_01341`
+
+| 线圈与最大接受曲面 | Poincare 截面 | 直接 Boozer `|B|` |
+|---|---|---|
+| ![axisv3_case_01341 的线圈与 s=0.24 最大接受曲面](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/assets/coils_surface.png) | ![axisv3_case_01341 的四个 Poincare 截面](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/assets/poincare.png) | ![axisv3_case_01341 最大接受曲面的 Boozer 磁场强度](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/assets/boozer_b.png) |
+
+图 6：`axisv3_case_01341` 的完整装置几何、四个 Poincare 截面和 `s=0.24` 标准
+Boozer 曲面上的磁场强度。Poincare 点在四个截面上保持径向有序；`iota` 接近 -1，
+有限跟踪长度形成弧段而非稠密闭合点列。交互文件：
+[线圈与曲面 HTML](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/assets/coils_surface.html)、
+[Boozer `|B|` HTML](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/assets/boozer_b.html)。
+
+| DESC 初始边界 | DESC 最终边界 |
+|---|---|
+| ![axisv3_case_01341 的 DESC 初始边界](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/boundary_initial.png) | ![axisv3_case_01341 的 DESC 最终边界](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/boundary.png) |
+
+| DESC Boozer 模谱 | DESC Boozer `|B|` |
+|---|---|
+| ![axisv3_case_01341 的 DESC Boozer 模谱](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/boozer_modes.png) | ![axisv3_case_01341 的 DESC Boozer 磁场强度](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/boozer_B.png) |
+
+| DESC QA 误差 | DESC QH 误差 | DESC QP 误差 |
+|---|---|---|
+| ![axisv3_case_01341 的 DESC QA 误差](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/qs_QA.png) | ![axisv3_case_01341 的 DESC QH 误差](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/qs_QH.png) | ![axisv3_case_01341 的 DESC QP 误差](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/qs_QP.png) |
+
+![axisv3_case_01341 的 DESC iota 剖面](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/desc/iota.png)
+
+图 7：`axisv3_case_01341` 的 DESC 诊断。初始与最终边界均通过嵌套检查；平均
+归一化力残差由 0.8988 降至 0.002701，p95 由 2.2521 降至 0.006225，分别降低
+333 倍和 362 倍。优化器在第 50 次迭代达到上限，最终 cost 为 4.79e-4，
+`optimizer_success=false` 保留为收敛边界。
+
+### `axisv3_case_02832`
+
+| 线圈与最大接受曲面 | Poincare 截面 | 直接 Boozer `|B|` |
+|---|---|---|
+| ![axisv3_case_02832 的线圈与 s=0.36 最大接受曲面](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/assets/coils_surface.png) | ![axisv3_case_02832 的四个 Poincare 截面](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/assets/poincare.png) | ![axisv3_case_02832 最大接受曲面的 Boozer 磁场强度](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/assets/boozer_b.png) |
+
+图 8：`axisv3_case_02832` 的完整装置几何、四个 Poincare 截面和 `s=0.36` 标准
+Boozer 曲面上的磁场强度。Poincare 点列呈现明显的多叶/岛链式结构。该图支持已选
+外边界的标准曲面解，同时把物理结论限定在该外边界；内部真空场应按含显著共振结构
+解释。交互文件：
+[线圈与曲面 HTML](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/assets/coils_surface.html)、
+[Boozer `|B|` HTML](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/assets/boozer_b.html)。
+
+| DESC 初始边界 | DESC 最终边界 |
+|---|---|
+| ![axisv3_case_02832 的 DESC 初始边界](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/boundary_initial.png) | ![axisv3_case_02832 的 DESC 最终边界](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/boundary.png) |
+
+| DESC Boozer 模谱 | DESC Boozer `|B|` |
+|---|---|
+| ![axisv3_case_02832 的 DESC Boozer 模谱](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/boozer_modes.png) | ![axisv3_case_02832 的 DESC Boozer 磁场强度](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/boozer_B.png) |
+
+| DESC QA 误差 | DESC QH 误差 | DESC QP 误差 |
+|---|---|---|
+| ![axisv3_case_02832 的 DESC QA 误差](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/qs_QA.png) | ![axisv3_case_02832 的 DESC QH 误差](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/qs_QH.png) | ![axisv3_case_02832 的 DESC QP 误差](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/qs_QP.png) |
+
+![axisv3_case_02832 的 DESC iota 剖面](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/desc/iota.png)
+
+图 9：`axisv3_case_02832` 的 DESC 诊断。初始与最终边界均通过嵌套检查；平均
+归一化力残差由 1.2965 降至 0.001456，p95 由 2.6131 降至 0.003457，分别降低
+891 倍和 756 倍。优化器在第 50 次迭代达到上限，最终 cost 为 4.04e-6，
+`optimizer_success=false` 保留为收敛边界。DESC 的边界嵌套检查针对构造的平衡态；
+真空场 Poincare 图显示的内部共振结构仍是该样本的物理限制。
+
+两例都证明 compact-flexible v3 的 Adam200 高分状态可以包含标准 Boozer 可解外边界，
+直接曲面 QH 误差均低于 0.01。两例最大接受体积为 0.0266 和 0.0461 m³，线圈仍有
+高复杂度；`axisv3_case_02832` 还显示内部共振结构。完整评估因此支持该先验进入后续
+形态与聚类研究，同时给出线圈工程和内部磁面质量的明确改进方向。
+
+评估流程提交 `e4590aebb7d06d6ad9e24f3e1d3dee2b722f3939`，GPU 库由提交
+`89206f4278155bc1c3b06db8bbe59aaea0e3ae9e` 构建，SHA-256 为
+`23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`。两个输入
+SHA-256 分别为
+`399d3d197cb1e527043ea6d0798d28d342dedb0498519fd103f85fb9f2a19606` 和
+`9e412f20b037490e264c65bf369a8f28857ca4fba023225347e004511c161b54`。
+source-psi 与 `s` 候选跨六张 GPU 并行；下游首先同时提交到 P107，实际 16 CPU
+QOS 上限只允许一例启动，未启动的一例改投 Students CPU 后端，两例随后并行完成。
+
+- [完整评估冻结清单](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/manifest.json)
+- [`axisv3_case_01341` 曲面选择](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/selection.json)
+- [`axisv3_case_01341` 完整评估汇总](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_01341/full/full_summary.json)
+- [`axisv3_case_02832` 曲面选择](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/selection.json)
+- [`axisv3_case_02832` 完整评估汇总](assets/axis_surface_prior_compact_flexible_v3_adam200_20260902/full_eval/axisv3_case_02832/full/full_summary.json)

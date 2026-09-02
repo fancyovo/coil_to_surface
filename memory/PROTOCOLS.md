@@ -241,3 +241,17 @@ maximum Adam200 best scores were `65.3774` and `68.8804`. Worker wall times were
 Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_adam200_abi11_v1.json`.
 Neither compact-flexible experiment changes the current QH default.
+
+Representative full evaluation used fixed workflow commit `e4590ae` and the
+full-evaluation GPU library built at `89206f4`, SHA-256
+`23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.
+`axisv3_case_01341` (`nfp=5,nc=3`) accepted the largest tested standard
+surface at `s=0.24`, volume `0.026633 m3`, direct QH error `0.009187`; its
+nearest outer failure was `s=0.36`. `axisv3_case_02832` (`nfp=7,nc=4`)
+accepted `s=0.36`, volume `0.046051 m3`, direct QH error `0.009728`; its
+nearest outer failure was `s=0.49`. Both DESC runs kept nested boundaries and
+reduced normalized force residuals substantially but reached the 50-iteration
+cap. The `axisv3_case_02832` vacuum Poincare map shows a multi-lobed/island-
+chain pattern; its accepted outer boundary and DESC equilibrium do not certify
+a clean globally nested vacuum interior. Canonical evidence is appended to the
+compact-flexible-v3 Adam200 report.

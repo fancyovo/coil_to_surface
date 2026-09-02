@@ -41,6 +41,13 @@ reports and immutable archives retain the detailed record.
   `s=0.24` and `s=0.36`; the latter's vacuum Poincare map retained an internal
   island-chain signature. Canonical evidence is in
   `../reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
+- 2026-09-02: a signed-helicity audit traced the analytic prior's negative-iota
+  population to fixed-sign winding-surface and contour phases. All 569 valid
+  source samples and all 120 saved Adam200 trajectories occupied that mirror
+  branch. Explicit negative-target Adam200 raised two representative endpoints
+  to `80.8523` and `84.9308`; the old same-handed abundance interpretation was
+  withdrawn. Canonical evidence is in
+  `../reports/axis_surface_prior_handedness_audit_and_negative_optimization_20260902.md`.
 
 ## Evidence Routes
 

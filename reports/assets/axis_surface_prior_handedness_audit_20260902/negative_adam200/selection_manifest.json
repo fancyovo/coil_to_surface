@@ -1,0 +1,72 @@
+{
+  "format": "axis_surface_prior_top2_continue_selection_v1",
+  "protocol_id": "qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1",
+  "status": "prepared",
+  "code_commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+  "target_helicity_sign": -1,
+  "target_helicity_contract": "(M,N)=(1,target_helicity_sign*nfp)",
+  "source": {
+    "run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f",
+    "selection_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/selection_manifest.json",
+    "selection_manifest_sha256": "cbbf5b30a167cfce612aa080b675ad5c043e0a67595ac9467f24e3f8f8bf3779"
+  },
+  "artifacts": {
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "score_library_abi": 11,
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+  },
+  "cases": [
+    {
+      "trajectory_id": "axisv3_case_01341_continue_adam200",
+      "case_id": 1341,
+      "selection_rank": 0,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "target_helicity": [
+        1,
+        -5
+      ],
+      "source_score": 68.88042527622761,
+      "source_score_target_helicity": [
+        1,
+        5
+      ],
+      "target_score_at_prepare": null,
+      "source_coil_component": 68.2045081504138,
+      "source_status": "ok",
+      "optimizer_seed": 20290920,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/starts/case_01341_best.json",
+      "start_sha256": "94a7a416d546b08cdac11f6454a5b75f5880420db872542cd249ad9ba43b9a69",
+      "source_best": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/trajectories/axisv3_case_01341/optimization/best.json",
+      "source_best_sha256": "399d3d197cb1e527043ea6d0798d28d342dedb0498519fd103f85fb9f2a19606"
+    },
+    {
+      "trajectory_id": "axisv3_case_02832_continue_adam200",
+      "case_id": 2832,
+      "selection_rank": 1,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "target_helicity": [
+        1,
+        -7
+      ],
+      "source_score": 67.24458726935931,
+      "source_score_target_helicity": [
+        1,
+        7
+      ],
+      "target_score_at_prepare": null,
+      "source_coil_component": 67.13971152055191,
+      "source_status": "ok",
+      "optimizer_seed": 20290921,
+      "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/starts/case_02832_best.json",
+      "start_sha256": "044fecc3f4617aa89f6dcee095b0f376d7cdf7a8dfb5622b3f514a7fbffbe2f2",
+      "source_best": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/trajectories/axisv3_case_02832/optimization/best.json",
+      "source_best_sha256": "9e412f20b037490e264c65bf369a8f28857ca4fba023225347e004511c161b54"
+    }
+  ]
+}

@@ -231,12 +231,15 @@ beta `(0.7,0.999)` in exact-unclipped standardized data coordinates. Worker
 arrays `52315/52316` completed concurrently after preparation `52313` and
 three-step smoke `52314`; analysis `52317` produced the frozen summary. All
 120 trajectories completed 200 updates with status `ok`, zero runtime failures,
-and no incomplete or unstarted case. Best-so-far reached 50 by update 50 in
-65/120 trajectories and by update 200 in 97/120. Conditional success rates were
-`54.1667%` and `80.8333%`; multiplying by the measured `15.8056%` initial-valid
-rate gives estimated all-prior abundances `8.56%` and `12.78%`. The median and
-maximum Adam200 best scores were `65.3774` and `68.8804`. Worker wall times were
-5.31--5.47 hours. Frozen run commit is `08a3c3f`. Canonical report:
+and no incomplete or unstarted case. Under the frozen `(M,N)=(1,+nfp)` target,
+best-so-far reached 50 by update 50 in 65/120 trajectories and by update 200 in
+97/120. The corresponding all-prior threshold estimates were `8.56%` and
+`12.78%`; the signed-helicity audit showed that all 120 trajectories remained
+in the negative-iota mirror branch. These percentages are frozen score-threshold
+statistics and no longer estimate same-handed QH abundance relative to the old
+QUASR/Flow branch. The median and maximum Adam200 best scores were `65.3774`
+and `68.8804`. Worker wall times were 5.31--5.47 hours. Frozen run commit is
+`08a3c3f`. Canonical report:
 `reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
 Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_adam200_abi11_v1.json`.
@@ -253,15 +256,24 @@ orthogonal centered directions, `h=0.0025`, learning rate `0.01`, and beta
 negative-target scores are distinct objectives and must retain their signed
 labels. Frozen specification:
 `evaluation/axis_surface_prior_compact_flexible_negative_hand_continuation_abi11_v1.json`.
+The two formal trajectories completed all 200 updates under array job `52566`.
+`axisv3_case_01341` improved from negative-target initial score `75.8320` to
+best `80.8523` at update 196; `axisv3_case_02832` improved from `79.9665` to
+best `84.9308` at update 103. Population job `52580` found 569/569 valid source
+samples and all 120/120 saved positive-target Adam200 trajectories in the
+negative-iota branch. Mirror and dual-sign job `52581` confirmed that the
+negative target raises the saved endpoints primarily through the volume-QS
+component. Canonical report:
+`reports/axis_surface_prior_handedness_audit_and_negative_optimization_20260902.md`.
 This audit does not change the current QH default.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256
 `23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.
 `axisv3_case_01341` (`nfp=5,nc=3`) accepted the largest tested standard
-surface at `s=0.24`, volume `0.026633 m3`, direct QH error `0.009187`; its
+surface at `s=0.24`, volume `0.026633 m3`, direct `QH_(1,+1)` error `0.009187`; its
 nearest outer failure was `s=0.36`. `axisv3_case_02832` (`nfp=7,nc=4`)
-accepted `s=0.36`, volume `0.046051 m3`, direct QH error `0.009728`; its
+accepted `s=0.36`, volume `0.046051 m3`, direct `QH_(1,+1)` error `0.009728`; its
 nearest outer failure was `s=0.49`. Both DESC runs kept nested boundaries and
 reduced normalized force residuals substantially but reached the 50-iteration
 cap. The `axisv3_case_02832` vacuum Poincare map shows a multi-lobed/island-

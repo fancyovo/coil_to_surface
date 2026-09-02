@@ -223,15 +223,15 @@
   radially ordered; the second shows a pronounced multi-lobed/island-chain
   pattern, so it is not evidence for a clean globally nested vacuum interior.
   This registered experiment does not alter the current Flow default.
-- A 2026-09-02 signed-helicity audit found that all four fully evaluated v2/v3
-  endpoints occupy the mirror-handed `theta+zeta` branch, while the old
-  QUASR/Flow reference and the frozen ABI-11 target use `theta-zeta` /
-  `(M,N)=(1,+nfp)`. The analytic prior contains fixed-sign helical construction
-  terms and no chirality parameter. Frozen scores and non-QS physical results
-  remain valid, but the reported score-at-least-50 rates do not yet establish
-  same-handed QH abundance, and the 60--70 plateau cannot be attributed solely
-  to intrinsic QS difficulty. Dual-sign endpoint rescoring and a mirror control
-  are promotion blockers. See `CORR-20260902-66`.
+- The 2026-09-02 signed-helicity audit found fixed-sign helical construction
+  terms and no chirality parameter. All 569 valid compact-flexible-v3 source
+  samples and all 120 frozen positive-target Adam200 trajectories occupied the
+  negative-iota mirror branch. Explicit `(1,-nfp)` Adam200 raised representative
+  endpoints `axisv3_case_01341` and `axisv3_case_02832` to `80.8523` and
+  `84.9308`. Frozen `(1,+nfp)` scores and non-QS physical results remain valid;
+  their 8.56%/12.78% threshold rates no longer establish same-handed QH
+  abundance. A machine-readable prior chirality contract and mirror regression
+  tests are required before promotion. See `CORR-20260902-66` and its report.
 
 ## Memory Map
 

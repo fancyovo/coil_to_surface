@@ -1,0 +1,642 @@
+{
+  "format": "axis_surface_prior_handedness_audit_v1",
+  "code_commit": "2dadc49c0fa74c12a4d26474ec914789b6423964",
+  "frozen_positive_target": "(M,N)=(1,+nfp)",
+  "source_score_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5",
+  "adam_run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f",
+  "selection_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/selection_manifest.json",
+  "selection_manifest_sha256": "cbbf5b30a167cfce612aa080b675ad5c043e0a67595ac9467f24e3f8f8bf3779",
+  "source_shards": [
+    {
+      "file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5/shard_00.jsonl",
+      "sha256": "e405f8967e3cb6c53afdc4f4c5bf9b8f9d6eab2176f4e2f883bacfc7eabc0a47",
+      "row_count": "600"
+    },
+    {
+      "file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5/shard_01.jsonl",
+      "sha256": "099d3631b70d8e62e1bbe42e8bc83c0fdafed2e7aca8f2226780f7973cac29f6",
+      "row_count": "600"
+    },
+    {
+      "file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5/shard_02.jsonl",
+      "sha256": "76a9ad07e91f08b8ec645b13c13bed164262a57d2d547a9a62f1606e19f99df2",
+      "row_count": "600"
+    },
+    {
+      "file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5/shard_03.jsonl",
+      "sha256": "8251102be183206d1e68f09de5d7b9a0f45da077d8a7aec33a29dd8201cb3bcb",
+      "row_count": "600"
+    },
+    {
+      "file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5/shard_04.jsonl",
+      "sha256": "36eda626dd094cc1cf1e136b83ffea579ec4df55b627160aad346399b88035a4",
+      "row_count": "600"
+    },
+    {
+      "file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_20260901_3f901d5/shard_05.jsonl",
+      "sha256": "d9fff0bfb01d32e4c573a93b63399ba93b027f18e63b298dddbc92f5f62575e1",
+      "row_count": "600"
+    }
+  ],
+  "source_population": {
+    "groups": {
+      "all": {
+        "count": 3600,
+        "sign_counts": {
+          "negative": 569,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 3031
+        },
+        "definite_sign_count": 569,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -170.9850375371413,
+        "iota_midpoint": {
+          "count": 569,
+          "min": -2.2815885330865644,
+          "p10": -1.3918649059355297,
+          "median": -0.8480154540612668,
+          "p90": -0.5072216062052037,
+          "max": -0.2546377165135859
+        },
+        "score": {
+          "count": 3600,
+          "min": 0.09870583276461496,
+          "p10": 0.1108961243818977,
+          "median": 0.12466744257132936,
+          "p90": 5.571548325599343,
+          "max": 46.62885534128796
+        }
+      },
+      "native_status_ok": {
+        "count": 569,
+        "sign_counts": {
+          "negative": 569,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 569,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -170.9850375371413,
+        "iota_midpoint": {
+          "count": 569,
+          "min": -2.2815885330865644,
+          "p10": -1.3918649059355297,
+          "median": -0.8480154540612668,
+          "p90": -0.5072216062052037,
+          "max": -0.2546377165135859
+        },
+        "score": {
+          "count": 569,
+          "min": 0.4471899132901363,
+          "p10": 2.9481025823413005,
+          "median": 6.608251585676143,
+          "p90": 19.82833107097968,
+          "max": 46.62885534128796
+        }
+      },
+      "score_ge_10": {
+        "count": 147,
+        "sign_counts": {
+          "negative": 147,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 147,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -43.95037936694124,
+        "iota_midpoint": {
+          "count": 147,
+          "min": -1.269835827973044,
+          "p10": -1.0335621599540985,
+          "median": -0.7427856337604973,
+          "p90": -0.5066013759320438,
+          "max": -0.3586335935736146
+        },
+        "score": {
+          "count": 147,
+          "min": 10.007694447839617,
+          "p10": 11.085333051481792,
+          "median": 17.3918323008353,
+          "p90": 35.54506386569206,
+          "max": 46.62885534128796
+        }
+      },
+      "score_ge_20": {
+        "count": 57,
+        "sign_counts": {
+          "negative": 57,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 57,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -16.857679757182943,
+        "iota_midpoint": {
+          "count": 57,
+          "min": -1.269835827973044,
+          "p10": -1.0579347747631898,
+          "median": -0.823782137365574,
+          "p90": -0.6365101695957637,
+          "max": -0.5496343933777484
+        },
+        "score": {
+          "count": 57,
+          "min": 20.118358868589244,
+          "p10": 21.385491057113562,
+          "median": 27.766757542634082,
+          "p90": 40.4987248890254,
+          "max": 46.62885534128796
+        }
+      },
+      "score_ge_30": {
+        "count": 23,
+        "sign_counts": {
+          "negative": 23,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 23,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -6.622659904607586,
+        "iota_midpoint": {
+          "count": 23,
+          "min": -1.065154012977293,
+          "p10": -1.0300593452874398,
+          "median": -0.912502010199872,
+          "p90": -0.7739658653303153,
+          "max": -0.7079300510429498
+        },
+        "score": {
+          "count": 23,
+          "min": 30.17449363873902,
+          "p10": 30.69920489637348,
+          "median": 36.69889165392798,
+          "p90": 44.03364000591815,
+          "max": 46.62885534128796
+        }
+      },
+      "score_ge_40": {
+        "count": 7,
+        "sign_counts": {
+          "negative": 7,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 7,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -1.8061799739838869,
+        "iota_midpoint": {
+          "count": 7,
+          "min": -1.0125655469068562,
+          "p10": -1.006761555162616,
+          "median": -0.912502010199872,
+          "p90": -0.83345852322227,
+          "max": -0.813309715101098
+        },
+        "score": {
+          "count": 7,
+          "min": 40.28199876256429,
+          "p10": 40.60708795225595,
+          "median": 42.5328164977635,
+          "p90": 45.40316353077731,
+          "max": 46.62885534128796
+        }
+      }
+    },
+    "native_status_counts": {
+      "no_axis": 1982,
+      "ok": 569,
+      "no_surface": 760,
+      "drift_rejected": 267,
+      "flux_rejected": 22
+    },
+    "by_n_base_coils_among_ok": {
+      "1": {
+        "count": 215,
+        "sign_counts": {
+          "negative": 215,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 215,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -64.42041907209197,
+        "iota_midpoint": {
+          "count": 215,
+          "min": -2.2815885330865644,
+          "p10": -1.6314862456233807,
+          "median": -1.1071260501255167,
+          "p90": -0.7289561969935446,
+          "max": -0.3680305970553065
+        },
+        "score": {
+          "count": 215,
+          "min": 0.8561409871390706,
+          "p10": 3.425189377008852,
+          "median": 6.028414241209161,
+          "p90": 7.869270140912615,
+          "max": 11.783296053841786
+        }
+      },
+      "2": {
+        "count": 166,
+        "sign_counts": {
+          "negative": 166,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 166,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -49.66994928455689,
+        "iota_midpoint": {
+          "count": 166,
+          "min": -2.030035302940648,
+          "p10": -1.1549635744403146,
+          "median": -0.7943870907948529,
+          "p90": -0.5140887284615048,
+          "max": -0.29669467483550915
+        },
+        "score": {
+          "count": 166,
+          "min": 0.9421534175902238,
+          "p10": 2.5809733467491256,
+          "median": 6.02970598857892,
+          "p90": 18.617634253464917,
+          "max": 42.5328164977635
+        }
+      },
+      "3": {
+        "count": 103,
+        "sign_counts": {
+          "negative": 103,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 103,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -30.705059557726074,
+        "iota_midpoint": {
+          "count": 103,
+          "min": -1.5162884903705205,
+          "p10": -1.093940267764451,
+          "median": -0.6323561543143411,
+          "p90": -0.4747164350444091,
+          "max": -0.346241871362361
+        },
+        "score": {
+          "count": 103,
+          "min": 1.6411762379855184,
+          "p10": 3.9689108520884084,
+          "median": 10.627170841092363,
+          "p90": 25.22753502600728,
+          "max": 44.40884588295681
+        }
+      },
+      "4": {
+        "count": 85,
+        "sign_counts": {
+          "negative": 85,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 85,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -25.286519635774415,
+        "iota_midpoint": {
+          "count": 85,
+          "min": -1.269835827973044,
+          "p10": -1.0341578125489002,
+          "median": -0.6699055819051075,
+          "p90": -0.43806912742460385,
+          "max": -0.2546377165135859
+        },
+        "score": {
+          "count": 85,
+          "min": 0.4471899132901363,
+          "p10": 2.213358365348295,
+          "median": 11.226079598961794,
+          "p90": 32.73864129155071,
+          "max": 46.62885534128796
+        }
+      }
+    },
+    "by_nfp_among_ok": {
+      "4": {
+        "count": 11,
+        "sign_counts": {
+          "negative": 11,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 11,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -3.0102999566398116,
+        "iota_midpoint": {
+          "count": 11,
+          "min": -0.7203947633348333,
+          "p10": -0.7054367477053358,
+          "median": -0.5125697134862225,
+          "p90": -0.29669467483550915,
+          "max": -0.2546377165135859
+        },
+        "score": {
+          "count": 11,
+          "min": 0.4471899132901363,
+          "p10": 0.9421534175902238,
+          "median": 1.573661191513242,
+          "p90": 2.8236201097728553,
+          "max": 2.9350473442561236
+        }
+      },
+      "5": {
+        "count": 42,
+        "sign_counts": {
+          "negative": 42,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 42,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -12.342229822223228,
+        "iota_midpoint": {
+          "count": 42,
+          "min": -1.196413838939329,
+          "p10": -0.9466644068744416,
+          "median": -0.7277036587604953,
+          "p90": -0.4585728993820957,
+          "max": -0.346241871362361
+        },
+        "score": {
+          "count": 42,
+          "min": 0.6307606199040416,
+          "p10": 1.7349588200382609,
+          "median": 3.0289858376166503,
+          "p90": 4.83798855336506,
+          "max": 5.792211623850086
+        }
+      },
+      "6": {
+        "count": 103,
+        "sign_counts": {
+          "negative": 103,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 103,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -30.705059557726074,
+        "iota_midpoint": {
+          "count": 103,
+          "min": -1.3908970623768449,
+          "p10": -1.1045578130102969,
+          "median": -0.7927243146810612,
+          "p90": -0.48730212613303137,
+          "max": -0.3585383217546346
+        },
+        "score": {
+          "count": 103,
+          "min": 0.8561409871390706,
+          "p10": 2.984755697076379,
+          "median": 5.332390142041328,
+          "p90": 9.819505353682157,
+          "max": 18.319357557287343
+        }
+      },
+      "7": {
+        "count": 185,
+        "sign_counts": {
+          "negative": 185,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 185,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -55.389519202172536,
+        "iota_midpoint": {
+          "count": 185,
+          "min": -1.7341360111717279,
+          "p10": -1.3560945447715793,
+          "median": -0.8327421767289058,
+          "p90": -0.5295365050461686,
+          "max": -0.34263539803103227
+        },
+        "score": {
+          "count": 185,
+          "min": 0.5267869454463454,
+          "p10": 3.6161130481001846,
+          "median": 6.742032641476338,
+          "p90": 16.626930630400487,
+          "max": 44.586035657103544
+        }
+      },
+      "8": {
+        "count": 228,
+        "sign_counts": {
+          "negative": 228,
+          "crosses_zero": 0,
+          "positive": 0,
+          "missing": 0
+        },
+        "definite_sign_count": 228,
+        "negative_fraction_of_definite": 1.0,
+        "positive_fraction_of_definite": 0.0,
+        "two_sided_binomial_log10_p_vs_equal_signs": -68.33380901572373,
+        "iota_midpoint": {
+          "count": 228,
+          "min": -2.2815885330865644,
+          "p10": -1.604532447443926,
+          "median": -0.9285721483348457,
+          "p90": -0.5719518885033542,
+          "max": -0.32476313756870656
+        },
+        "score": {
+          "count": 228,
+          "min": 2.164079432954765,
+          "p10": 4.875698822401989,
+          "median": 8.485894310146653,
+          "p90": 28.27779815987063,
+          "max": 46.62885534128796
+        }
+      }
+    }
+  },
+  "adam200": {
+    "count": 120,
+    "initial": {
+      "count": 120,
+      "sign_counts": {
+        "negative": 120,
+        "crosses_zero": 0,
+        "positive": 0,
+        "missing": 0
+      },
+      "definite_sign_count": 120,
+      "negative_fraction_of_definite": 1.0,
+      "positive_fraction_of_definite": 0.0,
+      "two_sided_binomial_log10_p_vs_equal_signs": -35.822569484013755,
+      "iota_midpoint": {
+        "count": 120,
+        "min": -2.2815885330865644,
+        "p10": -1.4835840860506548,
+        "median": -0.8650597450804458,
+        "p90": -0.5419464705244781,
+        "max": -0.2546377165135859
+      },
+      "score": {
+        "count": 120,
+        "min": 0.4471899132901363,
+        "p10": 2.9543490753638237,
+        "median": 6.713653578268313,
+        "p90": 20.36861758601209,
+        "max": 37.96346614955505
+      }
+    },
+    "best_endpoint": {
+      "count": 120,
+      "sign_counts": {
+        "negative": 120,
+        "crosses_zero": 0,
+        "positive": 0,
+        "missing": 0
+      },
+      "definite_sign_count": 120,
+      "negative_fraction_of_definite": 1.0,
+      "positive_fraction_of_definite": 0.0,
+      "two_sided_binomial_log10_p_vs_equal_signs": -35.822569484013755,
+      "iota_midpoint": {
+        "count": 120,
+        "min": -1.5455691845647979,
+        "p10": -1.150293514649737,
+        "median": -1.0384195028267706,
+        "p90": -1.0152696410720714,
+        "max": -0.3066366783630402
+      },
+      "score": {
+        "count": 120,
+        "min": 0.6767912304859698,
+        "p10": 10.813625290622094,
+        "median": 65.37738005148722,
+        "p90": 66.61070049724295,
+        "max": 68.88042527622761
+      }
+    },
+    "final": {
+      "count": 120,
+      "sign_counts": {
+        "negative": 120,
+        "crosses_zero": 0,
+        "positive": 0,
+        "missing": 0
+      },
+      "definite_sign_count": 120,
+      "negative_fraction_of_definite": 1.0,
+      "positive_fraction_of_definite": 0.0,
+      "two_sided_binomial_log10_p_vs_equal_signs": -35.822569484013755,
+      "iota_midpoint": {
+        "count": 120,
+        "min": -2.0780067443847656,
+        "p10": -1.2533373355865478,
+        "median": -1.0798402577638626,
+        "p90": -1.0223412790335715,
+        "max": -0.33558593690395355
+      },
+      "score": {
+        "count": 120,
+        "min": 0.6112001543950962,
+        "p10": 9.827782109414429,
+        "median": 64.6799725985102,
+        "p90": 66.14715007823712,
+        "max": 68.02628005971819
+      }
+    },
+    "trajectory_pattern_counts": {
+      "all_negative": 120
+    },
+    "best_score_ge_50": {
+      "count": 97,
+      "sign_counts": {
+        "negative": 97,
+        "crosses_zero": 0,
+        "positive": 0,
+        "missing": 0
+      },
+      "definite_sign_count": 97,
+      "negative_fraction_of_definite": 1.0,
+      "positive_fraction_of_definite": 0.0,
+      "two_sided_binomial_log10_p_vs_equal_signs": -28.89887958374219,
+      "iota_midpoint": {
+        "count": 97,
+        "min": -1.3581474744739976,
+        "p10": -1.1460160896214808,
+        "median": -1.0409741096680973,
+        "p90": -1.0186067486028947,
+        "max": -1.0141863141143939
+      },
+      "score": {
+        "count": 97,
+        "min": 51.20896619816144,
+        "p10": 61.948885857143004,
+        "median": 65.7555172973651,
+        "p90": 66.6903653255991,
+        "max": 68.88042527622761
+      }
+    },
+    "best_score_ge_60": {
+      "count": 96,
+      "sign_counts": {
+        "negative": 96,
+        "crosses_zero": 0,
+        "positive": 0,
+        "missing": 0
+      },
+      "definite_sign_count": 96,
+      "negative_fraction_of_definite": 1.0,
+      "positive_fraction_of_definite": 0.0,
+      "two_sided_binomial_log10_p_vs_equal_signs": -28.59784958807821,
+      "iota_midpoint": {
+        "count": 96,
+        "min": -1.3581474744739976,
+        "p10": -1.1438357932054588,
+        "median": -1.040783116488448,
+        "p90": -1.018579957286661,
+        "max": -1.0141863141143939
+      },
+      "score": {
+        "count": 96,
+        "min": 60.19243299800253,
+        "p10": 62.04052528287215,
+        "median": 65.7763877002171,
+        "p90": 66.69219012841126,
+        "max": 68.88042527622761
+      }
+    }
+  }
+}

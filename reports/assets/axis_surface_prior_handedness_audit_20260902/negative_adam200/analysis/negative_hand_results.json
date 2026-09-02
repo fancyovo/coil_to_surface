@@ -1,0 +1,359 @@
+{
+  "format": "axis_surface_prior_handedness_report_assets_v1",
+  "negative_run_root": "reports\\assets\\axis_surface_prior_handedness_audit_20260902\\negative_adam200",
+  "signed_mirror_source": "reports\\assets\\axis_surface_prior_handedness_audit_20260902\\signed_mirror\\signed_mirror_scores.json",
+  "protocol": {
+    "protocol_id": "qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1",
+    "status": "registered-experimental",
+    "registered_date": "2026-09-02",
+    "purpose": "Test whether the two highest compact-flexible-v3 Adam200 endpoints cross score 70 when the native QH target matches their observed negative handedness.",
+    "source": {
+      "protocol_id": "qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1",
+      "code_commit": "08a3c3fd15e61232eb0eed7cc359679c8d471810",
+      "cases": [
+        {
+          "sample_id": "axisv3_case_01341",
+          "case_id": 1341,
+          "nfp": 5,
+          "nc": 3,
+          "positive_hand_best_score": 68.880425
+        },
+        {
+          "sample_id": "axisv3_case_02832",
+          "case_id": 2832,
+          "nfp": 7,
+          "nc": 4,
+          "positive_hand_best_score": 67.244587
+        }
+      ]
+    },
+    "evaluation": {
+      "target_helicity": "(M,N)=(1,-nfp)",
+      "evaluator": "native ABI-11",
+      "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+      "full_physical_evaluation": false
+    },
+    "optimizer": {
+      "parameter_space": "exact-unclipped standardized coil coefficients",
+      "flow_calls": 0,
+      "algorithm": "Adam",
+      "iterations": 200,
+      "directions": 64,
+      "direction_policy": "fresh random orthogonal directions per update",
+      "difference": "centered",
+      "perturbation": 0.0025,
+      "learning_rate": 0.01,
+      "beta": [
+        0.7,
+        0.999
+      ],
+      "threshold_of_interest": 70.0
+    },
+    "resources": {
+      "workers": 2,
+      "p107_gpus": 2,
+      "execution": "one independent sample per GPU, concurrently"
+    },
+    "interpretation": "This is a signed-objective continuation test. Its scores are not numerically interchangeable with the frozen positive-hand trajectories.",
+    "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+  },
+  "runtime_manifest": {
+    "protocol_id": "qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1",
+    "status": "registered-experimental",
+    "submitted_at": "2026-09-02T12:00:30+08:00",
+    "code_commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+    "tracked_worktree_dirty": false,
+    "source_run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f",
+    "target_helicity": "(1,-nfp)",
+    "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "score_library_abi": 11,
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "parallel_workers": 2,
+    "jobs": {
+      "smoke": "52565",
+      "workers": "52566"
+    }
+  },
+  "trajectories": [
+    {
+      "sample_id": "axisv3_case_01341",
+      "trajectory_id": "axisv3_case_01341_continue_adam200",
+      "case_id": 1341,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "target_helicity": [
+        1,
+        -5
+      ],
+      "historical_positive_target_continuation_score": 68.88042527622761,
+      "standalone_same_geometry": {
+        "positive_target": {
+          "score": 69.6840950323852,
+          "components": {
+            "axis": 99.45858583730741,
+            "psi": 99.34122715538024,
+            "surface": 98.51799791238876,
+            "coordinate": 90.93560261885108,
+            "volume_qs": 37.60368221062338,
+            "iota": 99.46431646977412,
+            "coil": 68.2045081504138
+          }
+        },
+        "negative_target": {
+          "score": 76.20260074333883,
+          "components": {
+            "axis": 99.45858583730741,
+            "psi": 99.34122715538024,
+            "surface": 98.51799791238876,
+            "coordinate": 90.93560261885108,
+            "volume_qs": 53.19912188499184,
+            "iota": 99.46431646977412,
+            "coil": 68.2045081504138
+          }
+        }
+      },
+      "mirror_checks": {
+        "identity_negative_vs_reflect_y_positive": {
+          "score_absolute_difference": 0.1877956554174176,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.10728484901360957,
+            "iota": 0.22087982414237217,
+            "psi": 0.00018658264579585193,
+            "surface": 0.0002828775595276056,
+            "volume_qs": 0.057790179322836366
+          }
+        },
+        "identity_positive_vs_reflect_y_negative": {
+          "score_absolute_difference": 0.16740937844070913,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.10728484901360957,
+            "iota": 0.22087982414237217,
+            "psi": 0.00018658264579585193,
+            "surface": 0.0002828775595276056,
+            "volume_qs": 0.040204060793030294
+          }
+        },
+        "identity_negative_vs_reflect_z_positive": {
+          "score_absolute_difference": 0.19858888386735885,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.0011630192393710104,
+            "iota": 0.2208556602137861,
+            "psi": 0.0001933442797508178,
+            "surface": 0.00028399619573349355,
+            "volume_qs": 0.05778409966279696
+          }
+        },
+        "identity_positive_vs_reflect_z_negative": {
+          "score_absolute_difference": 0.17820520365427228,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.0011630192393710104,
+            "iota": 0.2208556602137861,
+            "psi": 0.0001933442797508178,
+            "surface": 0.00028399619573349355,
+            "volume_qs": 0.04020077637538577
+          }
+        },
+        "proper_rotation_same_positive_target": {
+          "score_absolute_difference": 0.010761519971708822,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.10813474431175507,
+            "iota": 1.782624451607262e-06,
+            "psi": 2.961344165441915e-06,
+            "surface": 6.91971303012906e-06,
+            "volume_qs": 1.1872256706624285e-06
+          }
+        }
+      },
+      "negative_target_adam200": {
+        "status": "ok",
+        "initial_score": 75.83195051732558,
+        "final_score": 79.24140581078925,
+        "best_score": 80.85226553582424,
+        "best_iteration": 196,
+        "gain_from_initial": 5.020315018498664,
+        "completed_iterations": 200,
+        "wall_s": 957.0373225733638,
+        "first_recorded_iota": -1.022985115647316,
+        "best_iteration_iota": -1.0243585677817464,
+        "final_iota": -1.0532945469021797,
+        "all_recorded_iota_negative": true,
+        "best_native_score": {
+          "score": 80.85226553582424,
+          "iteration": 196,
+          "components": {
+            "axis": 97.39614405886564,
+            "psi": 99.84465622862885,
+            "surface": 96.29671947803187,
+            "coordinate": 94.74000976933121,
+            "volume_qs": 64.58828830156995,
+            "iota": 100.0,
+            "coil": 61.2178936959889
+          },
+          "diagnostics": {
+            "iota_min": -1.0243585677817464,
+            "iota_max": -1.0025778697561134,
+            "qs_global_error": 0.13208619555771875
+          }
+        }
+      },
+      "provenance": {
+        "selection_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/selection_manifest.json",
+        "code_commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+        "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+        "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f"
+      },
+      "history_jsonl": "reports\\assets\\axis_surface_prior_handedness_audit_20260902\\negative_adam200\\trajectories\\axisv3_case_01341_continue_adam200\\optimization\\history.jsonl"
+    },
+    {
+      "sample_id": "axisv3_case_02832",
+      "trajectory_id": "axisv3_case_02832_continue_adam200",
+      "case_id": 2832,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "target_helicity": [
+        1,
+        -7
+      ],
+      "historical_positive_target_continuation_score": 67.24458726935931,
+      "standalone_same_geometry": {
+        "positive_target": {
+          "score": 68.3992164673479,
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.06106688876021,
+            "surface": 96.28702405516697,
+            "coordinate": 87.69253125608122,
+            "volume_qs": 35.72529249029477,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          }
+        },
+        "negative_target": {
+          "score": 81.14980263294056,
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.06106688876021,
+            "surface": 96.28702405516697,
+            "coordinate": 87.69253125608122,
+            "volume_qs": 66.08383097980114,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          }
+        }
+      },
+      "mirror_checks": {
+        "identity_negative_vs_reflect_y_positive": {
+          "score_absolute_difference": 0.00683343964028893,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.026206467223659047,
+            "iota": 0.0,
+            "psi": 0.015367444269159591,
+            "surface": 0.00014818413035300182,
+            "volume_qs": 0.006406825962002927
+          }
+        },
+        "identity_positive_vs_reflect_y_negative": {
+          "score_absolute_difference": 0.0033774147313039293,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.02620646722368747,
+            "iota": 0.0,
+            "psi": 0.015367444269159591,
+            "surface": 0.00014818413035300182,
+            "volume_qs": 0.0018218047736908716
+          }
+        },
+        "identity_negative_vs_reflect_z_positive": {
+          "score_absolute_difference": 0.00684923868145404,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.02637171105452296,
+            "iota": 0.0,
+            "psi": 0.015361811577960793,
+            "surface": 0.00014934079938200284,
+            "volume_qs": 0.006406715471754865
+          }
+        },
+        "identity_positive_vs_reflect_z_negative": {
+          "score_absolute_difference": 0.003393488767201802,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.02637171105452296,
+            "iota": 0.0,
+            "psi": 0.015361811577960793,
+            "surface": 0.00014934079938200284,
+            "volume_qs": 0.0018212605145890848
+          }
+        },
+        "proper_rotation_same_positive_target": {
+          "score_absolute_difference": 1.54285728655168e-05,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.00011621774669379192,
+            "iota": 0.0,
+            "psi": 2.2018164514747696e-05,
+            "surface": 1.5865604694909052e-05,
+            "volume_qs": 4.3860175935606094e-08
+          }
+        }
+      },
+      "negative_target_adam200": {
+        "status": "ok",
+        "initial_score": 79.96649028607641,
+        "final_score": 80.19641704879639,
+        "best_score": 84.93082640564785,
+        "best_iteration": 103,
+        "gain_from_initial": 4.964336119571442,
+        "completed_iterations": 200,
+        "wall_s": 1518.1323933638632,
+        "first_recorded_iota": -1.249619483947754,
+        "best_iteration_iota": -1.189062476158142,
+        "final_iota": -1.042087510228157,
+        "all_recorded_iota_negative": true,
+        "best_native_score": {
+          "score": 84.93082640564785,
+          "iteration": 103,
+          "components": {
+            "axis": 95.66245016553138,
+            "psi": 99.45246272902483,
+            "surface": 84.71023071801136,
+            "coordinate": 88.465571344269,
+            "volume_qs": 78.6028111807506,
+            "iota": 100.0,
+            "coil": 63.60717767561166
+          },
+          "diagnostics": {
+            "iota_min": -1.189062476158142,
+            "iota_max": -1.076090002698672,
+            "qs_global_error": 0.08441515726113015
+          }
+        }
+      },
+      "provenance": {
+        "selection_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/selection_manifest.json",
+        "code_commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+        "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+        "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f"
+      },
+      "history_jsonl": "reports\\assets\\axis_surface_prior_handedness_audit_20260902\\negative_adam200\\trajectories\\axisv3_case_02832_continue_adam200\\optimization\\history.jsonl"
+    }
+  ]
+}

@@ -1,0 +1,451 @@
+{
+  "manifest": {
+    "protocol": {
+      "id": "unregistered-experimental",
+      "status": "unregistered-experimental",
+      "stage": "optimization",
+      "requirements": {
+        "native_score_abi": 11,
+        "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+      },
+      "actual": {
+        "parameter_space": "data",
+        "optimizer": "adam",
+        "iterations": 3,
+        "directions": 64,
+        "perturbation": 0.0025,
+        "learning_rate": 0.01,
+        "beta1": 0.7,
+        "beta2": 0.999,
+        "flow_steps": 128,
+        "gradient_mode": "random-orthogonal",
+        "difference": "centered",
+        "native_score_abi": 11,
+        "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+        "target_helicity": [
+          1,
+          -5
+        ],
+        "data_start_mode": "exact-unclipped"
+      },
+      "differences_from_current": {
+        "iterations": {
+          "expected": 200,
+          "actual": 3
+        },
+        "perturbation": {
+          "expected": 0.005,
+          "actual": 0.0025
+        },
+        "learning_rate": {
+          "expected": 0.02,
+          "actual": 0.01
+        },
+        "parameter_space": {
+          "expected": "latent",
+          "actual": "data"
+        },
+        "target_helicity": {
+          "expected": [
+            1,
+            5
+          ],
+          "actual": [
+            1,
+            -5
+          ]
+        },
+        "data_start_mode": {
+          "expected": "not-applicable",
+          "actual": "exact-unclipped"
+        }
+      }
+    },
+    "repository": {
+      "commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+      "tracked_dirty": false,
+      "available": true
+    },
+    "algorithm": "adam_with_query_batched_local_gradient",
+    "optimizer": "adam",
+    "parameter_space": "data",
+    "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+    "formal_objective": "complete native QH score for every accepted center",
+    "initial_case": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/smoke/start.json",
+    "initial_case_sha256": "94a7a416d546b08cdac11f6454a5b75f5880420db872542cd249ad9ba43b9a69",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "native_lib": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "native_lib_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "native_score": {
+      "abi": 11,
+      "validated_default_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "nfp": 5,
+    "n_base_coils": 3,
+    "target_helicity": [
+      1,
+      -5
+    ],
+    "iterations": 3,
+    "max_wall_s": 600.0,
+    "flow": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32",
+      "use": "none"
+    },
+    "flow_pipeline": false,
+    "coordinate_gradient": {
+      "dimension": 300,
+      "mode": "random-orthogonal",
+      "random_directions": 64,
+      "endpoint_count": 128,
+      "perturbation": 0.0025,
+      "difference": "centered",
+      "psi_grid": 48,
+      "psi_iterations": 4,
+      "alpha_iterations": 4,
+      "formal_surface_theta_count": 128,
+      "local_surface_theta_count": 64
+    },
+    "adam": {
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "epsilon": 1e-08,
+      "weight_decay": 0.0
+    },
+    "bfgs": {
+      "initial_trust_rms": 0.01,
+      "min_trust_rms": 1e-05,
+      "max_trust_rms": 0.05,
+      "trust_growth": 1.2,
+      "trust_shrink": 0.5,
+      "min_improvement": 0.0
+    },
+    "seed": 20290920,
+    "axis_policy": "initial global search, then strict mixed-precision continuation",
+    "devices": {
+      "flow": 0,
+      "score": 0
+    },
+    "initial_metadata_keys": [
+      "data_prior_screening",
+      "nfp",
+      "original_space_local_gradient_adam",
+      "raw"
+    ],
+    "data_parameterization": {
+      "definition": "per-coordinate training-set standardization",
+      "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+      "initial_source": "direct analytic-prior geometry with unclipped coordinates",
+      "data_start_mode": "exact-unclipped",
+      "initial_clipped_fraction": 0.0,
+      "initial_roundtrip_relative_rms": 0.0,
+      "flow_calls_after_initialization": 0
+    }
+  },
+  "initial_score": 75.83195051732555,
+  "best_score": 75.85310096322983,
+  "best_iteration": 3,
+  "iterations": [
+    {
+      "iteration": 1,
+      "current_score": 74.2318621848856,
+      "best_score": 75.83195051732555,
+      "best_iteration": 0,
+      "current_status": "ok",
+      "current_qh_error": 0.22719890591223108,
+      "current_qa_error": 0.2987621758423675,
+      "current_qp_error": 0.04924966250098682,
+      "current_iota": -1.022985115647316,
+      "gradient_endpoint_count": 128,
+      "gradient_mode": "random-orthogonal",
+      "random_direction_count": 64,
+      "gradient_endpoint_statuses": {
+        "ok": 128
+      },
+      "gradient_step_applied": true,
+      "center_update_accepted": true,
+      "center_acceptance_fraction": 1.0,
+      "proposal_attempts": [
+        {
+          "fraction": 1.0,
+          "status": "ok",
+          "score": 74.2318621848856
+        }
+      ],
+      "adam_step": 1,
+      "optimizer": "adam",
+      "bfgs_update": {
+        "updated": false,
+        "reason": "not_applicable"
+      },
+      "bfgs_trust_rms": 0.01,
+      "raw_gradient_rms": 24.072418572022606,
+      "gradient_rms": 24.072418572022606,
+      "first_moment_rms": 7.221725571606783,
+      "second_moment_root_mean": 0.7612367147652952,
+      "gradient_previous_moment_cosine": NaN,
+      "update_gradient_cosine": 0.7945126727114221,
+      "proposed_update_rms": 0.009999999980811214,
+      "update_rms": 0.009999999980811214,
+      "temporal_gradient_limit": null,
+      "temporal_update_limit": null,
+      "temporal_gradient_outlier": false,
+      "temporal_update_outlier": false,
+      "noise_rms": 0.36645867515650316,
+      "noise_abs_max": 2.365190029144287,
+      "endpoint_decode_wall_s": 0.00018851831555366516,
+      "endpoint_decode_cache_hit": false,
+      "prefetched_endpoint_decode_wall_s": 0.0,
+      "gradient_pipeline": {
+        "timing_s": {
+          "field_create": 0.0033046193420886993,
+          "center_capture": 0.5938207767903805,
+          "axis_refine": 0.661687359213829,
+          "axis_samples": 0.05520443245768547,
+          "psi": 0.3511100187897682,
+          "coil_linear": 0.06848526373505592,
+          "local_score": 1.9390607699751854,
+          "total": 3.6726732403039932
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.00100418,
+          "feature_s": 0.312439388,
+          "solve_s": 0.026937359,
+          "total_s": 0.345392501,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 128,
+          "surface_s": 0.60170989,
+          "flux_s": 0.651190815,
+          "volume_s": 0.210353909,
+          "alpha_s": 0.410848633,
+          "qs_s": 0.053346709,
+          "total_s": 1.931277837,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "status_counts": {
+          "ok": 128
+        },
+        "axis_valid_fraction": 1.0,
+        "center_capture_score": 75.83195051732557,
+        "center_capture_score_delta": 1.4210854715202004e-14
+      },
+      "gradient_wall_s": 3.672861758619547,
+      "proposal_decode_wall_s": 0.0001008845865726471,
+      "flow_pipeline_decode_wall_s": 0.0001008845865726471,
+      "flow_pipeline_decode_batch_sizes": [
+        1
+      ],
+      "flow_pipeline_wasted_endpoint_count": 0,
+      "proposal_score_wall_s": 1.1249715611338615,
+      "iteration_wall_s": 4.801727555692196,
+      "total_wall_s": 4.801871821284294
+    },
+    {
+      "iteration": 2,
+      "current_score": 75.13857928474715,
+      "best_score": 75.83195051732555,
+      "best_iteration": 0,
+      "current_status": "ok",
+      "current_qh_error": 0.22097762001825003,
+      "current_qa_error": 0.2952669962112165,
+      "current_qp_error": 0.04973529577962605,
+      "current_iota": -1.026184394955635,
+      "gradient_endpoint_count": 128,
+      "gradient_mode": "random-orthogonal",
+      "random_direction_count": 64,
+      "gradient_endpoint_statuses": {
+        "ok": 128
+      },
+      "gradient_step_applied": true,
+      "center_update_accepted": true,
+      "center_acceptance_fraction": 1.0,
+      "proposal_attempts": [
+        {
+          "fraction": 1.0,
+          "status": "ok",
+          "score": 75.13857928474715
+        }
+      ],
+      "adam_step": 2,
+      "optimizer": "adam",
+      "bfgs_update": {
+        "updated": false,
+        "reason": "not_applicable"
+      },
+      "bfgs_trust_rms": 0.01,
+      "raw_gradient_rms": 23.93006869826064,
+      "gradient_rms": 23.93006869826064,
+      "first_moment_rms": 8.758879222154864,
+      "second_moment_root_mean": 1.073102997141573,
+      "gradient_previous_moment_cosine": -0.005173376682058726,
+      "update_gradient_cosine": 0.7338662052821553,
+      "proposed_update_rms": 0.0070514273281362585,
+      "update_rms": 0.0070514273281362585,
+      "temporal_gradient_limit": null,
+      "temporal_update_limit": null,
+      "temporal_gradient_outlier": false,
+      "temporal_update_outlier": false,
+      "noise_rms": 0.3669591090292601,
+      "noise_abs_max": 2.3742849826812744,
+      "endpoint_decode_wall_s": 0.00018158182501792908,
+      "endpoint_decode_cache_hit": false,
+      "prefetched_endpoint_decode_wall_s": 0.0,
+      "gradient_pipeline": {
+        "timing_s": {
+          "field_create": 0.003117009997367859,
+          "center_capture": 0.593082383275032,
+          "axis_refine": 0.6616236977279186,
+          "axis_samples": 0.05541007220745087,
+          "psi": 0.3501633368432522,
+          "coil_linear": 0.068289864808321,
+          "local_score": 1.9457423351705074,
+          "total": 3.67742870002985
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.00095708,
+          "feature_s": 0.312852472,
+          "solve_s": 0.026877368,
+          "total_s": 0.344463322,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 128,
+          "surface_s": 0.602036205,
+          "flux_s": 0.662098774,
+          "volume_s": 0.21228182,
+          "alpha_s": 0.406612796,
+          "qs_s": 0.052904747,
+          "total_s": 1.937908545,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "status_counts": {
+          "ok": 128
+        },
+        "axis_valid_fraction": 1.0,
+        "center_capture_score": 74.23186218488559,
+        "center_capture_score_delta": -1.4210854715202004e-14
+      },
+      "gradient_wall_s": 3.677610281854868,
+      "proposal_decode_wall_s": 9.351596236228943e-05,
+      "flow_pipeline_decode_wall_s": 9.351596236228943e-05,
+      "flow_pipeline_decode_batch_sizes": [
+        1
+      ],
+      "flow_pipeline_wasted_endpoint_count": 0,
+      "proposal_score_wall_s": 1.1195413060486317,
+      "iteration_wall_s": 4.800011403858662,
+      "total_wall_s": 9.604593433439732
+    },
+    {
+      "iteration": 3,
+      "current_score": 75.85310096322983,
+      "best_score": 75.85310096322983,
+      "best_iteration": 3,
+      "current_status": "ok",
+      "current_qh_error": 0.22492053560831068,
+      "current_qa_error": 0.29870364376452646,
+      "current_qp_error": 0.049905802196967324,
+      "current_iota": -1.0291609913110733,
+      "gradient_endpoint_count": 128,
+      "gradient_mode": "random-orthogonal",
+      "random_direction_count": 64,
+      "gradient_endpoint_statuses": {
+        "ok": 128
+      },
+      "gradient_step_applied": true,
+      "center_update_accepted": true,
+      "center_acceptance_fraction": 1.0,
+      "proposal_attempts": [
+        {
+          "fraction": 1.0,
+          "status": "ok",
+          "score": 75.85310096322983
+        }
+      ],
+      "adam_step": 3,
+      "optimizer": "adam",
+      "bfgs_update": {
+        "updated": false,
+        "reason": "not_applicable"
+      },
+      "bfgs_trust_rms": 0.01,
+      "raw_gradient_rms": 20.626515781666807,
+      "gradient_rms": 20.626515781666807,
+      "first_moment_rms": 8.851169733850655,
+      "second_moment_root_mean": 1.2553292977235508,
+      "gradient_previous_moment_cosine": 0.03242803654354392,
+      "update_gradient_cosine": 0.6936604073227497,
+      "proposed_update_rms": 0.005927411349476149,
+      "update_rms": 0.005927411349476149,
+      "temporal_gradient_limit": null,
+      "temporal_update_limit": null,
+      "temporal_gradient_outlier": false,
+      "temporal_update_outlier": false,
+      "noise_rms": 0.3672254370689573,
+      "noise_abs_max": 2.3746705055236816,
+      "endpoint_decode_wall_s": 0.0001599639654159546,
+      "endpoint_decode_cache_hit": false,
+      "prefetched_endpoint_decode_wall_s": 0.0,
+      "gradient_pipeline": {
+        "timing_s": {
+          "field_create": 0.003079518675804138,
+          "center_capture": 0.5727728642523289,
+          "axis_refine": 0.6618485227227211,
+          "axis_samples": 0.05543801560997963,
+          "psi": 0.35066257417201996,
+          "coil_linear": 0.06817086413502693,
+          "local_score": 1.9358130544424057,
+          "total": 3.6477854140102863
+        },
+        "psi_stats": {
+          "point_count": 82176,
+          "basis_s": 0.000957875,
+          "feature_s": 0.313275161,
+          "solve_s": 0.026941745,
+          "total_s": 0.344959291,
+          "basis_gib": 1.4455432891845703
+        },
+        "local_stats": {
+          "query_count": 128,
+          "surface_s": 0.602521686,
+          "flux_s": 0.653342406,
+          "volume_s": 0.211799897,
+          "alpha_s": 0.406026073,
+          "qs_s": 0.053084439,
+          "total_s": 1.928308875,
+          "alpha_tile_size": 8,
+          "volume_points_per_query": 100000,
+          "flux_points_per_query": 540672
+        },
+        "status_counts": {
+          "ok": 128
+        },
+        "axis_valid_fraction": 1.0,
+        "center_capture_score": 75.13857928474721,
+        "center_capture_score_delta": 5.684341886080802e-14
+      },
+      "gradient_wall_s": 3.6479453779757023,
+      "proposal_decode_wall_s": 0.0001216791570186615,
+      "flow_pipeline_decode_wall_s": 0.0001216791570186615,
+      "flow_pipeline_decode_batch_sizes": [
+        1
+      ],
+      "flow_pipeline_wasted_endpoint_count": 0,
+      "proposal_score_wall_s": 1.1209689155220985,
+      "iteration_wall_s": 4.775332614779472,
+      "total_wall_s": 14.381998009979725
+    }
+  ]
+}

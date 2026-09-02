@@ -1,0 +1,933 @@
+{
+  "format": "axis_surface_prior_signed_mirror_score_audit_v1",
+  "code_commit": "2dadc49c0fa74c12a4d26474ec914789b6423964",
+  "score_library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+  "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+  "interpretation": "Improper coordinate reflections have determinant -1 and are expected to exchange helicity signs; the determinant +1 rotation is a same-sign invariance control.",
+  "cases": [
+    {
+      "sample_id": "axisv3_case_01341",
+      "case_file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/trajectories/axisv3_case_01341/optimization/best.json",
+      "case_sha256": "399d3d197cb1e527043ea6d0798d28d342dedb0498519fd103f85fb9f2a19606",
+      "nfp": 5,
+      "scores": {
+        "identity__target_positive": {
+          "score": 69.6840950323852,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583730741,
+            "psi": 99.34122715538024,
+            "surface": 98.51799791238876,
+            "coordinate": 90.93560261885108,
+            "volume_qs": 37.60368221062338,
+            "iota": 99.46431646977412,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.1833735035614075e-09,
+            "axis_topology_trace": 0.5757731374891649,
+            "axis_topology_det": 1.0000000478200137,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.037914435438638365,
+            "surface_one_period_drift_relative_p95": 5.9263755312204374e-05,
+            "surface_drift_relative_p95": 0.00011964651133407437,
+            "iota_min": -1.031782865524292,
+            "iota_max": -0.9973179857486484,
+            "qs_global_error": 0.45174812875958226,
+            "qs_qa_global_error": 0.2863801967398292,
+            "qs_qp_global_error": 0.04289030826834298,
+            "score_qh_helicity_advantage": 0.32619824351266596,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "identity",
+            "diagonal": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            5
+          ]
+        },
+        "identity__target_negative": {
+          "score": 76.20260074333883,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583730741,
+            "psi": 99.34122715538024,
+            "surface": 98.51799791238876,
+            "coordinate": 90.93560261885108,
+            "volume_qs": 53.19912188499184,
+            "iota": 99.46431646977412,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.1833735035614075e-09,
+            "axis_topology_trace": 0.5757731374891649,
+            "axis_topology_det": 1.0000000478200137,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.037914435438638365,
+            "surface_one_period_drift_relative_p95": 5.9263755312204374e-05,
+            "surface_drift_relative_p95": 0.00011964651133407437,
+            "iota_min": -1.031782865524292,
+            "iota_max": -0.9973179857486484,
+            "qs_global_error": 0.22788108631339016,
+            "qs_qa_global_error": 0.28638019673982756,
+            "qs_qp_global_error": 0.04289030826834308,
+            "score_qh_helicity_advantage": 0.48971900261020757,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "identity",
+            "diagonal": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            -5
+          ]
+        },
+        "reflect_y__target_positive": {
+          "score": 76.39039639875625,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583726827,
+            "psi": 99.34141373802603,
+            "surface": 98.51828078994829,
+            "coordinate": 90.82831776983747,
+            "volume_qs": 53.256912064314676,
+            "iota": 99.68519629391649,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.183373504820936e-09,
+            "axis_topology_trace": 0.5757731374897345,
+            "axis_topology_det": 1.0000000478204762,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03791463066053985,
+            "surface_one_period_drift_relative_p95": 5.8771132148999145e-05,
+            "surface_drift_relative_p95": 0.0001194174961692783,
+            "iota_min": 0.9984247407487281,
+            "iota_max": 1.030819147825241,
+            "qs_global_error": 0.22789414358791737,
+            "qs_qa_global_error": 0.28641673129375933,
+            "qs_qp_global_error": 0.042889167846953374,
+            "score_qh_helicity_advantage": 0.48969803984497784,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "reflect_y",
+            "diagonal": [
+              1.0,
+              -1.0,
+              1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            5
+          ]
+        },
+        "reflect_y__target_negative": {
+          "score": 69.85150441082591,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583726827,
+            "psi": 99.34141373802603,
+            "surface": 98.51828078994829,
+            "coordinate": 90.82831776983747,
+            "volume_qs": 37.64388627141641,
+            "iota": 99.68519629391649,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.183373504820936e-09,
+            "axis_topology_trace": 0.5757731374897345,
+            "axis_topology_det": 1.0000000478204762,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03791463066053985,
+            "surface_one_period_drift_relative_p95": 5.8771132148999145e-05,
+            "surface_drift_relative_p95": 0.0001194174961692783,
+            "iota_min": 0.9984247407487281,
+            "iota_max": 1.030819147825241,
+            "qs_global_error": 0.45178245116265464,
+            "qs_qa_global_error": 0.28641673129375916,
+            "qs_qp_global_error": 0.04288916784695333,
+            "score_qh_helicity_advantage": 0.3261757011626152,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "reflect_y",
+            "diagonal": [
+              1.0,
+              -1.0,
+              1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            -5
+          ]
+        },
+        "reflect_z__target_positive": {
+          "score": 76.4011896272062,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583726827,
+            "psi": 99.34142049965999,
+            "surface": 98.5182819085845,
+            "coordinate": 90.93676563809045,
+            "volume_qs": 53.25690598465464,
+            "iota": 99.6851721299879,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.183373504820936e-09,
+            "axis_topology_trace": 0.5757731374897345,
+            "axis_topology_det": 1.0000000478204762,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.037914628394922004,
+            "surface_one_period_drift_relative_p95": 5.874422573483245e-05,
+            "surface_drift_relative_p95": 0.00011941659054167944,
+            "iota_min": 0.9984246197384553,
+            "iota_max": 1.030819058418274,
+            "qs_global_error": 0.22789414019741838,
+            "qs_qa_global_error": 0.2864167186321444,
+            "qs_qp_global_error": 0.04288916508136865,
+            "score_qh_helicity_advantage": 0.48969802744908963,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "reflect_z",
+            "diagonal": [
+              1.0,
+              1.0,
+              -1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            5
+          ]
+        },
+        "reflect_z__target_negative": {
+          "score": 69.86230023603947,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583726827,
+            "psi": 99.34142049965999,
+            "surface": 98.5182819085845,
+            "coordinate": 90.93676563809045,
+            "volume_qs": 37.64388298699877,
+            "iota": 99.6851721299879,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.183373504820936e-09,
+            "axis_topology_trace": 0.5757731374897345,
+            "axis_topology_det": 1.0000000478204762,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.037914628394922004,
+            "surface_one_period_drift_relative_p95": 5.874422573483245e-05,
+            "surface_drift_relative_p95": 0.00011941659054167944,
+            "iota_min": 0.9984246197384553,
+            "iota_max": 1.030819058418274,
+            "qs_global_error": 0.4517824236914626,
+            "qs_qa_global_error": 0.2864167186321463,
+            "qs_qp_global_error": 0.042889165081368676,
+            "score_qh_helicity_advantage": 0.32617570035471033,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "reflect_z",
+            "diagonal": [
+              1.0,
+              1.0,
+              -1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            -5
+          ]
+        },
+        "rotate_pi_about_x__target_positive": {
+          "score": 69.67333351241349,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583730741,
+            "psi": 99.34122419403607,
+            "surface": 98.51799099267573,
+            "coordinate": 90.82746787453932,
+            "volume_qs": 37.60368102339771,
+            "iota": 99.46431825239857,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.1833735035614075e-09,
+            "axis_topology_trace": 0.5757731374891649,
+            "axis_topology_det": 1.0000000478200137,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.037914437782514486,
+            "surface_one_period_drift_relative_p95": 5.934244226531148e-05,
+            "surface_drift_relative_p95": 0.00011965211353773686,
+            "iota_min": -1.03178308904171,
+            "iota_max": -0.99731799468574,
+            "qs_global_error": 0.45174816090990844,
+            "qs_qa_global_error": 0.2863802143052013,
+            "qs_qp_global_error": 0.042890310810273446,
+            "score_qh_helicity_advantage": 0.3261982408965035,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "rotate_pi_about_x",
+            "diagonal": [
+              1.0,
+              -1.0,
+              -1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            5
+          ]
+        },
+        "rotate_pi_about_x__target_negative": {
+          "score": 76.19183984850463,
+          "status": "ok",
+          "components": {
+            "axis": 99.45858583730741,
+            "psi": 99.34122419403607,
+            "surface": 98.51799099267573,
+            "coordinate": 90.82746787453932,
+            "volume_qs": 53.199121941980046,
+            "iota": 99.46431825239857,
+            "coil": 68.2045081504138
+          },
+          "diagnostics": {
+            "axis_residual": 2.1833735035614075e-09,
+            "axis_topology_trace": 0.5757731374891649,
+            "axis_topology_det": 1.0000000478200137,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.037914437782514486,
+            "surface_one_period_drift_relative_p95": 5.934244226531148e-05,
+            "surface_drift_relative_p95": 0.00011965211353773686,
+            "iota_min": -1.03178308904171,
+            "iota_max": -0.99731799468574,
+            "qs_global_error": 0.2278810906494636,
+            "qs_qa_global_error": 0.2863802143052013,
+            "qs_qp_global_error": 0.042890310810273294,
+            "score_qh_helicity_advantage": 0.48971901266546697,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.8868778636530552,
+            "coil_curvature_p95": 9.674112122049348,
+            "coil_curvature_max": 18.5195062741815,
+            "coil_min_intercoil_distance": 0.0519385960603072,
+            "coil_min_axis_distance": 0.4889089652021196,
+            "coil_high_mode_energy_fraction": 2.119872812955231e-05,
+            "coil_current_abs_max_a": 187162.625
+          },
+          "coordinate_transform": {
+            "name": "rotate_pi_about_x",
+            "diagonal": [
+              1.0,
+              -1.0,
+              -1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            -5
+          ]
+        }
+      },
+      "comparisons": {
+        "identity_negative_vs_reflect_y_positive": {
+          "score_absolute_difference": 0.1877956554174176,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.10728484901360957,
+            "iota": 0.22087982414237217,
+            "psi": 0.00018658264579585193,
+            "surface": 0.0002828775595276056,
+            "volume_qs": 0.057790179322836366
+          }
+        },
+        "identity_positive_vs_reflect_y_negative": {
+          "score_absolute_difference": 0.16740937844070913,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.10728484901360957,
+            "iota": 0.22087982414237217,
+            "psi": 0.00018658264579585193,
+            "surface": 0.0002828775595276056,
+            "volume_qs": 0.040204060793030294
+          }
+        },
+        "identity_negative_vs_reflect_z_positive": {
+          "score_absolute_difference": 0.19858888386735885,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.0011630192393710104,
+            "iota": 0.2208556602137861,
+            "psi": 0.0001933442797508178,
+            "surface": 0.00028399619573349355,
+            "volume_qs": 0.05778409966279696
+          }
+        },
+        "identity_positive_vs_reflect_z_negative": {
+          "score_absolute_difference": 0.17820520365427228,
+          "component_absolute_differences": {
+            "axis": 3.913669388566632e-11,
+            "coil": 0.0,
+            "coordinate": 0.0011630192393710104,
+            "iota": 0.2208556602137861,
+            "psi": 0.0001933442797508178,
+            "surface": 0.00028399619573349355,
+            "volume_qs": 0.04020077637538577
+          }
+        },
+        "proper_rotation_same_positive_target": {
+          "score_absolute_difference": 0.010761519971708822,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.10813474431175507,
+            "iota": 1.782624451607262e-06,
+            "psi": 2.961344165441915e-06,
+            "surface": 6.91971303012906e-06,
+            "volume_qs": 1.1872256706624285e-06
+          }
+        }
+      }
+    },
+    {
+      "sample_id": "axisv3_case_02832",
+      "case_file": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/trajectories/axisv3_case_02832/optimization/best.json",
+      "case_sha256": "9e412f20b037490e264c65bf369a8f28857ca4fba023225347e004511c161b54",
+      "nfp": 7,
+      "scores": {
+        "identity__target_positive": {
+          "score": 68.3992164673479,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.06106688876021,
+            "surface": 96.28702405516697,
+            "coordinate": 87.69253125608122,
+            "volume_qs": 35.72529249029477,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512267849883623,
+            "surface_one_period_drift_relative_p95": 0.0002263702464357288,
+            "surface_drift_relative_p95": 0.002011309382487428,
+            "iota_min": -1.205846130847931,
+            "iota_max": -1.0873123485551657,
+            "qs_global_error": 0.6846329422505448,
+            "qs_qa_global_error": 0.3579577858885004,
+            "qs_qp_global_error": 0.04965006186165479,
+            "score_qh_helicity_advantage": 0.3389735653908501,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "identity",
+            "diagonal": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            7
+          ]
+        },
+        "identity__target_negative": {
+          "score": 81.14980263294056,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.06106688876021,
+            "surface": 96.28702405516697,
+            "coordinate": 87.69253125608122,
+            "volume_qs": 66.08383097980114,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512267849883623,
+            "surface_one_period_drift_relative_p95": 0.0002263702464357288,
+            "surface_drift_relative_p95": 0.002011309382487428,
+            "iota_min": -1.205846130847931,
+            "iota_max": -1.0873123485551657,
+            "qs_global_error": 0.1706689612748674,
+            "qs_qa_global_error": 0.3579577858885007,
+            "qs_qp_global_error": 0.049650061861654944,
+            "score_qh_helicity_advantage": 0.6728899988205043,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "identity",
+            "diagonal": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            -7
+          ]
+        },
+        "reflect_y__target_positive": {
+          "score": 81.14296919330027,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.04569944449105,
+            "surface": 96.28717223929732,
+            "coordinate": 87.66632478885757,
+            "volume_qs": 66.07742415383913,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512282705401512,
+            "surface_one_period_drift_relative_p95": 0.00022658695549322683,
+            "surface_drift_relative_p95": 0.002011165793671402,
+            "iota_min": 1.0890360424860832,
+            "iota_max": 1.2035235166549683,
+            "qs_global_error": 0.17072468628256285,
+            "qs_qa_global_error": 0.3579281654932026,
+            "qs_qp_global_error": 0.049648694998630324,
+            "score_qh_helicity_advantage": 0.6728120784540509,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "reflect_y",
+            "diagonal": [
+              1.0,
+              -1.0,
+              1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            7
+          ]
+        },
+        "reflect_y__target_negative": {
+          "score": 68.3958390526166,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.04569944449105,
+            "surface": 96.28717223929732,
+            "coordinate": 87.66632478885754,
+            "volume_qs": 35.72711429506846,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512282705401512,
+            "surface_one_period_drift_relative_p95": 0.00022658695549322683,
+            "surface_drift_relative_p95": 0.002011165793671402,
+            "iota_min": 1.0890360424860832,
+            "iota_max": 1.2035235166549683,
+            "qs_global_error": 0.6845783596323689,
+            "qs_qa_global_error": 0.35792816549320117,
+            "qs_qp_global_error": 0.04964869499863061,
+            "score_qh_helicity_advantage": 0.3389852615738923,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "reflect_y",
+            "diagonal": [
+              1.0,
+              -1.0,
+              1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            -7
+          ]
+        },
+        "reflect_z__target_positive": {
+          "score": 81.14295339425911,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.04570507718225,
+            "surface": 96.28717339596635,
+            "coordinate": 87.6661595450267,
+            "volume_qs": 66.07742426432938,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512282748543672,
+            "surface_one_period_drift_relative_p95": 0.0002265790387313438,
+            "surface_drift_relative_p95": 0.0020111646728790066,
+            "iota_min": 1.0890360410038682,
+            "iota_max": 1.2035232782363892,
+            "qs_global_error": 0.17072468494203089,
+            "qs_qa_global_error": 0.35792816450260245,
+            "qs_qp_global_error": 0.04964869777580693,
+            "score_qh_helicity_advantage": 0.6728120924962074,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "reflect_z",
+            "diagonal": [
+              1.0,
+              1.0,
+              -1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            7
+          ]
+        },
+        "reflect_z__target_negative": {
+          "score": 68.3958229785807,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.04570507718225,
+            "surface": 96.28717339596635,
+            "coordinate": 87.6661595450267,
+            "volume_qs": 35.72711375080936,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512282748543672,
+            "surface_one_period_drift_relative_p95": 0.0002265790387313438,
+            "surface_drift_relative_p95": 0.0020111646728790066,
+            "iota_min": 1.0890360410038682,
+            "iota_max": 1.2035232782363892,
+            "qs_global_error": 0.6845783786693314,
+            "qs_qa_global_error": 0.35792816450260295,
+            "qs_qp_global_error": 0.04964869777580676,
+            "score_qh_helicity_advantage": 0.3389852678767056,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "reflect_z",
+            "diagonal": [
+              1.0,
+              1.0,
+              -1.0
+            ],
+            "determinant": -1.0
+          },
+          "target_helicity": [
+            1,
+            -7
+          ]
+        },
+        "rotate_pi_about_x__target_positive": {
+          "score": 68.39920103877503,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.0610448705957,
+            "surface": 96.28700818956227,
+            "coordinate": 87.69241503833453,
+            "volume_qs": 35.725292446434594,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512267828618036,
+            "surface_one_period_drift_relative_p95": 0.00022636588315263836,
+            "surface_drift_relative_p95": 0.0020113247561974325,
+            "iota_min": -1.205846130847931,
+            "iota_max": -1.0873125821263647,
+            "qs_global_error": 0.6846329443360845,
+            "qs_qa_global_error": 0.3579577962480493,
+            "qs_qp_global_error": 0.04965006073054718,
+            "score_qh_helicity_advantage": 0.33897355960359987,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "rotate_pi_about_x",
+            "diagonal": [
+              1.0,
+              -1.0,
+              -1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            7
+          ]
+        },
+        "rotate_pi_about_x__target_negative": {
+          "score": 81.14978706922062,
+          "status": "ok",
+          "components": {
+            "axis": 97.19354479779095,
+            "psi": 99.0610448705957,
+            "surface": 96.28700818956227,
+            "coordinate": 87.69241503833453,
+            "volume_qs": 66.08383061416221,
+            "iota": 100.0,
+            "coil": 67.13971152055191
+          },
+          "diagnostics": {
+            "axis_residual": 1.7553947276374866e-09,
+            "axis_topology_trace": 1.003667183445096,
+            "axis_topology_det": 1.0000014704654387,
+            "surface_level": 0.49,
+            "surface_inverse_aspect_ratio": 0.03512267828618036,
+            "surface_one_period_drift_relative_p95": 0.00022636588315263836,
+            "surface_drift_relative_p95": 0.0020113247561974325,
+            "iota_min": -1.205846130847931,
+            "iota_max": -1.0873125821263647,
+            "qs_global_error": 0.17066896411717392,
+            "qs_qa_global_error": 0.35795779624805085,
+            "qs_qp_global_error": 0.049650060730547084,
+            "score_qh_helicity_advantage": 0.6728899901403902,
+            "score_qh_helicity_quality": 1.0,
+            "coil_length_mean": 1.4259219181523737,
+            "coil_curvature_p95": 10.501874861884474,
+            "coil_curvature_max": 15.594142205977343,
+            "coil_min_intercoil_distance": 0.02811977331725315,
+            "coil_min_axis_distance": 0.7157896780167928,
+            "coil_high_mode_energy_fraction": 9.879806211879194e-06,
+            "coil_current_abs_max_a": 107806.3984375
+          },
+          "coordinate_transform": {
+            "name": "rotate_pi_about_x",
+            "diagonal": [
+              1.0,
+              -1.0,
+              -1.0
+            ],
+            "determinant": 1.0
+          },
+          "target_helicity": [
+            1,
+            -7
+          ]
+        }
+      },
+      "comparisons": {
+        "identity_negative_vs_reflect_y_positive": {
+          "score_absolute_difference": 0.00683343964028893,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.026206467223659047,
+            "iota": 0.0,
+            "psi": 0.015367444269159591,
+            "surface": 0.00014818413035300182,
+            "volume_qs": 0.006406825962002927
+          }
+        },
+        "identity_positive_vs_reflect_y_negative": {
+          "score_absolute_difference": 0.0033774147313039293,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.02620646722368747,
+            "iota": 0.0,
+            "psi": 0.015367444269159591,
+            "surface": 0.00014818413035300182,
+            "volume_qs": 0.0018218047736908716
+          }
+        },
+        "identity_negative_vs_reflect_z_positive": {
+          "score_absolute_difference": 0.00684923868145404,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.02637171105452296,
+            "iota": 0.0,
+            "psi": 0.015361811577960793,
+            "surface": 0.00014934079938200284,
+            "volume_qs": 0.006406715471754865
+          }
+        },
+        "identity_positive_vs_reflect_z_negative": {
+          "score_absolute_difference": 0.003393488767201802,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.02637171105452296,
+            "iota": 0.0,
+            "psi": 0.015361811577960793,
+            "surface": 0.00014934079938200284,
+            "volume_qs": 0.0018212605145890848
+          }
+        },
+        "proper_rotation_same_positive_target": {
+          "score_absolute_difference": 1.54285728655168e-05,
+          "component_absolute_differences": {
+            "axis": 0.0,
+            "coil": 0.0,
+            "coordinate": 0.00011621774669379192,
+            "iota": 0.0,
+            "psi": 2.2018164514747696e-05,
+            "surface": 1.5865604694909052e-05,
+            "volume_qs": 4.3860175935606094e-08
+          }
+        }
+      }
+    }
+  ]
+}

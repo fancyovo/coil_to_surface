@@ -1,0 +1,268 @@
+{
+  "format": "axis_surface_prior_balanced_v2_adam200_trajectory_v1",
+  "protocol_id": "qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1",
+  "trajectory_id": "axisv3_case_02832_continue_adam200",
+  "case": {
+    "trajectory_id": "axisv3_case_02832_continue_adam200",
+    "case_id": 2832,
+    "selection_rank": 1,
+    "worker_index": 1,
+    "nfp": 7,
+    "n_base_coils": 4,
+    "target_helicity": [
+      1,
+      -7
+    ],
+    "source_score": 67.24458726935931,
+    "source_score_target_helicity": [
+      1,
+      7
+    ],
+    "target_score_at_prepare": null,
+    "source_coil_component": 67.13971152055191,
+    "source_status": "ok",
+    "optimizer_seed": 20290921,
+    "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/starts/case_02832_best.json",
+    "start_sha256": "044fecc3f4617aa89f6dcee095b0f376d7cdf7a8dfb5622b3f514a7fbffbe2f2",
+    "source_best": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_compact_flexible_v3_adam200_20260901_08a3c3f/trajectories/axisv3_case_02832/optimization/best.json",
+    "source_best_sha256": "9e412f20b037490e264c65bf369a8f28857ca4fba023225347e004511c161b54"
+  },
+  "optimization": {
+    "status": "ok",
+    "stop_reason": "completed_iterations",
+    "initial_score": 79.96649028607641,
+    "final_score": 80.19641704879639,
+    "best_score": 84.93082640564785,
+    "best_iteration": 103,
+    "completed_iterations": 200,
+    "completed_adam_steps": 200,
+    "completed_optimizer_steps": 200,
+    "total_wall_s": 1512.7250483855605,
+    "initial_decode_wall_s": 0.00036796554923057556,
+    "initial_score_wall_s": 1.0560344271361828,
+    "mean_iteration_wall_s": 7.561540112365037,
+    "manifest": {
+      "protocol": {
+        "id": "unregistered-experimental",
+        "status": "unregistered-experimental",
+        "stage": "optimization",
+        "requirements": {
+          "native_score_abi": 11,
+          "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+        },
+        "actual": {
+          "parameter_space": "data",
+          "optimizer": "adam",
+          "iterations": 200,
+          "directions": 64,
+          "perturbation": 0.0025,
+          "learning_rate": 0.01,
+          "beta1": 0.7,
+          "beta2": 0.999,
+          "flow_steps": 128,
+          "gradient_mode": "random-orthogonal",
+          "difference": "centered",
+          "native_score_abi": 11,
+          "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+          "target_helicity": [
+            1,
+            -7
+          ],
+          "data_start_mode": "exact-unclipped"
+        },
+        "differences_from_current": {
+          "perturbation": {
+            "expected": 0.005,
+            "actual": 0.0025
+          },
+          "learning_rate": {
+            "expected": 0.02,
+            "actual": 0.01
+          },
+          "parameter_space": {
+            "expected": "latent",
+            "actual": "data"
+          },
+          "target_helicity": {
+            "expected": [
+              1,
+              7
+            ],
+            "actual": [
+              1,
+              -7
+            ]
+          },
+          "data_start_mode": {
+            "expected": "not-applicable",
+            "actual": "exact-unclipped"
+          }
+        }
+      },
+      "repository": {
+        "commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+        "tracked_dirty": false,
+        "available": true
+      },
+      "algorithm": "adam_with_query_batched_local_gradient",
+      "optimizer": "adam",
+      "parameter_space": "data",
+      "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+      "formal_objective": "complete native QH score for every accepted center",
+      "initial_case": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/incomplete/axisv3_case_02832_continue_adam200.worker1.479846.partial/start.json",
+      "initial_case_sha256": "044fecc3f4617aa89f6dcee095b0f376d7cdf7a8dfb5622b3f514a7fbffbe2f2",
+      "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+      "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+      "native_lib": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+      "native_lib_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+      "native_score": {
+        "abi": 11,
+        "validated_default_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+      },
+      "nfp": 7,
+      "n_base_coils": 4,
+      "target_helicity": [
+        1,
+        -7
+      ],
+      "iterations": 200,
+      "max_wall_s": 7200.0,
+      "flow": {
+        "method": "rk4",
+        "steps": 128,
+        "dtype": "fp32",
+        "use": "none"
+      },
+      "flow_pipeline": false,
+      "coordinate_gradient": {
+        "dimension": 400,
+        "mode": "random-orthogonal",
+        "random_directions": 64,
+        "endpoint_count": 128,
+        "perturbation": 0.0025,
+        "difference": "centered",
+        "psi_grid": 48,
+        "psi_iterations": 4,
+        "alpha_iterations": 4,
+        "formal_surface_theta_count": 128,
+        "local_surface_theta_count": 64
+      },
+      "adam": {
+        "learning_rate": 0.01,
+        "beta1": 0.7,
+        "beta2": 0.999,
+        "epsilon": 1e-08,
+        "weight_decay": 0.0
+      },
+      "bfgs": {
+        "initial_trust_rms": 0.01,
+        "min_trust_rms": 1e-05,
+        "max_trust_rms": 0.05,
+        "trust_growth": 1.2,
+        "trust_shrink": 0.5,
+        "min_improvement": 0.0
+      },
+      "seed": 20290921,
+      "axis_policy": "initial global search, then strict mixed-precision continuation",
+      "devices": {
+        "flow": 0,
+        "score": 0
+      },
+      "initial_metadata_keys": [
+        "data_prior_screening",
+        "nfp",
+        "original_space_local_gradient_adam",
+        "raw"
+      ],
+      "data_parameterization": {
+        "definition": "per-coordinate training-set standardization",
+        "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+        "initial_source": "direct analytic-prior geometry with unclipped coordinates",
+        "data_start_mode": "exact-unclipped",
+        "initial_clipped_fraction": 0.0,
+        "initial_roundtrip_relative_rms": 7.504558462884723e-08,
+        "flow_calls_after_initialization": 0
+      }
+    }
+  },
+  "optimizer_protocol": {
+    "id": "unregistered-experimental",
+    "status": "unregistered-experimental",
+    "stage": "optimization",
+    "requirements": {
+      "native_score_abi": 11,
+      "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "actual": {
+      "parameter_space": "data",
+      "optimizer": "adam",
+      "iterations": 200,
+      "directions": 64,
+      "perturbation": 0.0025,
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "flow_steps": 128,
+      "gradient_mode": "random-orthogonal",
+      "difference": "centered",
+      "native_score_abi": 11,
+      "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+      "target_helicity": [
+        1,
+        -7
+      ],
+      "data_start_mode": "exact-unclipped"
+    },
+    "differences_from_current": {
+      "perturbation": {
+        "expected": 0.005,
+        "actual": 0.0025
+      },
+      "learning_rate": {
+        "expected": 0.02,
+        "actual": 0.01
+      },
+      "parameter_space": {
+        "expected": "latent",
+        "actual": "data"
+      },
+      "target_helicity": {
+        "expected": [
+          1,
+          7
+        ],
+        "actual": [
+          1,
+          -7
+        ]
+      },
+      "data_start_mode": {
+        "expected": "not-applicable",
+        "actual": "exact-unclipped"
+      }
+    }
+  },
+  "target_helicity": [
+    1,
+    -7
+  ],
+  "data_parameterization": {
+    "definition": "per-coordinate training-set standardization",
+    "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+    "initial_source": "direct analytic-prior geometry with unclipped coordinates",
+    "data_start_mode": "exact-unclipped",
+    "initial_clipped_fraction": 0.0,
+    "initial_roundtrip_relative_rms": 7.504558462884723e-08,
+    "flow_calls_after_initialization": 0
+  },
+  "timing": {
+    "optimization_process_wall_s": 1518.114888034761,
+    "trajectory_wall_s": 1518.1323933638632
+  },
+  "provenance": {
+    "selection_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_v3_negative_hand_continue_20260902_729e592/selection_manifest.json",
+    "code_commit": "729e592dfd7227d60d00fee68f63841bede65e1d",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f"
+  }
+}

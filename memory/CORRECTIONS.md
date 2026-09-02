@@ -645,8 +645,8 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260902-66 - Analytic prior and fixed QH target use opposite handedness
 
-- Severity/status: high / open; affected QH interpretations are contained and
-  promotion is blocked pending signed rescoring.
+- Severity/status: high / diagnosis resolved; analytic-prior promotion remains
+  blocked until the chirality contract is implemented and regression-tested.
 - Reported by: user after observing that both analytic-prior experiments had
   negative-slope Boozer `|B|` contours and both Adam batches plateaued near 70.
 - Incorrect interpretation: the balanced-v2 and compact-flexible-v3 reports
@@ -683,16 +683,30 @@ An open critical correction blocks promotion and external reporting.
   do not by themselves prove the handedness of every generated sample.
 - Containment: both canonical experiment reports now state the signed target,
   label direct values as `QH_(1,+1)`, and mark the QH-abundance interpretation
-  superseded. Hot memory carries the promotion blocker. No evaluator or prior
-  code is changed during this diagnostic turn.
-- Required resolution and regression check: rescore saved initial and optimized
-  endpoints under `(1,+nfp)` and `(1,-nfp)`, test a geometrically mirrored pair
-  for score equivalence, then choose and document one contract: canonicalize the
-  prior to the current positive-hand target, or make signed/best-hand QH an
-  explicit protocol dimension. Add tests that plotting labels, direct metrics,
-  native target metadata, and prior chirality agree before another batch.
-- Promotion/reporting blocker: open. Do not use the two abundance estimates to
-  train or validate a QH reward model until the signed rescoring is complete.
+  superseded. Hot memory and `memory/DECISIONS.md` carry the promotion blocker.
+- Population resolution: job `52580` audited all 3600 compact-flexible-v3 source
+  records. All 569 records with finite iota and `status=ok` were negative; every
+  nonempty `nc=1..4` and `nfp=4..8` subgroup was 100% negative. All 120 saved
+  positive-target Adam200 trajectories were negative at their initial, best,
+  and final states, and every recorded iteration stayed below zero.
+- Signed-score resolution: job `52581` independently rescored the two saved
+  endpoints. For `axisv3_case_01341`, positive/negative target scores were
+  `69.6841/76.2026`; for `axisv3_case_02832`, they were `68.3992/81.1498`.
+  Only the signed-QH contribution changed materially; coil engineering was
+  identical. Improper reflections exchanged the preferred target with score
+  gaps `0.0068` for B and about `0.2` for A, while proper rotation retained the
+  same target.
+- Optimization resolution: registered experimental protocol
+  `qh-axis-surface-compact-v3-top2-negative-hand-continue-adam200-64d-abi11-v1`
+  ran the samples concurrently under job `52566`. Explicit negative-target
+  Adam200 reached `80.8523` and `84.9308`, so the old 60--70 plateau cannot be
+  interpreted as an intrinsic ceiling for the generated mirror branch.
+- Remaining guard: the next analytic prior must expose a chirality sign that is
+  consistent across geometry, target metadata, plotting labels, and scoring.
+  Required tests cover exact mirror pairs and handedness-stratified population
+  statistics. Until then, neither v2 nor v3 abundance estimates may train or
+  validate a QH reward model. Canonical resolution report:
+  `reports/axis_surface_prior_handedness_audit_and_negative_optimization_20260902.md`.
 
 ## CORR-20260902-67 - Remote work bypassed the documented WSL master preflight
 
@@ -730,10 +744,35 @@ An open critical correction blocks promotion and external reporting.
   an exact root file listing, and `rg --files`. Future diagnostics must resolve
   manifest-relative files or enumerate the containing directory before access;
   a remembered directory layout or filename is not evidence.
+- Additional contained tool errors: one progress query assumed that an active
+  atomic trajectory had already moved from `incomplete/*.partial` to its final
+  directory; one PowerShell formatting command contained an empty pipeline;
+  and one local three-image copy used a semicolon-chained command despite the
+  repository command-hygiene rule. The first two were read-only failures. The
+  copy completed for the three explicit report images with no overwrite or data
+  loss. Subsequent access enumerated the atomic run root, used one operation per
+  command, and verified every copied asset before report generation.
 - Promotion/reporting blocker: resolved. The documented WSL, master-socket,
   BatchMode identity, exact-path, and live Slurm checks all passed before the
   first experiment submission; jobs `52565` and `52566` were submitted only
   through that authenticated master. This incident has no numerical impact.
+
+## CORR-20260902-68 - Report renderer attempted to export non-finite history
+
+- Severity/status: low / resolved before delivery.
+- Discovered by: Codex during the required post-generation verification.
+- Error: the first version of the handedness report renderer embedded every raw
+  `history.jsonl` row in a strict JSON summary. Optimizer diagnostics contain
+  valid `NaN` values such as the first-step previous-gradient cosine, so
+  `json.dump(..., allow_nan=False)` stopped with a `ValueError`.
+- Affected scope: the failed command created no delivered report and changed no
+  experiment artifact. Remote data, raw local histories, figures, and numerical
+  conclusions remained intact.
+- Fix and guard: the renderer now keeps raw history only in its provenance
+  `history.jsonl` files and writes compact finite summaries plus explicit
+  history paths. A strict `allow_nan=False` export now succeeds, followed by
+  JSON parsing and visual inspection of both generated figures.
+- Promotion/reporting blocker: resolved.
 
 ## Required Entry Template
 

@@ -1,6 +1,6 @@
 # Active Decisions
 
-Last reviewed: 2026-09-01 (Asia/Shanghai).
+Last reviewed: 2026-09-02 (Asia/Shanghai).
 
 ## DEC-20260828-01 - One current optimization default
 
@@ -80,7 +80,8 @@ surface. The tracked branch copy and commit remain authoritative provenance.
 
 ## DEC-20260901-02 - Analytic axis/surface/contour prior study
 
-Status: v1 invalidated; balanced v2 measured and retained as a structured-prior baseline.
+Status: v1 invalidated; v2/v3 retained as geometry and engineering baselines;
+signed QH interpretation superseded.
 
 The first replacement for the failed QUASR-marginal Gaussian prior used a
 hierarchical analytic construction, but its axis, tube, and contours were all
@@ -118,3 +119,18 @@ unclipped standardized-data coordinates preserve each analytic-prior start;
 the frozen data-space settings are 200 updates, 64 directions, `h=0.0025`, and
 learning rate `0.01`. This follow-up measures the v2 prior and does not alter
 the current default.
+
+The 2026-09-02 signed-helicity audit found fixed-sign `theta-nfp*phi`
+construction terms and no chirality parameter. All 569 valid compact-flexible
+v3 source samples and all 120 frozen Adam200 trajectories occupied the
+negative-iota branch, opposite the project's positive-hand QH target. The
+frozen scores remain valid for `(M,N)=(1,+nfp)`; their threshold rates no longer
+measure same-handed QH abundance. Explicit `(1,-nfp)` Adam200 raised the two
+representative endpoints to `80.8523` and `84.9308`.
+
+Any next analytic-prior batch must expose a machine-readable chirality sign and
+apply it consistently to winding-surface phases, contour modes, target
+metadata, and scoring. Promotion requires mirror-pair regression tests and
+handedness-stratified population statistics. The design may sample both signs
+uniformly or canonicalize generated geometry to the positive-hand default;
+neither route is implicit until a new registered protocol is reviewed.

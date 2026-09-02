@@ -1144,6 +1144,20 @@ An open critical correction blocks promotion and external reporting.
 - Contained edit error: the first safety-bound patch included an empty hunk
   header and was rejected before changing a file. The correction was split by
   verified context and then applied.
+- Contained remote-operation error: the detached-worktree checkout exceeded the
+  first 10-second tool yield, and Codex forwarded only its partial text instead
+  of retaining the returned session metadata. No duplicate checkout was issued.
+  After a bounded wait, `git worktree list --porcelain` verified the single
+  registered worktree at exact commit `5c77748`; subsequent long commands retain
+  their complete result metadata.
+- Second formal-start correction: job `52974` revealed during startup review
+  that fixed model initialization did not explicitly reseed per-rank training
+  noise after the EMA container consumed the restored process RNG. Codex
+  canceled the job during early q0 distillation, before convergence, audit, or
+  online sampling. The replacement records deterministic seed derivations for
+  model initialization, rank-local noise, epoch order, coil permutation,
+  validation, and generated monitoring. The incomplete `52974` artifacts support
+  no q0-quality or RL conclusion.
 - Primary evidence: the failed commands returned nonzero before changing
   experiment state. The repository-root imports were fixed before commit
   `b03af40`; the bundle was recreated from the named branch and transferred by

@@ -273,6 +273,8 @@ def main() -> None:
         optimizer, mode="min", factor=0.5, patience=3, min_lr=1.0e-6
     )
     weights = feature_weights(normalizer, device)
+    training_seed = args.seed + 1_000_000 + rank
+    torch.manual_seed(training_seed)
     if rank == 0:
         manifest = {
             "format": FORMAT,
@@ -296,6 +298,14 @@ def main() -> None:
                 "current_l1_a": normalizer.current_l1_a,
             },
             "q0_normalized_training_cache": "q0_train_normalized.npy",
+            "seeding": {
+                "model": args.seed,
+                "training_torch_by_rank": "model seed + 1000000 + rank",
+                "epoch_order": "model seed + epoch",
+                "coil_permutation": "model seed + 100000 * epoch + rank",
+                "validation": args.seed + 900000,
+                "generated_monitor": args.seed + 800000,
+            },
             "convergence": {
                 "minimum_epochs": args.minimum_epochs,
                 "validation_relative_improvement": args.minimum_relative_improvement,

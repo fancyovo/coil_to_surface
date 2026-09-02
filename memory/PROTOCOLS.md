@@ -346,6 +346,8 @@ teacher corpus is generated from the compact-flexible v4 construction with
 5,761,380-parameter `CoilFlowTransformer`. Distillation stops only after the
 validation-loss plateau and generated-distribution stability gates both pass;
 the 5000-epoch limit is a failing runaway guard, not an accepted training target.
+Model initialization, per-rank training noise, data order, permutation,
+validation, and monitor streams have recorded deterministic seed derivations.
 An independent ABI-11 teacher-versus-Flow audit gates entry into online rounds.
 
 Each online round samples 64 starts through four concurrent one-GPU workers.

@@ -140,8 +140,12 @@ Adam200, and stops new discovery after four hours while completing the active
 trajectory. Its v1 execution is invalidated because screening artifacts omitted
 the selected magnetic axis and optimizer step 0 could repeat global search on a
 different branch. V2 preserves the screened axis, validates its strict-hint
-step-0 score before any update, and repeats the same scientific intervention.
-This is an experiment, not a chirality-default promotion.
+step-0 score before any update, but its formal run revealed that screening still
+preceded conversion into the optimizer's `float32` representation. V2 is also
+invalidated. V3 constructs the actual optimizer-representable tokens before
+both screening and optimization, while retaining the same physical chirality
+intervention and pre-update axis/score gate. This is an experiment, not a
+chirality-default promotion.
 
 Before promotion, independently test winding-surface and contour-scalar
 chirality as remaining factors and retain exact final-coil reflection as the

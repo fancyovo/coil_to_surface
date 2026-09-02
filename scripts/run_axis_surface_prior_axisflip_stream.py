@@ -29,24 +29,24 @@ from flow_matching.collection import replace_json
 from flow_matching.data import CoilNormalizer, file_sha256
 from flow_matching.trajectory_dataset import atomic_write_json
 from scripts.native_score_runtime import append_jsonl, token_case, write_json
-from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_parameters
+from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_start
 from scripts.run_axis_surface_prior_adam200 import run_logged
 from scripts.sample_axis_surface_prior import compact_result
 
 
 PROTOCOL_ID = (
     "qh-axis-surface-contour-compact-flexible-axisflip-stream-"
-    "adam200-64d-abi11-v2"
+    "adam200-64d-abi11-v3"
 )
 GENERATOR_FORMAT = "axis_surface_contour_prior_compact_flexible_axis_flip_v4"
 PRESET = "compact_flexible"
 TARGET_HELICITY_SIGN = 1
 ARTIFACT_FORMATS = {
-    "screening": "axis_surface_prior_axisflip_stream_screening_v2",
-    "start": "axis_surface_prior_axisflip_stream_exact_data_start_v2",
-    "trajectory": "axis_surface_prior_axisflip_stream_adam200_trajectory_v2",
-    "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v2",
-    "worker": "axis_surface_prior_axisflip_stream_worker_v2",
+    "screening": "axis_surface_prior_axisflip_stream_screening_v3",
+    "start": "axis_surface_prior_axisflip_stream_exact_data_start_v3",
+    "trajectory": "axis_surface_prior_axisflip_stream_adam200_trajectory_v3",
+    "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v3",
+    "worker": "axis_surface_prior_axisflip_stream_worker_v3",
 }
 
 
@@ -205,6 +205,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--iterations", type=int, default=200)
     value.add_argument("--max-valid-cases", type=int, default=0)
     value.add_argument("--max-screened-cases", type=int, default=0)
+    value.add_argument("--start-sequence-index", type=int, default=0)
     return value
 
 
@@ -216,6 +217,8 @@ def main() -> None:
         raise ValueError("hard-wall-s must exceed discovery-wall-s")
     if args.iterations <= 0:
         raise ValueError("iterations must be positive")
+    if args.start_sequence_index < 0:
+        raise ValueError("start-sequence-index must be nonnegative")
     case_id_for_worker(args.worker_index, args.worker_count, 0)
 
     protocol = json.loads(args.protocol_path.read_text(encoding="utf-8"))
@@ -260,7 +263,7 @@ def main() -> None:
         raise FileExistsError(f"worker {args.worker_index} output already exists")
 
     started = time.perf_counter()
-    sequence_index = 0
+    sequence_index = args.start_sequence_index
     screened = 0
     valid = 0
     completed = 0
@@ -341,8 +344,18 @@ def main() -> None:
         if float(metadata["axis_vertical_coefficients"][0]) >= 0.0:
             raise RuntimeError("dominant construction-axis vertical harmonic was not flipped")
 
+        parameters, current_l1_a, optimizer_start_tokens, roundtrip = (
+            exact_standardized_start(
+                generated.tokens, normalizer, condition=(nfp, n_base_coils)
+            )
+        )
+        if max(
+            roundtrip["geometry_relative_rms"],
+            roundtrip["current_relative_rms"],
+        ) > 2.0e-6:
+            raise RuntimeError("exact-data start roundtrip exceeds tolerance")
         case = token_case(
-            generated.tokens,
+            optimizer_start_tokens,
             nfp=nfp,
             target="QH",
             metadata={"case_id": case_id, **metadata},
@@ -378,9 +391,14 @@ def main() -> None:
             "nfp": nfp,
             "n_base_coils": n_base_coils,
             "family": PRESET,
-            "tokens": generated.tokens.tolist(),
+            "tokens": optimizer_start_tokens.tolist(),
             "reference_axis": generated.reference_axis[::8].tolist(),
             "generator": metadata,
+            "screening_representation": "optimizer_exact_unclipped_reconstruction",
+            "data_parameterization": {
+                "current_l1_a": current_l1_a,
+                "roundtrip": roundtrip,
+            },
             "native": native,
             "score_wall_s": time.perf_counter() - score_started,
             "error": error,
@@ -426,15 +444,7 @@ def main() -> None:
         progress("running")
         case_started = time.perf_counter()
         try:
-            parameters, current_l1_a, roundtrip = exact_standardized_parameters(
-                generated.tokens, normalizer, condition=(nfp, n_base_coils)
-            )
-            if max(
-                roundtrip["geometry_relative_rms"],
-                roundtrip["current_relative_rms"],
-            ) > 2.0e-6:
-                raise RuntimeError("exact-data start roundtrip exceeds tolerance")
-            start = token_case(generated.tokens, nfp=nfp, target="QH")
+            start = token_case(optimizer_start_tokens, nfp=nfp, target="QH")
             start["data_prior_screening"] = {
                 "format": ARTIFACT_FORMATS["start"],
                 "protocol_id": PROTOCOL_ID,

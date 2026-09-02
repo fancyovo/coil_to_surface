@@ -10,6 +10,7 @@ from scripts.optimize_flow_latent import recorded_axis_hint
 from scripts.prepare_axis_surface_prior_adam200 import (
     assign_workers,
     exact_standardized_parameters,
+    exact_standardized_start,
     select_valid_rows,
 )
 from scripts.run_axis_surface_prior_adam200 import artifact_format
@@ -119,3 +120,27 @@ def test_exact_standardized_parameters_preserve_the_physical_start() -> None:
     np.testing.assert_allclose(reconstructed, tokens, rtol=2.0e-6, atol=2.0e-6)
     assert diagnostics["geometry_relative_rms"] < 2.0e-6
     assert diagnostics["current_relative_rms"] < 2.0e-6
+
+
+def test_exact_standardized_start_returns_the_actual_optimizer_representation() -> None:
+    rng = np.random.default_rng(29)
+    tokens = rng.normal(size=(2, 100)).astype(np.float64)
+    tokens[:, -1] = np.asarray([180000.123456, 220000.654321])
+    normalizer = CoilNormalizer(
+        mean=np.zeros(100, dtype=np.float32),
+        std=np.linspace(0.5, 2.0, 100, dtype=np.float32),
+        current_l1_a={"7:2": 123.0},
+    )
+    parameters, current_l1_a, start, diagnostics = exact_standardized_start(
+        tokens, normalizer, condition=(7, 2)
+    )
+    exact = CoilNormalizer(
+        mean=normalizer.mean,
+        std=normalizer.std,
+        current_l1_a={"7:2": current_l1_a},
+        clip=float("inf"),
+    )
+    reconstructed = exact.inverse(parameters[None], (7, 2))[0]
+    np.testing.assert_array_equal(start, reconstructed.astype(np.float64))
+    assert not np.array_equal(start, tokens)
+    assert diagnostics["source_to_start_geometry_relative_rms"] > 0.0

@@ -41,11 +41,12 @@ python "$PROJECT/scripts/run_axis_surface_prior_axisflip_stream.py" \
   --expected-checkpoint-sha "$EXPECTED_CHECKPOINT_SHA" \
   --worker-index 0 \
   --worker-count 1 \
-  --seed 30260905 \
+  --seed 20260905 \
   --device 0 \
   --discovery-wall-s 900 \
   --hard-wall-s 1180 \
   --iterations 3 \
+  --start-sequence-index 25 \
   --max-valid-cases 1
 python - "$smoke_root/workers/worker_00/done.json" <<'PY'
 import json

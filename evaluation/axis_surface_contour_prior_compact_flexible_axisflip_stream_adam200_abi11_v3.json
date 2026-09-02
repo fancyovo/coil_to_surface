@@ -1,23 +1,25 @@
 {
-  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2",
-  "status": "invalidated",
-  "invalidated_date": "2026-09-02",
-  "invalidated_reason": "The screened float64 generator tokens were converted to float32 standardized optimizer coordinates only after screening. The existing roundtrip check compared against an already-float32 copy and masked this representation change.",
-  "replacement_protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3",
-  "retained_evidence": "The v2 smoke validates the pre-update same-axis gate mechanism on its one case. Formal v2 population results are quarantined.",
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3",
+  "status": "registered-experimental",
   "registered_date": "2026-09-02",
-  "purpose": "Test whether flipping only the construction reference-axis chirality changes positive-hand QH validity and Adam200 reachability while preserving the screened magnetic-axis branch.",
-  "supersedes": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1",
+  "purpose": "Test construction-axis chirality reflection with identical optimizer-representable tokens and magnetic-axis branch in screening and Adam step 0.",
+  "supersedes": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2",
   "generator": {
     "baseline": "axis_surface_contour_prior_compact_flexible_v3",
     "preset": "compact_flexible",
     "sample_role": "registered_scoring",
-    "only_explicit_input_change": "multiply every construction reference-axis vertical Fourier coefficient by -1",
+    "only_explicit_physical_input_change": "multiply every construction reference-axis vertical Fourier coefficient by -1",
     "construction_axis_chirality": -1,
     "construction_axis_transform": "Z(phi) is reflected for the same seed while radial coefficients and all sampled scalar parameters are unchanged",
     "result_format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
     "conditions": "all 26 registered (nfp,nc) conditions with nc<=4",
     "seed": 20260905
+  },
+  "start_representation": {
+    "order": "generate float64 analytic tokens, map to exact-unclipped float32 standardized data coordinates, reconstruct physical tokens, then screen and optimize those same reconstructed tokens",
+    "screened_representation": "the optimizer-representable reconstruction",
+    "source_quantization_diagnostics": "record source-to-start geometry and current relative RMS separately from the float32 self-roundtrip",
+    "flow_calls": 0
   },
   "screening": {
     "target": "QH",
@@ -31,7 +33,6 @@
   },
   "optimizer": {
     "parameter_space": "exact-unclipped standardized coil coefficients",
-    "flow_calls": 0,
     "algorithm": "Adam",
     "iterations": 200,
     "directions": 64,
@@ -48,8 +49,11 @@
     "students_gpus": 2,
     "discovery_soft_deadline": "4 hours per worker",
     "soft_deadline_behavior": "finish the active Adam200 trajectory, then exit without sampling another candidate",
-    "slurm_wall_limit": "5 hours",
-    "expected_tail": "usually 10-30 minutes from compact-flexible-v3 Adam200 measurements"
+    "slurm_wall_limit": "5 hours"
+  },
+  "smoke": {
+    "known_regression_case_id": 25,
+    "reason": "This case differed by 1.85135 score in v2 after same-axis continuation and therefore exercises the representation-order fix."
   },
   "monitoring": {
     "per_worker": "screening status, strict-hint step-0 consistency, valid abundance, initial and best iota signs, active trajectory, maximum best score, and count at score>=70",

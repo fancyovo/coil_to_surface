@@ -80,13 +80,14 @@ def assign_workers(
     return assignment
 
 
-def exact_standardized_parameters(
+def exact_standardized_start(
     tokens: np.ndarray,
     normalizer: CoilNormalizer,
     *,
     condition: tuple[int, int],
-) -> tuple[np.ndarray, float, dict[str, float]]:
-    values = np.asarray(tokens, dtype=np.float32)
+) -> tuple[np.ndarray, float, np.ndarray, dict[str, float]]:
+    source = np.asarray(tokens, dtype=np.float64)
+    values = source.astype(np.float32)
     current_l1_a = float(np.sum(np.abs(values[:, -1]), dtype=np.float64))
     canonical = canonicalize_currents(values[None], current_l1_a)[0]
     parameters = ((canonical - normalizer.mean) / normalizer.std).astype(np.float32)
@@ -110,8 +111,30 @@ def exact_standardized_parameters(
     diagnostics = {
         "geometry_relative_rms": geometry_relative_rms,
         "current_relative_rms": current_relative_rms,
+        "source_to_start_geometry_relative_rms": float(
+            np.linalg.norm(
+                reconstructed[:, :-1].astype(np.float64) - source[:, :-1]
+            )
+            / max(np.linalg.norm(source[:, :-1]), 1.0e-30)
+        ),
+        "source_to_start_current_relative_rms": float(
+            np.linalg.norm(reconstructed[:, -1].astype(np.float64) - source[:, -1])
+            / max(np.linalg.norm(source[:, -1]), 1.0e-30)
+        ),
         "max_abs_parameter": float(np.max(np.abs(parameters))),
     }
+    return parameters, current_l1_a, reconstructed.astype(np.float64), diagnostics
+
+
+def exact_standardized_parameters(
+    tokens: np.ndarray,
+    normalizer: CoilNormalizer,
+    *,
+    condition: tuple[int, int],
+) -> tuple[np.ndarray, float, dict[str, float]]:
+    parameters, current_l1_a, _, diagnostics = exact_standardized_start(
+        tokens, normalizer, condition=condition
+    )
     return parameters, current_l1_a, diagnostics
 
 

@@ -846,8 +846,8 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260902-71 - Axis-flip v1 lost the screened magnetic-axis branch
 
-- Severity/status: critical / v1 invalidated; v2 code repair pending replacement
-  smoke and formal rerun.
+- Severity/status: critical / v1 invalidated; axis-hint repair retained in v3,
+  while its sufficiency claim is superseded by `CORR-20260902-72`.
 - Discovered by: Codex from the v1 worker failures after the user requested a
   status check.
 - Error: `scripts/sample_axis_surface_prior.py::compact_result` omitted
@@ -883,7 +883,53 @@ An open critical correction blocks promotion and external reporting.
   PowerShell, WSL, and SSH. Both exited without changing state. Explicit
   unformatted commands then confirmed the summary and an empty user queue;
   subsequent queries avoid here-string compound loops and quoted format strings.
-- Promotion/reporting blocker: open until v2 smoke and formal workers pass.
+- Promotion/reporting blocker: superseded by `CORR-20260902-72` after v2 proved
+  the axis repair necessary but insufficient.
+
+## CORR-20260902-72 - Axis-flip v2 screened a different numeric representation
+
+- Severity/status: critical / v2 invalidated; v3 repair pending smoke and formal
+  rerun.
+- Discovered by: Codex immediately after v2 formal workers began failing their
+  pre-update consistency gates.
+- Error: v2 scored the generator's `float64` tokens, then
+  `exact_standardized_parameters` converted them to `float32` before optimizer
+  startup. Its roundtrip diagnostic compared the reconstruction with the
+  already-converted `float32` array, so it could report zero while hiding the
+  source-to-start change. Preserving `axis_R/axis_Z` was necessary but did not
+  make the two scored coil arrays identical.
+- Primary evidence: smoke `52730` happened to pass on case 0 with score delta
+  `0.0028661` and zero axis-hint distance. Formal arrays `52731/52732` found 21
+  valid starts; 15 failed before Adam and 6 were cancellation-incomplete. Known
+  regression case 25 kept the same axis branch but changed from screening
+  `70.5378047418` to optimizer step 0 `68.6864512271`, delta `1.8513535147`.
+  Analysis `52733` records zero completed formal trajectories. The frozen run
+  root is
+  `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v2_20260902_57c3a06`.
+- Corrected fact and scope: v2 demonstrates that the pre-update gate and axis
+  continuation work, while its formal population is invalid for optimizer and
+  abundance conclusions. It does not revise the v1/v2 positive-iota screening
+  observation because handedness was measured on each run's own screened
+  representation.
+- Containment: both v2 arrays were canceled and all artifacts preserved. V3
+  first maps each analytic sample into exact-unclipped `float32` standardized
+  coordinates, reconstructs the physical tokens, and then uses those identical
+  tokens for screening and optimizer step 0. It records source-to-start
+  quantization separately and retains the strict axis plus `0.1` pre-update
+  score gate. Smoke is pinned to case 25 rather than the accidentally easy case
+  0.
+- Regression: unit tests verify the returned optimizer representation exactly
+  equals a second inverse transform, expose nonzero source quantization, retain
+  the axis coordinates, and require the pre-update gate. Remote smoke must show
+  case 25 with a passed gate before six-worker submission is accepted.
+- Separate contained operational errors: remote `rg` was unavailable and one
+  quoted alternation was split by the shell; both read-only commands failed
+  without changing state and explicit `find`/`cat` reads replaced them. A first
+  local delta-bundle command used an anonymous commit range and was refused as
+  empty; retrying with the named branch produced and verified the intended
+  bundle. One multi-file patch draft targeted the correction file twice and was
+  rejected before applying any hunk; the retry used one update section.
+- Promotion/reporting blocker: open until v3 smoke and formal workers pass.
 
 ## Required Entry Template
 

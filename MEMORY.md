@@ -230,10 +230,11 @@
   Frozen positive-target scores and non-QS physical results remain valid.
 - Axis-flip stream Adam200 v1 at frozen commit `599dd31` is invalidated: compact
   records omitted `axis_R/axis_Z`, so optimizer step 0 could choose another
-  magnetic-axis branch. Arrays `52678/52679` were stopped and their Adam results
-  quarantined. All 24 screened valid starts had positive iota, retained only as
-  preliminary screening evidence. V2 preserves the screened axis and moves the
-  consistency gate before Adam; see `CORR-20260902-71`. This is not a default promotion.
+  magnetic-axis branch. V2 retained the axis but still screened `float64` source
+  tokens before converting to the optimizer's `float32` representation; arrays
+  `52731/52732` stopped with zero completed trajectories. V3 screens the actual
+  optimizer representation and gates before Adam. All 24 v1 valid starts had
+  positive iota as preliminary evidence. See `CORR-20260902-71/72`; this remains experimental.
 
 ## Memory Map
 

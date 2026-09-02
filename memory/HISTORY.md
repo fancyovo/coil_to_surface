@@ -54,6 +54,10 @@ reports and immutable archives retain the detailed record.
   a different magnetic-axis branch. Remaining workers were canceled and all
   Adam outcomes quarantined. V2 moves the consistency gate before Adam and
   requires strict continuation from the screened axis; see `CORR-20260902-71`.
+- 2026-09-02: v2 then exposed a hidden `float64` generator to `float32`
+  optimizer-start conversion after screening. Its formal arrays were canceled
+  with zero completed trajectories. V3 screens the exact optimizer-representable
+  reconstruction and pins smoke to regression case 25; see `CORR-20260902-72`.
 
 ## Evidence Routes
 

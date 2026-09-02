@@ -296,12 +296,23 @@ The remote run root is
 
 Replacement protocol
 `qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2`
-keeps the v1 generator, seed streams, positive target, six-worker resources,
-and optimizer recipe. It adds finite screened `axis_R/axis_Z` to every start,
-requires strict mixed-precision continuation from that branch at optimizer step
-0, and checks an absolute screening/step-0 score difference of at most `0.1`
-before any Adam update. Frozen specification:
+kept the v1 generator, seed streams, target, resources, and optimizer while
+adding strict screened-axis continuation and a pre-update score gate. Smoke
+`52730` passed case 0, but formal arrays `52731/52732` exposed a second error:
+screening used generator `float64` tokens while the optimizer used their
+`float32` standardized reconstruction. Arrays were canceled; analysis `52733`
+counted 21 valid starts, 15 pre-update failures, 6 incomplete starts, and zero
+completed trajectories. V2 is invalidated. Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v2.json`.
+
+Replacement protocol
+`qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3`
+first maps each generated sample into the exact-unclipped standardized data
+coordinates used by the optimizer, reconstructs physical tokens, and screens
+those same tokens. It separately records source-to-start quantization, retains
+the screened magnetic axis, and applies the `0.1` consistency gate before Adam.
+Its smoke is pinned to known v2 regression case 25. Frozen specification:
+`evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v3.json`.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

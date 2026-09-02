@@ -111,7 +111,7 @@ def test_recorded_initial_score_gate_requires_axis_and_checks_before_updates() -
         )
 
 
-def test_v1_is_invalidated_and_v2_is_the_registered_replacement() -> None:
+def test_v1_and_v2_are_invalidated_and_v3_is_registered() -> None:
     v1 = json.loads(
         Path(
             "evaluation/axis_surface_contour_prior_compact_flexible_"
@@ -125,6 +125,14 @@ def test_v1_is_invalidated_and_v2_is_the_registered_replacement() -> None:
         ).read_text(encoding="utf-8")
     )
     assert v1["status"] == "invalidated"
-    assert v1["replacement_protocol_id"] == PROTOCOL_ID
-    assert v2["protocol_id"] == PROTOCOL_ID
+    assert v1["replacement_protocol_id"].endswith("abi11-v2")
+    assert v2["status"] == "invalidated"
+    assert v2["replacement_protocol_id"] == PROTOCOL_ID
     assert v2["screening"]["pre_update_consistency_tolerance"] == 0.1
+    v3 = json.loads(
+        Path(
+            "evaluation/axis_surface_contour_prior_compact_flexible_"
+            "axisflip_stream_adam200_abi11_v3.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert v3["protocol_id"] == PROTOCOL_ID

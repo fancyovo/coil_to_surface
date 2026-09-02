@@ -284,6 +284,11 @@ exits. The five-hour Slurm limit is tail capacity rather than a five-hour
 sampling budget. Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v1.json`.
 This experiment does not change the current QH default.
+Formal smoke job `52677` passed one positive-iota valid start and three Adam
+updates. P107 array `52678` and Students array `52679` then launched all six
+workers at commit `599dd31`; final analysis job `52680` waits on both arrays.
+The remote run root is
+`/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_20260902_599dd31`.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

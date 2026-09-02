@@ -838,6 +838,9 @@ An open critical correction blocks promotion and external reporting.
 - The first submission draft also copied older `12 CPU/48G` Students and `32G`
   P107 requests. Before `sbatch`, they were reduced to the documented one-GPU
   templates: `8 CPU/24G` on Students medium and `4 CPU/24G` on P107.
+- One post-launch read-only status query lost its quoted `jq` filter across the
+  PowerShell/SSH boundary and failed before reading data. The retry used six
+  explicit progress paths and confirmed every worker was active and advancing.
 - Promotion/reporting blocker: resolved for submission after all listed guards
   pass; any failed guard reopens the blocker.
 

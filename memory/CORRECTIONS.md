@@ -582,6 +582,31 @@ An open critical correction blocks promotion and external reporting.
   found all six preflight files, six live worker tasks, and zero failures.
 - Promotion/reporting blocker: resolved before delivery.
 
+## CORR-20260902-64 - Nested-shell interpolation errors recurred during acceptance
+
+- Severity/status: low / resolved before report delivery; no numerical impact.
+- Discovered by: model during compact-flexible-v3 Adam200 acceptance.
+- Error: the same nested-shell interpolation class recorded in `CORR-20260902-63`
+  recurred. Two read-only commands expanded a remote path variable before the
+  remote shell and therefore queried `/trajectories` and `/analysis`. A separate
+  PowerShell command included a Bash-style assignment token. The first report
+  rendering command expanded `$HOME` in local WSL and pointed to a nonexistent
+  local virtual environment path.
+- Affected scope: diagnostic and report-rendering latency only. The false-path
+  queries wrote no state. The failed render exited before creating or replacing
+  figures. Frozen scoring rows, 120 Adam200 trajectories, manifests, summaries,
+  and numerical conclusions remain unchanged.
+- Containment and verification: commands used for final acceptance contain
+  explicit remote absolute paths and no variables crossing shell boundaries.
+  The successful render used an explicit remote interpreter environment, read
+  all 120 frozen histories, and produced a first-passage summary verified
+  against the automatic trajectory summary. All 15 report links resolve, the
+  six worker completion files agree on 20/20 cases, and frozen-data assertions
+  pass.
+- Promotion/reporting blocker: resolved before delivery. Future remote checks
+  must pass values as command arguments or use a transferred script when a
+  command needs variables; nested quoted variable expansion is prohibited.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

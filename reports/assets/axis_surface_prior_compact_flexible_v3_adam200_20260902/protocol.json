@@ -1,0 +1,46 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-01",
+  "purpose": "Measure conditional Adam200 optimizability of random valid compact-flexible-v3 prior samples.",
+  "source": {
+    "protocol_id": "qh-axis-surface-contour-compact-flexible-score-abi11-v3",
+    "completed_count": 3600,
+    "population_for_optimization": "native status == ok",
+    "selection": "120 samples drawn uniformly without replacement with seed 20260904",
+    "reason_for_conditioning": "Invalid initial states are measured screening outcomes and cannot start strict-continuation Adam."
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "flow_calls": 0,
+    "normalization_scale_source": "frozen Flow checkpoint training-set coordinate standard deviations",
+    "initial_geometry": "preserved by unclipped affine coordinates and a per-start fixed current L1 reference",
+    "algorithm": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "success_threshold": 50.0
+  },
+  "evaluation": {
+    "target": "QH",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "full_physical_evaluation": false
+  },
+  "resources": {
+    "workers": 6,
+    "p107_gpus": 4,
+    "students_gpus": 2,
+    "samples_per_worker": 20,
+    "worker_wall_limit": "7 hours",
+    "worker_internal_wall_limit_s": 24600,
+    "minimum_case_start_reserve_s": 4200,
+    "historical_runtime_basis": "Balanced-v2 Adam200 measured p50 823.4 s, p90 1574.3 s, and maximum 4281 s per completed trajectory."
+  },
+  "interpretation": "Conditional Adam success is multiplied by the measured compact-flexible-v3 initial-valid rate to estimate unconditional prior abundance.",
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

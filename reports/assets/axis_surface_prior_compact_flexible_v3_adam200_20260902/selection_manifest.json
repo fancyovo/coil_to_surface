@@ -1,0 +1,2510 @@
+{
+  "format": "axis_surface_prior_compact_flexible_v3_adam200_selection_v1",
+  "artifact_formats": {
+    "selection": "axis_surface_prior_compact_flexible_v3_adam200_selection_v1",
+    "start": "axis_surface_prior_compact_flexible_v3_exact_data_start_v1",
+    "trajectory": "axis_surface_prior_compact_flexible_v3_adam200_trajectory_v1",
+    "failure": "axis_surface_prior_compact_flexible_v3_adam200_failure_v1",
+    "worker": "axis_surface_prior_compact_flexible_v3_adam200_worker_v1",
+    "summary": "axis_surface_prior_compact_flexible_v3_adam200_summary_v1"
+  },
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1",
+  "status": "prepared",
+  "code_commit": "08a3c3fd15e61232eb0eed7cc359679c8d471810",
+  "input": {
+    "protocol_id": "qh-axis-surface-contour-compact-flexible-score-abi11-v3",
+    "run_root": "<frozen-source-run>",
+    "row_count": 3600,
+    "valid_count": 569,
+    "valid_rate": 0.15805555555555556,
+    "shards": [
+      {
+        "file": "shard_00.jsonl",
+        "sha256": "e405f8967e3cb6c53afdc4f4c5bf9b8f9d6eab2176f4e2f883bacfc7eabc0a47"
+      },
+      {
+        "file": "shard_01.jsonl",
+        "sha256": "099d3631b70d8e62e1bbe42e8bc83c0fdafed2e7aca8f2226780f7973cac29f6"
+      },
+      {
+        "file": "shard_02.jsonl",
+        "sha256": "76a9ad07e91f08b8ec645b13c13bed164262a57d2d547a9a62f1606e19f99df2"
+      },
+      {
+        "file": "shard_03.jsonl",
+        "sha256": "8251102be183206d1e68f09de5d7b9a0f45da077d8a7aec33a29dd8201cb3bcb"
+      },
+      {
+        "file": "shard_04.jsonl",
+        "sha256": "36eda626dd094cc1cf1e136b83ffea579ec4df55b627160aad346399b88035a4"
+      },
+      {
+        "file": "shard_05.jsonl",
+        "sha256": "d9fff0bfb01d32e4c573a93b63399ba93b027f18e63b298dddbc92f5f62575e1"
+      }
+    ],
+    "done_markers": [
+      {
+        "file": "shard_00.done.json",
+        "sha256": "75ab270cb66563c1423aeea1f6099d5ceed1f7837d0343463ed4b7d140464f12"
+      },
+      {
+        "file": "shard_01.done.json",
+        "sha256": "5142d39ffe65dd652b2d03cda8145a02888e274bbf2902b2ac21981b1b58ee30"
+      },
+      {
+        "file": "shard_02.done.json",
+        "sha256": "bd1c85031477cb1750408b7b9c99f6ea64d6a2fb318dd5bd23b7a66957b83922"
+      },
+      {
+        "file": "shard_03.done.json",
+        "sha256": "e44425c67417594c4b313dd48688587ffcbdbc72f1e497a93caf3dc9aeb86fb1"
+      },
+      {
+        "file": "shard_04.done.json",
+        "sha256": "26c2b1d7ab6372a56f05d318582ffb37c7a47ad04f3988f3be36a09303caf014"
+      },
+      {
+        "file": "shard_05.done.json",
+        "sha256": "91ef2b32f707c625acb392557dd89e22361f52bf7028e28e4e2920bb0286fa38"
+      }
+    ]
+  },
+  "selection": {
+    "population": "native status == ok",
+    "method": "simple random sample without replacement",
+    "seed": 20260904,
+    "sample_count": 120,
+    "worker_count": 6,
+    "samples_per_worker": 20,
+    "selected_by_nc": {
+      "1": 48,
+      "2": 31,
+      "3": 23,
+      "4": 18
+    }
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "iterations": 200,
+    "directions": 64,
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [
+      0.7,
+      0.999
+    ],
+    "flow_calls": 0,
+    "success_threshold": 50.0
+  },
+  "artifacts": {
+    "checkpoint": "<frozen-flow-checkpoint>",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "score_library": "<validated-abi11-library>",
+    "score_library_abi": 11,
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+  },
+  "cases": [
+    {
+      "trajectory_id": "axisv3_case_03164",
+      "case_id": 3164,
+      "selection_rank": 2,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 10.198030400420047,
+      "initial_coil_component": 63.650275714996816,
+      "initial_status": "ok",
+      "optimizer_seed": 20283164,
+      "start": "starts/case_03164.json",
+      "start_sha256": "d0e12dbc61848f2bd9bf3d6ccd655e6d2484dc0edb7b0c3a4e54f4664ea61093",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.525923920553396E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 2.037689685821533
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01637",
+      "case_id": 1637,
+      "selection_rank": 3,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 35.474963664626934,
+      "initial_coil_component": 64.79409133313654,
+      "initial_status": "ok",
+      "optimizer_seed": 20281637,
+      "start": "starts/case_01637.json",
+      "start_sha256": "105c5bb2b688965c557a7b28841116420ebcd8906c972a09de7aa64be905dd63",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.78327423330893E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.156374454498291
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01589",
+      "case_id": 1589,
+      "selection_rank": 6,
+      "worker_index": 0,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 2.144705757837391,
+      "initial_coil_component": 79.68907924721074,
+      "initial_status": "ok",
+      "optimizer_seed": 20281589,
+      "start": "starts/case_01589.json",
+      "start_sha256": "5b2a76ea419d6b1662ecd0b0bdd7e0f3593dd5573036736af613e35d14fa59f5",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4677073778557315E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.602927803993225
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00190",
+      "case_id": 190,
+      "selection_rank": 11,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 2.457214537220067,
+      "initial_coil_component": 73.56010273401773,
+      "initial_status": "ok",
+      "optimizer_seed": 20280190,
+      "start": "starts/case_00190.json",
+      "start_sha256": "4ae948e4024bfcbaada044141a62bae69125065c2a1f39e57134f43f0e09810a",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9112999183334978E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8502416610717773
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02757",
+      "case_id": 2757,
+      "selection_rank": 24,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 1,
+      "initial_score": 2.954680484641738,
+      "initial_coil_component": 81.46857112762343,
+      "initial_status": "ok",
+      "optimizer_seed": 20282757,
+      "start": "starts/case_02757.json",
+      "start_sha256": "8b9e1e131ce627e8831450815cef2af38ad4eacdcd3914e01db0777d6cd7193b",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0080344498296654E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4991230964660645
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01734",
+      "case_id": 1734,
+      "selection_rank": 25,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 24.76338567806947,
+      "initial_coil_component": 68.52094454109707,
+      "initial_status": "ok",
+      "optimizer_seed": 20281734,
+      "start": "starts/case_01734.json",
+      "start_sha256": "33ea0bf80fe4b75cc77292dd0cc557634eda1be9a8a239fb58582a5b776fdefc",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4705438644568858E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 1.8952291011810303
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02013",
+      "case_id": 2013,
+      "selection_rank": 30,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 4.748048346650306,
+      "initial_coil_component": 64.69651567075573,
+      "initial_status": "ok",
+      "optimizer_seed": 20282013,
+      "start": "starts/case_02013.json",
+      "start_sha256": "b7923bb224906857dfd85a0746081a2db53934eb82c95ed637a4773b0b5fc361",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1658989268757978E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8558286428451538
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02654",
+      "case_id": 2654,
+      "selection_rank": 40,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 6.333649491297657,
+      "initial_coil_component": 79.41026709394168,
+      "initial_status": "ok",
+      "optimizer_seed": 20282654,
+      "start": "starts/case_02654.json",
+      "start_sha256": "819bc8ce8619a0e9220e72ef305f6e55e6b0950c83c8e3e5dc48875123cb354d",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1147867457216307E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.783972144126892
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02725",
+      "case_id": 2725,
+      "selection_rank": 45,
+      "worker_index": 0,
+      "nfp": 4,
+      "n_base_coils": 4,
+      "initial_score": 0.4471899132901363,
+      "initial_coil_component": 74.25309214359055,
+      "initial_status": "ok",
+      "optimizer_seed": 20282725,
+      "start": "starts/case_02725.json",
+      "start_sha256": "afaafe1413dbf549b32b6a9f2ccf997c06cb2fbddb8dbbf2fe5e29bde3cb078b",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8794990452875027E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9115206003189087
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01978",
+      "case_id": 1978,
+      "selection_rank": 50,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.152433754441266,
+      "initial_coil_component": 79.04572315304196,
+      "initial_status": "ok",
+      "optimizer_seed": 20281978,
+      "start": "starts/case_01978.json",
+      "start_sha256": "90d27801970cf2269e2b2ce741ee15643677d86e0b1bc3f0033715cc149cbfe2",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.5338422915410774E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00919",
+      "case_id": 919,
+      "selection_rank": 53,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 4.637297842273263,
+      "initial_coil_component": 63.15519743872227,
+      "initial_status": "ok",
+      "optimizer_seed": 20280919,
+      "start": "starts/case_00919.json",
+      "start_sha256": "1f5a100474be2be1cc73971c260dfa21fa867dfc3e4195155c93ba2be5b6d7ea",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.239828766903429E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9230046272277832
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00001",
+      "case_id": 1,
+      "selection_rank": 63,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 1,
+      "initial_score": 3.2966476665704314,
+      "initial_coil_component": 80.38483810100622,
+      "initial_status": "ok",
+      "optimizer_seed": 20280001,
+      "start": "starts/case_00001.json",
+      "start_sha256": "4bc176a6dcba233c406e06bbe6f5fa3ee9f412be65be7300e1618c0cce28bb2b",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6616175102512898E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4991230964660645
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02537",
+      "case_id": 2537,
+      "selection_rank": 70,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "initial_score": 2.3091141918933173,
+      "initial_coil_component": 69.9307442496154,
+      "initial_status": "ok",
+      "optimizer_seed": 20282537,
+      "start": "starts/case_02537.json",
+      "start_sha256": "a97c6d7bb3fd3606b45d96d9638d895277e1be8678fc77d759b6e2db5d0eaa92",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.227371354024399E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9240381717681885
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00609",
+      "case_id": 609,
+      "selection_rank": 71,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 9.554874079525247,
+      "initial_coil_component": 68.9354826074301,
+      "initial_status": "ok",
+      "optimizer_seed": 20280609,
+      "start": "starts/case_00609.json",
+      "start_sha256": "8bc84157a7cd105f2a55d937c2fe0c7670a83c81ca35fceed920ba09765016db",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0804986178291074E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.645320177078247
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00210",
+      "case_id": 210,
+      "selection_rank": 83,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 4.361456933621393,
+      "initial_coil_component": 81.0013701677021,
+      "initial_status": "ok",
+      "optimizer_seed": 20280210,
+      "start": "starts/case_00210.json",
+      "start_sha256": "02a1ea9ea7276f16e5c124747075dee8c3e13f320dfc7bcb6079ce891ff5c76c",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 7.2913808324415186E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01663",
+      "case_id": 1663,
+      "selection_rank": 89,
+      "worker_index": 0,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 10.825339353136586,
+      "initial_coil_component": 64.5091009456458,
+      "initial_status": "ok",
+      "optimizer_seed": 20281663,
+      "start": "starts/case_01663.json",
+      "start_sha256": "f1d5e5b7c521159ad7656599fb19b201b6e9078cf932e84fa9a144259ddc4cd1",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4087340183266406E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0008771419525146
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02610",
+      "case_id": 2610,
+      "selection_rank": 95,
+      "worker_index": 0,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 4.721090840990748,
+      "initial_coil_component": 67.91948312208719,
+      "initial_status": "ok",
+      "optimizer_seed": 20282610,
+      "start": "starts/case_02610.json",
+      "start_sha256": "b5d98564d49e3492cc67e679657809cb3b47497ab40ff5f25f20c8af2a291606",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.002979471171784E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7139326333999634
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02473",
+      "case_id": 2473,
+      "selection_rank": 96,
+      "worker_index": 0,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 7.189876353459429,
+      "initial_coil_component": 80.10366751375254,
+      "initial_status": "ok",
+      "optimizer_seed": 20282473,
+      "start": "starts/case_02473.json",
+      "start_sha256": "71bacd4f80c5be4bf0ea753fa4173ae1a3cb1692683139ac89b928cba96a58f9",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4446960960867727E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6834228038787842
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01861",
+      "case_id": 1861,
+      "selection_rank": 102,
+      "worker_index": 0,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "initial_score": 3.0668604345807657,
+      "initial_coil_component": 66.53212699306667,
+      "initial_status": "ok",
+      "optimizer_seed": 20281861,
+      "start": "starts/case_01861.json",
+      "start_sha256": "94ab6b6e021d0f95d35ea89efc2f384fb2a550b6335fd60dfb7cb6dc2b666211",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0034025993709292E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.111013412475586
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02628",
+      "case_id": 2628,
+      "selection_rank": 105,
+      "worker_index": 0,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 0.8561409871390706,
+      "initial_coil_component": 77.05925535810503,
+      "initial_status": "ok",
+      "optimizer_seed": 20282628,
+      "start": "starts/case_02628.json",
+      "start_sha256": "6baae9ada1ba8dcf900866e764bd54b9da10ecea5d88485b9b08d7a07a2197c8",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4496458256019196E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03242",
+      "case_id": 3242,
+      "selection_rank": 4,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 6.367935587230799,
+      "initial_coil_component": 71.21346560096273,
+      "initial_status": "ok",
+      "optimizer_seed": 20283242,
+      "start": "starts/case_03242.json",
+      "start_sha256": "4e6c60de17e055414f80caef39c5429823e112f3f6f51f89f6f11b6db86a500b",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0865117633661612E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 1.6844463348388672
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02989",
+      "case_id": 2989,
+      "selection_rank": 7,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 11.226079598961794,
+      "initial_coil_component": 66.22092171426384,
+      "initial_status": "ok",
+      "optimizer_seed": 20282989,
+      "start": "starts/case_02989.json",
+      "start_sha256": "10fd110bc5c58eba90d05511137b447ac971076e03965c2e937782b56e35f23b",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6917100609248337E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.084019899368286
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00808",
+      "case_id": 808,
+      "selection_rank": 8,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 6.196711047311531,
+      "initial_coil_component": 81.21979234221921,
+      "initial_status": "ok",
+      "optimizer_seed": 20280808,
+      "start": "starts/case_00808.json",
+      "start_sha256": "57f365f1c434ecce13b19e9a6c001233da49bc81db18ebeac782a6c958731c0f",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.2067024591242443E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00399",
+      "case_id": 399,
+      "selection_rank": 15,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 2.9513663918625945,
+      "initial_coil_component": 71.20678524633576,
+      "initial_status": "ok",
+      "optimizer_seed": 20280399,
+      "start": "starts/case_00399.json",
+      "start_sha256": "f5f59196844b73c57f62199e2cc644db1de33c1931e51c6f862aff9d61805340",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4979349316490698E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8248159885406494
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02462",
+      "case_id": 2462,
+      "selection_rank": 26,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 23.20863144719328,
+      "initial_coil_component": 66.00630047467796,
+      "initial_status": "ok",
+      "optimizer_seed": 20282462,
+      "start": "starts/case_02462.json",
+      "start_sha256": "ff712c8e82bfb84649b11234121349c6d2f85f4c356fac0be5b1d7e09444cc6a",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.3898172329950285E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 2.255939483642578
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00992",
+      "case_id": 992,
+      "selection_rank": 28,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 4.08466392621231,
+      "initial_coil_component": 76.09596838880198,
+      "initial_status": "ok",
+      "optimizer_seed": 20280992,
+      "start": "starts/case_00992.json",
+      "start_sha256": "25d2f2978bf06b957160c1e138b419b0d81d2644afb9e148214e9a96e08b46f3",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4568372286305475E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6078219413757324
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00269",
+      "case_id": 269,
+      "selection_rank": 33,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 8.712524234085391,
+      "initial_coil_component": 69.50397524552469,
+      "initial_status": "ok",
+      "optimizer_seed": 20280269,
+      "start": "starts/case_00269.json",
+      "start_sha256": "7da4e4160ef68993a80f02a6750df87030e1fae6a910033a61fab034b043575b",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.7980907429659965E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8917123079299927
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02264",
+      "case_id": 2264,
+      "selection_rank": 41,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 8.090249778074911,
+      "initial_coil_component": 81.29938782328313,
+      "initial_status": "ok",
+      "optimizer_seed": 20282264,
+      "start": "starts/case_02264.json",
+      "start_sha256": "5df6faa1272e07db8271ffca0d14c350834f10ee43a373b7d910a6e64d6a9c6d",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.686389339283778E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00939",
+      "case_id": 939,
+      "selection_rank": 51,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 5.873143653976498,
+      "initial_coil_component": 78.78135420464997,
+      "initial_status": "ok",
+      "optimizer_seed": 20280939,
+      "start": "starts/case_00939.json",
+      "start_sha256": "ee717abba4e6b8b03654ac08a2e7447c3ddc011efbf84519538463dc2751863d",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.596509673935543E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.54404616355896
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03223",
+      "case_id": 3223,
+      "selection_rank": 54,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 10.816202677986889,
+      "initial_coil_component": 62.165800017962994,
+      "initial_status": "ok",
+      "optimizer_seed": 20283223,
+      "start": "starts/case_03223.json",
+      "start_sha256": "245a929c8b2ce1065e6c99b8ab0be43ed8d0c828da9669350658dc6bb5b579dd",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5579516343677824E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9136440753936768
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01882",
+      "case_id": 1882,
+      "selection_rank": 58,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 2.5582573804206805,
+      "initial_coil_component": 65.79032155216292,
+      "initial_status": "ok",
+      "optimizer_seed": 20281882,
+      "start": "starts/case_01882.json",
+      "start_sha256": "1c2afb36d50f33e42cb360e2b1bbfd2749353c32ea6660773d6904447f30fe07",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.425289397616325E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5767637491226196
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03046",
+      "case_id": 3046,
+      "selection_rank": 64,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 9.400584869126416,
+      "initial_coil_component": 69.65458527470919,
+      "initial_status": "ok",
+      "optimizer_seed": 20283046,
+      "start": "starts/case_03046.json",
+      "start_sha256": "2ed9116876b0f2135ab5a6013625bedc1b0761260e2e5dfbe8365a8f988c8bbc",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0923192067812124E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7537270784378052
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01186",
+      "case_id": 1186,
+      "selection_rank": 73,
+      "worker_index": 1,
+      "nfp": 6,
+      "n_base_coils": 3,
+      "initial_score": 5.683532379347406,
+      "initial_coil_component": 69.65403899468429,
+      "initial_status": "ok",
+      "optimizer_seed": 20281186,
+      "start": "starts/case_01186.json",
+      "start_sha256": "22cb403115fbddaf5d2293126f3c44947254f0aeba7357d76d210106fd9666a5",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.250751940380269E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7280163764953613
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00453",
+      "case_id": 453,
+      "selection_rank": 75,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 5.541118953460505,
+      "initial_coil_component": 69.10439060909394,
+      "initial_status": "ok",
+      "optimizer_seed": 20280453,
+      "start": "starts/case_00453.json",
+      "start_sha256": "119d1f56bd5269f595cc4a8ed1812813245d2e564ef998a6517b9ccb800204a2",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1546181727671865E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8969535827636719
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01616",
+      "case_id": 1616,
+      "selection_rank": 85,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 8.505890450337255,
+      "initial_coil_component": 78.37403512823846,
+      "initial_status": "ok",
+      "optimizer_seed": 20281616,
+      "start": "starts/case_01616.json",
+      "start_sha256": "eff5d730c6efb1e13e7692cdffb4ff924e811413a34ba574b101c46b28638f15",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.2372836977192492E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7286887168884277
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00493",
+      "case_id": 493,
+      "selection_rank": 93,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 9.528313639762041,
+      "initial_coil_component": 66.12766469822216,
+      "initial_status": "ok",
+      "optimizer_seed": 20280493,
+      "start": "starts/case_00493.json",
+      "start_sha256": "0f7d63ec3705b93e7c0efbbbfd824256635a3cb4264633c7e7591412da5d5161",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3758869599200807E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7045916318893433
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01434",
+      "case_id": 1434,
+      "selection_rank": 97,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.036157698806869,
+      "initial_coil_component": 77.35853324556948,
+      "initial_status": "ok",
+      "optimizer_seed": 20281434,
+      "start": "starts/case_01434.json",
+      "start_sha256": "95da5cbaf98dc8575cf95f20ef89f08fa14f2756483c148b7abfb320f9da9c9b",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.7015043596302348E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5453109741210938
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02064",
+      "case_id": 2064,
+      "selection_rank": 98,
+      "worker_index": 1,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 10.007694447839617,
+      "initial_coil_component": 66.84032573168746,
+      "initial_status": "ok",
+      "optimizer_seed": 20282064,
+      "start": "starts/case_02064.json",
+      "start_sha256": "ab8a84b11cf2ad414b280169bd9edf438604d6292b0321c005cf2ecf214c1591",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.2503951651865464E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0120551586151123
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02488",
+      "case_id": 2488,
+      "selection_rank": 107,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 12.940001874578416,
+      "initial_coil_component": 65.11142591361529,
+      "initial_status": "ok",
+      "optimizer_seed": 20282488,
+      "start": "starts/case_02488.json",
+      "start_sha256": "418a78f81d8d817515b5ddcd39f1d612226cdcd03be0a52fff5bf614eb3e6987",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8797328138475677E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 1.7976208925247192
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02864",
+      "case_id": 2864,
+      "selection_rank": 108,
+      "worker_index": 1,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.539194959262773,
+      "initial_coil_component": 75.62868193398243,
+      "initial_status": "ok",
+      "optimizer_seed": 20282864,
+      "start": "starts/case_02864.json",
+      "start_sha256": "a1591546454f209b5f922d59f764361588b222a8e6bd9f2493f5513a9da33749",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5990254453868147E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6490696668624878
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03268",
+      "case_id": 3268,
+      "selection_rank": 9,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 21.348682168401435,
+      "initial_coil_component": 65.6958867566348,
+      "initial_status": "ok",
+      "optimizer_seed": 20283268,
+      "start": "starts/case_03268.json",
+      "start_sha256": "4f5108bdebf61bd3dcb4182df8d43c49cf00648746e8ca1d38790a8b80bbac98",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.838295737854878E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 2.1553573608398438
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01481",
+      "case_id": 1481,
+      "selection_rank": 10,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 20.615533279400037,
+      "initial_coil_component": 65.80131819831949,
+      "initial_status": "ok",
+      "optimizer_seed": 20281481,
+      "start": "starts/case_01481.json",
+      "start_sha256": "36235b42fdc07a50efa97c71ae543bf9321cdab4797974a3c9dee56828aafbea",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6274208647359956E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.3430395126342773
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00732",
+      "case_id": 732,
+      "selection_rank": 13,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 8.918439303118223,
+      "initial_coil_component": 64.88840262650594,
+      "initial_status": "ok",
+      "optimizer_seed": 20280732,
+      "start": "starts/case_00732.json",
+      "start_sha256": "0e6fda3977c6e56afc9700bad4d8b5ff4211a6abc6af2f48a300429fdfb6c086",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.114436270517217E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.4966267347335815
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00999",
+      "case_id": 999,
+      "selection_rank": 16,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 32.83860244569108,
+      "initial_coil_component": 72.6533615458788,
+      "initial_status": "ok",
+      "optimizer_seed": 20280999,
+      "start": "starts/case_00999.json",
+      "start_sha256": "19e3b20b1ebf6a7066e782c3bde0139e651f69581f31f687d0ada9ffc7b60422",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.6215191795131432E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7666212320327759
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00200",
+      "case_id": 200,
+      "selection_rank": 32,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 15.929803511924375,
+      "initial_coil_component": 67.49282158337941,
+      "initial_status": "ok",
+      "optimizer_seed": 20280200,
+      "start": "starts/case_00200.json",
+      "start_sha256": "e19013dc63e4bf103713581fde315588e28ab8fc634d6607b9fac8df9abd294f",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.624828271928891E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 1.9693646430969238
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01408",
+      "case_id": 1408,
+      "selection_rank": 34,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.461521383812611,
+      "initial_coil_component": 75.14849695766031,
+      "initial_status": "ok",
+      "optimizer_seed": 20281408,
+      "start": "starts/case_01408.json",
+      "start_sha256": "619e24aaff805216cf747f463a67a6faf402bd27d0a9a5d41051c2aea08c6a95",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1239577208120863E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.608880877494812
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01232",
+      "case_id": 1232,
+      "selection_rank": 39,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 4.49329811811088,
+      "initial_coil_component": 65.84957911450448,
+      "initial_status": "ok",
+      "optimizer_seed": 20281232,
+      "start": "starts/case_01232.json",
+      "start_sha256": "6b532b60a0914ce8f55d869142b6ab93bbff05ed28680d1c79bab7f93f1a5e8d",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6411908276836584E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7938905954360962
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01771",
+      "case_id": 1771,
+      "selection_rank": 42,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 6.6505312432889445,
+      "initial_coil_component": 74.73122302705168,
+      "initial_status": "ok",
+      "optimizer_seed": 20281771,
+      "start": "starts/case_01771.json",
+      "start_sha256": "3f32b6847eb319a418c263772f0b1bc80dfebb3bff3ba172cadcf31abe5d1eb6",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.0863457688969902E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5367040634155273
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01511",
+      "case_id": 1511,
+      "selection_rank": 52,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.109455473315756,
+      "initial_coil_component": 78.20647563344842,
+      "initial_status": "ok",
+      "optimizer_seed": 20281511,
+      "start": "starts/case_01511.json",
+      "start_sha256": "a5e26b49aa0bf1cf473afdf67e45fd0c85adaebe076a5d1b505507f789621553",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.7181752909323222E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5256679058074951
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03233",
+      "case_id": 3233,
+      "selection_rank": 61,
+      "worker_index": 2,
+      "nfp": 6,
+      "n_base_coils": 2,
+      "initial_score": 9.862086191528688,
+      "initial_coil_component": 64.9378996334127,
+      "initial_status": "ok",
+      "optimizer_seed": 20283233,
+      "start": "starts/case_03233.json",
+      "start_sha256": "50f56c9b2905bc64613054bab241414f027c4cb77b9dec08149f90c915f87daa",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9137196716201288E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9654722213745117
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02832",
+      "case_id": 2832,
+      "selection_rank": 62,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 20.34118250896898,
+      "initial_coil_component": 66.09919085524517,
+      "initial_status": "ok",
+      "optimizer_seed": 20282832,
+      "start": "starts/case_02832.json",
+      "start_sha256": "9c224bfbaee2b05cb5b0a8fa120e0951284c6c19598aad93ca5fda158253a7f1",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.323213088573084E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0466604232788086
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02942",
+      "case_id": 2942,
+      "selection_rank": 68,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 5.250777485972079,
+      "initial_coil_component": 74.10812913392172,
+      "initial_status": "ok",
+      "optimizer_seed": 20282942,
+      "start": "starts/case_02942.json",
+      "start_sha256": "36ecafa18aec40cd17648ff30e1874aec50f3a91f84e6ec427300209609e3628",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4770703771205262E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7013789415359497
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01473",
+      "case_id": 1473,
+      "selection_rank": 77,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 9.79406877577941,
+      "initial_coil_component": 63.536991140329626,
+      "initial_status": "ok",
+      "optimizer_seed": 20281473,
+      "start": "starts/case_01473.json",
+      "start_sha256": "546a54b27c4b9f9dd8aa73a010b20ba3aeb3fba44f786f3f6de8f68e3755e7b2",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.10905461983657E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7433465719223022
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02143",
+      "case_id": 2143,
+      "selection_rank": 78,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 13.633494779970725,
+      "initial_coil_component": 66.73290617522221,
+      "initial_status": "ok",
+      "optimizer_seed": 20282143,
+      "start": "starts/case_02143.json",
+      "start_sha256": "96c9533ed450e2e89c8c607708308a45ea4a85038fd04eac991f6ae07f97e48e",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.2521359060713166E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9732564687728882
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02344",
+      "case_id": 2344,
+      "selection_rank": 86,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 11.783296053841786,
+      "initial_coil_component": 70.27031676626534,
+      "initial_status": "ok",
+      "optimizer_seed": 20282344,
+      "start": "starts/case_02344.json",
+      "start_sha256": "3d71f12995882ae767667807f94e964e443bee91167d1f7faf6dbe7eca9c0dfe",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6044431561113015E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7916967868804932
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02499",
+      "case_id": 2499,
+      "selection_rank": 99,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 5.412281435330337,
+      "initial_coil_component": 80.08099308654437,
+      "initial_status": "ok",
+      "optimizer_seed": 20282499,
+      "start": "starts/case_02499.json",
+      "start_sha256": "048b35e8cb850a02b956ffea02fb222f02bc76fd73bc0b6bb76260523d80dd87",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 8.939148976594424E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.461227536201477
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00842",
+      "case_id": 842,
+      "selection_rank": 100,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 7.46090754359316,
+      "initial_coil_component": 65.61582513041657,
+      "initial_status": "ok",
+      "optimizer_seed": 20280842,
+      "start": "starts/case_00842.json",
+      "start_sha256": "8b5ad0e31df76143e4a4f76762d48e4f4f4a24ff88ad6c23ce3384767b6192f6",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.079365479801254E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.882941722869873
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02993",
+      "case_id": 2993,
+      "selection_rank": 109,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.588109878418181,
+      "initial_coil_component": 80.81002265065138,
+      "initial_status": "ok",
+      "optimizer_seed": 20282993,
+      "start": "starts/case_02993.json",
+      "start_sha256": "dd77b47706f565df7559346ddc8f468e84bed8425babafdbd929d760697009c4",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1481973533354903E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5677921772003174
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02123",
+      "case_id": 2123,
+      "selection_rank": 110,
+      "worker_index": 2,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 11.406400991794866,
+      "initial_coil_component": 66.7793126944312,
+      "initial_status": "ok",
+      "optimizer_seed": 20282123,
+      "start": "starts/case_02123.json",
+      "start_sha256": "5f70a209a9f4be24b411676078925d95c9d98b26e533afe499c778f888479c69",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5572146239151152E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9287302494049072
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01793",
+      "case_id": 1793,
+      "selection_rank": 111,
+      "worker_index": 2,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 2.7779564713186575,
+      "initial_coil_component": 64.75918609849029,
+      "initial_status": "ok",
+      "optimizer_seed": 20281793,
+      "start": "starts/case_01793.json",
+      "start_sha256": "da6361fbee9c82f723b7a98582354561dfdafce4e4f083bfd962398c82dc92fd",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.804640348268549E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.246654748916626
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02825",
+      "case_id": 2825,
+      "selection_rank": 12,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 27.79566291048686,
+      "initial_coil_component": 67.29879642393706,
+      "initial_status": "ok",
+      "optimizer_seed": 20282825,
+      "start": "starts/case_02825.json",
+      "start_sha256": "fe13a294509cd388ebb3b93823a0970b46225357726fdd70ee2945e1f9018a4d",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.2906370134023746E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8425852060317993
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01095",
+      "case_id": 1095,
+      "selection_rank": 17,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.7577763711511665,
+      "initial_coil_component": 79.72412241768882,
+      "initial_status": "ok",
+      "optimizer_seed": 20281095,
+      "start": "starts/case_01095.json",
+      "start_sha256": "9fda54a7babcb9615df90d9022f49cc119c79f2d6a6a7cd15f71260b016d7444",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.0178219156387058E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6347440481185913
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01324",
+      "case_id": 1324,
+      "selection_rank": 18,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 22.222406084269394,
+      "initial_coil_component": 63.61151761164151,
+      "initial_status": "ok",
+      "optimizer_seed": 20281324,
+      "start": "starts/case_01324.json",
+      "start_sha256": "7553284c7e3c4575ceb1be6c76a0bc6d6c304028f98275387234413a7cf5dd63",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.66026001835462E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9900355339050293
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02818",
+      "case_id": 2818,
+      "selection_rank": 20,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 5.167554968118314,
+      "initial_coil_component": 67.51320247497077,
+      "initial_status": "ok",
+      "optimizer_seed": 20282818,
+      "start": "starts/case_02818.json",
+      "start_sha256": "94aaf62f93346064b9f28a08f40ec7bf90e475dc34f0100b280616b349da07f0",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.117134378920582E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7821379899978638
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01161",
+      "case_id": 1161,
+      "selection_rank": 35,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 19.66207193771487,
+      "initial_coil_component": 67.35276649588329,
+      "initial_status": "ok",
+      "optimizer_seed": 20281161,
+      "start": "starts/case_01161.json",
+      "start_sha256": "6637bcf362d50e313df4da4abe1327dad389c514b28af96a8cfaa16f528ea900",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4151471106060853E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.838558316230774
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03122",
+      "case_id": 3122,
+      "selection_rank": 36,
+      "worker_index": 3,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 5.337475804659005,
+      "initial_coil_component": 80.4390401577089,
+      "initial_status": "ok",
+      "optimizer_seed": 20283122,
+      "start": "starts/case_03122.json",
+      "start_sha256": "0d725d27dd853fcc6222a6fcaf8e5dfe71eb97e96606b90e779cb5440b305fb7",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.676695227104119E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7445259094238281
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01961",
+      "case_id": 1961,
+      "selection_rank": 43,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 6.662024190177571,
+      "initial_coil_component": 67.76398129822186,
+      "initial_status": "ok",
+      "optimizer_seed": 20281961,
+      "start": "starts/case_01961.json",
+      "start_sha256": "28f49144cf0ed34d5b3c97ef02384ca7a91f4337727b232b59f1a1e5c4b25e92",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.2900803980642195E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6883833408355713
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01719",
+      "case_id": 1719,
+      "selection_rank": 44,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.777620917222792,
+      "initial_coil_component": 66.27399444148416,
+      "initial_status": "ok",
+      "optimizer_seed": 20281719,
+      "start": "starts/case_01719.json",
+      "start_sha256": "1f2cda09c7c6c1f0ab4f6ef203324ed08a593dc839fc0d4e2d555666850a8206",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1121772775245518E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.4179506301879883
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02316",
+      "case_id": 2316,
+      "selection_rank": 55,
+      "worker_index": 3,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.229212530940856,
+      "initial_coil_component": 81.12578595872571,
+      "initial_status": "ok",
+      "optimizer_seed": 20282316,
+      "start": "starts/case_02316.json",
+      "start_sha256": "e9b87212fba05025da186ffe3d7b3d154bd89bd30148c044e7ea5a3331d385ae",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4329301301074793E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00608",
+      "case_id": 608,
+      "selection_rank": 65,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 6.552769447402043,
+      "initial_coil_component": 63.60109715374248,
+      "initial_status": "ok",
+      "optimizer_seed": 20280608,
+      "start": "starts/case_00608.json",
+      "start_sha256": "763bea96bd230ad72f7146b93a3efbe01a2a7ec0ecd29449adb192f190ed6560",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6382296408323782E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7527968883514404
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03509",
+      "case_id": 3509,
+      "selection_rank": 66,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 4.943583601515703,
+      "initial_coil_component": 65.89750497779869,
+      "initial_status": "ok",
+      "optimizer_seed": 20283509,
+      "start": "starts/case_03509.json",
+      "start_sha256": "b92ac8d6d1fb1db149f98156b922f97b29f89863cda053cc87e9d3b8faa6e7ff",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.3387721981293907E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.865972876548767
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01304",
+      "case_id": 1304,
+      "selection_rank": 74,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.680343673158435,
+      "initial_coil_component": 66.94751412087349,
+      "initial_status": "ok",
+      "optimizer_seed": 20281304,
+      "start": "starts/case_01304.json",
+      "start_sha256": "707d2934b45188fef76977a54af420f78619b31682b88f0bd949e6e28ce27132",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1096317581736912E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7897592782974243
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00354",
+      "case_id": 354,
+      "selection_rank": 80,
+      "worker_index": 3,
+      "nfp": 6,
+      "n_base_coils": 3,
+      "initial_score": 12.614041031392663,
+      "initial_coil_component": 66.94577489098373,
+      "initial_status": "ok",
+      "optimizer_seed": 20280354,
+      "start": "starts/case_00354.json",
+      "start_sha256": "ba145d4b59508f8f5498441ef2f5a2bccc12ce4b85976309a20bd2acd4cdf6be",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9174077436900916E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.1095614433288574
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02452",
+      "case_id": 2452,
+      "selection_rank": 82,
+      "worker_index": 3,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 2.6783924527864738,
+      "initial_coil_component": 79.75608271179841,
+      "initial_status": "ok",
+      "optimizer_seed": 20282452,
+      "start": "starts/case_02452.json",
+      "start_sha256": "db28489ee61f1526a4de505879ded5f1646fb999598565f1bc6b4bfddbc82bca",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.3290089029283081E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6731315851211548
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01849",
+      "case_id": 1849,
+      "selection_rank": 90,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 6.765282966359055,
+      "initial_coil_component": 80.37719116047971,
+      "initial_status": "ok",
+      "optimizer_seed": 20281849,
+      "start": "starts/case_01849.json",
+      "start_sha256": "88b64c8577fb67c41e54fa70b5b098adccced72e9376347060370b3d380da8ff",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6585763873422366E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5834550857543945
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00446",
+      "case_id": 446,
+      "selection_rank": 101,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.324297427371188,
+      "initial_coil_component": 76.45617107355812,
+      "initial_status": "ok",
+      "optimizer_seed": 20280446,
+      "start": "starts/case_00446.json",
+      "start_sha256": "c8ed2f623535bd4a0dbccdd9663fc8fcbf697919ad6c738c2ec0f91c4f7b3a5b",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 8.46144754262923E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.4285997152328491
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00426",
+      "case_id": 426,
+      "selection_rank": 106,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 17.09891035319616,
+      "initial_coil_component": 73.219474372042,
+      "initial_status": "ok",
+      "optimizer_seed": 20280426,
+      "start": "starts/case_00426.json",
+      "start_sha256": "b54a9e48aea9730e1bd44a110fe148626a1bdf1e4ccbf5d0ab42054fb1ef687d",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6401010327626864E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.760259747505188
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03119",
+      "case_id": 3119,
+      "selection_rank": 112,
+      "worker_index": 3,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 23.496090248038403,
+      "initial_coil_component": 64.98991216408456,
+      "initial_status": "ok",
+      "optimizer_seed": 20283119,
+      "start": "starts/case_03119.json",
+      "start_sha256": "b24fee9e407f49ea271dcec0951fafab087a250a9675663bc2c58252b210cfb2",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0831315339364664E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.104844331741333
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00887",
+      "case_id": 887,
+      "selection_rank": 113,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 6.244781781573034,
+      "initial_coil_component": 79.04509697804153,
+      "initial_status": "ok",
+      "optimizer_seed": 20280887,
+      "start": "starts/case_00887.json",
+      "start_sha256": "b03a965ad1b7784b973682a832aa93a1516958b7cc5e2564b0116b273a3662b9",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 8.671684703642768E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.511915922164917
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02591",
+      "case_id": 2591,
+      "selection_rank": 114,
+      "worker_index": 3,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 14.73320896052708,
+      "initial_coil_component": 65.29216456125302,
+      "initial_status": "ok",
+      "optimizer_seed": 20282591,
+      "start": "starts/case_02591.json",
+      "start_sha256": "07f93743d44bab52f5e6db40388dd86b52381a11f13e3948a2ed2f973280ff67",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.646259484289203E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0923032760620117
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01341",
+      "case_id": 1341,
+      "selection_rank": 14,
+      "worker_index": 4,
+      "nfp": 5,
+      "n_base_coils": 3,
+      "initial_score": 1.7942647868732997,
+      "initial_coil_component": 70.80510231984178,
+      "initial_status": "ok",
+      "optimizer_seed": 20281341,
+      "start": "starts/case_01341.json",
+      "start_sha256": "9ad368458f596aee85bdd150b7423dcf98c3432136abd7766ed923c901c81bd3",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 3.246727331429611E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.070176601409912
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01902",
+      "case_id": 1902,
+      "selection_rank": 19,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.069970152260837,
+      "initial_coil_component": 77.51622260350173,
+      "initial_status": "ok",
+      "optimizer_seed": 20281902,
+      "start": "starts/case_01902.json",
+      "start_sha256": "b4c00d039e79cdb5d581db43650343acc7d976d55eb6edee2a78080665c80d0f",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.535469351665597E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.3914369344711304
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02532",
+      "case_id": 2532,
+      "selection_rank": 21,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 8.039674019475468,
+      "initial_coil_component": 67.79991116477481,
+      "initial_status": "ok",
+      "optimizer_seed": 20282532,
+      "start": "starts/case_02532.json",
+      "start_sha256": "ec2e80c61ac00e066c838acab9e4636e28565dc63d20479612338f7bb365d2ea",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5958773857960296E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8639668226242065
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03403",
+      "case_id": 3403,
+      "selection_rank": 29,
+      "worker_index": 4,
+      "nfp": 6,
+      "n_base_coils": 4,
+      "initial_score": 5.581674132162329,
+      "initial_coil_component": 67.77623969799018,
+      "initial_status": "ok",
+      "optimizer_seed": 20283403,
+      "start": "starts/case_03403.json",
+      "start_sha256": "d530bbd6675e6401a3045c07473479ed227d92398e8d31410dbefa72c41cd3ca",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.388094794663175E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 2.0761640071868896
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03202",
+      "case_id": 3202,
+      "selection_rank": 37,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 5.038276735177478,
+      "initial_coil_component": 66.99779484051535,
+      "initial_status": "ok",
+      "optimizer_seed": 20283202,
+      "start": "starts/case_03202.json",
+      "start_sha256": "8d19b6298afcb70316283cbd1afed23d53613215e7d6c20a056b4ff0af6b0db6",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 8.79811867804392E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9299877882003784
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02376",
+      "case_id": 2376,
+      "selection_rank": 46,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 6.517725350404905,
+      "initial_coil_component": 66.50346610738312,
+      "initial_status": "ok",
+      "optimizer_seed": 20282376,
+      "start": "starts/case_02376.json",
+      "start_sha256": "357a5650c3f4ecd7109939f072c72608822c611e80fb00e09ed6582cf34764dc",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.658068704557536E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0739264488220215
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03462",
+      "case_id": 3462,
+      "selection_rank": 47,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.966842665408568,
+      "initial_coil_component": 74.73026474023567,
+      "initial_status": "ok",
+      "optimizer_seed": 20283462,
+      "start": "starts/case_03462.json",
+      "start_sha256": "7b2033bd1a385ad45d5165557125abb35804477dca4c7450b602db8d3cd2267b",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.078968819319016E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.3899815082550049
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01916",
+      "case_id": 1916,
+      "selection_rank": 56,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 4.274885492936675,
+      "initial_coil_component": 69.53989805110852,
+      "initial_status": "ok",
+      "optimizer_seed": 20281916,
+      "start": "starts/case_01916.json",
+      "start_sha256": "d30d3bff01d03133173274eb49238d97fc54a9af7b76bcc80f30647346c7b8ba",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4372941947726758E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 1.931127905845642
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01718",
+      "case_id": 1718,
+      "selection_rank": 59,
+      "worker_index": 4,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 3.736494768251066,
+      "initial_coil_component": 78.63270705648861,
+      "initial_status": "ok",
+      "optimizer_seed": 20281718,
+      "start": "starts/case_01718.json",
+      "start_sha256": "76bc770eaa81040f587563473b1ae3758912ad5b394acc9f9ab701b9451e854a",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8156718795125926E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02194",
+      "case_id": 2194,
+      "selection_rank": 67,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 5.755189667323987,
+      "initial_coil_component": 69.13542099336358,
+      "initial_status": "ok",
+      "optimizer_seed": 20282194,
+      "start": "starts/case_02194.json",
+      "start_sha256": "7b37d560f6431f7321001c7a4f945b8203581e31726dcaf98166ed0a60492cfa",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8142880975346998E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.7158098220825195
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01844",
+      "case_id": 1844,
+      "selection_rank": 72,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 14.416748732249856,
+      "initial_coil_component": 64.85961983333571,
+      "initial_status": "ok",
+      "optimizer_seed": 20281844,
+      "start": "starts/case_01844.json",
+      "start_sha256": "2f032ea96e8e38dfe4b824ef004877c988f08c1f73f2de940ea9116723a0fc2e",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9965687769740725E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.728692650794983
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03123",
+      "case_id": 3123,
+      "selection_rank": 76,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 3.4716019134373983,
+      "initial_coil_component": 81.14506270751919,
+      "initial_status": "ok",
+      "optimizer_seed": 20283123,
+      "start": "starts/case_03123.json",
+      "start_sha256": "95eec59a057ec19599210d2950b4e84da6af8fb393e39bfb3bb88f58839f207b",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6159047433461637E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5840990543365479
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02226",
+      "case_id": 2226,
+      "selection_rank": 81,
+      "worker_index": 4,
+      "nfp": 6,
+      "n_base_coils": 3,
+      "initial_score": 8.178460201653879,
+      "initial_coil_component": 68.29685561258069,
+      "initial_status": "ok",
+      "optimizer_seed": 20282226,
+      "start": "starts/case_02226.json",
+      "start_sha256": "dcccf38ec805e87c4eb8e7e0b03b03acf2d16aff0a420adc78f517fd6ad3eb95",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.402409471358169E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0023438930511475
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00502",
+      "case_id": 502,
+      "selection_rank": 88,
+      "worker_index": 4,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 2.019895304863716,
+      "initial_coil_component": 74.12972130641016,
+      "initial_status": "ok",
+      "optimizer_seed": 20280502,
+      "start": "starts/case_00502.json",
+      "start_sha256": "4abf0c3ee914633aafdb547f882993729daff4715b30816c9122ec616eae5d79",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.023762490921399E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9687939882278442
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03305",
+      "case_id": 3305,
+      "selection_rank": 91,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 7.604867309446904,
+      "initial_coil_component": 66.31289128768785,
+      "initial_status": "ok",
+      "optimizer_seed": 20283305,
+      "start": "starts/case_03305.json",
+      "start_sha256": "52c4c49bd3d853359d0ea57799837f777a1309cedc23c093653e0e6722ff1f05",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6144397818607104E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8841743469238281
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01562",
+      "case_id": 1562,
+      "selection_rank": 103,
+      "worker_index": 4,
+      "nfp": 6,
+      "n_base_coils": 1,
+      "initial_score": 6.944665214680164,
+      "initial_coil_component": 78.69364565734847,
+      "initial_status": "ok",
+      "optimizer_seed": 20281562,
+      "start": "starts/case_01562.json",
+      "start_sha256": "c0762f4a8f3f75d132752315fe30439692938921734b11fc1571582a62e1df4d",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8484543673480403E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.727744221687317
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02766",
+      "case_id": 2766,
+      "selection_rank": 115,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 9.083991823589754,
+      "initial_coil_component": 58.94702336535356,
+      "initial_status": "ok",
+      "optimizer_seed": 20282766,
+      "start": "starts/case_02766.json",
+      "start_sha256": "60e303f4d761c1cffc5d8494c5bf27a7ae7310996b195cebc79f02ec1f47ba13",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.542095340312244E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8271151781082153
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03560",
+      "case_id": 3560,
+      "selection_rank": 116,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 5.1082127025937565,
+      "initial_coil_component": 71.0209883376317,
+      "initial_status": "ok",
+      "optimizer_seed": 20283560,
+      "start": "starts/case_03560.json",
+      "start_sha256": "f894cf2012148acffbc4b42498d7e3f4cf0f6bcb2e68e6c1f1704673b8491097",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0691961921670554E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9645881652832031
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02500",
+      "case_id": 2500,
+      "selection_rank": 117,
+      "worker_index": 4,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.775954415635422,
+      "initial_coil_component": 76.09676753965594,
+      "initial_status": "ok",
+      "optimizer_seed": 20282500,
+      "start": "starts/case_02500.json",
+      "start_sha256": "8477ee3c93d8731c5af5b7b9400f76eedd353e14dd7944f37afc908a5060d14b",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1275667450026958E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6154398918151855
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01707",
+      "case_id": 1707,
+      "selection_rank": 119,
+      "worker_index": 4,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 4.603708915734168,
+      "initial_coil_component": 70.775668408817,
+      "initial_status": "ok",
+      "optimizer_seed": 20281707,
+      "start": "starts/case_01707.json",
+      "start_sha256": "f40df2766ccb40a245076eb45edba87f126d209edf3b167f52d435528b6290f9",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 8.637360160435037E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.218451738357544
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02894",
+      "case_id": 2894,
+      "selection_rank": 0,
+      "worker_index": 5,
+      "nfp": 5,
+      "n_base_coils": 2,
+      "initial_score": 4.703608663361584,
+      "initial_coil_component": 75.33194411467383,
+      "initial_status": "ok",
+      "optimizer_seed": 20282894,
+      "start": "starts/case_02894.json",
+      "start_sha256": "4788829369d00a813131e7577f83814bacc2ce5169d96f58b2c0472e0c595191",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8967647008594213E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.77569580078125
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00452",
+      "case_id": 452,
+      "selection_rank": 1,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 3.363323997330234,
+      "initial_coil_component": 66.37530116307082,
+      "initial_status": "ok",
+      "optimizer_seed": 20280452,
+      "start": "starts/case_00452.json",
+      "start_sha256": "578dec4dac0a6a36f1b29f078ab1e0fa1418531b9e3951bfc4fd8ca7ef191abb",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.679787947101886E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.062943696975708
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00627",
+      "case_id": 627,
+      "selection_rank": 5,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 4.331628766061131,
+      "initial_coil_component": 74.36840010085119,
+      "initial_status": "ok",
+      "optimizer_seed": 20280627,
+      "start": "starts/case_00627.json",
+      "start_sha256": "e6dc018998a7904c7462766869ffbcd1607a6b4b9dbc01e96b05be71a3db262e",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6541747527298867E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5460546016693115
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00602",
+      "case_id": 602,
+      "selection_rank": 22,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.40097535412918,
+      "initial_coil_component": 69.50505851717416,
+      "initial_status": "ok",
+      "optimizer_seed": 20280602,
+      "start": "starts/case_00602.json",
+      "start_sha256": "ad679cdb4c0265494420032d6f22e2d0c52c6ee88dbb0dc8d1b23880ebe453ec",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.550518551913683E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.5282496213912964
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02566",
+      "case_id": 2566,
+      "selection_rank": 23,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 10.601502972561851,
+      "initial_coil_component": 61.94495854477993,
+      "initial_status": "ok",
+      "optimizer_seed": 20282566,
+      "start": "starts/case_02566.json",
+      "start_sha256": "3215dd13fa7dbe4223b1ecd88476da42c902ccb9770a9b48b86d14fb7863b6c2",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.4885405796860596E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 2.367288589477539
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00449",
+      "case_id": 449,
+      "selection_rank": 27,
+      "worker_index": 5,
+      "nfp": 4,
+      "n_base_coils": 2,
+      "initial_score": 1.9898847904787955,
+      "initial_coil_component": 75.69800553616858,
+      "initial_status": "ok",
+      "optimizer_seed": 20280449,
+      "start": "starts/case_00449.json",
+      "start_sha256": "dbd9cd035f4e187dfaa935041374931ce14b37934aff50c2215f30c01aa77a6e",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0628098340580436E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8105049133300781
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02442",
+      "case_id": 2442,
+      "selection_rank": 31,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 4,
+      "initial_score": 13.217778386260655,
+      "initial_coil_component": 65.09028386511574,
+      "initial_status": "ok",
+      "optimizer_seed": 20282442,
+      "start": "starts/case_02442.json",
+      "start_sha256": "e4339baa67bdb05c87090b6a218931442c41acdef561e04cf0cec7178887fdb3",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8413075508760812E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8347771167755127
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00367",
+      "case_id": 367,
+      "selection_rank": 38,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 5.63782200956257,
+      "initial_coil_component": 68.98483657712178,
+      "initial_status": "ok",
+      "optimizer_seed": 20280367,
+      "start": "starts/case_00367.json",
+      "start_sha256": "94934d2982be7f1d1f8ebe8ba53dc9a921ce51471a2c83662c697f4f6d854c5d",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.6069334307644567E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6801403760910034
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00758",
+      "case_id": 758,
+      "selection_rank": 48,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 4.779881831934876,
+      "initial_coil_component": 73.1439368045562,
+      "initial_status": "ok",
+      "optimizer_seed": 20280758,
+      "start": "starts/case_00758.json",
+      "start_sha256": "f1a0450dca002b9d7dc7bb1f0b4693a96cefadd3be19508daecaf5dc53cce6b7",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0196836203467683E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6519296169281006
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_01128",
+      "case_id": 1128,
+      "selection_rank": 49,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 9.831362165442645,
+      "initial_coil_component": 68.83462784330526,
+      "initial_status": "ok",
+      "optimizer_seed": 20281128,
+      "start": "starts/case_01128.json",
+      "start_sha256": "27a50e47898dc368955b0e9445caacafd73abe0d3ac365b1cc15d72a91220b20",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 9.032053327473477E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8023959398269653
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03424",
+      "case_id": 3424,
+      "selection_rank": 57,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 3,
+      "initial_score": 35.74827329165398,
+      "initial_coil_component": 64.9879249716208,
+      "initial_status": "ok",
+      "optimizer_seed": 20283424,
+      "start": "starts/case_03424.json",
+      "start_sha256": "3bf3a86cb41f770c3ea1d713be33cbd0bbac4e4146ad328708ceb09c483275bf",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.9221104707867198E-08,
+        "current_relative_rms": 7.500000265281415E-08,
+        "max_abs_parameter": 1.7591792345046997
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02474",
+      "case_id": 2474,
+      "selection_rank": 60,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 6.7674823852887185,
+      "initial_coil_component": 78.5397947358978,
+      "initial_status": "ok",
+      "optimizer_seed": 20282474,
+      "start": "starts/case_02474.json",
+      "start_sha256": "cdb2c0dcf3c93580522c84bbc0be03c87c72f3293a51285f772da8e3f9806bf6",
+      "source_shard": "shard_02.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.5752510407196496E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.3975999355316162
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02923",
+      "case_id": 2923,
+      "selection_rank": 69,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 2,
+      "initial_score": 5.820838775756339,
+      "initial_coil_component": 66.48493615475178,
+      "initial_status": "ok",
+      "optimizer_seed": 20282923,
+      "start": "starts/case_02923.json",
+      "start_sha256": "eebc30a6664a8419ab7cdb5df0c3837444429e3f49455549dae728df6e605aa2",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.8368428555959326E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.9794385433197021
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00653",
+      "case_id": 653,
+      "selection_rank": 79,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 1,
+      "initial_score": 7.0745740067738,
+      "initial_coil_component": 69.54230363867023,
+      "initial_status": "ok",
+      "optimizer_seed": 20280653,
+      "start": "starts/case_00653.json",
+      "start_sha256": "45535e62dfae0f2c701cd7144545ae0b505fe6b5b8cc477575fbcd3fb23ed915",
+      "source_shard": "shard_05.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 7.709193283744753E-09,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6501456499099731
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00043",
+      "case_id": 43,
+      "selection_rank": 84,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 3,
+      "initial_score": 4.211416969701311,
+      "initial_coil_component": 62.88228737532322,
+      "initial_status": "ok",
+      "optimizer_seed": 20280043,
+      "start": "starts/case_00043.json",
+      "start_sha256": "04258222797ab3cc5d35498f930934f61f9a2ce1a4b3c8b6ca0dfe4ba42dc1fa",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.2651839515219763E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.4567155838012695
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02313",
+      "case_id": 2313,
+      "selection_rank": 87,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 23.59157851003396,
+      "initial_coil_component": 65.10527584885723,
+      "initial_status": "ok",
+      "optimizer_seed": 20282313,
+      "start": "starts/case_02313.json",
+      "start_sha256": "a636a860c4e56b7026f4e3d0e66ac6a820224f75e69a4e134a762a61efc5d7ba",
+      "source_shard": "shard_03.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.0552480606284007E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 2.0927817821502686
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_03312",
+      "case_id": 3312,
+      "selection_rank": 92,
+      "worker_index": 5,
+      "nfp": 7,
+      "n_base_coils": 2,
+      "initial_score": 3.5687559885464837,
+      "initial_coil_component": 70.76296766915988,
+      "initial_status": "ok",
+      "optimizer_seed": 20283312,
+      "start": "starts/case_03312.json",
+      "start_sha256": "06068402b58ce772bff386617ee0df5e996e19f1cc1387a40576b4ce712abd3d",
+      "source_shard": "shard_00.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.18708713362048E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8672676086425781
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_02812",
+      "case_id": 2812,
+      "selection_rank": 94,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 7.3474719487033076,
+      "initial_coil_component": 77.13747641936659,
+      "initial_status": "ok",
+      "optimizer_seed": 20282812,
+      "start": "starts/case_02812.json",
+      "start_sha256": "f73a7c3ec579c774d41038b553717eb52ef1a46926bdaea06f76899d6ccf070a",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.1680348183394926E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.3441413640975952
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00706",
+      "case_id": 706,
+      "selection_rank": 104,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 1,
+      "initial_score": 8.370971421693923,
+      "initial_coil_component": 78.05308477197958,
+      "initial_status": "ok",
+      "optimizer_seed": 20280706,
+      "start": "starts/case_00706.json",
+      "start_sha256": "598c8343adc7d131685fcb30d7b95f027fc0667cdf27f062e20de566454be12b",
+      "source_shard": "shard_04.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 1.582121456067398E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.6547527313232422
+      }
+    },
+    {
+      "trajectory_id": "axisv3_case_00727",
+      "case_id": 727,
+      "selection_rank": 118,
+      "worker_index": 5,
+      "nfp": 8,
+      "n_base_coils": 4,
+      "initial_score": 37.96346614955505,
+      "initial_coil_component": 65.53706464071327,
+      "initial_status": "ok",
+      "optimizer_seed": 20280727,
+      "start": "starts/case_00727.json",
+      "start_sha256": "914fa687f23bae6d26016b6954e8d23a0d153297cf219ec48cfe486dc2883764",
+      "source_shard": "shard_01.jsonl",
+      "roundtrip": {
+        "geometry_relative_rms": 2.009806543412651E-08,
+        "current_relative_rms": 0.0,
+        "max_abs_parameter": 1.8462177515029907
+      }
+    }
+  ]
+}

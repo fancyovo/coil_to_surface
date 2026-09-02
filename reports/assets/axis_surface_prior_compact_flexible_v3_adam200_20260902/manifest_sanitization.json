@@ -1,0 +1,25 @@
+{
+  "format": "report_manifest_sanitization_v1",
+  "purpose": "Remove private cluster paths from report-delivery copies while preserving numerical and provenance fields.",
+  "source_artifacts": {
+    "runtime_manifest.json": {
+      "original_sha256": "e20f9a443ccb84f3ce717eed930ccf52de7238a14f3c9de65bc2ce5043cb6ecb",
+      "sanitized_fields": [
+        "input_root",
+        "score_library",
+        "checkpoint"
+      ]
+    },
+    "selection_manifest.json": {
+      "original_sha256": "cbbf5b30a167cfce612aa080b675ad5c043e0a67595ac9467f24e3f8f8bf3779",
+      "sanitized_fields": [
+        "input.run_root",
+        "artifacts.score_library",
+        "artifacts.checkpoint",
+        "cases[].start"
+      ]
+    }
+  },
+  "unchanged_contract": "Protocol IDs, commits, hashes, sample identities, selection ranks, worker assignments, optimizer settings, scores, and roundtrip diagnostics are unchanged.",
+  "original_location": "Frozen experiment storage; retained outside the report delivery tree."
+}

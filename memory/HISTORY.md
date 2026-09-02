@@ -1,6 +1,6 @@
 # Concise Project History
 
-Last reviewed: 2026-08-28 (Asia/Shanghai). This file routes historical questions;
+Last reviewed: 2026-09-02 (Asia/Shanghai). This file routes historical questions;
 reports and immutable archives retain the detailed record.
 
 ## Timeline
@@ -33,6 +33,11 @@ reports and immutable archives retain the detailed record.
   were centralized, 2D execution was blocked, old reports were bannered, and
   memory was split into current, protocol, correction, decision, writing,
   history, and immutable archive layers.
+- 2026-09-02: compact-flexible-v3 analytic-prior scoring completed 3600 ABI-11
+  samples and measured a `15.8056%` initial-valid rate. A frozen random sample
+  of 120 valid starts completed direct-data Adam200; 65 reached score 50 by
+  update 50 and 97 by update 200. Canonical evidence is in
+  `../reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
 
 ## Evidence Routes
 

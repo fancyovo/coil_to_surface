@@ -228,10 +228,16 @@ Runtime-weighted assignment puts 20 trajectories on each of six GPUs with
 nearly equal predicted loads. Every trajectory requests 200 Adam updates with
 64 fresh orthogonal centered directions, `h=0.0025`, learning rate `0.01`, and
 beta `(0.7,0.999)` in exact-unclipped standardized data coordinates. Worker
-arrays `52315/52316` run concurrently with seven-hour limits after preparation
-`52313` and three-step smoke `52314`; final analysis is `52317`. Frozen run
-commit is `08a3c3f`. The six workers passed GPU preflight and wrote independent
-optimization progress with no initial failure. Numerical outcomes remain
-pending. Frozen specification:
+arrays `52315/52316` completed concurrently after preparation `52313` and
+three-step smoke `52314`; analysis `52317` produced the frozen summary. All
+120 trajectories completed 200 updates with status `ok`, zero runtime failures,
+and no incomplete or unstarted case. Best-so-far reached 50 by update 50 in
+65/120 trajectories and by update 200 in 97/120. Conditional success rates were
+`54.1667%` and `80.8333%`; multiplying by the measured `15.8056%` initial-valid
+rate gives estimated all-prior abundances `8.56%` and `12.78%`. The median and
+maximum Adam200 best scores were `65.3774` and `68.8804`. Worker wall times were
+5.31--5.47 hours. Frozen run commit is `08a3c3f`. Canonical report:
+`reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
+Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_adam200_abi11_v1.json`.
 Neither compact-flexible experiment changes the current QH default.

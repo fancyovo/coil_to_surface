@@ -200,10 +200,12 @@
 - Follow-up protocol
   `qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1`
   uniformly selected 120 of the 569 valid starts at seed `20260904` and assigned
-  20 cost-balanced trajectories to each of six GPUs. Run commit `08a3c3f`,
-  preparation `52313`, and smoke `52314` passed; P107 array `52315` and Students
-  array `52316` are running concurrently with seven-hour worker limits and zero
-  initial failures. Analysis is `52317`. No Adam200 outcome is established yet.
+  20 cost-balanced trajectories to each of six GPUs. All 120 trajectories
+  completed 200 updates with zero failures. Best-so-far reached 50 by update 50
+  in 65/120 cases and by update 200 in 97/120; the maximum was `68.8804`.
+  Combining these conditional rates with the `15.8056%` initial-valid rate gives
+  estimated all-prior abundances of `8.56%` at Adam50 and `12.78%` at Adam200.
+  See `reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
   This registered experiment does not alter the current Flow default.
 
 ## Memory Map

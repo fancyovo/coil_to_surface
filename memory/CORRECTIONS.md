@@ -1076,6 +1076,39 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved after local artifact synchronization,
   figure inspection, report-link validation, and machine-manifest parsing.
 
+## CORR-20260903-77 - RL plan incorrectly proposed fixing the current channel
+
+- Severity/status: medium / corrected before implementation or experiment launch.
+- Discovered by: user while reviewing the proposed analytic-prior RL plan.
+- Incorrect claims: the plan said that fixed `nfp=8,nc=3` made current a
+  deterministic channel that should be reconstructed rather than learned, and
+  described coil permutation as preventing the Transformer from memorizing
+  coil indices.
+- Primary evidence: `flow_matching/axis_surface_prior_v2.py` initializes all
+  three base-coil currents equally for this fixed condition, but
+  `scripts/optimize_flow_latent.py` includes the three current coordinates in
+  direct-data Adam. `CoilNormalizer.inverse` projects every proposal to the
+  fixed condition-specific current L1 norm and dominant-current sign, so Adam
+  can change relative current allocation. `flow_matching/model.py` contains no
+  positional encoding and uses shared self-attention, making its token map
+  permutation-equivariant.
+- Corrected fact and scope: the distilled `q0` has equal initial currents, while
+  RL targets produced by Adam20 may have unequal relative currents. The Flow
+  must therefore retain and learn the current channel using a nondegenerate,
+  dimensionless current scale; only total current L1 and the global sign remain
+  constrained by the established projection. Random coil permutation is an
+  optional representation symmetrization that makes fixed contour ordering
+  match the model's exchangeable set representation; it is not needed to stop
+  positional memorization.
+- Affected artifacts and conclusions: only the unapproved conversational plan
+  was affected. No code, checkpoint, dataset, experiment, result, or current
+  default was changed or launched from the incorrect proposal.
+- Containment/regression: the revised implementation plan will test that
+  distillation reproduces equal-current `q0`, that an Adam20 endpoint with
+  changed relative currents round-trips through the Flow representation, and
+  that permutation equivariance holds numerically. Implementation remains
+  blocked on user approval of the corrected plan.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

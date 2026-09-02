@@ -161,6 +161,14 @@ high-score basin. It does not isolate the axis sign's paired causal effect or
 promote a new default. Canonical evidence is in
 `../reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
 
+Representative full evaluation selected the v4 maximum-score case 18 and the
+higher-engineering 80-point case 23. Both accepted the largest tested standard
+surface at `s=0.49`; direct `QH_(1,+1)` errors were `0.0016255` and `0.0021736`.
+Both DESC boundaries remained nested and their mean normalized force fell by
+about 11139-fold and 1280-fold, while both solvers reached the 50-iteration
+limit without a successful termination flag. This is two-case feasibility
+evidence and does not estimate full-population physical acceptance.
+
 Before promotion, independently test winding-surface and contour-scalar
 chirality as remaining factors and retain exact final-coil reflection as the
 sign-flipping control. Promotion still requires mirror-pair regression tests

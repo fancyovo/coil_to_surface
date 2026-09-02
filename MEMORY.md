@@ -228,16 +228,16 @@
   bias is the fixed-sign construction-axis harmonic; surface and contour signs
   remain unisolated. Negative-target Adam200 reached `80.8523` and `84.9308`.
   Frozen positive-target scores and non-QS physical results remain valid.
-- Axis-flip stream Adam200 v1-v3 are invalidated for losing the screened axis,
-  screening another numeric representation, and using another score configuration. Their Adam outcomes are
-  quarantined; v1's 24 positive-iota valid starts remain preliminary handedness
-  evidence. V4 at frozen commit `d8de349` fixes all three inconsistencies. Smoke
-  `52758` passed the pinned case 25 with score delta `0.0133273`; all six formal
-  workers in arrays `52759/52760` passed with deltas `0.000711-0.013327`,
-  identical axes, and positive initial iota. Final: 110 screened, 56 valid
-  positive-iota starts, 50 complete, zero failed, six excluded partials; 37 reached
-  70, nine reached 80, maximum `81.8258`. Median volume-QS rose `19.4311 -> 59.1199`;
-  coil stayed near 69. See `reports/axis_surface_prior_axisflip_v4_results_20260902.md` and `CORR-20260902-71/72/73/75`; no default change.
+- Axis-flip stream Adam200 v1-v3 are invalidated for screened-axis,
+  numeric-representation, and score-configuration inconsistencies. Their Adam
+  outcomes are quarantined; v1's 24 positive-iota starts remain preliminary
+  handedness evidence. V4 at `d8de349` fixes all three; smoke `52758` and six
+  formal workers passed their axis/score gates. Final: 110 screened, 56 valid
+  positive-iota starts, 50 complete, zero failed, six excluded partials; 37
+  reached 70, nine reached 80, maximum `81.8258`. Median volume-QS rose
+  `19.4311 -> 59.1199`; coil stayed near 69. Full evaluation accepted
+  `s=0.49` surfaces for cases 18/23 with direct QH errors `0.001626/0.002174`; both DESC boundaries stayed nested at the 50-step cap. See
+  `reports/axis_surface_prior_axisflip_v4_results_20260902.md`; no default change.
 
 ## Memory Map
 

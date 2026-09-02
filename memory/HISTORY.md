@@ -70,6 +70,12 @@ reports and immutable archives retain the detailed record.
   rose from `19.4311` to `59.1199`, while median coil-engineering score remained
   near 69. Canonical evidence is in
   `../reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
+- 2026-09-02: full physical evaluation selected axis-flip v4 cases 18 and 23 as
+  the maximum-score and higher-engineering representatives. Both accepted
+  standard surfaces at `s=0.49`, with volumes `0.076781` and `0.045235 m3` and
+  direct `QH_(1,+1)` errors `0.0016255` and `0.0021736`. Both DESC boundaries
+  stayed nested while the solves reached the 50-iteration cap. The report and
+  machine-readable selection evidence are stored with the v4 result above.
 
 ## Evidence Routes
 

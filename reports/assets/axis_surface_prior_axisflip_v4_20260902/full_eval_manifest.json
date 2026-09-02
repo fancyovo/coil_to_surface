@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-02T23:35:51+08:00",
+  "status": "completed",
+  "experiment_protocol": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4",
+  "workflow_code_commit": "d8de349b7d0d457f10402c8517e5930ddd260c7c",
+  "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+  "full_evaluation_library": {
+    "build_job_id": 52885,
+    "sha256": "93bc6f00d1ab278f3454275e73958a04105ac110706cbfbb3cc7bc90a539361a",
+    "source_commit": "d8de349b7d0d457f10402c8517e5930ddd260c7c",
+    "required_gpu_abi_preflight": "passed"
+  },
+  "execution": {
+    "source_fit_candidates_per_sample": 4,
+    "source_fit_a_m": [0.04, 0.05, 0.06, 0.08],
+    "selected_a_m": 0.08,
+    "surface_candidates_per_sample": 6,
+    "surface_s": [0.12, 0.24, 0.36, 0.49, 0.64, 0.81],
+    "dense_validation_grid_size": 97,
+    "source_and_surface_candidates": "submitted concurrently up to the verified six-job GPU allowance",
+    "downstream_samples": "submitted concurrently on two CPU allocations"
+  },
+  "samples": [
+    {
+      "sample_id": "axisflip_case_0000018",
+      "selection_role": "highest Adam200 total and volume-QS score",
+      "nfp": 8,
+      "nc": 3,
+      "adam200": {
+        "best_total": 81.82583733832878,
+        "best_step": 195,
+        "volume_qs_component_recomputed": 66.97866845952791,
+        "coil_engineering_component_recomputed": 66.2580235271784,
+        "best_input_sha256": "0a0348a6f64e79440eab6748dd9c48d837a09935ab720a7dd1742a2205756eac"
+      },
+      "source_fit_job_ids": [52887, 52889, 52891, 52893],
+      "surface_job_ids": [52909, 52911, 52913, 52915, 52917, 52919],
+      "downstream_job_id": 52937,
+      "selected_surface": {
+        "s": 0.49,
+        "absolute_volume_m3": 0.07678146863414113,
+        "iota": 1.1817979178526938,
+        "newton_residual_norm": 3.440084644080728e-13,
+        "dense_relative_l2": 3.204114813053558e-05,
+        "dense_normal_B_sine_p95": 5.497740103964479e-05,
+        "QH_1_1": 0.0016255086078884539
+      },
+      "nearest_outer_rejection": {
+        "s": 0.64,
+        "dense_relative_l2": 6.93261334264517e-05,
+        "dense_normal_B_sine_p95": 0.000117568313624165,
+        "failed_checks": ["dense_normal_field_p95"]
+      },
+      "desc": {
+        "nested_initial": true,
+        "nested_final": true,
+        "optimizer_success": false,
+        "optimizer_iterations": 50,
+        "optimizer_message": "Maximum number of iterations has been exceeded.",
+        "initial_force_mean_abs_normalized": 1.5836974059005355,
+        "final_force_mean_abs_normalized": 0.00014217851248618196
+      }
+    },
+    {
+      "sample_id": "axisflip_case_0000023",
+      "selection_role": "score above 80 with higher coil-engineering component",
+      "nfp": 6,
+      "nc": 4,
+      "adam200": {
+        "best_total": 80.32747301555956,
+        "best_step": 174,
+        "volume_qs_component_recomputed": 64.24643718350576,
+        "coil_engineering_component_recomputed": 71.29180633972864,
+        "best_input_sha256": "e42dd4ebf53263192facf8cd314320f7dc472d070ec8e80f4e204a6cdd06f23b"
+      },
+      "source_fit_job_ids": [52895, 52897, 52899, 52901],
+      "surface_job_ids": [52921, 52923, 52925, 52927, 52929, 52931],
+      "downstream_job_id": 52939,
+      "selected_surface": {
+        "s": 0.49,
+        "absolute_volume_m3": 0.04523464176519916,
+        "iota": 1.0995101395564548,
+        "newton_residual_norm": 1.6889991234420335e-13,
+        "dense_relative_l2": 6.64229388541225e-05,
+        "dense_normal_B_sine_p95": 7.297539716163505e-05,
+        "QH_1_1": 0.002173574972034426
+      },
+      "nearest_outer_rejection": {
+        "s": 0.64,
+        "dense_relative_l2": 0.000124920362349505,
+        "dense_normal_B_sine_p95": 0.000132500291882925,
+        "failed_checks": ["dense_relative_l2", "dense_normal_field_p95"]
+      },
+      "desc": {
+        "nested_initial": true,
+        "nested_final": true,
+        "optimizer_success": false,
+        "optimizer_iterations": 50,
+        "optimizer_message": "Maximum number of iterations has been exceeded.",
+        "initial_force_mean_abs_normalized": 2.5371472918326017,
+        "final_force_mean_abs_normalized": 0.001982307498581607
+      }
+    }
+  ]
+}

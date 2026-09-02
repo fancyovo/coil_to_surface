@@ -1042,6 +1042,40 @@ An open critical correction blocks promotion and external reporting.
   `memory/DECISIONS.md` context and was rejected atomically. It changed no file;
   the retry split the updates by exact verified context.
 
+## CORR-20260902-76 - Full-evaluation preparation repeated shell and table-read errors
+
+- Severity/status: low / resolved before candidate selection and submission.
+- Discovered by: Codex while preparing the axis-flip v4 representative full
+  evaluations.
+- Error: the first local candidate view requested total-score fields from the
+  component-only CSV, so PowerShell rendered empty score cells. Separately,
+  initial remote read-only checks repeated known PowerShell-to-WSL quoting and
+  carriage-return mistakes, and the first fresh-run identity/host probes were
+  issued together before the documented sequential preflight was restarted.
+  An unfiltered dynamic-symbol read also produced excessive terminal output.
+- Corrected fact and scope: no candidate was selected from the empty-column
+  view. The report component table was joined explicitly to the frozen
+  trajectory table before selecting case 18 for maximum total/volume-QS and
+  case 23 for a higher-engineering 80-point tradeoff. The malformed remote
+  commands were read-only, submitted no work, and changed no artifact.
+- Containment: the complete remote preflight was rerun in documented order;
+  subsequent Slurm submissions used fixed launchers and explicit job records.
+  A run-specific GPU library was built from pinned commit `d8de349` and passed
+  the required ABI preflights before any source or surface evaluation.
+- Evidence and retained conclusions: `reports/assets/axis_surface_prior_axisflip_v4_20260902/full_eval_manifest.json`
+  freezes the candidate rationale, input hashes, jobs, code, library hash, and
+  accepted surfaces. Both full evaluations and all v4 population conclusions
+  remain valid. This entry changes no score, magnetic-surface, or DESC result.
+- Regression: future candidate ranking must fail on missing named columns and
+  join component and trajectory records by `trajectory_id`; remote checks must
+  use the documented preflight and bounded output. Reporting was blocked until
+  both selected inputs and their derived metrics were verified independently.
+- Separate contained edit error: the first multi-file memory patch used an
+  inexact `memory/DECISIONS.md` line break and was rejected atomically. It
+  changed no memory file; exact-context patches applied the intended update.
+- Promotion/reporting blocker: resolved after local artifact synchronization,
+  figure inspection, report-link validation, and machine-manifest parsing.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

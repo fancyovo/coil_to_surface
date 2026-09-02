@@ -8,6 +8,7 @@
 | 运行代码 | `d8de349b7d0d457f10402c8517e5930ddd260c7c` |
 | 报告统计与绘图代码 | `2a9e66c` |
 | 原生评分器 | ABI-11，SHA-256 `1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed` |
+| 完整评估运行库 | 从 `d8de349` 构建，SHA-256 `93bc6f00d1ab278f3454275e73958a04105ac110706cbfbb3cc7bc90a539361a` |
 | 目标手性 | `(M,N)=(1,+nfp)` |
 
 ## 结论
@@ -27,9 +28,12 @@ Adam200 在群体层面大幅提高体 QS，同时基本保持线圈工程分量
 仍存在工程权衡：24 条轨迹表现为体 QS 提高、线圈工程分量下降，23 条同时提高两个
 分量。
 
-本实验提供原生评分与局部优化证据。标准磁面、Poincare、Boozer 和 DESC 结论等待
-代表性样本的完整物理评估。v4 属于解析先验探索，项目 QH 默认协议继续使用
-`qh-flow-screen32-adam200-64d-abi11-v1`。
+本实验还完成了两个代表性高分样本的标准磁面、Poincare、Boozer 和 DESC 评估。
+`axisflip_case_0000018` 与 `axisflip_case_0000023` 在测试层级中均接受 `s=0.49`
+磁面，直接面上 `QH_(1,+1)` 误差分别为 `0.001626` 和 `0.002174`。两例的 DESC
+初始与最终边界均保持嵌套；DESC 求解达到 50 次迭代上限，尚未满足优化器收敛判据。
+这两例提供样本级物理验证；群体筛选结论继续由 50 条 Adam200 轨迹支持。v4 属于
+解析先验探索，项目 QH 默认协议继续使用 `qh-flow-screen32-adam200-64d-abi11-v1`。
 
 ## 实验方法
 
@@ -217,6 +221,118 @@ P107 数组 `52759` 使用四张 RTX 5090，Students 数组 `52760` 使用两张
 线圈工程分量为 62.62--66.26。`axisflip_case_0000018` 同时给出本批次最高总分和
 最高体 QS 分量；代表性完整物理评估可优先从该样本和工程分量更高的高分样本中选取。
 
+## 代表性高分样本完整评估
+
+完整评估选取两种高分结构：`axisflip_case_0000018` 是 50 条完整轨迹中的最高总分
+样本，也具有最高体 QS 分量；`axisflip_case_0000023` 保持 80 分以上总分，同时给出
+更高的线圈工程分量。两者分别覆盖 `nfp=8,nc=3` 与 `nfp=6,nc=4`。
+
+| 样本 | 选择角色 | Adam200 最佳总分 | 最佳步 | 体 QS 分量 | 线圈工程分量 |
+|---|---|---:|---:|---:|---:|
+| `axisflip_case_0000018` | 最高总分、最高体 QS | **81.8258** | 195 | 66.9787 | 66.2580 |
+| `axisflip_case_0000023` | 高分中的较优工程折中 | 80.3275 | 174 | 64.2464 | **71.2918** |
+
+表中的总分来自冻结 Adam200 轨迹，两个分量来自同一 ABI-11 正式配置下的端点重算。
+体 QS 和线圈工程分量均为分数，数值越高越好。后文的 `QH_(1,+1)` 是标准磁面上的
+直接误差，数值越低越好；该误差与体 QS 分数的定义和量纲不同。
+
+### 评估流程与并行安排
+
+每个样本先并行评估 `a=0.04,0.05,0.06,0.08 m` 四个源 psi 拟合，随后选用
+`a=0.08 m`。每个源面再并行计算 `s=0.12,0.24,0.36,0.49,0.64,0.81` 六个
+候选层级，并对每个候选执行 Simsopt 最小二乘、标准 Newton 和独立 97 点稠密网格
+检查。两个样本的线圈/磁面可视化、Poincare、Boozer 与 DESC 作业也彼此并行运行。
+
+源 psi 在 `a=0.08 m` 下的留出 RMS 分别为 `8.89e-5` 和 `4.82e-4`。测试集合中，
+两个样本的最大接受层级均为 `s=0.49`；最近外层 `s=0.64` 均被独立稠密残差门拒绝。
+
+| 样本 | 接受 `s` | 体积 (`m^3`) | iota | Newton 残差 | 97 点相对 L2 | 97 点法向 B 正弦 p95 | 直接 `QH_(1,+1)` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `axisflip_case_0000018` | 0.49 | 0.076781 | 1.181798 | 3.44e-13 | 3.20e-5 | 5.50e-5 | **0.001626** |
+| `axisflip_case_0000023` | 0.49 | 0.045235 | 1.099510 | 1.69e-13 | 6.64e-5 | 7.30e-5 | 0.002174 |
+
+| 样本 | `s=0.64` 的 97 点相对 L2 | `s=0.64` 的法向 B 正弦 p95 | 拒绝项 |
+|---|---:|---:|---|
+| `axisflip_case_0000018` | 6.93e-5 | 1.18e-4 | 法向 B p95 超过 `1e-4` |
+| `axisflip_case_0000023` | 1.25e-4 | 1.33e-4 | 相对 L2 与法向 B p95 均超过 `1e-4` |
+
+`s=0.49` 的 Newton 残差和两项独立稠密检查全部通过。`s=0.64` 的 Newton 本身
+仍收敛到约 `2e-13`，外层拒绝来自独立稠密网格；这项检查限定了本次测试可报告的最大
+标准磁面。
+
+### `axisflip_case_0000018`：最高总分样本
+
+该样本的接受磁面上 `|B|` 范围为 `0.6550--1.1126 T`。八条 Poincare 种子的
+命中数为 `91,91,91,91,91,91,87,87`；四个截面保持径向有序，图中没有出现
+明显的贯穿岛链。Boozer `|B|` 等值线整体沿正斜率方向延伸，并带有可见局部起伏。
+
+![axisflip_case_0000018 的线圈与最大接受标准磁面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/assets/coils_surface.png)
+
+[交互式线圈与磁面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/assets/coils_surface.html) | [交互式 Boozer `|B|`](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/assets/boozer_b.html)
+
+![axisflip_case_0000018 的 Poincare 截面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/assets/poincare.png)
+
+![axisflip_case_0000018 的标准磁面 Boozer |B|](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/assets/boozer_b.png)
+
+### `axisflip_case_0000023`：较优工程折中样本
+
+该样本的接受磁面上 `|B|` 范围为 `0.6459--0.9565 T`。八条 Poincare 种子均
+取得 79 次命中，四个截面保持径向有序。Boozer `|B|` 的主等值线同样沿正斜率
+方向延伸，局部轮廓比 `axisflip_case_0000018` 更平滑。
+
+![axisflip_case_0000023 的线圈与最大接受标准磁面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/assets/coils_surface.png)
+
+[交互式线圈与磁面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/assets/coils_surface.html) | [交互式 Boozer `|B|`](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/assets/boozer_b.html)
+
+![axisflip_case_0000023 的 Poincare 截面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/assets/poincare.png)
+
+![axisflip_case_0000023 的标准磁面 Boozer |B|](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/assets/boozer_b.png)
+
+### DESC 松弛
+
+| 样本 | 环向磁通 | 初始/最终嵌套 | 平均归一化力：初始 -> 最终 | 降低倍数 | 最终最大值 | 最终 p95 | 求解状态 |
+|---|---:|---|---:|---:|---:|---:|---|
+| `axisflip_case_0000018` | 0.008877 | 是 / 是 | 1.5837 -> 1.4218e-4 | 11139x | 1.40e-3 | 3.11e-4 | 达到 50 次迭代上限 |
+| `axisflip_case_0000023` | 0.004572 | 是 / 是 | 2.5371 -> 1.9823e-3 | 1280x | 9.21e-3 | 4.31e-3 | 达到 50 次迭代上限 |
+
+两例在 DESC 松弛前后均通过嵌套边界检查，平均归一化力分别降低约四个和三个数量级。
+两次求解都在第 50 次迭代停止，优化器的 `success` 标志为 `false`。证据等级为
+“显著松弛且边界保持嵌套”；数值收敛终止条件仍待更长 DESC 求解确认。
+
+<details>
+<summary><code>axisflip_case_0000018</code> 的完整 DESC 图组</summary>
+
+![axisflip_case_0000018 DESC 初始边界](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/boundary_initial.png)
+![axisflip_case_0000018 DESC 最终边界](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/boundary.png)
+![axisflip_case_0000018 DESC Boozer 模谱](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/boozer_modes.png)
+![axisflip_case_0000018 DESC Boozer |B|](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/boozer_B.png)
+![axisflip_case_0000018 DESC QA 诊断](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/qs_QA.png)
+![axisflip_case_0000018 DESC QH 诊断](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/qs_QH.png)
+![axisflip_case_0000018 DESC QP 诊断](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/qs_QP.png)
+![axisflip_case_0000018 DESC iota 剖面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/desc/iota.png)
+
+</details>
+
+<details>
+<summary><code>axisflip_case_0000023</code> 的完整 DESC 图组</summary>
+
+![axisflip_case_0000023 DESC 初始边界](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/boundary_initial.png)
+![axisflip_case_0000023 DESC 最终边界](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/boundary.png)
+![axisflip_case_0000023 DESC Boozer 模谱](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/boozer_modes.png)
+![axisflip_case_0000023 DESC Boozer |B|](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/boozer_B.png)
+![axisflip_case_0000023 DESC QA 诊断](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/qs_QA.png)
+![axisflip_case_0000023 DESC QH 诊断](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/qs_QH.png)
+![axisflip_case_0000023 DESC QP 诊断](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/qs_QP.png)
+![axisflip_case_0000023 DESC iota 剖面](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/desc/iota.png)
+
+</details>
+
+完整评估支持两个局部结论。第一，80 分附近的 v4 端点能够通过标准磁面与独立稠密
+检查，且接受面具有 `1.6e-3--2.2e-3` 的直接 QH 误差。第二，较高原生总分可同时
+覆盖不同的线圈工程折中：`case_0000018` 提供更高体 QS，`case_0000023` 以约
+`2.73` 分的体 QS 差换取约 `5.03` 分的线圈工程增益。两例样本量只用于确认可行性，
+50 条轨迹总体的磁面成功率需要更大的完整评估样本才能估计。
+
 ## 与已冻结手性实验的关系
 
 compact-flexible v3 的 569 个合法源样本和 120 条固定正手性目标 Adam200 轨迹均
@@ -241,6 +357,9 @@ compact-flexible v3 的 569 个合法源样本和 120 条固定正手性目标 A
 - [体 QS 与 coil 配对端点表](assets/axis_surface_prior_axisflip_v4_20260902/component_endpoints.csv)
 - [报告派生统计](assets/axis_surface_prior_axisflip_v4_20260902/report_metrics.json)
 - [用户排空机器记录](assets/axis_surface_prior_axisflip_v4_20260902/drain_manifest.json)
+- [完整评估运行清单](assets/axis_surface_prior_axisflip_v4_20260902/full_eval_manifest.json)
+- `axisflip_case_0000018`：[磁面选择](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/selection.json)；[完整汇总](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000018/full/full_summary.json)
+- `axisflip_case_0000023`：[磁面选择](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/selection.json)；[完整汇总](assets/axis_surface_prior_axisflip_v4_20260902/full_eval/axisflip_case_0000023/full/full_summary.json)
 
 逐步 history、起点、最佳点和完整优化器清单保存在冻结远端运行根目录。报告中的
 图和表由 `scripts/render_axis_surface_prior_axisflip_report.py` 从该目录重新计算。

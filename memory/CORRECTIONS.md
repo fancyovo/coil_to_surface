@@ -694,6 +694,37 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: open. Do not use the two abundance estimates to
   train or validate a QH reward model until the signed rescoring is complete.
 
+## CORR-20260902-67 - Remote work bypassed the documented WSL master preflight
+
+- Severity/status: high / contained before experiment submission; recurrence
+  guard added.
+- Reported by: user when Codex attempted the wrong server connection route.
+- Error: Codex did not read `REMOTE_CODEX_INSTRUCTIONS.md` before remote work.
+  It tried direct SSH aliases and started a temporary local SSH-agent/key-unlock
+  path, then performed limited read-only inspection through an undocumented
+  route. This bypassed the required WSL `Ubuntu` authenticated-master preflight.
+- Cause: the remote procedure existed at the repository root but was absent
+  from both the hot-memory routing map and `AGENTS.md` context-loading rules.
+  After context compaction, Codex relied on incomplete remembered connection
+  details instead of reopening the authoritative procedure.
+- Affected scope: no passphrase, verification code, or other credential was
+  entered, stored, or copied. The interactive prompt was terminated. No Slurm
+  job was submitted and no remote file or scheduler state was changed through
+  the incorrect route. Local signed-helicity implementation and test results at
+  commit `396698d` are independent of this access error and remain valid.
+- Correct procedure: read `REMOTE_CODEX_INSTRUCTIONS.md` in full; check WSL,
+  require `ssh -O check ustc107` to report `Master running`, verify BatchMode
+  identity, verify the supplied absolute project path, and verify live Slurm
+  capabilities in that order. If the master is absent, stop and ask the user to
+  launch the exact documented master command in a separate PowerShell window.
+  Codex never starts interactive authentication or unlocks a key itself.
+- Containment and regression guard: `MEMORY.md` now carries the non-negotiable
+  WSL-master rule, `AGENTS.md` requires the full remote document before every
+  fresh/post-compaction remote session, and `memory/README.md` routes all remote
+  operations to it. The next remote action must begin at preflight step 1.
+- Promotion/reporting blocker: no numerical blocker from this incident. Remote
+  experiment submission remains blocked until the mandatory preflight passes.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

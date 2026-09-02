@@ -13,6 +13,7 @@ without discarding provenance.
 | Why the current method or branch policy was chosen | `DECISIONS.md` |
 | External report, document, figure, or video text | `WRITING.md` |
 | Older milestone or report pointer | `HISTORY.md` |
+| Any remote read, write, synchronization, or Slurm action | root `REMOTE_CODEX_INSTRUCTIONS.md` |
 | Forensic recovery explicitly requiring original wording | `archive/` |
 
 Do not reload this tree on every user message. `AGENTS.md` defines the few
@@ -27,6 +28,10 @@ events that require another root-memory read. Load one routed file at a time.
 - `DECISIONS.md` owns accepted methods and promotion semantics.
 - `WRITING.md` owns external-facing language and post-generation review.
 - `HISTORY.md` owns compact chronology and evidence pointers.
+- Root `REMOTE_CODEX_INSTRUCTIONS.md` owns remote connection, login-node,
+  synchronization, scheduler, and failure-handling procedure. It must be read
+  in full before remote work; `MEMORY.md` retains only the non-negotiable entry
+  invariant so compaction cannot erase it.
 - Reports and manifests own detailed tables and frozen run metadata.
 - `archive/` owns immutable snapshots and has no current authority.
 

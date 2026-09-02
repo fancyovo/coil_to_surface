@@ -145,6 +145,14 @@
   affirmative explanations; remove defensive contrast, ambiguous references,
   version leakage, and irrelevant claims after generation.
 
+## Remote Compute Access
+
+- Read root `REMOTE_CODEX_INSTRUCTIONS.md` in full before any remote operation in a fresh or compacted run, and repeat after connection or network changes.
+- Reuse only the authenticated WSL `Ubuntu` master for `ustc107` and run every
+  documented preflight in order. If the master is absent, stop and give the
+  user the documented command; never authenticate, unlock keys, request
+  credentials, guess paths, or bypass the master. Heavy work runs via Slurm.
+
 ## Active Analytic-Prior Exploration
 
 - The failed Online RWCFM evidence is specific to an independent Gaussian in

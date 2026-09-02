@@ -58,6 +58,10 @@ reports and immutable archives retain the detailed record.
   optimizer-start conversion after screening. Its formal arrays were canceled
   with zero completed trajectories. V3 screens the exact optimizer-representable
   reconstruction and pins smoke to regression case 25; see `CORR-20260902-72`.
+- 2026-09-02: the pinned v3 smoke proved the remaining score gap came mainly
+  from ABI defaults in screening versus optimizer formal surface-selection
+  overrides. V3 formal arrays never started. V4 shares the exact configuration
+  constructor across both stages; see `CORR-20260902-73`.
 
 ## Evidence Routes
 

@@ -29,6 +29,7 @@ from flow_matching.collection import replace_json
 from flow_matching.data import CoilNormalizer, file_sha256
 from flow_matching.trajectory_dataset import atomic_write_json
 from scripts.native_score_runtime import append_jsonl, token_case, write_json
+from scripts.optimize_flow_latent import score_config
 from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_start
 from scripts.run_axis_surface_prior_adam200 import run_logged
 from scripts.sample_axis_surface_prior import compact_result
@@ -36,18 +37,26 @@ from scripts.sample_axis_surface_prior import compact_result
 
 PROTOCOL_ID = (
     "qh-axis-surface-contour-compact-flexible-axisflip-stream-"
-    "adam200-64d-abi11-v3"
+    "adam200-64d-abi11-v4"
 )
 GENERATOR_FORMAT = "axis_surface_contour_prior_compact_flexible_axis_flip_v4"
 PRESET = "compact_flexible"
 TARGET_HELICITY_SIGN = 1
 ARTIFACT_FORMATS = {
-    "screening": "axis_surface_prior_axisflip_stream_screening_v3",
-    "start": "axis_surface_prior_axisflip_stream_exact_data_start_v3",
-    "trajectory": "axis_surface_prior_axisflip_stream_adam200_trajectory_v3",
-    "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v3",
-    "worker": "axis_surface_prior_axisflip_stream_worker_v3",
+    "screening": "axis_surface_prior_axisflip_stream_screening_v4",
+    "start": "axis_surface_prior_axisflip_stream_exact_data_start_v4",
+    "trajectory": "axis_surface_prior_axisflip_stream_adam200_trajectory_v4",
+    "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v4",
+    "worker": "axis_surface_prior_axisflip_stream_worker_v4",
 }
+
+
+def formal_screening_score_config() -> dict[str, Any]:
+    return score_config(
+        iota_degree=3,
+        surface_theta_count=128,
+        axis_hint=None,
+    )
 
 
 def case_id_for_worker(worker_index: int, worker_count: int, sequence_index: int) -> int:
@@ -374,6 +383,7 @@ def main() -> None:
                     nfp,
                     device_id=args.device,
                     target_helicity=(1, nfp),
+                    config_overrides=formal_screening_score_config(),
                 )
             )
             status = str(native["status"])

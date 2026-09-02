@@ -888,8 +888,8 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260902-72 - Axis-flip v2 screened a different numeric representation
 
-- Severity/status: critical / v2 invalidated; v3 repair pending smoke and formal
-  rerun.
+- Severity/status: critical / v2 invalidated; the numeric representation fix is
+  retained, while its causal sufficiency is superseded by `CORR-20260902-73`.
 - Discovered by: Codex immediately after v2 formal workers began failing their
   pre-update consistency gates.
 - Error: v2 scored the generator's `float64` tokens, then
@@ -906,6 +906,11 @@ An open critical correction blocks promotion and external reporting.
   Analysis `52733` records zero completed formal trajectories. The frozen run
   root is
   `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v2_20260902_57c3a06`.
+- Causal refinement: v3 screened the optimizer-representable tokens for case 25
+  at `70.5417875924`, while its strict-hint step 0 was `68.6918236289`; the
+  `1.8499639636` gap remained. The representation conversion was real but
+  accounts for only a small shift in this case. `CORR-20260902-73` identifies
+  the dominant score-configuration mismatch.
 - Corrected fact and scope: v2 demonstrates that the pre-update gate and axis
   continuation work, while its formal population is invalid for optimizer and
   abundance conclusions. It does not revise the v1/v2 positive-iota screening
@@ -929,7 +934,46 @@ An open critical correction blocks promotion and external reporting.
   empty; retrying with the named branch produced and verified the intended
   bundle. One multi-file patch draft targeted the correction file twice and was
   rejected before applying any hunk; the retry used one update section.
-- Promotion/reporting blocker: open until v3 smoke and formal workers pass.
+- Promotion/reporting blocker: superseded by `CORR-20260902-73`; retain the v3
+  representation-order fix in subsequent protocols.
+
+## CORR-20260902-73 - Screening and optimizer used different score configurations
+
+- Severity/status: critical / v3 invalidated; v4 repair pending regression smoke
+  and formal rerun.
+- Discovered by: Codex after the case-25 v3 smoke failed despite byte-identical
+  optimizer-representable tokens and strict continuation from the saved axis.
+- Error: the stream runner called `score_coils_native` with ABI-11 library
+  defaults, including `surface_selection_mode=0`, `surface_theta_count=256`,
+  `surface_trace_steps=800`, and two confidence periods. Optimizer formal centers
+  use `scripts.optimize_flow_latent.score_config`, which sets mode 1, 128 theta
+  points, 400 trace steps, and one confidence period. The late v1 check and the
+  early v2/v3 check compared scores from different objectives/configurations.
+- Primary evidence: v3 smoke `52747` used represented case-25 tokens for both
+  stages and retained its screened axis. Screening scored `70.5417875924`; the
+  optimizer configuration scored the same start `68.6918236289`, delta
+  `1.8499639636`. Formal arrays `52748/52749` remained
+  `DependencyNeverSatisfied` and performed no work; they and analysis `52750`
+  were canceled. Frozen smoke root:
+  `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v3_20260902_80d3d78`.
+- Corrected fact and scope: v1-v3 Adam outcomes cannot support formal
+  population conclusions. V1/v2 screening handedness remains evidence under
+  each recorded screening configuration, while cross-stage optimizer claims
+  are quarantined. The float representation and missing-axis issues remain real
+  secondary inconsistencies and their fixes remain required.
+- Containment: v4 obtains screening overrides from the optimizer's shared
+  `score_config(iota_degree=3, surface_theta_count=128, axis_hint=None)` helper.
+  Optimizer step 0 uses the same helper with only the saved axis hint added.
+  V4 also keeps optimizer-representable screening tokens and the pre-update
+  `0.1` gate.
+- Regression: a unit test pins every shared score-configuration field. The
+  remote smoke remains fixed to case 25 and must pass before formal array
+  dependencies can start.
+- Separate contained test error: the first uncommitted registry assertion
+  skipped the preserved `v2 -> v3` link and expected `v2 -> v4`. The expanded
+  test failed locally, the assertion was corrected to require the full
+  `v1 -> v2 -> v3 -> v4` chain, and no remote file used the bad assertion.
+- Promotion/reporting blocker: open until v4 smoke and formal workers pass.
 
 ## Required Entry Template
 

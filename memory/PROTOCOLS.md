@@ -311,8 +311,17 @@ first maps each generated sample into the exact-unclipped standardized data
 coordinates used by the optimizer, reconstructs physical tokens, and screens
 those same tokens. It separately records source-to-start quantization, retains
 the screened magnetic axis, and applies the `0.1` consistency gate before Adam.
-Its smoke is pinned to known v2 regression case 25. Frozen specification:
+Its case-25 smoke `52747` exposed a remaining score-configuration mismatch;
+formal arrays `52748/52749` never started. V3 is invalidated. Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v3.json`.
+
+Replacement protocol
+`qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4`
+retains v3's represented-token and axis-continuation fixes. Screening now calls
+the optimizer's shared formal `score_config` with global axis search; optimizer
+step 0 adds only the strict saved-axis hint. The pinned case-25 smoke must pass
+before the same six-worker arrays can start. Frozen specification:
+`evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v4.json`.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

@@ -1,13 +1,9 @@
 {
-  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3",
-  "status": "invalidated",
-  "invalidated_date": "2026-09-02",
-  "invalidated_reason": "Screening used the ABI-11 library defaults while optimizer formal centers use score_config overrides for surface selection and resolution. Known case 25 still differed by 1.84996 with identical represented tokens and axis continuation.",
-  "replacement_protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4",
-  "retained_evidence": "The failed case-25 smoke proves the representation fix alone was insufficient. Formal arrays never started.",
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4",
+  "status": "registered-experimental",
   "registered_date": "2026-09-02",
-  "purpose": "Test construction-axis chirality reflection with identical optimizer-representable tokens and magnetic-axis branch in screening and Adam step 0.",
-  "supersedes": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v2",
+  "purpose": "Test construction-axis chirality reflection with identical optimizer-representable tokens, score configuration, and magnetic-axis branch between screening and Adam step 0.",
+  "supersedes": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3",
   "generator": {
     "baseline": "axis_surface_contour_prior_compact_flexible_v3",
     "preset": "compact_flexible",
@@ -25,13 +21,23 @@
     "source_quantization_diagnostics": "record source-to-start geometry and current relative RMS separately from the float32 self-roundtrip",
     "flow_calls": 0
   },
+  "score_configuration": {
+    "shared_constructor": "scripts.optimize_flow_latent.score_config",
+    "iota_degree": 3,
+    "surface_selection_mode": 1,
+    "surface_confidence_periods": 1,
+    "surface_theta_count": 128,
+    "surface_trace_steps": 400,
+    "surface_flux_bisection_iters": 6,
+    "screening_axis_policy": "global search",
+    "optimizer_step0_axis_policy": "strict mixed-precision continuation from screened axis_R/axis_Z"
+  },
   "screening": {
     "target": "QH",
     "target_helicity": "(M,N)=(1,+nfp)",
     "evaluator": "native ABI-11",
     "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
     "adam200_gate": "native status == ok, finite screened axis_R/axis_Z, and strict-hint optimizer step-0 score within 0.1 of screening",
-    "axis_continuation": "retain screened axis_R/axis_Z and require strict mixed-precision continuation before the first Adam update",
     "pre_update_consistency_tolerance": 0.1,
     "sampling": "independent deterministic streams, one per GPU; no fixed population size"
   },
@@ -57,7 +63,7 @@
   },
   "smoke": {
     "known_regression_case_id": 25,
-    "reason": "This case differed by 1.85135 score in v2 after same-axis continuation and therefore exercises the representation-order fix."
+    "reason": "This case differed by about 1.85 under v2 and v3 and therefore exercises axis, representation, and score-configuration consistency."
   },
   "monitoring": {
     "per_worker": "screening status, strict-hint step-0 consistency, valid abundance, initial and best iota signs, active trajectory, maximum best score, and count at score>=70",

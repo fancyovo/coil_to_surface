@@ -143,9 +143,11 @@ different branch. V2 preserves the screened axis, validates its strict-hint
 step-0 score before any update, but its formal run revealed that screening still
 preceded conversion into the optimizer's `float32` representation. V2 is also
 invalidated. V3 constructs the actual optimizer-representable tokens before
-both screening and optimization, while retaining the same physical chirality
-intervention and pre-update axis/score gate. This is an experiment, not a
-chirality-default promotion.
+both stages, then exposed that screening and optimizer formal centers still
+used different surface-selection configurations. V3 is invalidated. V4 shares
+the optimizer's formal score configuration across both stages while retaining
+the same physical chirality intervention, represented start, and pre-update
+axis/score gate. This is an experiment, not a chirality-default promotion.
 
 Before promotion, independently test winding-surface and contour-scalar
 chirality as remaining factors and retain exact final-coil reflection as the

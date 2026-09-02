@@ -9,7 +9,7 @@ set -euo pipefail
 : "${EXPECTED_LIB_SHA:?EXPECTED_LIB_SHA is required}"
 : "${EXPECTED_CHECKPOINT_SHA:?EXPECTED_CHECKPOINT_SHA is required}"
 
-protocol_id="qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v3"
+protocol_id="qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4"
 prior_seed=20260905
 discovery_wall_s=14400
 hard_wall_s=17700
@@ -35,7 +35,7 @@ sbatch --test-only "${students[@]}" scripts/slurm_axis_surface_prior_axisflip_st
 sbatch --test-only --export=ALL scripts/slurm_analyze_axis_surface_prior_axisflip_stream.sh
 
 mkdir -p "$RUN_ROOT"
-cp evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v3.json "$RUN_ROOT/protocol.json"
+cp evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v4.json "$RUN_ROOT/protocol.json"
 smoke_job=$(sbatch --parsable "${smoke[@]}" scripts/slurm_smoke_axis_surface_prior_axisflip_stream.sh)
 p107_job=$(sbatch --parsable --dependency="afterok:$smoke_job" "${p107[@]}" scripts/slurm_axis_surface_prior_axisflip_stream_worker.sh)
 student_job=$(sbatch --parsable --dependency="afterok:$smoke_job" "${students[@]}" scripts/slurm_axis_surface_prior_axisflip_stream_worker.sh)
@@ -61,6 +61,7 @@ cat > "$RUN_ROOT/runtime_manifest.json" <<EOF
     "target_helicity": [1, "+nfp"],
     "criterion_for_adam200": "native ABI-11 status == ok on the exact optimizer-representable start",
     "representation_order": "construct exact-unclipped float32 standardized start, reconstruct physical tokens, then screen those same tokens",
+    "configuration": "the same score_config(iota_degree=3, surface_theta_count=128) used by optimizer formal centers, with global axis search only for screening",
     "execution": "one candidate at a time per worker; every valid candidate immediately enters Adam200",
     "axis_continuation": "screening axis_R/axis_Z are retained and required as strict optimizer step-0 hints",
     "pre_update_consistency_gate": "abs(strict-hint optimizer step-0 score - screening score) <= 0.1"

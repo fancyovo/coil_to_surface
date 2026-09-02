@@ -11,6 +11,7 @@ from scripts.run_axis_surface_prior_axisflip_stream import (
     case_id_for_worker,
     classify_iota_interval,
     discovery_is_open,
+    formal_screening_score_config,
     optimizer_command,
 )
 from scripts.optimize_flow_latent import validate_recorded_initial_score
@@ -111,7 +112,7 @@ def test_recorded_initial_score_gate_requires_axis_and_checks_before_updates() -
         )
 
 
-def test_v1_and_v2_are_invalidated_and_v3_is_registered() -> None:
+def test_v1_through_v3_are_invalidated_and_v4_is_registered() -> None:
     v1 = json.loads(
         Path(
             "evaluation/axis_surface_contour_prior_compact_flexible_"
@@ -127,7 +128,7 @@ def test_v1_and_v2_are_invalidated_and_v3_is_registered() -> None:
     assert v1["status"] == "invalidated"
     assert v1["replacement_protocol_id"].endswith("abi11-v2")
     assert v2["status"] == "invalidated"
-    assert v2["replacement_protocol_id"] == PROTOCOL_ID
+    assert v2["replacement_protocol_id"].endswith("abi11-v3")
     assert v2["screening"]["pre_update_consistency_tolerance"] == 0.1
     v3 = json.loads(
         Path(
@@ -135,4 +136,24 @@ def test_v1_and_v2_are_invalidated_and_v3_is_registered() -> None:
             "axisflip_stream_adam200_abi11_v3.json"
         ).read_text(encoding="utf-8")
     )
-    assert v3["protocol_id"] == PROTOCOL_ID
+    assert v3["status"] == "invalidated"
+    assert v3["replacement_protocol_id"] == PROTOCOL_ID
+    v4 = json.loads(
+        Path(
+            "evaluation/axis_surface_contour_prior_compact_flexible_"
+            "axisflip_stream_adam200_abi11_v4.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert v4["protocol_id"] == PROTOCOL_ID
+
+
+def test_screening_uses_the_optimizer_formal_score_configuration() -> None:
+    config = formal_screening_score_config()
+    assert config == {
+        "iota_degree": 3,
+        "surface_selection_mode": 1,
+        "surface_confidence_periods": 1,
+        "surface_theta_count": 128,
+        "surface_trace_steps": 400,
+        "surface_flux_bisection_iters": 6,
+    }

@@ -774,6 +774,44 @@ An open critical correction blocks promotion and external reporting.
   JSON parsing and visual inspection of both generated figures.
 - Promotion/reporting blocker: resolved.
 
+## CORR-20260902-69 - Scalar-field-only handedness attribution was not isolated
+
+- Severity/status: high / causal wording corrected; component-level isolation
+  remains pending.
+- Reported by: user, who noted that a winding-surface scalar field controls coil
+  contours but does not by itself guarantee the handedness of the resulting
+  vacuum magnetic field.
+- Incorrect interpretation: `CORR-20260902-66`, the canonical handedness report,
+  hot memory, decisions, and history attributed the all-negative-iota v2/v3
+  population directly to fixed-sign winding-surface and contour phases. The
+  experiments operated on final coils and did not independently vary those
+  terms, so they could not establish that component-level cause.
+- Verified distinction: the native evaluator finds a periodic magnetic-axis
+  location and traces it with increasing geometric cylindrical `phi`; it does
+  not choose either traversal direction arbitrarily. Reversing all currents
+  flips every component of `B` and leaves `dR/dphi` and `dZ/dphi` unchanged, so
+  current orientation cannot explain the iota sign.
+- Newly identified leading bias: v2/v3 generate the construction reference axis
+  as `R=1+a*cos(nfp*phi)+...`, `Z=b*sin(nfp*phi)+...` with dominant `a>0,b>0`.
+  The sign of `a*b` distinguishes the two mirror-related axis families, so the
+  prior has already removed one geometric parity before constructing the
+  winding surface. Fixed-sign surface and contour helices can reinforce or
+  modify this bias, but their independent effect has not been measured.
+- Retained conclusions: all 569 valid v3 source samples and all 120 frozen
+  Adam200 trajectories have negative iota; final-coil reflection exchanges the
+  preferred signed QH target; signed rescoring and negative-target Adam200
+  results remain valid. Only the internal component-level causal attribution is
+  withdrawn.
+- Containment: the canonical report now carries a correction banner and labels
+  the reference-axis harmonic as the leading code suspect rather than a proven
+  sole cause. `MEMORY.md`, `memory/DECISIONS.md`, and `memory/HISTORY.md` use the
+  same boundary.
+- Required resolution: run a `2x2x2` parity ablation that independently flips
+  construction-axis chirality, winding-surface chirality, and contour-scalar
+  chirality. Use global current reversal as an iota-invariant control and exact
+  final-coil reflection as the sign-flipping control before defining the next
+  prior's chirality contract.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

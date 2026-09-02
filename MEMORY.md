@@ -223,15 +223,15 @@
   radially ordered; the second shows a pronounced multi-lobed/island-chain
   pattern, so it is not evidence for a clean globally nested vacuum interior.
   This registered experiment does not alter the current Flow default.
-- The 2026-09-02 signed-helicity audit found fixed-sign helical construction
-  terms and no chirality parameter. All 569 valid compact-flexible-v3 source
-  samples and all 120 frozen positive-target Adam200 trajectories occupied the
-  negative-iota mirror branch. Explicit `(1,-nfp)` Adam200 raised representative
-  endpoints `axisv3_case_01341` and `axisv3_case_02832` to `80.8523` and
-  `84.9308`. Frozen `(1,+nfp)` scores and non-QS physical results remain valid;
-  their 8.56%/12.78% threshold rates no longer establish same-handed QH
-  abundance. A machine-readable prior chirality contract and mirror regression
-  tests are required before promotion. See `CORR-20260902-66` and its report.
+- The 2026-09-02 signed-helicity audit found all 569 valid compact-flexible-v3
+  source samples and all 120 frozen positive-target Adam200 trajectories on the
+  negative-iota mirror branch. The leading generator bias is the fixed-sign
+  dominant construction-axis harmonic; scalar-surface and contour signs remain
+  coupled suspects, not isolated causes. Explicit `(1,-nfp)` Adam200 raised two
+  endpoints to `80.8523` and `84.9308`. Frozen `(1,+nfp)` scores and non-QS
+  physical results remain valid; their 8.56%/12.78% rates do not establish
+  same-handed QH abundance. Require axis/winding ablation and mirror tests before
+  promotion. See `CORR-20260902-66`, `CORR-20260902-69`, and the report.
 
 ## Memory Map
 

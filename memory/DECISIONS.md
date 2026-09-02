@@ -120,17 +120,22 @@ the frozen data-space settings are 200 updates, 64 directions, `h=0.0025`, and
 learning rate `0.01`. This follow-up measures the v2 prior and does not alter
 the current default.
 
-The 2026-09-02 signed-helicity audit found fixed-sign `theta-nfp*phi`
-construction terms and no chirality parameter. All 569 valid compact-flexible
-v3 source samples and all 120 frozen Adam200 trajectories occupied the
-negative-iota branch, opposite the project's positive-hand QH target. The
-frozen scores remain valid for `(M,N)=(1,+nfp)`; their threshold rates no longer
-measure same-handed QH abundance. Explicit `(1,-nfp)` Adam200 raised the two
-representative endpoints to `80.8523` and `84.9308`.
+The 2026-09-02 signed-helicity audit established a one-sided final-coil
+population: all 569 valid compact-flexible-v3 source samples and all 120 frozen
+Adam200 trajectories occupied the negative-iota branch, opposite the project's
+positive-hand QH target. A later causal review withdrew the claim that the
+surface scalar field alone caused that sign. The leading code-level bias is the
+fixed-positive dominant radial/vertical harmonic of the construction axis;
+fixed-sign winding-surface and contour terms are coupled candidates. The frozen
+scores remain valid for `(M,N)=(1,+nfp)`; their threshold rates no longer measure
+same-handed QH abundance. Explicit `(1,-nfp)` Adam200 raised the two representative
+endpoints to `80.8523` and `84.9308`.
 
-Any next analytic-prior batch must expose a machine-readable chirality sign and
-apply it consistently to winding-surface phases, contour modes, target
-metadata, and scoring. Promotion requires mirror-pair regression tests and
-handedness-stratified population statistics. The design may sample both signs
-uniformly or canonicalize generated geometry to the positive-hand default;
-neither route is implicit until a new registered protocol is reviewed.
+Before the next analytic-prior batch, a `2x2x2` factorial ablation must
+independently flip construction-axis chirality, winding-surface chirality, and
+contour-scalar chirality. The resulting machine-readable sign must then apply
+consistently to the axis, winding-surface phases, contour modes, target metadata,
+and scoring. Promotion requires
+mirror-pair regression tests and handedness-stratified population statistics.
+The design may sample both signs uniformly or canonicalize generated geometry
+to the positive-hand default; neither route is implicit until review.

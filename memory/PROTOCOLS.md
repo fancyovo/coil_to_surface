@@ -322,6 +322,16 @@ the optimizer's shared formal `score_config` with global axis search; optimizer
 step 0 adds only the strict saved-axis hint. The pinned case-25 smoke must pass
 before the same six-worker arrays can start. Frozen specification:
 `evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v4.json`.
+Frozen run commit `d8de349`; smoke `52758` passed case 25 with score delta
+`0.0133273260`, identical axis coordinates, positive iota, and three Adam
+updates. P107 array `52759` and Students array `52760` started all six formal
+workers; analysis dependency `52761` waits for both arrays. Every formal worker
+passed its pre-update gate, with score deltas in
+`[0.0007109622, 0.0133273260]`, identical saved/continued axes, and positive
+initial iota. The run root is
+`/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v4_20260902_d8de349`.
+Discovery lasts four hours per worker; each worker then finishes only its active
+Adam200 trajectory under the five-hour Slurm tail allowance.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

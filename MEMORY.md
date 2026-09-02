@@ -228,23 +228,22 @@
   bias is the fixed-sign construction-axis harmonic; surface and contour signs
   remain unisolated. Negative-target Adam200 reached `80.8523` and `84.9308`.
   Frozen positive-target scores and non-QS physical results remain valid.
-- Axis-flip stream Adam200 v1 at frozen commit `599dd31` is invalidated: compact
-  records omitted `axis_R/axis_Z`, so optimizer step 0 could choose another
-  magnetic-axis branch. V2 retained the axis but still screened `float64` source
-  tokens before conversion; v3 aligned tokens but exposed different screening
-  and optimizer surface configurations. V4 shares represented tokens, formal
-  score config, and axis branch before Adam. All 24 v1 valid starts had positive
-  iota as preliminary evidence. See `CORR-20260902-71/72/73`; this remains experimental.
+- Axis-flip stream Adam200 v1-v3 are invalidated for losing the screened axis,
+  screening another numeric representation, and using another score configuration. Their Adam outcomes are
+  quarantined; v1's 24 positive-iota valid starts remain preliminary handedness
+  evidence. V4 at frozen commit `d8de349` fixes all three inconsistencies. Smoke
+  `52758` passed the pinned case 25 with score delta `0.0133273`; all six formal
+  workers in arrays `52759/52760` passed with deltas `0.000711-0.013327`,
+  identical axes, and positive initial iota. They are running under the four-hour discovery plus
+  active-trajectory tail policy; analysis `52761` is dependency-pending. Run root ends in
+  `axis_surface_prior_axisflip_stream_adam200_v4_20260902_d8de349`. Do not infer v4
+  abundance or optimization outcomes before analysis completes. See `CORR-20260902-71/72/73`; the experiment does not change the QH default.
 
 ## Memory Map
 
-- `memory/README.md`: loading and maintenance architecture.
-- `memory/PROTOCOLS.md`: current protocol, run gates, and deprecated registry.
-- `memory/CORRECTIONS.md`: append-only error and correction ledger.
-- `memory/DECISIONS.md`: active decisions and promotion semantics.
-- `memory/WRITING.md`: external document and multimodal review rules.
-- `memory/HISTORY.md`: concise chronology and evidence pointers.
-- `memory/archive/`: immutable pre-restructure snapshots; never read by default.
-- `MEMORY_archive_20260808.md`: legacy full-history archive; historical only.
+- `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
+- `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.
+- `memory/WRITING.md`: deliverable rules; `memory/HISTORY.md`: evidence chronology.
+- `memory/archive/` and `MEMORY_archive_20260808.md`: historical archives only.
 
 Update only for current truth/routing; route chronology to `memory/HISTORY.md`, errors to `memory/CORRECTIONS.md`, and detail to reports. Never store credentials.

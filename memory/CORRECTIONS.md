@@ -846,8 +846,9 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260902-71 - Axis-flip v1 lost the screened magnetic-axis branch
 
-- Severity/status: critical / v1 invalidated; axis-hint repair retained in v3,
-  while its sufficiency claim is superseded by `CORR-20260902-72`.
+- Severity/status: critical / v1 invalidated; axis-hint defect fixed and remotely
+  verified in v4. Its earlier sufficiency claim remains superseded by
+  `CORR-20260902-72`.
 - Discovered by: Codex from the v1 worker failures after the user requested a
   status check.
 - Error: `scripts/sample_axis_surface_prior.py::compact_result` omitted
@@ -883,13 +884,15 @@ An open critical correction blocks promotion and external reporting.
   PowerShell, WSL, and SSH. Both exited without changing state. Explicit
   unformatted commands then confirmed the summary and an empty user queue;
   subsequent queries avoid here-string compound loops and quoted format strings.
-- Promotion/reporting blocker: superseded by `CORR-20260902-72` after v2 proved
-  the axis repair necessary but insufficient.
+- Promotion/reporting blocker: the v1 result remains permanently quarantined.
+  The axis-retention blocker is resolved by the v4 smoke and six formal
+  pre-update gates recorded under `CORR-20260902-73`.
 
 ## CORR-20260902-72 - Axis-flip v2 screened a different numeric representation
 
-- Severity/status: critical / v2 invalidated; the numeric representation fix is
-  retained, while its causal sufficiency is superseded by `CORR-20260902-73`.
+- Severity/status: critical / v2 invalidated; numeric representation defect fixed
+  and remotely verified in v4. Its causal sufficiency remains superseded by
+  `CORR-20260902-73`.
 - Discovered by: Codex immediately after v2 formal workers began failing their
   pre-update consistency gates.
 - Error: v2 scored the generator's `float64` tokens, then
@@ -934,13 +937,14 @@ An open critical correction blocks promotion and external reporting.
   empty; retrying with the named branch produced and verified the intended
   bundle. One multi-file patch draft targeted the correction file twice and was
   rejected before applying any hunk; the retry used one update section.
-- Promotion/reporting blocker: superseded by `CORR-20260902-73`; retain the v3
-  representation-order fix in subsequent protocols.
+- Promotion/reporting blocker: the v2 result remains permanently quarantined.
+  The representation blocker is resolved by the v4 smoke and formal gates;
+  retain the representation-order fix in subsequent protocols.
 
 ## CORR-20260902-73 - Screening and optimizer used different score configurations
 
-- Severity/status: critical / v3 invalidated; v4 repair pending regression smoke
-  and formal rerun.
+- Severity/status: critical / v3 invalidated; score-configuration defect fixed
+  and launch-verified in v4. The v4 population outcome remains in progress.
 - Discovered by: Codex after the case-25 v3 smoke failed despite byte-identical
   optimizer-representable tokens and strict continuation from the saved axis.
 - Error: the stream runner called `score_coils_native` with ABI-11 library
@@ -967,13 +971,24 @@ An open critical correction blocks promotion and external reporting.
   V4 also keeps optimizer-representable screening tokens and the pre-update
   `0.1` gate.
 - Regression: a unit test pins every shared score-configuration field. The
-  remote smoke remains fixed to case 25 and must pass before formal array
-  dependencies can start.
+  remote smoke remained fixed to case 25. Smoke `52758` passed with screening
+  score `68.7051509549`, optimizer step-0 score `68.6918236289`, delta
+  `0.0133273260`, identical saved/continued axes, positive iota, and three
+  completed Adam updates. All six formal workers in arrays `52759/52760` then
+  passed their pre-update gates with deltas from `0.0007109622` to
+  `0.0133273260`; their axes were identical and all six initial iotas positive.
+  Analysis dependency `52761` remains pending until the workers finish. The
+  frozen v4 run root is
+  `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v4_20260902_d8de349`.
 - Separate contained test error: the first uncommitted registry assertion
   skipped the preserved `v2 -> v3` link and expected `v2 -> v4`. The expanded
   test failed locally, the assertion was corrected to require the full
-  `v1 -> v2 -> v3 -> v4` chain, and no remote file used the bad assertion.
-- Promotion/reporting blocker: open until v4 smoke and formal workers pass.
+  `v1 -> v2 -> v3 -> v4` chain, and no remote file used the bad assertion. One
+  read-only source search also named a nonexistent `gpu_backend/tests` path;
+  it changed no state and was rerun only against verified existing paths.
+- Promotion/reporting blocker: cross-stage consistency is resolved for launch.
+  Do not report v4 abundance or optimization outcomes until all six workers and
+  analysis `52761` complete successfully.
 
 ## Required Entry Template
 

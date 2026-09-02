@@ -1,0 +1,53 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-02",
+  "purpose": "Test whether flipping only the construction reference-axis chirality changes positive-hand QH validity and Adam200 reachability.",
+  "generator": {
+    "baseline": "axis_surface_contour_prior_compact_flexible_v3",
+    "preset": "compact_flexible",
+    "sample_role": "registered_scoring",
+    "only_explicit_input_change": "multiply every construction reference-axis vertical Fourier coefficient by -1",
+    "construction_axis_chirality": -1,
+    "construction_axis_transform": "Z(phi) is reflected for the same seed while radial coefficients and all sampled scalar parameters are unchanged",
+    "result_format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+    "conditions": "all 26 registered (nfp,nc) conditions with nc<=4",
+    "seed": 20260905
+  },
+  "screening": {
+    "target": "QH",
+    "target_helicity": "(M,N)=(1,+nfp)",
+    "evaluator": "native ABI-11",
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "adam200_gate": "native status == ok",
+    "sampling": "independent deterministic streams, one per GPU; no fixed population size"
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "flow_calls": 0,
+    "algorithm": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "target_helicity": "(M,N)=(1,+nfp)"
+  },
+  "resources": {
+    "workers": 6,
+    "p107_gpus": 4,
+    "students_gpus": 2,
+    "discovery_soft_deadline": "4 hours per worker",
+    "soft_deadline_behavior": "finish the active Adam200 trajectory, then exit without sampling another candidate",
+    "slurm_wall_limit": "5 hours",
+    "expected_tail": "usually 10-30 minutes from compact-flexible-v3 Adam200 measurements"
+  },
+  "monitoring": {
+    "per_worker": "screening status, valid abundance, initial and best iota signs, active trajectory, maximum best score, and count at score>=70",
+    "final": "aggregate screening abundance, Adam200 outcomes, handedness, thresholds, runtime, and valid-case accounting"
+  },
+  "full_physical_evaluation": false,
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

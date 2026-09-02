@@ -80,3 +80,42 @@ def test_compact_flexible_v3_has_compact_radius_and_wider_shape_range() -> None:
     assert compact.metadata["parameters"]["helical_ripple"] > balanced.metadata["parameters"]["helical_ripple"]
     assert compact.metadata["scalar_monotonicity_lower_bound"] > 0.25
     assert abs(compact.metadata["reference_linking_number"]) > 0.75
+
+
+def test_axis_chirality_flip_changes_only_the_construction_axis_input() -> None:
+    common = {
+        "seed": 20260905,
+        "nfp": 6,
+        "n_base_coils": 3,
+        "preset": "compact_flexible",
+        "surface_phi_samples": 64,
+        "surface_theta_samples": 32,
+        "sample_role": "registered_scoring",
+    }
+    baseline = sample_shaped_prior_prototype(**common, axis_chirality=1)
+    flipped = sample_shaped_prior_prototype(**common, axis_chirality=-1)
+
+    assert baseline.metadata["parameters"] == flipped.metadata["parameters"]
+    assert baseline.metadata["axis_radial_coefficients"] == flipped.metadata["axis_radial_coefficients"]
+    np.testing.assert_allclose(
+        flipped.metadata["axis_vertical_coefficients"],
+        -np.asarray(baseline.metadata["axis_vertical_coefficients"]),
+        rtol=0.0,
+        atol=0.0,
+    )
+    np.testing.assert_allclose(flipped.reference_axis[:, :2], baseline.reference_axis[:, :2])
+    np.testing.assert_allclose(flipped.reference_axis[:, 2], -baseline.reference_axis[:, 2])
+    assert flipped.metadata["construction_axis_chirality"] == -1
+    assert flipped.metadata["construction_axis_transform"] == "z_reflection_of_same_seed_baseline"
+    assert flipped.metadata["format"] == "axis_surface_contour_prior_compact_flexible_axis_flip_v4"
+
+
+def test_axis_chirality_rejects_non_sign_values() -> None:
+    with pytest.raises(ValueError, match="axis_chirality"):
+        sample_shaped_prior_prototype(
+            seed=1,
+            nfp=4,
+            n_base_coils=2,
+            preset="compact_flexible",
+            axis_chirality=0,
+        )

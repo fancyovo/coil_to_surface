@@ -85,6 +85,10 @@ _REGISTERED_FORMATS = {
     "compact_flexible": "axis_surface_contour_prior_compact_flexible_v3",
 }
 
+_AXIS_FLIPPED_REGISTERED_FORMATS = {
+    "compact_flexible": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+}
+
 _SCORING_VARIATION = {
     "balanced_stellarator": {"minor_radius": 0.15, "shape": 0.15},
     "compact_flexible": {"minor_radius": 0.10, "shape": 0.20},
@@ -183,6 +187,7 @@ def sample_shaped_prior_prototype(
     surface_theta_samples: int = 96,
     target_field_t: float = 1.0,
     sample_role: str = "geometry_review",
+    axis_chirality: int = 1,
 ) -> ShapedPriorPrototype:
     """Construct a visibly three-dimensional stellarator prior for visual review.
 
@@ -195,6 +200,8 @@ def sample_shaped_prior_prototype(
         raise ValueError(f"unknown preset {preset!r}")
     if sample_role not in {"geometry_review", "registered_scoring"}:
         raise ValueError("sample_role must be geometry_review or registered_scoring")
+    if axis_chirality not in (-1, 1):
+        raise ValueError("axis_chirality must be -1 or 1")
     parameters = dict(_PRESETS[preset])
     rng = np.random.default_rng(np.random.SeedSequence([int(seed), int(nfp), int(n_base_coils), 2]))
     if sample_role == "registered_scoring":
@@ -222,6 +229,7 @@ def sample_shaped_prior_prototype(
         vertical_amplitude=parameters["axis_vertical"],
         second_amplitude=parameters["axis_second"],
     )
+    vertical = vertical * axis_chirality
     _, axis, normal, binormal = _axis_and_frame(
         nfp=nfp,
         radial_coefficients=radial,
@@ -304,6 +312,10 @@ def sample_shaped_prior_prototype(
     surface_axis = _periodic_interp(axis, surface_phi)
     surface_radius = np.linalg.norm(winding_surface - surface_axis[:, None, :], axis=2).mean(axis=1)
     registered_format = _REGISTERED_FORMATS.get(preset)
+    if axis_chirality == -1:
+        registered_format = _AXIS_FLIPPED_REGISTERED_FORMATS.get(preset)
+        if sample_role == "registered_scoring" and registered_format is None:
+            raise ValueError(f"preset {preset!r} has no registered axis-flipped format")
     metadata: dict[str, Any] = {
         "format": (
             "axis_surface_contour_prior_visual_v2"
@@ -321,6 +333,10 @@ def sample_shaped_prior_prototype(
         "nfp": int(nfp),
         "n_base_coils": int(n_base_coils),
         "reference_axis_role": "construction_reference_only",
+        "construction_axis_chirality": int(axis_chirality),
+        "construction_axis_transform": (
+            "identity" if axis_chirality == 1 else "z_reflection_of_same_seed_baseline"
+        ),
         "inner_surface_role": "geometric_plasma_like_reference_only",
         "independent_of_quasr_statistics": True,
         "axis_radial_coefficients": radial.tolist(),

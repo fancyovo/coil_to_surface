@@ -812,6 +812,32 @@ An open critical correction blocks promotion and external reporting.
   final-coil reflection as the sign-flipping control before defining the next
   prior's chirality contract.
 
+## CORR-20260902-70 - Pre-launch axis-flip implementation errors were contained
+
+- Severity/status: medium / resolved before commit, synchronization, or Slurm
+  submission.
+- Discovered by: Codex during local static review and regression testing.
+- Error: the first unexecuted worker draft transiently encoded optimizer
+  perturbation `0.5` instead of the frozen `0.0025`; the first analyzer Slurm
+  draft also had a malformed CPU directive. Neither file had been run. A small
+  dead analysis fragment and the associated test parser were corrected at the
+  same time.
+- Affected scope: no local experiment, remote command, score, optimizer step,
+  or submitted job used the draft. Existing historical and current conclusions
+  are unchanged.
+- Fix and guard: the worker now pins `0.0025`; a regression parses the emitted
+  optimizer command and checks positive target sign, 200 steps, 64 directions,
+  exact-data mode, learning rate, and perturbation. Python compilation,
+  `git diff --check`, shell syntax checks, a remote smoke, and Slurm test-only
+  validation are required before formal submission.
+- Separate contained tool errors: malformed JavaScript dispatch, guessed local
+  artifact paths and metadata keys, a Windows wildcard passed directly to `rg`,
+  one malformed regex, and one invalid patch hunk all failed read-only or before
+  applying any change. Subsequent artifact reads use `rg --files`, metadata is
+  enumerated before targeted access, and shell globs use `-g`.
+- Promotion/reporting blocker: resolved for submission after all listed guards
+  pass; any failed guard reopens the blocker.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

@@ -131,11 +131,17 @@ scores remain valid for `(M,N)=(1,+nfp)`; their threshold rates no longer measur
 same-handed QH abundance. Explicit `(1,-nfp)` Adam200 raised the two representative
 endpoints to `80.8523` and `84.9308`.
 
-Before the next analytic-prior batch, a `2x2x2` factorial ablation must
-independently flip construction-axis chirality, winding-surface chirality, and
-contour-scalar chirality. The resulting machine-readable sign must then apply
-consistently to the axis, winding-surface phases, contour modes, target metadata,
-and scoring. Promotion requires
-mirror-pair regression tests and handedness-stratified population statistics.
-The design may sample both signs uniformly or canonicalize generated geometry
-to the positive-hand default; neither route is implicit until review.
+The user authorized the construction-axis factor as the first isolated
+intervention: reflect only the sampled reference-axis `Z(phi)` for a given seed,
+then regenerate the downstream surface and coils without changing the sampled
+surface/scalar parameters or positive-hand scoring target. The experiment uses
+six concurrent streams, sends every initial ABI-11 `status=ok` candidate into
+Adam200, and stops new discovery after four hours while completing the active
+trajectory. This is an experiment, not a chirality-default promotion.
+
+Before promotion, independently test winding-surface and contour-scalar
+chirality as remaining factors and retain exact final-coil reflection as the
+sign-flipping control. Promotion still requires mirror-pair regression tests
+and handedness-stratified population statistics. A future default may sample
+both signs uniformly or canonicalize to the positive-hand target only after
+those results are reviewed.

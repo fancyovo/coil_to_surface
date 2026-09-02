@@ -267,6 +267,24 @@ component. Canonical report:
 `reports/axis_surface_prior_handedness_audit_and_negative_optimization_20260902.md`.
 This audit does not change the current QH default.
 
+Protocol
+`qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v1`
+is the registered construction-axis-only handedness experiment. For each seed,
+it preserves the compact-flexible-v3 sampled radial axis coefficients, surface
+parameters, contour-scalar parameters, current construction, and RNG sequence,
+while multiplying every construction reference-axis vertical Fourier
+coefficient by `-1`. The resulting surface and coils are regenerated from that
+reflected reference axis. Native ABI-11 still scores the positive-hand target
+`(M,N)=(1,+nfp)`. Six independent one-GPU streams cover the registered 26
+conditions with `nc<=4`; every native `status=ok` sample immediately enters a
+200-step direct-data Adam run with 64 fresh orthogonal centered directions,
+`h=0.0025`, learning rate `0.01`, and beta `(0.7,0.999)`. Each worker stops
+discovering candidates at four hours, finishes its active trajectory, then
+exits. The five-hour Slurm limit is tail capacity rather than a five-hour
+sampling budget. Frozen specification:
+`evaluation/axis_surface_contour_prior_compact_flexible_axisflip_stream_adam200_abi11_v1.json`.
+This experiment does not change the current QH default.
+
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256
 `23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.

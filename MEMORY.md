@@ -223,15 +223,17 @@
   radially ordered; the second shows a pronounced multi-lobed/island-chain
   pattern, so it is not evidence for a clean globally nested vacuum interior.
   This registered experiment does not alter the current Flow default.
-- The 2026-09-02 signed-helicity audit found all 569 valid compact-flexible-v3
-  source samples and all 120 frozen positive-target Adam200 trajectories on the
-  negative-iota mirror branch. The leading generator bias is the fixed-sign
-  dominant construction-axis harmonic; scalar-surface and contour signs remain
-  coupled suspects, not isolated causes. Explicit `(1,-nfp)` Adam200 raised two
-  endpoints to `80.8523` and `84.9308`. Frozen `(1,+nfp)` scores and non-QS
-  physical results remain valid; their 8.56%/12.78% rates do not establish
-  same-handed QH abundance. Require axis/winding ablation and mirror tests before
-  promotion. See `CORR-20260902-66`, `CORR-20260902-69`, and the report.
+- The signed-helicity audit found all 569 valid compact-v3 starts and all 120
+  positive-target Adam200 trajectories on the negative-iota branch. The leading
+  bias is the fixed-sign construction-axis harmonic; surface and contour signs
+  remain unisolated. Negative-target Adam200 reached `80.8523` and `84.9308`.
+  Frozen positive-target scores and non-QS physical results remain valid.
+- Active registered experiment: axis-flip stream Adam200 v1 reflects only the
+  construction reference-axis `Z(phi)` input for each seed, keeps positive-hand
+  ABI-11 scoring, and sends every valid start to 64-direction Adam200 on six
+  GPUs. Candidate discovery has a four-hour soft cutoff; the active trajectory
+  then finishes. This is not a default promotion. See `memory/PROTOCOLS.md` and
+  `CORR-20260902-66`, `CORR-20260902-69`.
 
 ## Memory Map
 
@@ -244,6 +246,4 @@
 - `memory/archive/`: immutable pre-restructure snapshots; never read by default.
 - `MEMORY_archive_20260808.md`: legacy full-history archive; historical only.
 
-Update this file only when current truth or routing changes. Put chronology in
-`memory/HISTORY.md`, errors in `memory/CORRECTIONS.md`, and detailed evidence in
-reports. Never store credentials.
+Update only for current truth/routing; route chronology to `memory/HISTORY.md`, errors to `memory/CORRECTIONS.md`, and detail to reports. Never store credentials.

@@ -63,7 +63,9 @@ def grouped_success(rows: list[dict[str, Any]], key: str) -> list[tuple[int, int
     ]
 
 
-def plot_score_distribution(rows: list[dict[str, Any]], output: Path) -> None:
+def plot_score_distribution(
+    rows: list[dict[str, Any]], output: Path, cohort_label: str = "Analytic prior"
+) -> None:
     initial = np.asarray([row["initial_score"] for row in rows], dtype=float)
     best = np.asarray([row["best_score"] for row in rows], dtype=float)
     figure, axes = plt.subplots(1, 2, figsize=(11.2, 4.4), constrained_layout=True)
@@ -76,7 +78,7 @@ def plot_score_distribution(rows: list[dict[str, Any]], output: Path) -> None:
     axes[0].set(
         xlabel="ABI-11 score",
         ylabel="Completed trajectories",
-        title="Score distribution before and after Adam200",
+        title=f"{cohort_label}: score distribution before and after Adam200",
     )
     axes[0].legend(frameon=False)
     axes[0].grid(axis="y", alpha=0.2)
@@ -88,9 +90,10 @@ def plot_score_distribution(rows: list[dict[str, Any]], output: Path) -> None:
     axes[1].axvspan(20.0, 50.0, color="#F2CF5B", alpha=0.18)
     axes[1].axvspan(50.0, 72.0, color="#59A14F", alpha=0.14)
     axes[1].axvline(50.0, color=COLORS["threshold"], linestyle="--", linewidth=1.3)
+    success_count = int(np.sum(best >= 50.0))
     axes[1].annotate(
-        f"31 / {len(rows)} at score >= 50",
-        xy=(50.0, 31 / len(rows)),
+        f"{success_count} / {len(rows)} at score >= 50",
+        xy=(50.0, success_count / len(rows)),
         xytext=(35.0, 0.58),
         arrowprops={"arrowstyle": "->", "color": "#555555"},
         fontsize=9,
@@ -107,7 +110,9 @@ def plot_score_distribution(rows: list[dict[str, Any]], output: Path) -> None:
     plt.close(figure)
 
 
-def plot_success_rates(rows: list[dict[str, Any]], output: Path) -> None:
+def plot_success_rates(
+    rows: list[dict[str, Any]], output: Path, cohort_label: str = "Analytic prior"
+) -> None:
     figure, axes = plt.subplots(1, 2, figsize=(11.2, 4.4), constrained_layout=True)
     for axis, key, title in (
         (axes[0], "n_base_coils", "Conditional success by base-coil count"),
@@ -151,11 +156,14 @@ def plot_success_rates(rows: list[dict[str, Any]], output: Path) -> None:
             title=title,
         )
         axis.grid(axis="y", alpha=0.2)
+    figure.suptitle(cohort_label)
     figure.savefig(output, dpi=200)
     plt.close(figure)
 
 
-def plot_runtime_and_convergence(rows: list[dict[str, Any]], output: Path) -> None:
+def plot_runtime_and_convergence(
+    rows: list[dict[str, Any]], output: Path, cohort_label: str = "Analytic prior"
+) -> None:
     figure, axes = plt.subplots(1, 2, figsize=(11.2, 4.4), constrained_layout=True)
     nc_values = sorted({int(row["n_base_coils"]) for row in rows})
     runtime_groups = [
@@ -191,6 +199,7 @@ def plot_runtime_and_convergence(rows: list[dict[str, Any]], output: Path) -> No
     axes[1].grid(alpha=0.2)
     colorbar = figure.colorbar(scatter, ax=axes[1], pad=0.02)
     colorbar.set_label("nc")
+    figure.suptitle(cohort_label)
     figure.savefig(output, dpi=200)
     plt.close(figure)
 
@@ -224,7 +233,9 @@ def load_curves(run_root: Path) -> list[dict[str, Any]]:
     return curves
 
 
-def plot_trajectory_curves(curves: list[dict[str, Any]], output: Path) -> None:
+def plot_trajectory_curves(
+    curves: list[dict[str, Any]], output: Path, cohort_label: str = "Analytic prior"
+) -> None:
     palette = {1: "#4C78A8", 2: "#F28E2B", 3: "#59A14F", 4: "#B279A2"}
     figure, axes = plt.subplots(1, 2, figsize=(11.2, 4.4), constrained_layout=True)
     for curve in curves:
@@ -240,7 +251,7 @@ def plot_trajectory_curves(curves: list[dict[str, Any]], output: Path) -> None:
         xlim=(0, 200),
         xlabel="Adam update",
         ylabel="ABI-11 score",
-        title="All 83 completed Adam200 trajectories",
+        title=f"{cohort_label}: all {len(curves)} completed Adam200 trajectories",
     )
     axes[0].grid(alpha=0.2)
     axes[0].legend(
@@ -274,7 +285,7 @@ def plot_trajectory_curves(curves: list[dict[str, Any]], output: Path) -> None:
         )
     axes[1].set(
         xlim=(0, 200),
-        ylim=(0.0, 0.82),
+        ylim=(0.0, 1.02),
         xlabel="Adam update",
         ylabel="Fraction first reaching score >= 50",
         title="First-passage timing for the 50-point threshold",
@@ -292,6 +303,7 @@ def first_passage_summary(curves: list[dict[str, Any]]) -> dict[str, Any]:
         if len(indices):
             crossings.append(
                 {
+                    "trajectory_id": str(curve["trajectory_id"]),
                     "nc": int(curve["nc"]),
                     "step": int(curve["steps"][indices[0]]),
                 }
@@ -301,6 +313,7 @@ def first_passage_summary(curves: list[dict[str, Any]]) -> dict[str, Any]:
         "threshold": 50.0,
         "completed_trajectories": len(curves),
         "crossing_trajectories": len(crossings),
+        "crossings": sorted(crossings, key=lambda item: (item["step"], item["trajectory_id"])),
         "crossed_by_step": {
             str(step): sum(item["step"] <= step for item in crossings)
             for step in checkpoints
@@ -331,22 +344,29 @@ def first_passage_summary(curves: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Render balanced-prior Adam200 report figures.")
+    parser = argparse.ArgumentParser(description="Render analytic-prior Adam200 report figures.")
     parser.add_argument("--asset-dir", type=Path, required=True)
     parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--cohort-label", default="Analytic prior")
     args = parser.parse_args()
     rows = load_rows(args.asset_dir / "trajectories.csv")
     summary = json.loads((args.asset_dir / "summary.json").read_text(encoding="utf-8"))
     if len(rows) != int(summary["completed_count"]):
         raise RuntimeError("trajectory CSV count does not match frozen summary")
-    plot_score_distribution(rows, args.asset_dir / "score_distribution.png")
-    plot_success_rates(rows, args.asset_dir / "success_rates.png")
-    plot_runtime_and_convergence(rows, args.asset_dir / "runtime_and_convergence.png")
+    plot_score_distribution(
+        rows, args.asset_dir / "score_distribution.png", args.cohort_label
+    )
+    plot_success_rates(rows, args.asset_dir / "success_rates.png", args.cohort_label)
+    plot_runtime_and_convergence(
+        rows, args.asset_dir / "runtime_and_convergence.png", args.cohort_label
+    )
     if args.run_root is not None:
         curves = load_curves(args.run_root)
         if len(curves) != len(rows):
             raise RuntimeError("trajectory history count does not match frozen summary")
-        plot_trajectory_curves(curves, args.asset_dir / "trajectory_curves.png")
+        plot_trajectory_curves(
+            curves, args.asset_dir / "trajectory_curves.png", args.cohort_label
+        )
         (args.asset_dir / "first_passage_summary.json").write_text(
             json.dumps(first_passage_summary(curves), indent=2) + "\n",
             encoding="utf-8",

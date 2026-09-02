@@ -34,9 +34,24 @@ def test_first_passage_summary_separates_best_so_far_from_current_score() -> Non
     never_crosses = np.full(201, 12.0)
     summary = first_passage_summary(
         [
-            {"nc": 1, "steps": steps, "scores": crosses_and_falls},
-            {"nc": 2, "steps": steps, "scores": crosses_late},
-            {"nc": 2, "steps": steps, "scores": never_crosses},
+            {
+                "trajectory_id": "early",
+                "nc": 1,
+                "steps": steps,
+                "scores": crosses_and_falls,
+            },
+            {
+                "trajectory_id": "late",
+                "nc": 2,
+                "steps": steps,
+                "scores": crosses_late,
+            },
+            {
+                "trajectory_id": "never",
+                "nc": 2,
+                "steps": steps,
+                "scores": never_crosses,
+            },
         ]
     )
     assert summary["crossing_trajectories"] == 2
@@ -44,6 +59,10 @@ def test_first_passage_summary_separates_best_so_far_from_current_score() -> Non
     assert summary["crossed_by_step"]["200"] == 2
     assert summary["current_score_ge_threshold_at_step"]["50"] == 1
     assert summary["current_score_ge_threshold_at_step"]["100"] == 0
+    assert [row["trajectory_id"] for row in summary["crossings"]] == [
+        "early",
+        "late",
+    ]
 
 
 def test_full_evaluation_launchers_validate_gpu_abi_before_submission() -> None:

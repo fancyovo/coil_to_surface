@@ -338,6 +338,42 @@ median coil-engineering score `69.3725 -> 69.1066`. Canonical report:
 `reports/axis_surface_prior_axisflip_v4_results_20260902.md`. The run root is
 `/home/scc/pb24511935/local_surface_evaluator_runs/axis_surface_prior_axisflip_stream_adam200_v4_20260902_d8de349`.
 
+Protocol `qh-axisflip-prior-distilled-online-adam20-rwcfm-abi11-v1` is the
+registered first online-RL experiment for the accepted axis-flip analytic
+prior. It fixes the condition to `nfp=8,nc=3`. A 200,000-sample immutable
+teacher corpus is generated from the compact-flexible v4 construction with
+`axis_chirality=-1`, split deterministically 90/5/5, and used to train the
+5,761,380-parameter `CoilFlowTransformer`. Distillation stops only after the
+validation-loss plateau and generated-distribution stability gates both pass;
+the 200-epoch limit is a failing safety bound, not an accepted training target.
+An independent ABI-11 teacher-versus-Flow audit gates entry into online rounds.
+
+Each online round samples 64 starts through four concurrent one-GPU workers.
+Every ABI-11 `status=ok` start runs 20 exact-data Adam updates using 64 fresh
+orthogonal centered directions, `h=0.0025`, learning rate `0.01`, beta
+`(0.7,0.999)`, and the strict saved-axis/step-0 score gate. Invalid starts retain
+their represented coordinates and receive reward weight `0.05`; valid targets
+use their best point from steps 0 through 20 and rank weights in `[1,2]`. The
+Flow update mixes 85% unweighted current-policy anchoring, 10% weighted current
+targets plus a 512-sample FIFO replay, and 5% original teacher anchoring. It
+continues raw training weights and online AdamW state across policy rounds after
+a fresh round-0 optimizer; EMA weights define the sampled policy. It records
+validity, score and score-component medians, Adam gains, threshold
+counts, component correlation, diversity, policy movement, and runtime each
+round. This experiment is not a default change. Frozen specification:
+`evaluation/axisflip_prior_distilled_online_adam20_rwcfm_abi11_v1.json`.
+
+Protocol `qh-axisflip-v4-representative-adam2000-64d-abi11-v1` is a separate
+long-horizon continuation of the two v4 representatives already subjected to
+full physical evaluation: case 18 (`nfp=8,nc=3`) and case 23
+(`nfp=6,nc=4`). The two independent Students jobs run concurrently. Each begins
+from the frozen Adam200 best, retains positive-hand ABI-11 and the exact
+axis/score gate, and requests 2,000 new exact-data Adam updates with 64 fresh
+orthogonal directions, `h=0.0025`, learning rate `0.01`, and beta
+`(0.7,0.999)`. These screening trajectories do not repeat or replace full
+physical evaluation. Frozen specification:
+`evaluation/axisflip_v4_representative_adam2000_abi11_v1.json`.
+
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256
 `23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.

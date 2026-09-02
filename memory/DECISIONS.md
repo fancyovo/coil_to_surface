@@ -175,3 +175,32 @@ sign-flipping control. Promotion still requires mirror-pair regression tests
 and handedness-stratified population statistics. A future default may sample
 both signs uniformly or canonicalize to the positive-hand target only after
 those results are reviewed.
+
+## DEC-20260903-01 - Fixed-condition analytic-prior online Flow experiment
+
+Status: active experimental decision; no default impact.
+
+The first structured-prior RL implementation fixes `nfp=8,nc=3` and distills
+the accepted positive-hand axis-flip analytic generator before applying reward
+updates. The teacher corpus is generated once and persisted so repeated Flow
+updates do not pay analytic-construction cost. All 40 authorized CPU cores are
+used as two independent deterministic shards: 16 on P107 and 24 on Students.
+
+The Flow architecture matches the earlier small online model. Its set-valued
+Transformer has no positional encoding; random whole-coil permutations
+symmetrize the generator's arbitrary contour order. The q0 current target is
+equal across coils, while the current channel remains trainable so Adam20 can
+teach relative current allocation under the fixed total-current L1 projection.
+
+Each policy round uses 64 samples split evenly over four P107 GPUs. Legal starts
+receive Adam20 targets and illegal starts remain unchanged with low reward
+weight. A bounded update combines current-policy anchoring, reward-weighted
+targets with replay, and a small original-prior anchor. The first version uses
+only the minimum anti-collapse measures: a 512-sample FIFO replay, 5% q0 anchor,
+bounded rank weights, and round-by-round invariant diversity measurements.
+Raw training weights and online AdamW moments persist across rounds, while EMA
+weights define the sampled policy. The repeated updates therefore remain one
+continuous policy optimization rather than independent per-round fits.
+Distillation convergence and a teacher-versus-Flow ABI-11 audit are mandatory
+before round 0. Promotion requires observed enrichment without material
+diversity loss and explicit user acceptance.

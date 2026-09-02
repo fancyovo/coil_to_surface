@@ -1109,6 +1109,50 @@ An open critical correction blocks promotion and external reporting.
   that permutation equivariance holds numerically. Implementation remains
   blocked on user approval of the corrected plan.
 
+## CORR-20260903-78 - Analytic-prior RL preparation exposed contained launch defects
+
+- Severity/status: medium / fixed before RL or long-Adam launch; teacher shards
+  were unaffected.
+- Discovered by: Codex during pre-launch review and local validation.
+- Errors: new Python entry points initially relied on the launcher's working
+  directory or `PYTHONPATH` instead of routing the repository root themselves;
+  the first Git bundle used a raw commit range that advertised no
+  ref; the first stdin-composed `scp` command did not create the remote bundle;
+  a formatted `squeue` probe lost its quoting through PowerShell; and one local
+  pytest command named nonexistent `tests/test_qh_default_protocol.py`, so that
+  invocation collected no tests. Code review also found that rank 0 would raise
+  at the distillation safety limit before the remaining DDP ranks left their
+  final barrier. A later multi-file patch used an inexact decision-file context
+  and was rejected atomically without changing any file. The first end-to-end
+  round-summary test then exposed an unclosed NPZ handle before atomic replay
+  replacement; this fails on Windows even though Linux normally permits it.
+  Two subsequent read-only `rg` probes used an unclosed regular expression and
+  a PowerShell-incompatible glob, followed by one over-escaped fixed string;
+  all failed without modifying state and were rerun with simple verified terms.
+- Primary evidence: the failed commands returned nonzero before changing
+  experiment state. The repository-root imports were fixed before commit
+  `b03af40`; the bundle was recreated from the named branch and transferred by
+  an explicit `scp`; the remote worktree then advanced exactly to `b03af40`.
+  The corrected local test selection passed 39 tests. The DDP exit path was
+  changed so every rank synchronizes and destroys the process group before all
+  ranks raise the non-convergence error.
+- Corrected fact and scope: teacher jobs `52958/52959/52960` use committed
+  synthesis code and are not affected by the later DDP issue. No RL update and
+  no Adam2000 continuation had launched from the defective uncommitted code.
+  Failed bundle, copy, queue-format, help, and pytest attempts produced no
+  scientific result and support no conclusion.
+- Containment/regression: all executable scripts now pass Python compilation or
+  `bash -n`, every CLI help path imports from an arbitrary working directory,
+  rank weighting treats tied scores symmetrically, and the corrected targeted
+  suite includes the DDP convergence helper, rank weights, Wilson interval, and
+  a four-worker round-summary/replay transaction. NPZ reads that precede replay
+  replacement now use context managers and close before `os.replace`.
+  Future remote synchronization uses a named ref in the bundle and explicit
+  source/destination paths.
+- Promotion/reporting blocker: open until the committed implementation passes
+  Slurm test-only checks and stable GPU startup; it does not affect the current
+  QH default.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

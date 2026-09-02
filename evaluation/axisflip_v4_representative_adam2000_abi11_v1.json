@@ -1,0 +1,35 @@
+{
+  "protocol_id": "qh-axisflip-v4-representative-adam2000-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-03",
+  "purpose": "Measure long-horizon score headroom for the two axis-flip v4 representatives that received full physical evaluation.",
+  "source": {
+    "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-stream-adam200-64d-abi11-v4",
+    "run_commit": "d8de349b7d0d457f10402c8517e5930ddd260c7c",
+    "cases": [
+      {"case_id": 18, "trajectory_id": "axisflip_case_0000018", "nfp": 8, "n_base_coils": 3},
+      {"case_id": 23, "trajectory_id": "axisflip_case_0000023", "nfp": 6, "n_base_coils": 4}
+    ],
+    "start": "each frozen Adam200 best.json used by the completed full evaluation"
+  },
+  "optimizer": {
+    "score_abi": 11,
+    "target_helicity": "(M,N)=(1,+nfp)",
+    "parameter_space": "exact-unclipped standardized data coordinates",
+    "iterations": 2000,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal centered directions",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "axis_and_score_gate": "reuse recorded axis and verify step-0 score within 0.1 before any update"
+  },
+  "resources": {
+    "jobs": 2,
+    "per_job": "one Students RTX5090, 12 CPU cores, 48G memory",
+    "parallelism": "both independent cases run concurrently",
+    "wall_limit": "12 hours"
+  },
+  "full_physical_evaluation": false,
+  "default_impact": "none"
+}

@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 from typing import Any
 
@@ -14,6 +15,8 @@ import numpy as np
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from flow_matching.axis_surface_prior_v2 import sample_shaped_prior_prototype
 

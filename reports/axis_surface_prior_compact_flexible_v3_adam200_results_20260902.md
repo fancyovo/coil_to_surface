@@ -1,9 +1,11 @@
 # Compact-flexible v3 解析先验 Adam200 可优化性报告
 
-日期：2026-09-02  
-实验协议：`qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1`  
-实验代码：`08a3c3fd15e61232eb0eed7cc359679c8d471810`  
-报告绘图代码：`e4590aebb7d06d6ad9e24f3e1d3dee2b722f3939`
+| 字段 | 值 |
+|---|---|
+| 日期 | 2026-09-02 |
+| 实验协议 | `qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1` |
+| 实验代码 | `08a3c3fd15e61232eb0eed7cc359679c8d471810` |
+| 报告绘图代码 | `e4590aebb7d06d6ad9e24f3e1d3dee2b722f3939` |
 
 ## 结论
 

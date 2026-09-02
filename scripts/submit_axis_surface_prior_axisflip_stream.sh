@@ -25,8 +25,8 @@ mkdir -p logs
 export PROJECT RUN_ROOT CHECKPOINT SCORE_LIB EXPECTED_COMMIT EXPECTED_LIB_SHA EXPECTED_CHECKPOINT_SHA
 export PRIOR_SEED="$prior_seed" DISCOVERY_WALL_S="$discovery_wall_s" HARD_WALL_S="$hard_wall_s"
 
-p107=(--account=competition --partition=P107-RTX5090 --qos=qos_p107-rtx5090 --cpus-per-task=4 --mem=32G --array=0-3 --job-name=axisflip-adam-p107 --export=ALL,WORKER_OFFSET=0)
-students=(--account=stu --partition=Students --qos=qos_stu_medium_2gpu --cpus-per-task=12 --mem=48G --array=0-1 --job-name=axisflip-adam-stu --export=ALL,WORKER_OFFSET=4)
+p107=(--account=competition --partition=P107-RTX5090 --qos=qos_p107-rtx5090 --cpus-per-task=4 --mem=24G --array=0-3 --job-name=axisflip-adam-p107 --export=ALL,WORKER_OFFSET=0)
+students=(--account=stu --partition=Students --qos=qos_stu_medium_2gpu --cpus-per-task=8 --mem=24G --array=0-1 --job-name=axisflip-adam-stu --export=ALL,WORKER_OFFSET=4)
 smoke=(--account=competition --partition=P107-RTX5090 --qos=qos_p107-rtx5090 --job-name=axisflip-adam-smoke --export=ALL)
 
 sbatch --test-only "${smoke[@]}" scripts/slurm_smoke_axis_surface_prior_axisflip_stream.sh

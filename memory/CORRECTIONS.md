@@ -835,6 +835,9 @@ An open critical correction blocks promotion and external reporting.
   one malformed regex, and one invalid patch hunk all failed read-only or before
   applying any change. Subsequent artifact reads use `rg --files`, metadata is
   enumerated before targeted access, and shell globs use `-g`.
+- The first submission draft also copied older `12 CPU/48G` Students and `32G`
+  P107 requests. Before `sbatch`, they were reduced to the documented one-GPU
+  templates: `8 CPU/24G` on Students medium and `4 CPU/24G` on P107.
 - Promotion/reporting blocker: resolved for submission after all listed guards
   pass; any failed guard reopens the blocker.
 

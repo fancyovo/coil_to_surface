@@ -990,6 +990,51 @@ An open critical correction blocks promotion and external reporting.
   Do not report v4 abundance or optimization outcomes until all six workers and
   analysis `52761` complete successfully.
 
+## CORR-20260902-74 - Axis-flip report error bars admitted negative roundoff
+
+- Severity/status: low / fixed before report delivery.
+- Discovered by: Codex during the first local render of the v4 result figures.
+- Error: the report renderer passed raw Wilson upper/lower error lengths to
+  Matplotlib. A boundary-rate group produced a negative value at floating-point
+  roundoff scale, so `errorbar` raised `ValueError` after two earlier figures
+  had been written.
+- Corrected fact and scope: the Wilson interval values and experiment results
+  were unchanged. The failure affected only the first incomplete rendering
+  attempt; no report had been generated or delivered.
+- Containment/regression: both error lengths are clamped to zero from below.
+  The complete renderer must run successfully and all output images must pass
+  visual inspection before delivery.
+- Promotion/reporting blocker: resolved only after the successful rerun and
+  rendered-asset audit recorded with the final report. The rerun completed and
+  all four output images passed direct visual inspection on 2026-09-02.
+
+## CORR-20260902-75 - Stream runner had no external drain control
+
+- Severity/status: medium / current run contained; future stream protocols need
+  a graceful stop sentinel before launch.
+- Discovered by: Codex when the user requested that each worker finish only its
+  active Adam200 trajectory instead of discovering for four hours.
+- Error: the v4 runner checked only its fixed elapsed-time deadline. It had no
+  externally writable stop sentinel between trajectories, so a worker could
+  start its next valid case before an external monitor canceled the array task.
+- Primary evidence: a two-second monitor waited for each active partial
+  trajectory to move atomically into `trajectories/`, then canceled only that
+  worker's own array element. All six requested active trajectories completed.
+  The race window created six successor partials with `0,2,3,3,4,7` saved Adam
+  updates; these remain preserved and excluded from the 50 completed results.
+- Corrected fact and scope: analysis `52761` accounts for 56 valid starts as 50
+  complete, zero failed, and six user-drained incomplete successors, with no
+  unaccounted case ID. The 50 complete trajectories support the report. The six
+  partial trajectories support no score-threshold or optimizer conclusion.
+- Containment/regression: `drain_manifest.json` records each completed active
+  case, canceled array element, successor partial, and cancellation time. A
+  future stream runner must check a run-root stop sentinel before screening and
+  before starting Adam, then write a terminal worker record without external
+  cancellation.
+- Promotion/reporting blocker: resolved for this report by explicit accounting
+  and exclusion of every successor partial; the runner improvement remains open
+  before another interruptible stream protocol is launched.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

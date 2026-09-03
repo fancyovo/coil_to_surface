@@ -195,7 +195,9 @@
   median improved `63.6751 -> 71.9023`, score-at-least-70 improved
   `4/64 -> 53/64`, and 1394/1408 samples were valid. All 22 near-duplicate
   rates were zero; effective rank changed `-2.0%` while descriptor variance
-  contracted `16.6%`. The job continues under monitoring. See
+  contracted `16.6%`. The user stopped job `52977` on 2026-09-03; round 21
+  remains the latest accepted reporting boundary until cancellation artifacts
+  are collected and audited. See
   `reports/axisflip_prior_online_rl_results_20260903.md`.
 - Frozen-policy latent experiment
   `qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1` uses the
@@ -223,6 +225,12 @@
   `5.79 mm` minimum spacing; `scale=0.6` remained trapped near score `7.72`.
   The earlier pointwise-nearest-axis map is superseded diagnostic history. See
   `reports/axisflip_case23_coil_shrink_results_20260903.md`.
+- Registered fixed-condition experiment
+  `qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1`
+  centers the prior winding radius at `0.12 m`, changes only the experimental
+  curvature-p95 scale to `25 m^-1` (`0.04 m` radius), retains the `35 m^-1`
+  maximum-curvature guard, and uses a fixed 384-sample legality audit plus 12
+  six-GPU Adam200 trajectories. The default ABI-11 build remains unchanged.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map

@@ -1,0 +1,84 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-03",
+  "purpose": "Measure legality and direct-data Adam200 optimizability after reducing the compact axis-flipped prior radius to 0.12 m and relaxing only the coil curvature-p95 score scale to a 0.04 m characteristic radius.",
+  "generator": {
+    "baseline": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+    "preset": "compact_flexible",
+    "sample_role": "registered_scoring",
+    "construction_axis_chirality": -1,
+    "fixed_condition": {
+      "nfp": 8,
+      "n_base_coils": 3
+    },
+    "winding_surface_minor_radius_center_m": 0.12,
+    "winding_surface_minor_radius_relative_variation": 0.1,
+    "winding_surface_minor_radius_range_m": [0.108, 0.132],
+    "other_shape_distributions": "unchanged from compact-flexible v4",
+    "result_format": "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1",
+    "seed": 20260906
+  },
+  "start_representation": {
+    "order": "generate float64 analytic tokens, map to exact-unclipped float32 standardized data coordinates, reconstruct physical tokens, then screen and optimize those same reconstructed tokens",
+    "flow_calls": 0
+  },
+  "score_configuration": {
+    "interface": "native ABI-11",
+    "library_status": "experiment-specific rebuild; SHA-256 is recorded after compute-node build",
+    "coil_curvature_p95_scale_m_inv": 25.0,
+    "coil_curvature_p95_radius_m": 0.04,
+    "coil_curvature_max_scale_m_inv": 35.0,
+    "coil_curvature_max_radius_m": 0.02857142857142857,
+    "interpretation": "Only the curvature-p95 scale changes from 10 to 25 inverse metres. The maximum-curvature term remains at 35 inverse metres so horn-like extremes retain the stricter guard.",
+    "all_other_native_score_terms": "identical to ABI-11 default source at the frozen experiment commit",
+    "shared_formal_configuration": {
+      "iota_degree": 3,
+      "surface_selection_mode": 1,
+      "surface_confidence_periods": 1,
+      "surface_theta_count": 128,
+      "surface_trace_steps": 400,
+      "surface_flux_bisection_iters": 6
+    },
+    "screening_axis_policy": "global search",
+    "optimizer_step0_axis_policy": "strict continuation from screened axis_R/axis_Z"
+  },
+  "legality_audit": {
+    "fixed_samples_per_worker": 64,
+    "worker_count": 6,
+    "fixed_total_samples": 384,
+    "legal_definition": "native status == ok on the exact optimizer-representable start",
+    "estimator": "legal count divided by the precommitted 384-sample audit population",
+    "samples_after_the_fixed_audit": "retained for optimizer completion accounting but excluded from the primary legality estimate"
+  },
+  "adam_selection": {
+    "rule": "Each worker sends its earliest legal samples to Adam until two trajectories complete. After that it finishes its 64-sample legality audit without starting more Adam trajectories.",
+    "completed_trajectories_per_worker": 2,
+    "completed_trajectories_total": 12
+  },
+  "optimizer": {
+    "parameter_space": "exact-unclipped standardized coil coefficients",
+    "algorithm": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal directions per update",
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "target_helicity": "(M,N)=(1,+nfp)"
+  },
+  "resources": {
+    "workers": 6,
+    "p107_gpus": 4,
+    "students_gpus": 2,
+    "parallelization": "six independent one-GPU workers",
+    "slurm_limit": "8 hours as a runaway guard; expected completion is count-bounded"
+  },
+  "monitoring": {
+    "screening": "fixed-audit status counts, legal rate, score and coil component distributions",
+    "adam200": "initial/best/final total score, volume-QS, coil component, joint component changes, threshold counts, and trajectories"
+  },
+  "full_physical_evaluation": false,
+  "default_impact": "none; the default ABI-11 library and qh-flow-screen32-adam200-64d-abi11-v1 remain unchanged"
+}

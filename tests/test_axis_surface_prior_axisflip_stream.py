@@ -7,11 +7,15 @@ import pytest
 
 from scripts.run_axis_surface_prior_axisflip_stream import (
     PROTOCOL_ID,
+    RADIUS012_GENERATOR_FORMAT,
+    RADIUS012_PROTOCOL_ID,
     TARGET_HELICITY_SIGN,
     case_id_for_worker,
     classify_iota_interval,
     discovery_is_open,
     formal_screening_score_config,
+    experiment_settings,
+    native_endpoint,
     optimizer_command,
 )
 from scripts.optimize_flow_latent import validate_recorded_initial_score
@@ -157,3 +161,23 @@ def test_screening_uses_the_optimizer_formal_score_configuration() -> None:
         "surface_trace_steps": 400,
         "surface_flux_bisection_iters": 6,
     }
+
+
+def test_radius012_experiment_is_fixed_to_nfp8_nc3() -> None:
+    settings = experiment_settings(RADIUS012_PROTOCOL_ID)
+    assert settings["conditions"] == [(8, 3)]
+    assert settings["generator_format"] == RADIUS012_GENERATOR_FORMAT
+    assert settings["minor_radius_m"] == 0.12
+
+
+def test_native_endpoint_retains_total_components_for_joint_analysis() -> None:
+    endpoint = native_endpoint(
+        {
+            "score": 71.0,
+            "status": "ok",
+            "components": {"volume_qs": 51.0, "coil": 68.0},
+            "diagnostics": {"iota_min": 0.8, "iota_max": 1.2},
+        }
+    )
+    assert endpoint["components"] == {"volume_qs": 51.0, "coil": 68.0}
+    assert endpoint["iota_sign"] == "positive"

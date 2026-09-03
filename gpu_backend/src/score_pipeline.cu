@@ -26,8 +26,14 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 
+#ifndef SGPU_COIL_CURVATURE_P95_SCALE
+#define SGPU_COIL_CURVATURE_P95_SCALE 10.0
+#endif
+
 constexpr double PI = 3.1415926535897932384626433832795;
 constexpr double TWOPI = 2.0 * PI;
+constexpr double COIL_CURVATURE_P95_SCALE = SGPU_COIL_CURVATURE_P95_SCALE;
+static_assert(COIL_CURVATURE_P95_SCALE > 0.0, "curvature p95 scale must be positive");
 constexpr int SCORE_STAGE_NONE = 0;
 constexpr int SCORE_STAGE_FIELD = 1;
 constexpr int SCORE_STAGE_AXIS = 2;
@@ -343,7 +349,8 @@ CoilMetrics compute_coil_metrics(
 
 double coil_component(const CoilMetrics& metrics) {
     const double length = q_down(metrics.length_mean, 7.0, 1.4, 0.6);
-    const double curvature_p95 = q_down(metrics.curvature_p95, 10.0, 1.3, 0.5);
+    const double curvature_p95 = q_down(
+        metrics.curvature_p95, COIL_CURVATURE_P95_SCALE, 1.3, 0.5);
     const double curvature_max = q_down(metrics.curvature_max, 35.0, 1.2, 0.5);
     const double spacing = q_up(metrics.min_intercoil_distance, 0.08, 1.1, 0.45);
     const double axis_distance = q_up(metrics.min_axis_distance, 0.20, 1.2, 0.45);
@@ -4768,7 +4775,8 @@ bool compute_coil_component_gradient_impl(
 
     const double metric_derivatives[] = {
         0.16 * q_down_derivative(metrics.length_mean, 7.0, 1.4),
-        0.20 * q_down_derivative(metrics.curvature_p95, 10.0, 1.3),
+        0.20 * q_down_derivative(
+            metrics.curvature_p95, COIL_CURVATURE_P95_SCALE, 1.3),
         0.12 * q_down_derivative(metrics.curvature_max, 35.0, 1.2),
         0.20 * q_up_derivative(metrics.min_intercoil_distance, 0.08, 1.1),
         0.12 * q_up_derivative(metrics.min_axis_distance, 0.20, 1.2),

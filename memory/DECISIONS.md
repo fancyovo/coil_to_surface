@@ -222,3 +222,21 @@ ABI-11 target, and pipelined FP32 RK4-128 decoding match the current stable
 latent recipe. Two Students GPUs run independent workers in parallel. Four
 trajectories share each worker's sole GPU sequentially, which is the explicit
 resource reason for that ordering.
+
+## DEC-20260903-03 - Smaller analytic-prior radius with relaxed p95 curvature scale
+
+Status: active registered experiment; no default impact.
+
+The fixed `nfp=8,nc=3` follow-up centers the compact-flexible axis-flipped
+winding radius at `0.12 m`. It tests whether smaller initial coils remain legal
+and optimizable when the p95 curvature reward stops favoring radius growth at
+the former `0.10 m` characteristic radius. The experimental score therefore
+uses `25 m^-1`, or `0.04 m`, for curvature p95 while retaining the existing
+`35 m^-1` maximum-curvature guard. All remaining ABI-11 score terms and the
+direct-data Adam200/64-direction recipe stay fixed.
+
+The legality estimate uses 384 precommitted samples rather than stopping its
+denominator after a fixed number of legal discoveries. Six workers each
+complete two Adam200 trajectories and continue score-only sampling until their
+64-sample audit is complete. The build flag is experiment-specific; the
+default ABI-11 library and current QH protocol remain unchanged.

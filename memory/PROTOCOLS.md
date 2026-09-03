@@ -488,3 +488,26 @@ jobs `53223/53224` completed. The `scale=0.8` best reached `88.9862` at step
 spacing; curvature contribution rose `1.7581` and distance contribution fell
 `0.5172`. The `scale=0.6` run accepted only three updates and reached `7.7187`.
 Canonical report: `reports/axisflip_case23_coil_shrink_results_20260903.md`.
+
+Protocol
+`qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1`
+is a registered fixed-condition prior and score-shaping experiment. It fixes
+`nfp=8,nc=3`, retains compact-flexible v4's positive-hand construction, and
+changes the winding-surface minor-radius center from `0.20 m` to `0.12 m` with
+the same +/-10% per-sample variation. An experiment-specific ABI-11-compatible
+library changes only the coil curvature-p95 score scale from `10 m^-1` to
+`25 m^-1`, corresponding to a `0.04 m` characteristic radius. The maximum-
+curvature scale remains `35 m^-1`, so extreme horn-like curvature keeps its
+stricter guard. The default ABI-11 source setting remains `10 m^-1` and its
+accepted library is unchanged.
+
+Six independent one-GPU workers run concurrently across four P107 and two
+Students GPUs. Each worker scores a precommitted 64-sample legality audit and
+completes exactly two direct-data Adam200 trajectories from its earliest legal
+starts, giving 384 fixed legality samples and 12 completed trajectories. Adam
+uses 64 fresh orthogonal centered directions, `h=0.0025`, learning rate `0.01`,
+and beta `(0.7,0.999)`. Samples needed after the fixed audit to replace a failed
+trajectory remain in provenance but do not enter the primary legality rate.
+Frozen specification:
+`evaluation/axis_surface_contour_prior_r012_curvature_r04_axisflip_adam200_abi11_v1.json`.
+This experiment does not change the current QH default.

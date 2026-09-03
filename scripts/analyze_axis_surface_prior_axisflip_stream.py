@@ -11,8 +11,9 @@ import numpy as np
 
 
 from scripts.run_axis_surface_prior_axisflip_stream import (
-    PROTOCOL_ID,
+    RADIUS012_PROTOCOL_ID,
     classify_iota_interval,
+    experiment_settings,
 )
 
 
@@ -31,7 +32,7 @@ def distribution(values: list[float]) -> dict[str, float | int | None]:
 
 def trajectory_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     best = [float(row["best_score"]) for row in rows]
-    return {
+    result = {
         "count": len(rows),
         "initial_score": distribution([float(row["initial_score"]) for row in rows]),
         "best_score": distribution(best),
@@ -51,6 +52,42 @@ def trajectory_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
             [float(row["trajectory_wall_s"]) for row in rows]
         ),
     }
+    component_keys = ("initial_volume_qs", "best_volume_qs", "initial_coil", "best_coil")
+    if rows and all(all(key in row for key in component_keys) for row in rows):
+        joint_counts = Counter()
+        for row in rows:
+            qs_gain = float(row["best_volume_qs"]) - float(row["initial_volume_qs"])
+            coil_gain = float(row["best_coil"]) - float(row["initial_coil"])
+            joint_counts[
+                ("qs_up" if qs_gain >= 0.0 else "qs_down")
+                + "_"
+                + ("coil_up" if coil_gain >= 0.0 else "coil_down")
+            ] += 1
+        result.update(
+            {
+                "initial_volume_qs": distribution(
+                    [float(row["initial_volume_qs"]) for row in rows]
+                ),
+                "best_volume_qs": distribution(
+                    [float(row["best_volume_qs"]) for row in rows]
+                ),
+                "volume_qs_gain": distribution(
+                    [
+                        float(row["best_volume_qs"]) - float(row["initial_volume_qs"])
+                        for row in rows
+                    ]
+                ),
+                "initial_coil": distribution(
+                    [float(row["initial_coil"]) for row in rows]
+                ),
+                "best_coil": distribution([float(row["best_coil"]) for row in rows]),
+                "coil_gain": distribution(
+                    [float(row["best_coil"]) - float(row["initial_coil"]) for row in rows]
+                ),
+                "joint_component_change_counts": dict(sorted(joint_counts.items())),
+            }
+        )
+    return result
 
 
 def main() -> None:
@@ -60,8 +97,8 @@ def main() -> None:
     parser.add_argument("--run-root", type=Path, required=True)
     args = parser.parse_args()
     protocol = json.loads((args.run_root / "protocol.json").read_text(encoding="utf-8"))
-    if protocol.get("protocol_id") != PROTOCOL_ID:
-        raise ValueError("protocol ID mismatch")
+    protocol_id = str(protocol.get("protocol_id"))
+    experiment_settings(protocol_id)
 
     output_dir = args.run_root / "analysis"
     output_dir.mkdir(exist_ok=True)
@@ -80,13 +117,12 @@ def main() -> None:
     trajectories: list[dict[str, Any]] = []
     for path in sorted((args.run_root / "trajectories").glob("*/trajectory_manifest.json")):
         manifest = json.loads(path.read_text(encoding="utf-8"))
-        if manifest.get("protocol_id") != PROTOCOL_ID:
+        if manifest.get("protocol_id") != protocol_id:
             raise ValueError(f"trajectory protocol mismatch in {path}")
         case = manifest["case"]
         endpoints = manifest["endpoints"]
         summary = manifest["optimization"]
-        trajectories.append(
-            {
+        row = {
                 "trajectory_id": manifest["trajectory_id"],
                 "case_id": int(case["case_id"]),
                 "worker_index": int(case["worker_index"]),
@@ -100,8 +136,21 @@ def main() -> None:
                 "final_score": float(summary["final_score"]),
                 "final_iota_sign": endpoints["final"]["iota_sign"],
                 "trajectory_wall_s": float(manifest["timing"]["trajectory_wall_s"]),
-            }
-        )
+        }
+        initial_components = endpoints["initial"].get("components") or {}
+        best_components = endpoints["best"].get("components") or {}
+        if all(name in initial_components and name in best_components for name in ("volume_qs", "coil")):
+            row.update(
+                {
+                    "initial_volume_qs": float(initial_components["volume_qs"]),
+                    "initial_coil": float(initial_components["coil"]),
+                    "best_volume_qs": float(best_components["volume_qs"]),
+                    "best_coil": float(best_components["coil"]),
+                }
+            )
+        elif protocol_id == RADIUS012_PROTOCOL_ID:
+            raise ValueError(f"missing score components in {path}")
+        trajectories.append(row)
     trajectories.sort(key=lambda row: int(row["case_id"]))
 
     failure_case_ids: set[int] = set()
@@ -112,6 +161,7 @@ def main() -> None:
     for path in sorted((args.run_root / "incomplete").glob("*.partial/case.json")):
         incomplete_case_ids.add(int(json.loads(path.read_text(encoding="utf-8"))["case_id"]))
 
+    audit_screening = [row for row in screening if bool(row.get("legality_audit", True))]
     valid_rows = [
         row
         for row in screening
@@ -119,9 +169,14 @@ def main() -> None:
         and row["native"].get("status") == "ok"
     ]
     valid_case_ids = {int(row["case_id"]) for row in valid_rows}
+    selected_valid_case_ids = {
+        int(row["case_id"])
+        for row in valid_rows
+        if bool(row.get("adam_selected", True))
+    }
     completed_case_ids = {int(row["case_id"]) for row in trajectories}
     accounted = completed_case_ids | failure_case_ids | incomplete_case_ids
-    unaccounted = sorted(valid_case_ids - accounted)
+    unaccounted = sorted(selected_valid_case_ids - accounted)
 
     screen_by_nc: dict[str, list[dict[str, Any]]] = defaultdict(list)
     trajectory_by_nc: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -170,9 +225,10 @@ def main() -> None:
         else None
     )
     summary = {
-        "format": "axis_surface_prior_axisflip_stream_summary_v4",
-        "protocol_id": PROTOCOL_ID,
+        "format": "axis_surface_prior_axisflip_stream_summary_v5",
+        "protocol_id": protocol_id,
         "screening": screen_group(screening),
+        "legality_audit": screen_group(audit_screening),
         "by_n_base_coils_screening": {
             key: screen_group(value) for key, value in sorted(screen_by_nc.items())
         },
@@ -188,6 +244,8 @@ def main() -> None:
         "best_record": best_record,
         "accounting": {
             "valid_discovered": len(valid_case_ids),
+            "valid_selected_for_adam": len(selected_valid_case_ids),
+            "valid_not_selected_for_adam": len(valid_case_ids - selected_valid_case_ids),
             "completed": len(completed_case_ids),
             "failed": len(failure_case_ids),
             "incomplete": len(incomplete_case_ids),
@@ -230,6 +288,16 @@ def main() -> None:
     print(json.dumps(summary, indent=2), flush=True)
     if unaccounted:
         raise RuntimeError(f"{len(unaccounted)} valid cases are unaccounted for")
+    if protocol_id == RADIUS012_PROTOCOL_ID:
+        if (
+            len(worker_states) != 6
+            or len(audit_screening) != 384
+            or len(trajectories) != 12
+        ):
+            raise RuntimeError(
+                "radius-0.12 protocol did not complete six workers, "
+                "384 fixed audit scores, and 12 trajectories"
+            )
 
 
 if __name__ == "__main__":

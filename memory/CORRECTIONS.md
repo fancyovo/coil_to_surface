@@ -1589,6 +1589,34 @@ An open critical correction blocks promotion and external reporting.
   strings from `scan_summary.json` and `repair_metrics.csv`; every value was
   present after rounding under the report's displayed precision.
 
+## CORR-20260903-93 - R012 preparation repeated path and wrapper mistakes
+
+- Severity/status: low / corrected before commit, synchronization, or Slurm
+  submission.
+- Discovered by: Codex during preparation of the 0.12 m prior experiment.
+- Errors: one JavaScript orchestration wrapper was malformed before dispatch;
+  two local reads guessed shortened launcher names after the tracked file list
+  had already shown the exact names; several `rg` calls passed Windows-invalid
+  wildcard path arguments; one remote listing left `tail` to PowerShell instead
+  of the remote shell; and one local artifact probe assumed trajectory manifests
+  were mirrored when only report assets were delivered.
+- Primary evidence: the commands returned parse, path-not-found, invalid-path,
+  command-not-found, or null-path errors. Every failure was read-only or stopped
+  before dispatch. No source file, remote checkout, Slurm job, score library,
+  RL checkpoint, or scientific artifact changed.
+- Corrected fact and scope: tracked script names come from `git ls-files`; file
+  filtering uses `rg -g` or explicit paths; remote pipelines require an
+  argument-safe remote shell script; and run-level trajectory artifacts remain
+  under their frozen remote run roots unless explicitly mirrored.
+- Containment/regression: subsequent implementation uses only enumerated paths,
+  locally validated scripts, and direct remote arguments. The new protocol must
+  pass Python compilation, focused tests, JSON parsing, shell syntax, a compute-
+  node custom-library smoke, and all four Slurm test-only gates before formal
+  workers start.
+- Affected conclusions: none. Job `52977` was canceled by explicit user request;
+  its last complete online round is still determined from atomic artifacts.
+- Promotion/reporting blocker: none after the stated gates pass.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

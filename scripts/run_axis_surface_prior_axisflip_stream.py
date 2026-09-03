@@ -27,6 +27,7 @@ from flow_matching.axis_surface_prior import supported_conditions
 from flow_matching.axis_surface_prior_v2 import sample_shaped_prior_prototype
 from flow_matching.collection import replace_json
 from flow_matching.data import CoilNormalizer, file_sha256
+from flow_matching.optimization import CURRENT_NATIVE_SCORE_LIBRARY_SHA256
 from flow_matching.trajectory_dataset import atomic_write_json
 from scripts.native_score_runtime import append_jsonl, token_case, write_json
 from scripts.optimize_flow_latent import score_config
@@ -40,6 +41,13 @@ PROTOCOL_ID = (
     "adam200-64d-abi11-v4"
 )
 GENERATOR_FORMAT = "axis_surface_contour_prior_compact_flexible_axis_flip_v4"
+RADIUS012_PROTOCOL_ID = (
+    "qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-"
+    "adam200-64d-abi11-v1"
+)
+RADIUS012_GENERATOR_FORMAT = (
+    "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1"
+)
 PRESET = "compact_flexible"
 TARGET_HELICITY_SIGN = 1
 ARTIFACT_FORMATS = {
@@ -49,6 +57,33 @@ ARTIFACT_FORMATS = {
     "failure": "axis_surface_prior_axisflip_stream_adam200_failure_v4",
     "worker": "axis_surface_prior_axisflip_stream_worker_v4",
 }
+RADIUS012_ARTIFACT_FORMATS = {
+    "screening": "axis_surface_prior_axisflip_r012_curvature_r04_screening_v1",
+    "start": "axis_surface_prior_axisflip_r012_curvature_r04_exact_data_start_v1",
+    "trajectory": "axis_surface_prior_axisflip_r012_curvature_r04_adam200_trajectory_v1",
+    "failure": "axis_surface_prior_axisflip_r012_curvature_r04_adam200_failure_v1",
+    "worker": "axis_surface_prior_axisflip_r012_curvature_r04_worker_v1",
+}
+
+
+def experiment_settings(protocol_id: str) -> dict[str, Any]:
+    if protocol_id == PROTOCOL_ID:
+        return {
+            "generator_format": GENERATOR_FORMAT,
+            "artifact_formats": ARTIFACT_FORMATS,
+            "conditions": supported_conditions(),
+            "minor_radius_m": None,
+            "trajectory_prefix": "axisflip_case",
+        }
+    if protocol_id == RADIUS012_PROTOCOL_ID:
+        return {
+            "generator_format": RADIUS012_GENERATOR_FORMAT,
+            "artifact_formats": RADIUS012_ARTIFACT_FORMATS,
+            "conditions": [(8, 3)],
+            "minor_radius_m": 0.12,
+            "trajectory_prefix": "axisflip_r012_case",
+        }
+    raise ValueError(f"unsupported protocol ID {protocol_id!r}")
 
 
 def formal_screening_score_config() -> dict[str, Any]:
@@ -96,9 +131,14 @@ def native_endpoint(native: dict[str, Any]) -> dict[str, Any]:
     diagnostics = native.get("diagnostics") or {}
     iota_min = finite_float(diagnostics.get("iota_min"))
     iota_max = finite_float(diagnostics.get("iota_max"))
+    components = {
+        str(name): finite_float(value)
+        for name, value in (native.get("components") or {}).items()
+    }
     return {
         "score": finite_float(native.get("score")),
         "status": str(native.get("status", "missing")),
+        "components": components,
         "iota_min": iota_min,
         "iota_max": iota_max,
         "iota_sign": classify_iota_interval(iota_min, iota_max),
@@ -205,6 +245,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--expected-commit", required=True)
     value.add_argument("--expected-lib-sha", required=True)
     value.add_argument("--expected-checkpoint-sha", required=True)
+    value.add_argument("--protocol-id", default=PROTOCOL_ID)
     value.add_argument("--worker-index", type=int, required=True)
     value.add_argument("--worker-count", type=int, default=6)
     value.add_argument("--seed", type=int, default=20260905)
@@ -213,8 +254,14 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--hard-wall-s", type=float, default=17700.0)
     value.add_argument("--iterations", type=int, default=200)
     value.add_argument("--max-valid-cases", type=int, default=0)
+    value.add_argument("--max-completed-cases", type=int, default=0)
+    value.add_argument("--legality-audit-cases-per-worker", type=int, default=0)
     value.add_argument("--max-screened-cases", type=int, default=0)
     value.add_argument("--start-sequence-index", type=int, default=0)
+    value.add_argument("--fixed-nfp", type=int, default=0)
+    value.add_argument("--fixed-n-base-coils", type=int, default=0)
+    value.add_argument("--minor-radius-m", type=float)
+    value.add_argument("--smoke", action="store_true")
     return value
 
 
@@ -231,8 +278,41 @@ def main() -> None:
     case_id_for_worker(args.worker_index, args.worker_count, 0)
 
     protocol = json.loads(args.protocol_path.read_text(encoding="utf-8"))
-    if protocol.get("protocol_id") != PROTOCOL_ID:
+    if protocol.get("protocol_id") != args.protocol_id:
         raise ValueError("protocol ID mismatch")
+    settings = experiment_settings(args.protocol_id)
+    artifact_formats = settings["artifact_formats"]
+    generator_format = str(settings["generator_format"])
+    if args.protocol_id == RADIUS012_PROTOCOL_ID:
+        expected_completed = 1 if args.smoke else 2
+        expected_audit_count = 1 if args.smoke else 64
+        expected_iterations = 3 if args.smoke else 200
+        expected_worker_count = 1 if args.smoke else 6
+        if (
+            args.fixed_nfp != 8
+            or args.fixed_n_base_coils != 3
+            or args.worker_count != expected_worker_count
+            or args.max_completed_cases != expected_completed
+            or args.legality_audit_cases_per_worker != expected_audit_count
+            or args.iterations != expected_iterations
+            or args.minor_radius_m is None
+            or not math.isclose(args.minor_radius_m, 0.12, rel_tol=0.0, abs_tol=1.0e-12)
+        ):
+            raise ValueError("radius-0.12 protocol arguments do not match its frozen design")
+        if args.expected_lib_sha == CURRENT_NATIVE_SCORE_LIBRARY_SHA256:
+            raise ValueError("radius-0.12 experiment requires its custom curvature library")
+        score_contract = protocol.get("score_configuration") or {}
+        if (
+            float(score_contract.get("coil_curvature_p95_scale_m_inv", 0.0)) != 25.0
+            or float(score_contract.get("coil_curvature_p95_radius_m", 0.0)) != 0.04
+            or float(score_contract.get("coil_curvature_max_scale_m_inv", 0.0)) != 35.0
+        ):
+            raise ValueError("radius-0.12 protocol score contract mismatch")
+    elif any(
+        value not in (None, 0)
+        for value in (args.minor_radius_m, args.fixed_nfp, args.fixed_n_base_coils)
+    ) or args.max_completed_cases or args.legality_audit_cases_per_worker:
+        raise ValueError("fixed-condition overrides require the radius-0.12 protocol")
     commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
     ).strip()
@@ -243,7 +323,7 @@ def main() -> None:
     if file_sha256(args.checkpoint) != args.expected_checkpoint_sha:
         raise RuntimeError("checkpoint hash mismatch")
 
-    conditions = supported_conditions()
+    conditions = list(settings["conditions"])
     if not conditions or any(nc > 4 for _, nc in conditions):
         raise RuntimeError("registered condition set must be nonempty and exclude nc>4")
     checkpoint_payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
@@ -275,6 +355,7 @@ def main() -> None:
     sequence_index = args.start_sequence_index
     screened = 0
     valid = 0
+    selected_valid = 0
     completed = 0
     failed_valid = 0
     score_errors = 0
@@ -293,8 +374,8 @@ def main() -> None:
         replace_json(
             worker_dir / "progress.json",
             {
-                "format": ARTIFACT_FORMATS["worker"],
-                "protocol_id": PROTOCOL_ID,
+                "format": artifact_formats["worker"],
+                "protocol_id": args.protocol_id,
                 "worker_index": args.worker_index,
                 "worker_count": args.worker_count,
                 "stage": stage,
@@ -303,6 +384,7 @@ def main() -> None:
                 "screening_status_counts": dict(sorted(status_counts.items())),
                 "score_exception_count": score_errors,
                 "valid_count": valid,
+                "adam_selected_valid_count": selected_valid,
                 "completed_adam_count": completed,
                 "failed_valid_count": failed_valid,
                 "initial_valid_iota_sign_counts": dict(sorted(initial_sign_counts.items())),
@@ -322,6 +404,16 @@ def main() -> None:
 
     progress("running")
     while discovery_is_open(time.perf_counter() - started, args.discovery_wall_s):
+        completed_quota_reached = (
+            bool(args.max_completed_cases) and completed >= args.max_completed_cases
+        )
+        audit_quota_reached = (
+            not args.legality_audit_cases_per_worker
+            or screened >= args.legality_audit_cases_per_worker
+        )
+        if completed_quota_reached and audit_quota_reached:
+            stop_reason = "max_completed_cases"
+            break
         if args.max_valid_cases and valid >= args.max_valid_cases:
             stop_reason = "max_valid_cases"
             break
@@ -333,6 +425,11 @@ def main() -> None:
             args.worker_index, args.worker_count, sequence_index
         )
         nfp, n_base_coils = conditions[case_id % len(conditions)]
+        if args.fixed_nfp and (nfp, n_base_coils) != (
+            args.fixed_nfp,
+            args.fixed_n_base_coils,
+        ):
+            raise RuntimeError("resolved condition differs from fixed protocol condition")
         generated = sample_shaped_prior_prototype(
             seed=args.seed + case_id,
             nfp=nfp,
@@ -342,9 +439,10 @@ def main() -> None:
             surface_theta_samples=48,
             sample_role="registered_scoring",
             axis_chirality=-1,
+            minor_radius_m=args.minor_radius_m,
         )
         metadata = generated.metadata
-        if metadata.get("format") != GENERATOR_FORMAT:
+        if metadata.get("format") != generator_format:
             raise RuntimeError("axis-flipped generator format mismatch")
         if metadata.get("construction_axis_chirality") != -1:
             raise RuntimeError("construction-axis chirality was not flipped")
@@ -391,9 +489,16 @@ def main() -> None:
             error = f"{type(exc).__name__}: {exc}"
             status = "score_exception"
             score_errors += 1
+        selected_for_adam = (
+            status == "ok"
+            and native is not None
+            and not (
+                args.max_completed_cases and completed >= args.max_completed_cases
+            )
+        )
         row = {
-            "format": ARTIFACT_FORMATS["screening"],
-            "protocol_id": PROTOCOL_ID,
+            "format": artifact_formats["screening"],
+            "protocol_id": args.protocol_id,
             "case_id": case_id,
             "worker_index": args.worker_index,
             "sequence_index": sequence_index,
@@ -410,6 +515,12 @@ def main() -> None:
                 "roundtrip": roundtrip,
             },
             "native": native,
+            "legality_audit": (
+                screened < args.legality_audit_cases_per_worker
+                if args.legality_audit_cases_per_worker
+                else True
+            ),
+            "adam_selected": selected_for_adam,
             "score_wall_s": time.perf_counter() - score_started,
             "error": error,
         }
@@ -418,15 +529,17 @@ def main() -> None:
         status_counts[status] += 1
         sequence_index += 1
 
-        if status != "ok" or native is None:
+        if status == "ok" and native is not None:
+            valid += 1
+        if status != "ok" or native is None or not selected_for_adam:
             if screened % 10 == 0:
                 progress("running")
             continue
 
-        valid += 1
+        selected_valid += 1
         initial_endpoint = native_endpoint(native)
         initial_sign_counts[initial_endpoint["iota_sign"]] += 1
-        trajectory_id = f"axisflip_case_{case_id:07d}"
+        trajectory_id = f"{settings['trajectory_prefix']}_{case_id:07d}"
         destination = trajectories_dir / trajectory_id
         partial = incomplete_dir / (
             f"{trajectory_id}.worker{args.worker_index}.{os.getpid()}.partial"
@@ -456,8 +569,8 @@ def main() -> None:
         try:
             start = token_case(optimizer_start_tokens, nfp=nfp, target="QH")
             start["data_prior_screening"] = {
-                "format": ARTIFACT_FORMATS["start"],
-                "protocol_id": PROTOCOL_ID,
+                "format": artifact_formats["start"],
+                "protocol_id": args.protocol_id,
                 "normalized_coil_tokens": parameters.tolist(),
                 "current_l1_a": current_l1_a,
                 "native_score": native,
@@ -466,7 +579,7 @@ def main() -> None:
                 "source_row_sha256": case_record["source_row_sha256"],
                 "roundtrip": roundtrip,
                 "generator": {
-                    "format": GENERATOR_FORMAT,
+                    "format": generator_format,
                     "construction_axis_chirality": -1,
                     "construction_axis_transform": "z_reflection_of_same_seed_baseline",
                 },
@@ -532,8 +645,8 @@ def main() -> None:
             final_endpoint = scalar_iota_endpoint(summary["final_score"], final_iota)
             trajectory_wall_s = time.perf_counter() - case_started
             trajectory_manifest = {
-                "format": ARTIFACT_FORMATS["trajectory"],
-                "protocol_id": PROTOCOL_ID,
+                "format": artifact_formats["trajectory"],
+                "protocol_id": args.protocol_id,
                 "trajectory_id": trajectory_id,
                 "case": case_record,
                 "target_helicity": [1, nfp],
@@ -598,8 +711,8 @@ def main() -> None:
         except Exception as exc:
             signature = f"{type(exc).__name__}: {exc}"
             failure = {
-                "format": ARTIFACT_FORMATS["failure"],
-                "protocol_id": PROTOCOL_ID,
+                "format": artifact_formats["failure"],
+                "protocol_id": args.protocol_id,
                 "trajectory_id": trajectory_id,
                 "case": case_record,
                 "error": signature,

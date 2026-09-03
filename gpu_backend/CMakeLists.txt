@@ -24,10 +24,13 @@ target_link_options(stellarator_gpu PRIVATE -static-libstdc++ -static-libgcc)
 
 set(SGPU_WARPS_PER_BLOCK "8" CACHE STRING "Warps per block for warp-per-line kernels")
 set(SGPU_SEG_TILE "256" CACHE STRING "Segment tile size")
+set(SGPU_COIL_CURVATURE_P95_SCALE "10.0" CACHE STRING
+    "Coil curvature p95 score scale in inverse metres")
 
 target_compile_definitions(stellarator_gpu PRIVATE
     SGPU_WARPS_PER_BLOCK=${SGPU_WARPS_PER_BLOCK}
     SGPU_SEG_TILE=${SGPU_SEG_TILE}
+    SGPU_COIL_CURVATURE_P95_SCALE=${SGPU_COIL_CURVATURE_P95_SCALE}
 )
 
 if(SGPU_ENABLE_NVTX)

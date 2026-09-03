@@ -89,6 +89,10 @@ _AXIS_FLIPPED_REGISTERED_FORMATS = {
     "compact_flexible": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
 }
 
+_RADIUS012_AXIS_FLIPPED_FORMAT = (
+    "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1"
+)
+
 _SCORING_VARIATION = {
     "balanced_stellarator": {"minor_radius": 0.15, "shape": 0.15},
     "compact_flexible": {"minor_radius": 0.10, "shape": 0.20},
@@ -188,6 +192,7 @@ def sample_shaped_prior_prototype(
     target_field_t: float = 1.0,
     sample_role: str = "geometry_review",
     axis_chirality: int = 1,
+    minor_radius_m: float | None = None,
 ) -> ShapedPriorPrototype:
     """Construct a visibly three-dimensional stellarator prior for visual review.
 
@@ -203,6 +208,21 @@ def sample_shaped_prior_prototype(
     if axis_chirality not in (-1, 1):
         raise ValueError("axis_chirality must be -1 or 1")
     parameters = dict(_PRESETS[preset])
+    if minor_radius_m is not None:
+        requested_radius = float(minor_radius_m)
+        if not math.isfinite(requested_radius) or requested_radius <= 0.0:
+            raise ValueError("minor_radius_m must be finite and positive")
+        if (
+            sample_role != "registered_scoring"
+            or preset != "compact_flexible"
+            or axis_chirality != -1
+            or not math.isclose(requested_radius, 0.12, rel_tol=0.0, abs_tol=1.0e-12)
+        ):
+            raise ValueError(
+                "minor_radius_m is registered only for the 0.12 m compact-flexible "
+                "axis-flipped scoring experiment"
+            )
+        parameters["minor_radius"] = requested_radius
     rng = np.random.default_rng(np.random.SeedSequence([int(seed), int(nfp), int(n_base_coils), 2]))
     if sample_role == "registered_scoring":
         if preset not in _REGISTERED_FORMATS:
@@ -313,7 +333,11 @@ def sample_shaped_prior_prototype(
     surface_radius = np.linalg.norm(winding_surface - surface_axis[:, None, :], axis=2).mean(axis=1)
     registered_format = _REGISTERED_FORMATS.get(preset)
     if axis_chirality == -1:
-        registered_format = _AXIS_FLIPPED_REGISTERED_FORMATS.get(preset)
+        registered_format = (
+            _RADIUS012_AXIS_FLIPPED_FORMAT
+            if minor_radius_m is not None
+            else _AXIS_FLIPPED_REGISTERED_FORMATS.get(preset)
+        )
         if sample_role == "registered_scoring" and registered_format is None:
             raise ValueError(f"preset {preset!r} has no registered axis-flipped format")
     metadata: dict[str, Any] = {
@@ -339,6 +363,12 @@ def sample_shaped_prior_prototype(
         ),
         "inner_surface_role": "geometric_plasma_like_reference_only",
         "independent_of_quasr_statistics": True,
+        "minor_radius_center_m": (
+            float(minor_radius_m)
+            if minor_radius_m is not None
+            else float(_PRESETS[preset]["minor_radius"])
+        ),
+        "minor_radius_override": minor_radius_m is not None,
         "axis_radial_coefficients": radial.tolist(),
         "axis_vertical_coefficients": vertical.tolist(),
         "axis_R_peak_to_peak_m": float(np.ptp(cylindrical_radius)),

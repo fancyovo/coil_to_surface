@@ -1500,6 +1500,69 @@ An open critical correction blocks promotion and external reporting.
   code and protocol patches, each against a freshly verified file anchor.
 - Promotion/reporting blocker: none.
 
+## CORR-20260903-90 - Adaptive-scan work used four wrong command wrappers
+
+- Severity/status: low / corrected before result interpretation.
+- Discovered by: Codex while synchronizing and launching the adaptive coil-
+  shrink scan.
+- Errors: two `squeue` calls passed a space-containing custom format through
+  Windows/SSH without preserving it as one argument; two test-only submissions
+  piped a PowerShell CRLF here-string into remote Bash, contaminating the final
+  script argument; and a completed nested `exec_command` session was first
+  polled with the outer `wait` tool instead of `write_stdin`. A later pair of
+  local source reads was also joined with a PowerShell semicolon.
+- Primary evidence: the malformed `squeue` calls exited `1` with
+  `Unrecognized option: %.16P`; both CRLF submissions exited `1` with
+  `Unable to open file` even though `ls` verified the absolute script path;
+  the wrong wait call reported that its cell did not exist. A direct-argument
+  `sbatch --test-only` then succeeded, and `scontrol` verified formal jobs
+  `53207`, `53210`, and `53211` with the intended absolute script and work
+  directory. Both semicolon-joined reads were read-only and succeeded.
+- Corrected fact and scope: scheduler state is queried without an optional
+  custom format when crossing the Windows/SSH boundary. Slurm environment and
+  script arguments are passed directly as argv. Nested execution sessions are
+  resumed with `write_stdin` using their returned session ID.
+- Affected artifacts and retained conclusions: the failed commands created no
+  Slurm job and changed no result. The coarse scan, adaptive scan, two repair
+  runs, source geometry, and live RL job `52977` are unaffected.
+- Containment/regression: the successful test-only calls preceded both formal
+  repair submissions; `scontrol` showed both jobs concurrently `RUNNING` on
+  Students GPUs. Future remote stdin scripts require explicit LF conversion or
+  direct argv and are not used for single-command submissions.
+- Promotion/reporting blocker: none.
+
+## CORR-20260903-91 - Pointwise axis projection did not preserve the intended coil shape
+
+- Severity/status: medium / contained as a diagnostic method; replacement
+  geometry intervention registered before its run.
+- Discovered by: Codex during visual and numerical review of the first coil-
+  shrink scan.
+- Error: the first implementation anchored every sampled coil point to its
+  independently nearest magnetic-axis point. The resulting target curve was
+  no longer order-16 Fourier, so refitting imported axis-following distortion
+  into each coil. This map was treated too early as the main interpretation of
+  the user's request for coils that loosely surround the surface.
+- Primary evidence: the pointwise scan's `scale=0.8` fit had maximum geometric
+  residual `0.0814007 m`; `scale=0.35` reached a `0.0040211 m` minimum tube
+  margin but acquired severe wiggles and native status `no_axis`. A local
+  geometry-only audit of uniform per-coil scaling gave machine-precision fit
+  residuals and, at `scale=0.4`, effective radius `0.1931703 m` with positive
+  `0.0140757 m` minimum tube margin.
+- Corrected fact and scope: jobs `53210/53211` remain valid tests of the
+  pointwise-nearest-axis intervention, including whether ordinary Adam expands
+  those valid starts. They do not by themselves settle the simpler shape-
+  preserving shrink requested by the user.
+- Affected artifacts and retained conclusions: the 50-trajectory population
+  audit, source case-23 full evaluation, ABI-11 scores, and live RL job `52977`
+  remain valid. Pointwise scan rows stay preserved and are labeled diagnostic.
+- Containment/regression: a separate registered protocol applies one exact
+  similarity transform to each base coil about the magnetic-axis point nearest
+  its centroid. Unit tests verify proportional radius change, current
+  preservation, and machine-precision Fourier reconstruction. The final report
+  presents both maps with explicit labels.
+- Promotion/reporting blocker: the report must include the shape-preserving
+  scan before making a conclusion about near-surface coils.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

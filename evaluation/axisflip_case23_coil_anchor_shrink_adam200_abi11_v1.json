@@ -1,0 +1,47 @@
+{
+  "protocol_id": "qh-axisflip-v4-case23-coil-anchor-shrink-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "purpose": "Uniformly shrink each case-23 base coil around the magnetic-axis point nearest its centroid, preserving its Fourier shape, then test direct-data Adam repair.",
+  "source": {
+    "sample_id": "axisflip_case_0000023",
+    "condition": {
+      "nfp": 6,
+      "n_base_coils": 4
+    },
+    "optimizer_protocol": "qh-axisflip-v4-representative-adam2000-64d-abi11-v1",
+    "optimizer_best_iteration": 1985,
+    "optimizer_best_score": 89.55348719871684,
+    "surface_s": 0.81,
+    "surface_volume_m3": 0.10216389125750172,
+    "axis_source": "a=0.08 full-evaluation source fit"
+  },
+  "shrink_scan": {
+    "scales": [1.0, 0.8, 0.6, 0.5, 0.45, 0.4, 0.38, 0.36, 0.34, 0.32, 0.3],
+    "mapping": "For base coil j, p_scaled=a_j+scale*(p-a_j), where a_j is the verified magnetic-axis point nearest the coil centroid.",
+    "shape_contract": "The order-16 Fourier curve undergoes one exact similarity transform; no pointwise axis projection is used.",
+    "currents": "unchanged",
+    "score": "ABI-11 positive-hand QH global-axis screening",
+    "surface_role": "fixed geometric reference from the source field; not re-solved after coil scaling"
+  },
+  "repair": {
+    "candidate_count_maximum": 2,
+    "selection": "Prefer scale 0.4 when it is valid and remains outside the fixed reference surface; fill remaining slot with the next most compact valid outside candidate.",
+    "parameter_space": "exact-unclipped standardized data",
+    "optimizer": "Adam",
+    "updates": 200,
+    "directions": 64,
+    "difference_rule": "centered fresh random orthogonal",
+    "score_endpoints_per_update": 128,
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "target_helicity": "(M,N)=(1,+nfp)",
+    "axis_handling": "global candidate screening followed by strict selected-axis continuation",
+    "parallelism": "independent one-GPU Students jobs run concurrently"
+  },
+  "evaluator": {
+    "abi": 11,
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+  },
+  "default_change": false
+}

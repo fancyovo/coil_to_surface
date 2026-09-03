@@ -10,6 +10,7 @@ from scripts.axisflip_coil_scale import (
     effective_radius_m,
     evaluate_curves,
     scale_about_axis,
+    scale_about_coil_axis_anchor,
 )
 
 
@@ -32,6 +33,25 @@ def test_effective_radius_and_axis_scaling() -> None:
     radii = np.linalg.norm(evaluate_curves(scaled, samples=128)[0, :, :2], axis=1)
     assert np.max(np.abs(radii - 0.8)) < 1.0e-12
     assert scaled[0, -1] == source[0, -1]
+
+
+def test_per_coil_axis_anchor_is_an_exact_similarity() -> None:
+    source = np.concatenate((circle_token(2.0), circle_token(1.0)), axis=0)
+    source[0, 0] = 3.0
+    source[1, 0] = -4.0
+    axis = np.asarray(((3.0, 0.0, 0.0), (-4.0, 0.0, 0.0)))
+    scaled, diagnostics = scale_about_coil_axis_anchor(
+        source, axis, 0.25, samples=256
+    )
+    assert diagnostics["fit_max_m"] < 1.0e-12
+    lengths = np.asarray(
+        [
+            np.linalg.norm(np.roll(curve, -1, axis=0) - curve, axis=1).sum()
+            for curve in evaluate_curves(scaled, samples=4096)
+        ]
+    )
+    assert lengths / (2.0 * np.pi) == pytest.approx((0.5, 0.25), rel=2.0e-6)
+    assert scaled[:, -1] == pytest.approx(source[:, -1])
 
 
 def test_coil_score_decomposition_matches_native_weighting() -> None:

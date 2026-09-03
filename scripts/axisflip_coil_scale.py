@@ -194,6 +194,35 @@ def scale_about_axis(
     return fitted_tokens, fit
 
 
+def scale_about_coil_axis_anchor(
+    tokens: np.ndarray,
+    axis_points: np.ndarray,
+    scale: float,
+    *,
+    samples: int = 1024,
+) -> tuple[np.ndarray, dict[str, float]]:
+    if not 0.0 < scale <= 1.0:
+        raise ValueError("scale must lie in (0,1]")
+    source_points = evaluate_curves(tokens, samples=samples)
+    coil_centers = np.mean(source_points, axis=1)
+    nearest, center_distance = nearest_reference(
+        coil_centers[:, None, :], axis_points
+    )
+    anchors = axis_points[nearest[:, 0]]
+    scaled_points = anchors[:, None, :] + scale * (
+        source_points - anchors[:, None, :]
+    )
+    fitted_tokens, fit = fit_curves(scaled_points, tokens[:, -1])
+    fit.update(
+        {
+            "requested_scale": float(scale),
+            "anchor_definition": "nearest magnetic-axis point to each base-coil centroid",
+            "coil_center_axis_distance_mean_m": float(np.mean(center_distance)),
+        }
+    )
+    return fitted_tokens, fit
+
+
 def rotate_z(points: np.ndarray, angle: float) -> np.ndarray:
     points = np.asarray(points, dtype=np.float64)
     cosine = math.cos(angle)

@@ -463,3 +463,17 @@ updates, 64 fresh orthogonal directions, `h=0.0025`, learning rate `0.01`, and
 beta `(0.7,0.999)`. Frozen specification:
 `evaluation/axisflip_case23_coil_shrink_adam200_abi11_v1.json`. This experiment
 does not change the current QH default.
+
+Protocol
+`qh-axisflip-v4-case23-coil-anchor-shrink-adam200-64d-abi11-v1` is the
+shape-preserving continuation of the case-23 geometry intervention. For each
+base coil it selects the verified magnetic-axis point nearest the coil
+centroid, then applies one uniform similarity transform about that fixed point.
+This retains the order-16 Fourier shape to numerical precision and leaves all
+currents unchanged. The scan emphasizes `scale=0.4`, which the geometry-only
+preflight predicts will give an effective coil radius near `0.193 m` while
+remaining outside the fixed source `s=0.81` surface. Up to two valid outside
+candidates enter the same exact-data Adam200/64-direction ABI-11 repair used by
+the pointwise diagnostic. Frozen specification:
+`evaluation/axisflip_case23_coil_anchor_shrink_adam200_abi11_v1.json`. This
+experiment does not change the current QH default.

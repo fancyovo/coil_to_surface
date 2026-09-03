@@ -28,6 +28,7 @@ from scripts.axisflip_coil_scale import (
     load_full_axis_points,
     rotate_z,
     scale_about_axis,
+    scale_about_coil_axis_anchor,
     tokens_from_raw,
 )
 from scripts.native_score_runtime import token_case, write_json
@@ -36,7 +37,12 @@ from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_start
 from scripts.sample_axis_surface_prior import compact_result
 
 
-PROTOCOL_ID = "qh-axisflip-v4-case23-axis-centered-coil-shrink-adam200-64d-abi11-v1"
+POINTWISE_PROTOCOL_ID = "qh-axisflip-v4-case23-axis-centered-coil-shrink-adam200-64d-abi11-v1"
+COIL_ANCHOR_PROTOCOL_ID = "qh-axisflip-v4-case23-coil-anchor-shrink-adam200-64d-abi11-v1"
+PROTOCOL_BY_ANCHOR_MODE = {
+    "pointwise-nearest-axis": POINTWISE_PROTOCOL_ID,
+    "per-coil-axis-anchor": COIL_ANCHOR_PROTOCOL_ID,
+}
 
 
 def parse_scales(value: str) -> list[float]:
@@ -133,6 +139,7 @@ def write_geometry_html(
     axis_points: np.ndarray,
     nfp: int,
     scale: float,
+    label: str | None = None,
 ) -> None:
     surface, triangles = mesh_for_html(one_period_surface, nfp)
     payload = {
@@ -144,12 +151,13 @@ def write_geometry_html(
         "nfp": nfp,
     }
     encoded = json.dumps(payload, separators=(",", ":"), allow_nan=False)
+    display_label = label or f"coil scale {scale:.3f}"
     template = """<!doctype html><html><head><meta charset="utf-8"><title>Axis-centered coil shrink</title>
 <style>html,body,#view{width:100%;height:100%;margin:0;overflow:hidden;background:#f5f5f2}#label{position:fixed;left:16px;top:14px;padding:9px 11px;background:#fffffff0;border:1px solid #2223;font:14px/1.35 Arial,sans-serif;color:#171717;z-index:2}</style>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script></head><body><div id="view"></div><div id="label">axisflip_case_0000023<br>coil scale __SCALE__<br>reference surface s=0.81</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script></head><body><div id="view"></div><div id="label">axisflip_case_0000023<br>__LABEL__<br>reference surface s=0.81</div>
 <script type="module">import * as THREE from 'three';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';const data=__DATA__;const scene=new THREE.Scene();scene.background=new THREE.Color(0xf5f5f2);const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.001,100);const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.getElementById('view').appendChild(renderer.domElement);const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(data.surface,3));sg.setIndex(data.triangles);sg.computeVertexNormals();scene.add(new THREE.Mesh(sg,new THREE.MeshStandardMaterial({color:0x8cc5d6,side:THREE.DoubleSide,transparent:true,opacity:.5,roughness:.8})));const colors=[0x9f2b2b,0x205f9a,0x2f7d4b,0x9a6a20];for(let i=0;i<data.coils.length;i++){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(data.coils[i],3));scene.add(new THREE.LineLoop(g,new THREE.LineBasicMaterial({color:colors[Math.floor(i/(2*data.nfp))%colors.length]})));}const ag=new THREE.BufferGeometry();ag.setAttribute('position',new THREE.Float32BufferAttribute(data.axis,3));scene.add(new THREE.LineLoop(ag,new THREE.LineBasicMaterial({color:0x222222})));scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2.2));const key=new THREE.DirectionalLight(0xffffff,2);key.position.set(2,-3,4);scene.add(key);const bounds=new THREE.Box3().setFromObject(scene),center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3()).length();camera.position.set(center.x+size,center.y-1.2*size,center.z+.75*size);camera.near=size/1000;camera.far=size*20;camera.updateProjectionMatrix();const controls=new OrbitControls(camera,renderer.domElement);controls.target.copy(center);controls.enableDamping=true;function draw(){controls.update();renderer.render(scene,camera);requestAnimationFrame(draw)}draw();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});</script></body></html>"""
     path.write_text(
-        template.replace("__DATA__", encoded).replace("__SCALE__", f"{scale:.3f}"),
+        template.replace("__DATA__", encoded).replace("__LABEL__", display_label),
         encoding="utf-8",
     )
 
@@ -162,6 +170,7 @@ def write_geometry_png(
     axis_points: np.ndarray,
     nfp: int,
     scale: float,
+    label: str | None = None,
 ) -> None:
     import matplotlib
 
@@ -189,7 +198,8 @@ def write_geometry_png(
     axis.set_box_aspect((1, 1, 1))
     axis.set_axis_off()
     axis.view_init(elev=27, azim=-48)
-    axis.set_title(f"Coil scale {scale:.3f}; original accepted surface s=0.81")
+    title = label or f"Coil scale {scale:.3f}"
+    axis.set_title(f"{title}; original accepted surface s=0.81")
     figure.tight_layout(pad=0.2)
     figure.savefig(path, dpi=190, bbox_inches="tight", pad_inches=0.03)
     plt.close(figure)
@@ -214,6 +224,11 @@ def main() -> None:
     parser.add_argument("--expected-checkpoint-sha", required=True)
     parser.add_argument("--expected-source-best-sha", required=True)
     parser.add_argument("--expected-surface-sha", required=True)
+    parser.add_argument(
+        "--anchor-mode",
+        choices=tuple(PROTOCOL_BY_ANCHOR_MODE),
+        default="pointwise-nearest-axis",
+    )
     parser.add_argument("--scales", type=parse_scales, default=parse_scales("1.0,0.8,0.65,0.55,0.50,0.45,0.40,0.35,0.30,0.25,0.20"))
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
@@ -234,8 +249,9 @@ def main() -> None:
         actual = file_sha256(path)
         if actual != expected:
             raise RuntimeError(f"hash mismatch for {path}: {actual} != {expected}")
+    protocol_id = PROTOCOL_BY_ANCHOR_MODE[args.anchor_mode]
     protocol = json.loads(args.protocol.read_text(encoding="utf-8"))
-    if protocol.get("protocol_id") != PROTOCOL_ID:
+    if protocol.get("protocol_id") != protocol_id:
         raise RuntimeError("protocol ID mismatch")
     if args.output_dir.exists():
         raise FileExistsError(args.output_dir)
@@ -270,7 +286,15 @@ def main() -> None:
 
     rows = []
     for scale in args.scales:
-        scaled, fit = scale_about_axis(source_tokens, axis_points, scale, samples=1024)
+        if args.anchor_mode == "pointwise-nearest-axis":
+            scaled, fit = scale_about_axis(
+                source_tokens, axis_points, scale, samples=1024
+            )
+        else:
+            scaled, fit = scale_about_coil_axis_anchor(
+                source_tokens, axis_points, scale, samples=1024
+            )
+        fit["anchor_mode"] = args.anchor_mode
         parameters, current_l1, represented, roundtrip = exact_standardized_start(
             scaled, normalizer, condition=(nfp, nc)
         )
@@ -302,7 +326,7 @@ def main() -> None:
         tag = scale_tag(scale)
         case["data_prior_screening"] = {
             "format": "axisflip_case23_axis_centered_shrink_start_v1",
-            "protocol_id": PROTOCOL_ID,
+            "protocol_id": protocol_id,
             "normalized_coil_tokens": parameters.tolist(),
             "current_l1_a": current_l1,
             "native_score": native,
@@ -353,7 +377,7 @@ def main() -> None:
 
     manifest = {
         "format": "axisflip_case23_axis_centered_shrink_scan_v1",
-        "protocol_id": PROTOCOL_ID,
+        "protocol_id": protocol_id,
         "status": "complete",
         "code_commit": commit,
         "source": {
@@ -370,7 +394,12 @@ def main() -> None:
         "score_library_sha256": args.expected_score_lib_sha,
         "checkpoint_sha256": args.expected_checkpoint_sha,
         "transformation": {
-            "definition": "p_scaled=a_nearest+scale*(p-a_nearest)",
+            "anchor_mode": args.anchor_mode,
+            "definition": (
+                "p_scaled=a_nearest(point)+scale*(p-a_nearest(point))"
+                if args.anchor_mode == "pointwise-nearest-axis"
+                else "p_scaled=a_nearest(coil_centroid)+scale*(p-a_nearest(coil_centroid))"
+            ),
             "axis": "full verified magnetic axis from the a=0.08 source fit",
             "refit": "least-squares order-16 Fourier coefficients at fixed coil parameter",
             "currents": "unchanged",

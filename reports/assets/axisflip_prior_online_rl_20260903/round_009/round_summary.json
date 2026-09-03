@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 9,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 69.19750088197881,
+    "score_median_valid": 69.19750088197881,
+    "score_p90_all": 73.21908961030806,
+    "volume_qs_median_valid": 40.0803748347154,
+    "coil_median_valid": 66.67018755468342,
+    "volume_qs_coil_correlation_valid": -0.04042737011699467
+  },
+  "adam20": {
+    "best_score_median_valid": 75.73173574581263,
+    "best_score_p90_valid": 78.1547301865733,
+    "gain_median_valid": 6.440404221483092,
+    "volume_qs_median_valid": 52.987174218525595,
+    "coil_median_valid": 67.10482792284063,
+    "volume_qs_coil_correlation_valid": 0.0626193511603497,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 2
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_009/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 3.4390318113458016,
+      "descriptor_total_variance": 37.48065335385439,
+      "nearest_distance_p10": 2.2928975620103405,
+      "nearest_distance_median": 3.568024657920807,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 15.823530976034418,
+      "descriptor_total_variance": 75.63247898062565,
+      "nearest_distance_p10": 6.055044531394132,
+      "nearest_distance_median": 7.763755376665822,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.8385366946458817,
+    "score_gpu_s": 266.24425418674946,
+    "adam20_gpu_s": 9395.795661725104
+  },
+  "finished_unix_s": 1788396115.6666846
+}

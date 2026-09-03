@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 13,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 69.93948954065522,
+    "score_median_valid": 69.93948954065522,
+    "score_p90_all": 72.4760368066923,
+    "volume_qs_median_valid": 39.55763256984467,
+    "coil_median_valid": 66.22312809916606,
+    "volume_qs_coil_correlation_valid": -0.23537815381819707
+  },
+  "adam20": {
+    "best_score_median_valid": 76.00080938276321,
+    "best_score_p90_valid": 77.8676389836676,
+    "gain_median_valid": 6.6146795979745505,
+    "volume_qs_median_valid": 52.7400946570159,
+    "coil_median_valid": 67.33701865885507,
+    "volume_qs_coil_correlation_valid": -0.2170978750660128,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_013/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 3.9530698438168415,
+      "descriptor_total_variance": 38.07425821662392,
+      "nearest_distance_p10": 2.2368851344798277,
+      "nearest_distance_median": 3.093055981345598,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 15.874607939901532,
+      "descriptor_total_variance": 76.01796257161604,
+      "nearest_distance_p10": 6.313459404413003,
+      "nearest_distance_median": 7.510602774039112,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.1355039849877357,
+    "score_gpu_s": 265.7238285392523,
+    "adam20_gpu_s": 9415.812279567122
+  },
+  "finished_unix_s": 1788406092.1216347
+}

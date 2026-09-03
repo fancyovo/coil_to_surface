@@ -191,19 +191,22 @@
   manifest verification.
 - Corrected experimental commit `34a6148` converged q0 distillation at epoch
   201/step 35376 and passed an independent teacher-versus-Flow ABI-11 audit.
-  P107 job `52977` then completed reportable online rounds 0--8: initial-score
-  median improved `63.6751 -> 68.9784`, score-at-least-70 improved
-  `4/64 -> 22/64`, and rounds 4--8 were fully valid. Near duplicates remained
-  zero while descriptor variance contracted `20.6%`; the job continues under
-  monitoring. See `reports/axisflip_prior_online_rl_results_20260903.md`.
+  P107 job `52977` completed reportable online rounds 0--21: initial-score
+  median improved `63.6751 -> 71.9023`, score-at-least-70 improved
+  `4/64 -> 53/64`, and 1394/1408 samples were valid. All 22 near-duplicate
+  rates were zero; effective rank changed `-2.0%` while descriptor variance
+  contracted `16.6%`. The job continues under monitoring. See
+  `reports/axisflip_prior_online_rl_results_20260903.md`.
 - Frozen-policy latent experiment
   `qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1` uses the
   atomically complete round-12 EMA checkpoint (source round 11, SHA-256
   `1ffbd632...537b72`) at fixed `nfp=8,nc=3`. Only the Flow checkpoint differs
   from the current screen32/Adam200/64D/RK4-128 latent recipe; the live RL job
   remains untouched. Initial array `53046` stopped before Adam because of a
-  QUASR-only checkpoint-step guard; corrected Students array `53049` passed
-  both strict step-0 gates at commit `8f5d57a`. Verify live state directly.
+  QUASR-only checkpoint-step guard. Corrected Students array `53049` completed
+  all eight Adam200 trajectories at commit `8f5d57a`; best-score median was
+  `78.2001`, maximum was `79.6088`, and 204800/204800 gradient endpoints were
+  `ok`. See `reports/axisflip_rl_round12_latent_adam200_results_20260903.md`.
 - Independent positive-hand Adam2000 continuations of full-evaluated v4 cases
   18 and 23 completed 2,000 updates each as Students jobs `52971/52972`, reaching
   native screening bests `87.6821/89.5535`. Both traded about 5--6 coil points

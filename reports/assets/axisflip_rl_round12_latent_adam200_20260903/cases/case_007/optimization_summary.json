@@ -1,0 +1,136 @@
+{
+  "status": "ok",
+  "stop_reason": "completed_iterations",
+  "initial_score": 78.45498511512395,
+  "final_score": 73.84257368985268,
+  "best_score": 78.85423568463571,
+  "best_iteration": 13,
+  "completed_iterations": 200,
+  "completed_adam_steps": 200,
+  "completed_optimizer_steps": 200,
+  "total_wall_s": 1436.2576453574002,
+  "initial_decode_wall_s": 1.4080217331647873,
+  "initial_score_wall_s": 1.2038512900471687,
+  "mean_iteration_wall_s": 7.055839300882071,
+  "manifest": {
+    "protocol": {
+      "id": "qh-flow-screen32-adam200-64d-abi11-v1",
+      "status": "current-default",
+      "stage": "optimization",
+      "requirements": {
+        "native_score_abi": 11,
+        "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+      },
+      "actual": {
+        "parameter_space": "latent",
+        "optimizer": "adam",
+        "iterations": 200,
+        "directions": 64,
+        "perturbation": 0.005,
+        "learning_rate": 0.02,
+        "beta1": 0.7,
+        "beta2": 0.999,
+        "flow_steps": 128,
+        "gradient_mode": "random-orthogonal",
+        "difference": "centered",
+        "native_score_abi": 11,
+        "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+      },
+      "differences_from_current": {}
+    },
+    "repository": {
+      "commit": "8f5d57ac6030aa6cb21c36ec805eb240496a7a01",
+      "tracked_dirty": false,
+      "available": true
+    },
+    "algorithm": "adam_with_query_batched_local_gradient",
+    "optimizer": "adam",
+    "parameter_space": "latent",
+    "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+    "formal_objective": "complete native QH score for every accepted center",
+    "initial_case": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_rl_round12_latent_adam200_20260903_v2_8f5d57a/worker_01/cases/case_007/screening/selected_start.json",
+    "initial_case_sha256": "04251b000b8b3a2daa53c6c02d239fa63263989c56e5d56bf179130325052b47",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_online_rl_nfp8_nc3_20260903_34a6148/checkpoints/round_012.pt",
+    "checkpoint_sha256": "1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72",
+    "checkpoint_expectation": {
+      "step": 36616,
+      "sha256": "1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72"
+    },
+    "native_lib": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "native_lib_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "native_score": {
+      "abi": 11,
+      "validated_default_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "nfp": 8,
+    "n_base_coils": 3,
+    "target_helicity": [
+      1,
+      8
+    ],
+    "iterations": 200,
+    "max_wall_s": 7200.0,
+    "flow": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32",
+      "use": "every gradient endpoint and accepted center"
+    },
+    "flow_pipeline": true,
+    "coordinate_gradient": {
+      "dimension": 300,
+      "mode": "random-orthogonal",
+      "random_directions": 64,
+      "endpoint_count": 128,
+      "perturbation": 0.005,
+      "difference": "centered",
+      "psi_grid": 48,
+      "psi_iterations": 4,
+      "alpha_iterations": 4,
+      "formal_surface_theta_count": 128,
+      "local_surface_theta_count": 64
+    },
+    "adam": {
+      "learning_rate": 0.02,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "epsilon": 1e-08,
+      "weight_decay": 0.0
+    },
+    "bfgs": {
+      "initial_trust_rms": 0.01,
+      "min_trust_rms": 1e-05,
+      "max_trust_rms": 0.05,
+      "trust_growth": 1.2,
+      "trust_shrink": 0.5,
+      "min_improvement": 0.0
+    },
+    "seed": 202609031215,
+    "axis_policy": "recorded strict mixed-precision continuation from step 0",
+    "recorded_initial_score_tolerance": 0.1,
+    "devices": {
+      "flow": 0,
+      "score": 0
+    },
+    "initial_metadata_keys": [
+      "flow_prior_screening",
+      "nfp",
+      "raw"
+    ],
+    "initial_consistency_gate": {
+      "recorded_score": 78.41989611647229,
+      "optimizer_score": 78.45498511512395,
+      "absolute_delta": 0.03508899865165915,
+      "tolerance": 0.1,
+      "recorded_axis_hint": [
+        1.0665450898314088,
+        3.1262542896426707e-09
+      ],
+      "optimizer_axis": [
+        1.0665231941902058,
+        1.4940015597453499e-09
+      ],
+      "axis_hint_distance": 2.1895641263868825e-05
+    }
+  }
+}

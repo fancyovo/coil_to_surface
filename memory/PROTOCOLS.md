@@ -367,13 +367,14 @@ round. This experiment is not a default change. Frozen specification:
 The corrected formal run at commit `34a6148` converged its q0 distillation at
 epoch 201/global step 35376 and passed the independent 128-versus-128 teacher/
 Flow ABI-11 audit. The accepted reporting snapshot contains complete online
-rounds 0 through 8 only: 576 generated starts, 563 valid. Initial-score median
-rose from `63.6751` to `68.9784`, initial score-at-least-70 count rose from
-`4/64` to `22/64`, and rounds 4 through 8 were each `64/64` valid. Initial
-volume-QS and coil medians changed by `+7.7766` and `+1.8787`. Near-duplicate
-rate remained zero; descriptor variance fell by `20.6%`, a monitored mild
-contraction without evidence of catastrophic collapse in this snapshot. P107
-job `52977` remained running after the snapshot. Canonical report:
+rounds 0 through 21: 1408 generated starts, 1394 valid. Initial-score median
+rose from `63.6751` to `71.9023`, initial score-at-least-70 count rose from
+`4/64` to `53/64`. Initial volume-QS and coil medians changed by `+12.7776`
+and `+2.7805`. Near-duplicate rate remained zero; effective rank changed by
+`-2.0%` while descriptor variance fell by `16.6%`, a monitored contraction
+without evidence of catastrophic collapse
+in this snapshot. P107 job `52977` remained running after the snapshot.
+Canonical report:
 `reports/axisflip_prior_online_rl_results_20260903.md`.
 
 Protocol `qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1` is a
@@ -395,10 +396,13 @@ completed screen32, then a QUASR-only checkpoint-step guard rejected the RL
 checkpoint before optimizer step 0. Corrected commit `8f5d57a` retains step
 `30000` as the default expectation while allowing this registered runner to
 pin step `36616` and the exact checkpoint hash. Replacement array `53049`
-passed checkpoint, score-library, screening-axis, step-0 score, 64-direction
-endpoint, and pipeline gates on both workers. Its run root is
+completed two concurrent workers and all eight Adam200 trajectories. All
+204800 gradient endpoints were `ok`; best-score median was `78.2001`, maximum
+was `79.6088`, and 4/8 trajectories reached 78. The screen-to-step-0 score
+delta remained below the `0.1` gate for every case. Its run root is
 `/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_rl_round12_latent_adam200_20260903_v2_8f5d57a`;
-job state and final counts must be verified directly.
+canonical report:
+`reports/axisflip_rl_round12_latent_adam200_results_20260903.md`.
 
 Protocol `qh-axisflip-v4-representative-adam2000-64d-abi11-v1` is a separate
 long-horizon continuation of the two v4 representatives already subjected to

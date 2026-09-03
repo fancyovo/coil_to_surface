@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 21,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 71.90230703836167,
+    "score_median_valid": 71.90230703836167,
+    "score_p90_all": 74.36330306679758,
+    "volume_qs_median_valid": 43.76572197046741,
+    "coil_median_valid": 66.89318921616994,
+    "volume_qs_coil_correlation_valid": 0.09973526053511955
+  },
+  "adam20": {
+    "best_score_median_valid": 75.89823658744062,
+    "best_score_p90_valid": 78.0010433255792,
+    "gain_median_valid": 3.517545939495129,
+    "volume_qs_median_valid": 52.784337726088,
+    "coil_median_valid": 67.62560080220044,
+    "volume_qs_coil_correlation_valid": 0.061690422031597705,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_021/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.022970212992529,
+      "descriptor_total_variance": 33.787491537057065,
+      "nearest_distance_p10": 2.3945323342296105,
+      "nearest_distance_median": 3.497523695144033,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 19.008266052081446,
+      "descriptor_total_variance": 72.4985129617437,
+      "nearest_distance_p10": 6.073617675804732,
+      "nearest_distance_median": 7.665134460628728,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.9323336966335773,
+    "score_gpu_s": 266.04631296545267,
+    "adam20_gpu_s": 9148.462419953197
+  },
+  "finished_unix_s": 1788425632.786991
+}

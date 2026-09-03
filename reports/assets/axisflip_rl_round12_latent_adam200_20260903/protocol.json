@@ -1,0 +1,61 @@
+{
+  "protocol_id": "qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-03",
+  "purpose": "Test whether the frozen round-12 online-RL Flow supplies useful starts for the established Flow-latent Adam200 recipe.",
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3,
+    "fixed_for_this_experiment": true
+  },
+  "frozen_flow": {
+    "source_run": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_online_rl_nfp8_nc3_20260903_34a6148",
+    "checkpoint": "checkpoints/round_012.pt",
+    "outer_round": 12,
+    "completed_source_round": 11,
+    "checkpoint_step": 36616,
+    "weights": "ema",
+    "sha256": "1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72",
+    "immutability": "The numbered checkpoint was atomically written and is selected by exact SHA-256; the live RL job is neither changed nor stopped."
+  },
+  "screening": {
+    "candidate_count_per_trajectory": 32,
+    "latent_prior": "independent standard normal",
+    "selection": "highest valid ABI-11 native score",
+    "flow_decode": "FP32 RK4-128"
+  },
+  "optimization": {
+    "parameter_space": "Flow latent",
+    "optimizer": "Adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal centered directions per update",
+    "perturbation": 0.005,
+    "learning_rate": 0.02,
+    "beta": [0.7, 0.999],
+    "flow_decode": "FP32 RK4-128 with pipelined accepted-center and next-gradient endpoint decoding",
+    "axis_policy": "global screening axis is reused as a strict optimizer step-0 hint; maximum score difference is 0.1",
+    "evaluator": "ABI-11 axis-circulation and cubic-iota native score",
+    "target_helicity": [1, 8]
+  },
+  "sample_plan": {
+    "worker_count": 2,
+    "trajectories_per_worker": 4,
+    "total_trajectories": 8,
+    "parallelism": "Two independent one-GPU Students workers run concurrently; each GPU executes its four trajectories sequentially.",
+    "seed_base": 202609031200,
+    "case_index_formula": "worker_index + 2 * local_index",
+    "screen_seed_formula": "seed_base + 2 * case_index",
+    "optimizer_seed_formula": "screen_seed + 1"
+  },
+  "resources": {
+    "partition": "Students",
+    "account": "stu",
+    "qos": "qos_stu_medium_2gpu",
+    "per_worker": "8 CPU, 1 RTX5090 GPU, 48G memory",
+    "array": "0-1",
+    "wall_limit": "3 hours"
+  },
+  "comparison_scope": "Optimizer mechanics match qh-flow-screen32-adam200-64d-abi11-v1. The frozen Flow checkpoint and fixed nfp=8,nc=3 condition identify this as a separate experiment.",
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

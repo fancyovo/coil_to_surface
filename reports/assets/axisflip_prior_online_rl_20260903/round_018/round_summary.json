@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 18,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 70.56282624758535,
+    "score_median_valid": 70.56282624758535,
+    "score_p90_all": 73.28481574990006,
+    "volume_qs_median_valid": 40.85073403909695,
+    "coil_median_valid": 66.91699269870745,
+    "volume_qs_coil_correlation_valid": -0.22180429831720097
+  },
+  "adam20": {
+    "best_score_median_valid": 76.16423038359689,
+    "best_score_p90_valid": 77.5874377018896,
+    "gain_median_valid": 5.524032737661365,
+    "volume_qs_median_valid": 53.232221855975766,
+    "coil_median_valid": 67.30841306891071,
+    "volume_qs_coil_correlation_valid": -0.0866348209593467,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_018/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 6.574961017429665,
+      "descriptor_total_variance": 27.81057219227778,
+      "nearest_distance_p10": 2.2210487157096863,
+      "nearest_distance_median": 3.197346344809158,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 23.188799387003247,
+      "descriptor_total_variance": 70.96570950197744,
+      "nearest_distance_p10": 6.166706886967107,
+      "nearest_distance_median": 7.883498685504546,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.1371025256812572,
+    "score_gpu_s": 265.70362732186913,
+    "adam20_gpu_s": 9233.427017118782
+  },
+  "finished_unix_s": 1788418312.424544
+}

@@ -89,11 +89,12 @@ reports and immutable archives retain the detailed record.
   `0.02379`. Evidence is appended to the same v4 report.
 - 2026-09-03: 200,000 fixed-condition (`nfp=8,nc=3`) compact-v4 teacher samples
   supported converged q0 Flow distillation and an independent ABI-11 audit.
-  Online Adam20 reward-weighted training completed nine reportable rounds by
-  the first snapshot. Initial-score median rose `63.6751 -> 68.9784`, initial
-  score-at-least-70 rose `4/64 -> 22/64`, and late snapshot rounds were fully
-  valid. Diversity showed mild variance contraction with zero near duplicates,
-  so the live run continued. See
+  Online Adam20 reward-weighted training completed 22 reportable rounds by the
+  second snapshot. Initial-score median rose `63.6751 -> 71.9023`, initial
+  score-at-least-70 rose `4/64 -> 53/64`, and 1394/1408 samples were valid.
+  All near-duplicate rates were zero; descriptor variance contracted `16.6%`
+  while effective rank remained within `2.0%` of round 0, so the live run
+  continued. See
   `../reports/axisflip_prior_online_rl_results_20260903.md`.
 - 2026-09-03: the atomically complete online-RL `round_012.pt` EMA checkpoint
   was frozen by SHA-256 for a separate eight-trajectory Students experiment.
@@ -101,8 +102,11 @@ reports and immutable archives retain the detailed record.
   `nfp=8,nc=3`; later live-policy updates cannot alter the input.
 - 2026-09-03: initial frozen-policy array `53046` exposed and preserved a
   QUASR-only hardcoded checkpoint-step guard before Adam. Corrected array
-  `53049` passed both workers' step-0 consistency gates and began concurrent
-  64-direction pipelined Adam200 at commit `8f5d57a`; see `CORR-20260903-82`.
+  `53049` completed all eight 64-direction pipelined Adam200 trajectories at
+  commit `8f5d57a`. Best-score median was `78.2001`, maximum was `79.6088`, and
+  every trajectory improved its volume-QS component. See
+  `../reports/axisflip_rl_round12_latent_adam200_results_20260903.md` and
+  `CORR-20260903-82`.
 
 ## Evidence Routes
 

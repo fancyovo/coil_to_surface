@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 14,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 69.09168083762509,
+    "score_median_valid": 69.09168083762509,
+    "score_p90_all": 72.97853585897369,
+    "volume_qs_median_valid": 38.15509740204696,
+    "coil_median_valid": 66.68465175833359,
+    "volume_qs_coil_correlation_valid": -0.11026254084397778
+  },
+  "adam20": {
+    "best_score_median_valid": 75.61522938989917,
+    "best_score_p90_valid": 77.70184557415661,
+    "gain_median_valid": 6.233926826027961,
+    "volume_qs_median_valid": 52.34160984638869,
+    "coil_median_valid": 67.04729471741666,
+    "volume_qs_coil_correlation_valid": -0.08713797100517208,
+    "threshold_counts": {
+      "50": 64,
+      "70": 63,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_014/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.000338229437449,
+      "descriptor_total_variance": 37.687584558541005,
+      "nearest_distance_p10": 2.1577664749375822,
+      "nearest_distance_median": 3.3616998405334537,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 17.261850459388878,
+      "descriptor_total_variance": 73.40803774657041,
+      "nearest_distance_p10": 6.755181548381467,
+      "nearest_distance_median": 7.859449717042234,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.2139018699526787,
+    "score_gpu_s": 265.5460354760289,
+    "adam20_gpu_s": 9400.961982034147
+  },
+  "finished_unix_s": 1788408573.510223
+}

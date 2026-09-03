@@ -1,0 +1,85 @@
+{
+  "format": "axisflip_rl_frozen_latent_adam200_worker_v1",
+  "protocol": {
+    "id": "qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1",
+    "status": "registered-experimental",
+    "default_impact": "none",
+    "specification": "evaluation/axisflip_rl_round12_latent_adam200_abi11_v1.json",
+    "specification_sha256": "0c720df7fdb3ecccdcccdc555f03413365cdba7a06c8db1370841a51fb99276f"
+  },
+  "repository": {
+    "commit": "8f5d57ac6030aa6cb21c36ec805eb240496a7a01",
+    "tracked_dirty": false
+  },
+  "slurm": {
+    "job_id": "53049",
+    "array_job_id": "53049",
+    "array_task_id": "1"
+  },
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3
+  },
+  "frozen_flow": {
+    "source": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_online_rl_nfp8_nc3_20260903_34a6148/checkpoints/round_012.pt",
+    "sha256": "1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72",
+    "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+    "stage": "online_policy",
+    "outer_round": 12,
+    "step": 36616,
+    "model_config": {
+      "token_dim": 100,
+      "width": 256,
+      "layers": 6,
+      "heads": 8,
+      "hidden": 704,
+      "max_nfp": 16
+    },
+    "weights": "ema",
+    "decode": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32"
+    }
+  },
+  "evaluator": {
+    "library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "abi": 11,
+    "target_helicity": [
+      1,
+      8
+    ]
+  },
+  "screening": {
+    "candidate_count": 32,
+    "parameter_space": "latent"
+  },
+  "optimization": {
+    "parameter_space": "latent",
+    "optimizer": "adam",
+    "iterations": 200,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal centered directions per update",
+    "perturbation": 0.005,
+    "learning_rate": 0.02,
+    "beta": [
+      0.7,
+      0.999
+    ],
+    "flow_pipeline": true,
+    "recorded_initial_score_tolerance": 0.1
+  },
+  "parallelism": {
+    "worker_index": 1,
+    "worker_count": 2,
+    "case_indices": [
+      1,
+      3,
+      5,
+      7
+    ],
+    "serial_reason_within_worker": "Each worker owns one GPU; independent workers run concurrently, while trajectories sharing that GPU run sequentially."
+  },
+  "started_unix_s": 1788403251.0299687
+}

@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 11,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 67.75404915297611,
+    "score_median_valid": 67.75404915297611,
+    "score_p90_all": 71.99124005685071,
+    "volume_qs_median_valid": 37.62437935001832,
+    "coil_median_valid": 66.47954372896316,
+    "volume_qs_coil_correlation_valid": 0.07652628080575312
+  },
+  "adam20": {
+    "best_score_median_valid": 75.63735354983442,
+    "best_score_p90_valid": 77.73309272126984,
+    "gain_median_valid": 7.448074160610162,
+    "volume_qs_median_valid": 52.86913271977528,
+    "coil_median_valid": 67.31626528358228,
+    "volume_qs_coil_correlation_valid": 0.14481711843131204,
+    "threshold_counts": {
+      "50": 64,
+      "70": 63,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_011/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.934143416885422,
+      "descriptor_total_variance": 31.718171407241407,
+      "nearest_distance_p10": 2.0895054315629946,
+      "nearest_distance_median": 3.3731248722043663,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 24.107341231646974,
+      "descriptor_total_variance": 73.19014861075681,
+      "nearest_distance_p10": 6.314519981908606,
+      "nearest_distance_median": 7.654549537591782,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.704591605812311,
+    "score_gpu_s": 265.5761645697057,
+    "adam20_gpu_s": 9679.815740533173
+  },
+  "finished_unix_s": 1788401100.1806319
+}

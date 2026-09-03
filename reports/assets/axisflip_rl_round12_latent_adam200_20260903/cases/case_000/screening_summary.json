@@ -1,0 +1,63 @@
+{
+  "protocol": {
+    "id": "qh-flow-screen32-adam200-64d-abi11-v1",
+    "status": "current-default",
+    "stage": "screening",
+    "requirements": {
+      "native_score_abi": 11,
+      "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "actual": {
+      "candidate_count": 32,
+      "flow_steps": 128,
+      "native_score_abi": 11,
+      "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "differences_from_current": {}
+  },
+  "status": "ok",
+  "nfp": 8,
+  "n_base_coils": 3,
+  "parameter_space": "latent",
+  "candidate_count": 32,
+  "valid_candidate_count": 32,
+  "selected_index": 12,
+  "selected_score": 74.70672867509411,
+  "status_counts": {
+    "ok": 32
+  },
+  "timing": {
+    "parameter_mapping_wall_s": 2.406059131026268,
+    "decode_wall_s": 2.406059131026268,
+    "score_sum_wall_s": 131.65669574216008,
+    "total_wall_s": 134.06275487318635
+  },
+  "provenance": {
+    "repository": {
+      "commit": "8f5d57ac6030aa6cb21c36ec805eb240496a7a01",
+      "tracked_dirty": false,
+      "available": true
+    },
+    "checkpoint_sha256": "1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72",
+    "checkpoint_step": 36616,
+    "score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "native_score_abi": 11,
+    "validated_default_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "flow": {
+      "method": "rk4",
+      "steps": 128,
+      "dtype": "fp32"
+    },
+    "prior": {
+      "kind": "flow_latent_gaussian",
+      "flow_method": "rk4",
+      "steps": 128,
+      "dtype": "fp32"
+    },
+    "seed": 202609031200
+  },
+  "files": {
+    "screening_arrays.npz": "826d3c06feae228851cbc7a6790ba65a0b790e179be706a15b159042efb31eee",
+    "screening_native_results.jsonl.gz": "ceaba37648f472867eae6fb29d8ad83a81147439f00da28588cf91bb11e86511"
+  }
+}

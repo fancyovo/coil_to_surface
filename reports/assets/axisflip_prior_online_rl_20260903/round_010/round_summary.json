@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 10,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 68.59659911203724,
+    "score_median_valid": 68.59659911203724,
+    "score_p90_all": 71.38761726144084,
+    "volume_qs_median_valid": 37.83976661317389,
+    "coil_median_valid": 67.013204041167,
+    "volume_qs_coil_correlation_valid": -0.1403324331623691
+  },
+  "adam20": {
+    "best_score_median_valid": 75.54729487156484,
+    "best_score_p90_valid": 77.46094023463841,
+    "gain_median_valid": 6.983810661515349,
+    "volume_qs_median_valid": 52.10736191973676,
+    "coil_median_valid": 67.56361591994846,
+    "volume_qs_coil_correlation_valid": -0.21302155852490193,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_010/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 6.1444962505176415,
+      "descriptor_total_variance": 27.72421287292719,
+      "nearest_distance_p10": 2.3862557318336903,
+      "nearest_distance_median": 3.1975670099125892,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 23.362952860417582,
+      "descriptor_total_variance": 71.55653165725629,
+      "nearest_distance_p10": 6.85848198965566,
+      "nearest_distance_median": 7.952835028964729,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.1089571230113506,
+    "score_gpu_s": 266.0817276351154,
+    "adam20_gpu_s": 9288.614981826395
+  },
+  "finished_unix_s": 1788398562.381809
+}

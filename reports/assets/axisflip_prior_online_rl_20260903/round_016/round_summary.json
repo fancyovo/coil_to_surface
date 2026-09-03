@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 16,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 70.14950040379114,
+    "score_median_valid": 70.14950040379114,
+    "score_p90_all": 72.32286154348408,
+    "volume_qs_median_valid": 39.352858290633435,
+    "coil_median_valid": 66.20408968393063,
+    "volume_qs_coil_correlation_valid": -0.3252153643663046
+  },
+  "adam20": {
+    "best_score_median_valid": 76.0589503578006,
+    "best_score_p90_valid": 77.82520569261816,
+    "gain_median_valid": 6.18039962436945,
+    "volume_qs_median_valid": 52.527412582869474,
+    "coil_median_valid": 67.09608541568629,
+    "volume_qs_coil_correlation_valid": -0.12770525389585258,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_016/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.72278608939489,
+      "descriptor_total_variance": 30.516660160755713,
+      "nearest_distance_p10": 2.2806126002203206,
+      "nearest_distance_median": 3.1900116148918682,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 21.20760313745054,
+      "descriptor_total_variance": 69.39539105510973,
+      "nearest_distance_p10": 6.400078107129326,
+      "nearest_distance_median": 7.219722506433518,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.688386917114258,
+    "score_gpu_s": 265.75074842199683,
+    "adam20_gpu_s": 9234.718342404813
+  },
+  "finished_unix_s": 1788413408.3289955
+}

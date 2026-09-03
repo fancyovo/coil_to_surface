@@ -1305,7 +1305,7 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260903-82 - Latent optimizer hardcoded the QUASR checkpoint step
 
-- Severity/status: medium / corrected; replacement execution passed launch gates.
+- Severity/status: medium / corrected; replacement execution and reporting passed.
 - Discovered by: Codex from both tasks of Students array `53046`.
 - Error: `scripts/optimize_flow_latent.py` required every Flow checkpoint to
   have training step `30000`. That guard was valid only for the frozen QUASR
@@ -1331,8 +1331,40 @@ An open critical correction blocks promotion and external reporting.
   gradient batches were entirely `ok`, pipeline cache hits began on update 2,
   and sustained progress reached at least updates 9 and 10 before monitoring
   stopped.
-- Promotion/reporting blocker: resolved for experimental execution. Final
-  scientific reporting still requires normal completion and result acceptance.
+- Promotion/reporting blocker: resolved. Replacement array `53049` completed
+  8/8 trajectories and the final report passed result and protocol acceptance.
+
+## CORR-20260903-83 - Acceptance preparation repeated cross-shell wrapper errors
+
+- Severity/status: low / corrected before scientific reporting.
+- Discovered by: Codex while accepting Students array `53049` and online RL
+  rounds 9--21.
+- Errors: the first remote-inspection wrapper embedded PowerShell here-string
+  syntax directly in JavaScript and failed to parse before dispatch. Its
+  replacement passed a CRLF-terminated `sacct` field through stdin, causing
+  Slurm to reject `AllocTRES` with a trailing carriage return. A direct remote
+  `find -printf` probe displayed literal `n` separators after cross-shell
+  escaping, and a quoted `wslpath` probe lost Windows backslashes. The first
+  combined knowledge-file patch used an inexact `MEMORY.md` line wrap and was
+  rejected atomically.
+- Primary evidence: the JavaScript wrapper stopped with `SyntaxError`; the
+  read-only commands returned nonzero or malformed display output; and the
+  patch tool reported context verification failure. None changed a result,
+  checkpoint, Slurm job, or live process.
+- Corrected fact and scope: array `53049` is accepted from both closed worker
+  summaries, eight 200-line optimizer histories, empty worker error logs,
+  postflight files, and recomputed local metrics. P107 job `52977` was directly
+  verified `RUNNING`; its accepted data boundary is the atomically complete
+  round 21, while round 22 is excluded.
+- Containment/regression: later transfers used explicit WSL paths and exact
+  source files; the acceptance renderer reloads JSON/NPZ artifacts and asserts
+  a contiguous eight-case cohort. It reran successfully, and the reports use
+  only the recomputed metrics. Future status probes should use direct commands
+  without custom formatting when default output is sufficient.
+- Promotion/reporting blocker: resolved after rerunning the renderer and the
+  report audit; scientific results are unaffected. A later multi-file patch
+  contained a malformed hunk boundary and was also rejected atomically before
+  these updates were applied as separately verified patches.
 
 ## Required Entry Template
 

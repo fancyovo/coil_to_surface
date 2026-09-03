@@ -1,0 +1,67 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 20,
+  "sample_count": 64,
+  "valid_count": 63,
+  "valid_rate": 0.984375,
+  "status_counts": {
+    "ok": 63,
+    "no_surface": 1
+  },
+  "initial": {
+    "score_median_all": 72.00220080014645,
+    "score_median_valid": 72.05762420557858,
+    "score_p90_all": 74.98707966012473,
+    "volume_qs_median_valid": 44.26457619407049,
+    "coil_median_valid": 67.43568810962098,
+    "volume_qs_coil_correlation_valid": -0.0454879234255039
+  },
+  "adam20": {
+    "best_score_median_valid": 76.05917527979878,
+    "best_score_p90_valid": 77.84159718172457,
+    "gain_median_valid": 4.0977368118514335,
+    "volume_qs_median_valid": 53.26728829186145,
+    "coil_median_valid": 68.3995433098071,
+    "volume_qs_coil_correlation_valid": 0.18058580731167534,
+    "threshold_counts": {
+      "50": 63,
+      "70": 63,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_020/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.649314000722986,
+      "descriptor_total_variance": 30.303378165383904,
+      "nearest_distance_p10": 2.5908167037195025,
+      "nearest_distance_median": 3.5078107116753054,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 63,
+      "sampled_count": 63,
+      "descriptor_effective_rank": 21.256985256433843,
+      "descriptor_total_variance": 68.8236360178038,
+      "nearest_distance_p10": 5.784462759168873,
+      "nearest_distance_median": 7.402334238142768,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.6596896462142467,
+    "score_gpu_s": 266.7473734430969,
+    "adam20_gpu_s": 8993.975046169013
+  },
+  "finished_unix_s": 1788423211.4153948
+}

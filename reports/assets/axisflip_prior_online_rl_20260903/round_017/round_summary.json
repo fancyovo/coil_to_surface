@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 17,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 70.14269359206085,
+    "score_median_valid": 70.14269359206085,
+    "score_p90_all": 73.46305394362771,
+    "volume_qs_median_valid": 41.02826998822811,
+    "coil_median_valid": 67.04693855970038,
+    "volume_qs_coil_correlation_valid": -0.2719472565599617
+  },
+  "adam20": {
+    "best_score_median_valid": 76.08006967442306,
+    "best_score_p90_valid": 78.0082521291563,
+    "gain_median_valid": 5.100745810939763,
+    "volume_qs_median_valid": 53.042534229578834,
+    "coil_median_valid": 68.14141632437554,
+    "volume_qs_coil_correlation_valid": -0.14243541832201745,
+    "threshold_counts": {
+      "50": 64,
+      "70": 63,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_017/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 6.2043070559174245,
+      "descriptor_total_variance": 33.44960255017977,
+      "nearest_distance_p10": 2.372383618896216,
+      "nearest_distance_median": 3.552353408619475,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 21.471618022019438,
+      "descriptor_total_variance": 73.53405920506503,
+      "nearest_distance_p10": 7.043665503983056,
+      "nearest_distance_median": 8.388267892892355,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.318295042961836,
+    "score_gpu_s": 266.5983932353556,
+    "adam20_gpu_s": 9350.525656979531
+  },
+  "finished_unix_s": 1788415865.8962622
+}

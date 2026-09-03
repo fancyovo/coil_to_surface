@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 22,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 72.16376987100051,
+    "score_median_valid": 72.16376987100051,
+    "score_p90_all": 74.21629567159341,
+    "volume_qs_median_valid": 44.751841108729124,
+    "coil_median_valid": 66.56725803602643,
+    "volume_qs_coil_correlation_valid": -0.09876262698886384
+  },
+  "adam20": {
+    "best_score_median_valid": 76.28559155718035,
+    "best_score_p90_valid": 77.74573393927221,
+    "gain_median_valid": 4.016606066913262,
+    "volume_qs_median_valid": 53.67522718696302,
+    "coil_median_valid": 68.07166364783919,
+    "volume_qs_coil_correlation_valid": 0.04849848189568347,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_022/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 4.563651120232333,
+      "descriptor_total_variance": 33.02061940850895,
+      "nearest_distance_p10": 2.667339768391359,
+      "nearest_distance_median": 3.4904822962756947,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 18.657011624251968,
+      "descriptor_total_variance": 72.6295798269108,
+      "nearest_distance_p10": 6.63776061529898,
+      "nearest_distance_median": 7.921375908365344,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.7706683464348316,
+    "score_gpu_s": 266.51674243062735,
+    "adam20_gpu_s": 9341.6603939645
+  },
+  "finished_unix_s": 1788428090.1880112
+}

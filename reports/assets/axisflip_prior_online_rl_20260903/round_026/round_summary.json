@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 26,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 72.71393920105587,
+    "score_median_valid": 72.71393920105587,
+    "score_p90_all": 75.23141951269069,
+    "volume_qs_median_valid": 45.469978983698454,
+    "coil_median_valid": 67.24765795769873,
+    "volume_qs_coil_correlation_valid": -0.14871543830723374
+  },
+  "adam20": {
+    "best_score_median_valid": 76.68697315810661,
+    "best_score_p90_valid": 78.23926499581616,
+    "gain_median_valid": 3.4562112827822276,
+    "volume_qs_median_valid": 54.14831319882529,
+    "coil_median_valid": 67.923370925355,
+    "volume_qs_coil_correlation_valid": 0.04568307970712604,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_026/training_data.npz",
+    "improvement_count": 576,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.866807407851048,
+      "descriptor_total_variance": 33.27086060065935,
+      "nearest_distance_p10": 2.881437481101129,
+      "nearest_distance_median": 3.5212604676933705,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 21.089438347873287,
+      "descriptor_total_variance": 72.54282089689329,
+      "nearest_distance_p10": 6.528685519458935,
+      "nearest_distance_median": 8.016068874457915,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.7184676341712475,
+    "score_gpu_s": 265.57208178192377,
+    "adam20_gpu_s": 9330.845698300749
+  },
+  "finished_unix_s": 1788437712.8320274
+}

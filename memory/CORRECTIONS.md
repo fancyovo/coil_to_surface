@@ -1599,7 +1599,13 @@ An open critical correction blocks promotion and external reporting.
   had already shown the exact names; several `rg` calls passed Windows-invalid
   wildcard path arguments; one remote listing left `tail` to PowerShell instead
   of the remote shell; and one local artifact probe assumed trajectory manifests
-  were mirrored when only report assets were delivered.
+  were mirrored when only report assets were delivered. RL collection then
+  repeated a remembered nonexistent `online/` path before enumerating the run
+  root, and one inline Python formatter exposed Markdown pipe characters to
+  PowerShell parsing. A later read-only verification also mistyped the explicit
+  `memory/DECISIONS.md` path. A guarded local cleanup command was then rejected
+  by the execution policy before deletion; its three temporary RL-transfer
+  paths remain untracked and are excluded from staging.
 - Primary evidence: the commands returned parse, path-not-found, invalid-path,
   command-not-found, or null-path errors. Every failure was read-only or stopped
   before dispatch. No source file, remote checkout, Slurm job, score library,

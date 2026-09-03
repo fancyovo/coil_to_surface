@@ -178,7 +178,7 @@ those results are reviewed.
 
 ## DEC-20260903-01 - Fixed-condition analytic-prior online Flow experiment
 
-Status: active experimental decision; no default impact.
+Status: completed experimental decision; no default impact.
 
 The first structured-prior RL implementation fixes `nfp=8,nc=3` and distills
 the accepted positive-hand axis-flip analytic generator before applying reward
@@ -204,6 +204,13 @@ continuous policy optimization rather than independent per-round fits.
 Distillation convergence and a teacher-versus-Flow ABI-11 audit are mandatory
 before round 0. Promotion requires observed enrichment without material
 diversity loss and explicit user acceptance.
+
+The user stopped job `52977` after round 27 completed. Across rounds 0--27,
+initial-score median improved from `63.6751` to `72.0170`, peaked at `72.7139`,
+and entered a plateau after round 21. All 28 near-duplicate rates were zero;
+effective rank finished `16.5%` above round 0 while total descriptor variance
+finished `18.5%` lower. This is successful enrichment with moderate monitored
+contraction, not a promotion decision. Partial round 28 is excluded.
 
 ## DEC-20260903-02 - Freeze an RL policy for standard latent Adam200
 

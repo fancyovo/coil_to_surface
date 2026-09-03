@@ -191,20 +191,19 @@
   manifest verification.
 - Corrected experimental commit `34a6148` converged q0 distillation at epoch
   201/step 35376 and passed an independent teacher-versus-Flow ABI-11 audit.
-  P107 job `52977` completed reportable online rounds 0--21: initial-score
-  median improved `63.6751 -> 71.9023`, score-at-least-70 improved
-  `4/64 -> 53/64`, and 1394/1408 samples were valid. All 22 near-duplicate
-  rates were zero; effective rank changed `-2.0%` while descriptor variance
-  contracted `16.6%`. The user stopped job `52977` on 2026-09-03; round 21
-  remains the latest accepted reporting boundary until cancellation artifacts
-  are collected and audited. See
+  The user stopped P107 job `52977` after atomically complete round 27; partial
+  round 28 is excluded. Across 1792 samples, 1778 were valid. Initial-score
+  median improved `63.6751 -> 72.0170` and peaked at `72.7139` in round 26;
+  score-at-least-70 changed `4/64 -> 44/64` and peaked at `57/64`. All 28 near-
+  duplicate rates were zero; effective rank rose `16.5%` while descriptor
+  variance contracted `18.5%`. Rounds 21--27 form a score plateau. See
   `reports/axisflip_prior_online_rl_results_20260903.md`.
 - Frozen-policy latent experiment
   `qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1` uses the
   atomically complete round-12 EMA checkpoint (source round 11, SHA-256
   `1ffbd632...537b72`) at fixed `nfp=8,nc=3`. Only the Flow checkpoint differs
-  from the current screen32/Adam200/64D/RK4-128 latent recipe; the live RL job
-  remains untouched. Initial array `53046` stopped before Adam because of a
+  from the current screen32/Adam200/64D/RK4-128 latent recipe; its source RL
+  state was untouched during that experiment. Initial array `53046` stopped before Adam because of a
   QUASR-only checkpoint-step guard. Corrected Students array `53049` completed
   all eight Adam200 trajectories at commit `8f5d57a`; best-score median was
   `78.2001`, maximum was `79.6088`, and 204800/204800 gradient endpoints were

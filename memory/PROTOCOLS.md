@@ -366,14 +366,15 @@ round. This experiment is not a default change. Frozen specification:
 `evaluation/axisflip_prior_distilled_online_adam20_rwcfm_abi11_v1.json`.
 The corrected formal run at commit `34a6148` converged its q0 distillation at
 epoch 201/global step 35376 and passed the independent 128-versus-128 teacher/
-Flow ABI-11 audit. The accepted reporting snapshot contains complete online
-rounds 0 through 21: 1408 generated starts, 1394 valid. Initial-score median
-rose from `63.6751` to `71.9023`, initial score-at-least-70 count rose from
-`4/64` to `53/64`. Initial volume-QS and coil medians changed by `+12.7776`
-and `+2.7805`. Near-duplicate rate remained zero; effective rank changed by
-`-2.0%` while descriptor variance fell by `16.6%`, a monitored contraction
-without evidence of catastrophic collapse
-in this snapshot. P107 job `52977` remained running after the snapshot.
+Flow ABI-11 audit. The user stopped P107 job `52977` after atomically complete
+round 27; partial round 28 is excluded. The 28 accepted rounds contain 1792
+generated starts, 1778 valid. Initial-score median rose from `63.6751` to
+`72.0170`, with a peak of `72.7139` at round 26; score-at-least-70 rose from
+`4/64` to `44/64` and peaked at `57/64`. Initial volume-QS and coil medians
+changed by `+12.7132` and `+3.1030`. Near-duplicate rate remained zero;
+effective rank rose `16.5%` while descriptor variance fell `18.5%`, showing
+moderate contraction without catastrophic collapse. Rounds 21--27 form a
+score plateau: the initial-score median changed only `+0.1147`.
 Canonical report:
 `reports/axisflip_prior_online_rl_results_20260903.md`.
 

@@ -201,7 +201,9 @@
   atomically complete round-12 EMA checkpoint (source round 11, SHA-256
   `1ffbd632...537b72`) at fixed `nfp=8,nc=3`. Only the Flow checkpoint differs
   from the current screen32/Adam200/64D/RK4-128 latent recipe; the live RL job
-  remains untouched.
+  remains untouched. Initial array `53046` stopped before Adam because of a
+  QUASR-only checkpoint-step guard; corrected Students array `53049` passed
+  both strict step-0 gates at commit `8f5d57a`. Verify live state directly.
 - Independent positive-hand Adam2000 continuations of full-evaluated v4 cases
   18 and 23 completed 2,000 updates each as Students jobs `52971/52972`, reaching
   native screening bests `87.6821/89.5535`. Both traded about 5--6 coil points

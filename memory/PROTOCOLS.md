@@ -390,6 +390,15 @@ GPU. The optimizer mechanics match the current QH default; the frozen RL Flow
 identity makes this a separate experiment and does not change that default.
 Frozen specification:
 `evaluation/axisflip_rl_round12_latent_adam200_abi11_v1.json`.
+Initial Students array `53046` is a preserved failed attempt: both tasks
+completed screen32, then a QUASR-only checkpoint-step guard rejected the RL
+checkpoint before optimizer step 0. Corrected commit `8f5d57a` retains step
+`30000` as the default expectation while allowing this registered runner to
+pin step `36616` and the exact checkpoint hash. Replacement array `53049`
+passed checkpoint, score-library, screening-axis, step-0 score, 64-direction
+endpoint, and pipeline gates on both workers. Its run root is
+`/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_rl_round12_latent_adam200_20260903_v2_8f5d57a`;
+job state and final counts must be verified directly.
 
 Protocol `qh-axisflip-v4-representative-adam2000-64d-abi11-v1` is a separate
 long-horizon continuation of the two v4 representatives already subjected to

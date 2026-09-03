@@ -99,6 +99,10 @@ reports and immutable archives retain the detailed record.
   was frozen by SHA-256 for a separate eight-trajectory Students experiment.
   It retains the current screen32/latent-Adam200/64D/RK4-128 mechanics at
   `nfp=8,nc=3`; later live-policy updates cannot alter the input.
+- 2026-09-03: initial frozen-policy array `53046` exposed and preserved a
+  QUASR-only hardcoded checkpoint-step guard before Adam. Corrected array
+  `53049` passed both workers' step-0 consistency gates and began concurrent
+  64-direction pipelined Adam200 at commit `8f5d57a`; see `CORR-20260903-82`.
 
 ## Evidence Routes
 

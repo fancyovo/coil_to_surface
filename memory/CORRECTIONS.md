@@ -1305,7 +1305,7 @@ An open critical correction blocks promotion and external reporting.
 
 ## CORR-20260903-82 - Latent optimizer hardcoded the QUASR checkpoint step
 
-- Severity/status: medium / corrected in code; replacement execution pending.
+- Severity/status: medium / corrected; replacement execution passed launch gates.
 - Discovered by: Codex from both tasks of Students array `53046`.
 - Error: `scripts/optimize_flow_latent.py` required every Flow checkpoint to
   have training step `30000`. That guard was valid only for the frozen QUASR
@@ -1325,9 +1325,14 @@ An open critical correction blocks promotion and external reporting.
   optimization trajectory.
 - Containment/regression: parser defaults retain `30000` and no hash override,
   while the registered runner supplies and tests both frozen values. Input
-  checks occur before an optimizer output directory is populated.
-- Promotion/reporting blocker: replacement workers must pass step 0 and produce
-  sustained Adam progress before this correction is closed for reporting.
+  checks occur before an optimizer output directory is populated. At commit
+  `8f5d57a`, 34 focused tests passed. Replacement Students array `53049` passed
+  both workers' strict screening-axis/step-0 score gates; their first 128-point
+  gradient batches were entirely `ok`, pipeline cache hits began on update 2,
+  and sustained progress reached at least updates 9 and 10 before monitoring
+  stopped.
+- Promotion/reporting blocker: resolved for experimental execution. Final
+  scientific reporting still requires normal completion and result acceptance.
 
 ## Required Entry Template
 

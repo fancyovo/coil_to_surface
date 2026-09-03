@@ -226,4 +226,3 @@ def curve_lengths(tokens: np.ndarray, *, samples: int = 4096) -> np.ndarray:
 
 def effective_radius_m(tokens: np.ndarray) -> float:
     return float(np.mean(curve_lengths(tokens)) / (2.0 * math.pi))
-

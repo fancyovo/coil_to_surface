@@ -69,4 +69,3 @@ python scripts/optimize_flow_latent.py \
   --state-every 50
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader \
   > "$output/gpu_postflight.csv"
-

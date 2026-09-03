@@ -76,4 +76,3 @@ python scripts/prepare_axisflip_case23_coil_shrink.py \
 
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader \
   > "$run_root/gpu_postflight.csv"
-

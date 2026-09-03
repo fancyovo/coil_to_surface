@@ -1431,6 +1431,27 @@ An open critical correction blocks promotion and external reporting.
   session object, and process verification uses plain argument-safe `ps`.
 - Promotion/reporting blocker: none.
 
+## CORR-20260903-87 - A combined commit command bypassed its diff-check warning
+
+- Severity/status: low / corrected before remote synchronization.
+- Discovered by: Codex during the coil-shrink preparation commit.
+- Error: staging, `git diff --cached --check`, and commit were placed in one
+  semicolon-separated PowerShell command. The diff check reported five extra
+  blank lines at end-of-file, yet the following commit still ran because the
+  shell sequence did not gate on the check result.
+- Primary evidence: commit `4b6d43c` succeeded in the same output that listed
+  the five whitespace warnings. Tests and Python compilation had already
+  passed, so the warning was limited to file hygiene.
+- Corrected fact and scope: the extra blank lines were removed in a follow-up
+  patch before remote synchronization. The code, population metrics, protocol,
+  and scientific interpretation were unchanged.
+- Affected artifacts and retained conclusions: no Slurm job or remote file had
+  used `4b6d43c`; all numerical results remain valid.
+- Containment/regression: validation and commit now run as separate tool calls,
+  and a nonzero or warning-producing validation is resolved before staging the
+  next commit.
+- Promotion/reporting blocker: none after a clean standalone diff check.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

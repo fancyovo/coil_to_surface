@@ -67,4 +67,3 @@ def test_coil_score_decomposition_matches_native_weighting() -> None:
     assert result["points_distance"] == pytest.approx(
         result["points_spacing"] + result["points_axis_distance"]
     )
-

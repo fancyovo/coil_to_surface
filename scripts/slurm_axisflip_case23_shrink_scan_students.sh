@@ -27,7 +27,7 @@ source_best_sha="${AXIS_SHRINK_SOURCE_BEST_SHA:?set AXIS_SHRINK_SOURCE_BEST_SHA}
 surface_sha="${AXIS_SHRINK_SURFACE_SHA:?set AXIS_SHRINK_SURFACE_SHA}"
 checkpoint_sha="${AXIS_SHRINK_CHECKPOINT_SHA:?set AXIS_SHRINK_CHECKPOINT_SHA}"
 score_lib_sha="${AXIS_SHRINK_SCORE_LIB_SHA:?set AXIS_SHRINK_SCORE_LIB_SHA}"
-eval_env="${AXIS_SHRINK_EVAL_ENV:-$repo/.venv-desc016-py312}"
+eval_env="${AXIS_SHRINK_EVAL_ENV:?set AXIS_SHRINK_EVAL_ENV}"
 
 cd "$repo"
 mkdir -p "$repo/logs"

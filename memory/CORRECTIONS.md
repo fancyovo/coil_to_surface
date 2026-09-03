@@ -1452,6 +1452,32 @@ An open critical correction blocks promotion and external reporting.
   next commit.
 - Promotion/reporting blocker: none after a clean standalone diff check.
 
+## CORR-20260903-88 - First coil-shrink scan used the wrong DESC environment path
+
+- Severity/status: medium / failed before output creation; fixed before the
+  replacement scan.
+- Discovered by: Codex from Slurm job `53200` immediately after submission.
+- Error: the scan launcher defaulted the DESC/Simsopt virtual environment to a
+  path inside the detached experiment worktree. The verified environment is
+  under the main remote project. The direct `sbatch` call also inherited the
+  remote home as its work directory, so scheduler logs landed under the home
+  `logs/` directory rather than the experiment worktree.
+- Primary evidence: `scontrol show job 53200` recorded `FAILED`, exit `1:0`,
+  elapsed `00:00:02`, and work directory `/home/scc/pb24511935`; an executable
+  check failed for the worktree environment and passed for the main-project
+  environment. The registered run root was absent and both logs were empty.
+- Corrected fact and scope: job `53200` produced no mesh, candidate, score, or
+  optimizer result. The replacement requires an explicit verified
+  `AXIS_SHRINK_EVAL_ENV` and uses `sbatch --chdir` for deterministic log paths.
+- Affected artifacts and retained conclusions: the 50-trajectory local audit,
+  the frozen case-23 source, full evaluation, and live RL job `52977` remain
+  unchanged and valid.
+- Containment/regression: the launcher no longer guesses a virtual-environment
+  location. The replacement submission verifies the executable path and all
+  frozen input hashes before `sbatch --test-only` and formal submission.
+- Promotion/reporting blocker: job `53200` is excluded from scientific results;
+  resolved once the replacement scan passes its gates.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

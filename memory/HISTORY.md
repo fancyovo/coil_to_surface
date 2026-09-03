@@ -1,6 +1,6 @@
 # Concise Project History
 
-Last reviewed: 2026-09-02 (Asia/Shanghai). This file routes historical questions;
+Last reviewed: 2026-09-03 (Asia/Shanghai). This file routes historical questions;
 reports and immutable archives retain the detailed record.
 
 ## Timeline
@@ -76,6 +76,19 @@ reports and immutable archives retain the detailed record.
   direct `QH_(1,+1)` errors `0.0016255` and `0.0021736`. Both DESC boundaries
   stayed nested while the solves reached the 50-iteration cap. The report and
   machine-readable selection evidence are stored with the v4 result above.
+- 2026-09-03: independent Adam2000 continuations of axis-flip v4 cases 18 and
+  23 completed all requested updates in parallel. Their ABI-11 screening bests
+  were `87.6821` and `89.5535`; volume-QS improved by `18.97/21.86` while the
+  coil component decreased by `6.30/5.19`. The long-run supplement is appended
+  to `../reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
+- 2026-09-03: 200,000 fixed-condition (`nfp=8,nc=3`) compact-v4 teacher samples
+  supported converged q0 Flow distillation and an independent ABI-11 audit.
+  Online Adam20 reward-weighted training completed nine reportable rounds by
+  the first snapshot. Initial-score median rose `63.6751 -> 68.9784`, initial
+  score-at-least-70 rose `4/64 -> 22/64`, and late snapshot rounds were fully
+  valid. Diversity showed mild variance contraction with zero near duplicates,
+  so the live run continued. See
+  `../reports/axisflip_prior_online_rl_results_20260903.md`.
 
 ## Evidence Routes
 

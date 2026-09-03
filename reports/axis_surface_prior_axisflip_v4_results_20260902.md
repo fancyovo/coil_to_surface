@@ -363,3 +363,55 @@ compact-flexible v3 的 569 个合法源样本和 120 条固定正手性目标 A
 
 逐步 history、起点、最佳点和完整优化器清单保存在冻结远端运行根目录。报告中的
 图和表由 `scripts/render_axis_surface_prior_axisflip_report.py` 从该目录重新计算。
+
+## Adam2000 长程摸高补充（2026-09-03）
+
+Students 作业 `52971/52972` 从两条代表轨迹各自冻结的 Adam200 最佳点出发，并行执行
+2000 个新的直接数据空间
+Adam 更新。实验继续使用正手性 ABI-11 评分、64 个每步新采样的正交中心差分方向、
+`h=0.0025`、学习率 `0.01` 和 beta `(0.7,0.999)`。两条轨迹均通过起点分数与
+磁轴延续一致性门，完整运行 2000 步并正常闭合；单条墙钟时间约 `3.69 h`。
+
+| 样本 | nfp | nc | 长程起点 | 最佳分数 | 最佳步 | 末步分数 | 最佳增益 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `axisflip_case_0000018` | 8 | 3 | 81.833620 | **87.682058** | 1583 | 84.156059 | +5.848438 |
+| `axisflip_case_0000023` | 6 | 4 | 80.306322 | **89.553487** | 1985 | 89.324654 | +9.247165 |
+
+![两条 Adam2000 轨迹的逐步分数与历史最佳分数](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/adam2000_trajectories.png)
+
+| 样本 | best@200 | best@500 | best@1000 | best@1500 | best@2000 | 首次 >=85 | 首次 >=87 | 首次 >=89 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `axisflip_case_0000018` | 82.2015 | 84.0331 | 84.2552 | 86.6783 | 87.6821 | 1302 | 1522 | - |
+| `axisflip_case_0000023` | 83.3043 | 84.3331 | 87.8357 | 88.3675 | 89.5535 | 686 | 897 | 1560 |
+
+两条轨迹在 1000 步后仍得到实质提升。`case_0000023` 的最佳点出现在第 1985 步，
+末步仅低 `0.2288` 分，显示该轨迹在预算末端仍位于高分区域；`case_0000018` 在
+第 1583 步达到峰值，后段波动更明显。
+
+### 体 QS 与线圈工程的联合变化
+
+| 样本 | 起点体 QS | 最佳点体 QS | 变化 | 起点 coil | 最佳点 coil | 变化 |
+|---|---:|---:|---:|---:|---:|---:|
+| `axisflip_case_0000018` | 66.9787 | **85.9485** | +18.9698 | 66.2580 | 59.9589 | -6.2991 |
+| `axisflip_case_0000023` | 64.2464 | **86.1086** | +21.8622 | 71.2918 | 66.1021 | -5.1897 |
+
+![Adam2000 最佳点的体 QS 与线圈工程分量变化](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/adam2000_components.png)
+
+总分提升由体 QS 的大幅改善主导，同时伴随约 `5.2--6.3` 分的线圈工程损失。
+`case_0000023` 在最佳点同时保留更高的 coil 分量并取得更高总分，因而是这两例中
+更好的联合折中。原生筛选诊断在两条最佳点分别给出 `qh_error=0.05473` 和
+`0.04037`，对应正 iota `1.4664` 和 `1.7775`；这里的 `qh_error` 属于原生评分器
+内部诊断量，与前文完整评估得到的直接 Boozer QH 误差口径不同。
+
+前文完整评估对应两条 Adam200 端点。Adam2000 最佳点仅具有原生筛选证据，尚未
+进入标准磁面、独立稠密残差、Poincare 与 DESC 的完整评估流程。因此，长程结果支持
+“解析先验端点仍有显著摸高空间”和“体 QS/coil 存在清晰权衡”两项结论；物理质量
+仍以完整评估为准。
+
+### 长程证据
+
+- [长程派生统计](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/report_metrics.json)
+- `axisflip_case_0000018`：[运行汇总](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case18_adam2000_20260903_6350b73/optimization/summary.json)；[协议清单](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case18_adam2000_20260903_6350b73/optimization/manifest.json)；[最佳点](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case18_adam2000_20260903_6350b73/optimization/best.json)
+- `axisflip_case_0000023`：[运行汇总](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case23_adam2000_20260903_6350b73/optimization/summary.json)；[协议清单](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case23_adam2000_20260903_6350b73/optimization/manifest.json)；[最佳点](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case23_adam2000_20260903_6350b73/optimization/best.json)
+
+本补充不改变项目 QH 默认协议；它登记为解析先验分支上的独立长程直接数据空间实验。

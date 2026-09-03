@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 8,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 68.97835540947929,
+    "score_median_valid": 68.97835540947929,
+    "score_p90_all": 72.09446616225071,
+    "volume_qs_median_valid": 38.764710861892716,
+    "coil_median_valid": 65.99138839774814,
+    "volume_qs_coil_correlation_valid": 0.02015443917390586
+  },
+  "adam20": {
+    "best_score_median_valid": 75.73267523267982,
+    "best_score_p90_valid": 78.3261380814595,
+    "gain_median_valid": 6.778002735002204,
+    "volume_qs_median_valid": 52.25484679305101,
+    "coil_median_valid": 66.98367555891136,
+    "volume_qs_coil_correlation_valid": 0.029233471533271636,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 1
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_008/training_data.npz",
+    "improvement_count": 563,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 512
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.408890925095889,
+      "descriptor_total_variance": 32.19728116207524,
+      "nearest_distance_p10": 2.3095987233449486,
+      "nearest_distance_median": 3.0735017410252325,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 23.239032179703393,
+      "descriptor_total_variance": 71.88529975859475,
+      "nearest_distance_p10": 6.014080826652201,
+      "nearest_distance_median": 7.6980447614838035,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.653588328510523,
+    "score_gpu_s": 266.0185885615647,
+    "adam20_gpu_s": 9481.632355298847
+  },
+  "finished_unix_s": 1788393634.7306328
+}

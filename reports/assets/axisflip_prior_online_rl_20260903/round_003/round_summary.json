@@ -1,0 +1,67 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 3,
+  "sample_count": 64,
+  "valid_count": 63,
+  "valid_rate": 0.984375,
+  "status_counts": {
+    "ok": 63,
+    "no_surface": 1
+  },
+  "initial": {
+    "score_median_all": 66.38092102616756,
+    "score_median_valid": 66.38654704532102,
+    "score_p90_all": 70.44105078700883,
+    "volume_qs_median_valid": 35.00896327453497,
+    "coil_median_valid": 65.33316859781813,
+    "volume_qs_coil_correlation_valid": 0.13252383155172764
+  },
+  "adam20": {
+    "best_score_median_valid": 76.02480745138556,
+    "best_score_p90_valid": 78.1954905360945,
+    "gain_median_valid": 9.559752297797573,
+    "volume_qs_median_valid": 53.54211571352011,
+    "coil_median_valid": 66.42091819343963,
+    "volume_qs_coil_correlation_valid": 0.24086463984665366,
+    "threshold_counts": {
+      "50": 63,
+      "70": 62,
+      "80": 1
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_003/training_data.npz",
+    "improvement_count": 244,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 243
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.137218428485262,
+      "descriptor_total_variance": 39.237364749403724,
+      "nearest_distance_p10": 2.5040311296414473,
+      "nearest_distance_median": 3.254012256790466,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 63,
+      "sampled_count": 63,
+      "descriptor_effective_rank": 19.39218281425809,
+      "descriptor_total_variance": 84.11852350431417,
+      "nearest_distance_p10": 6.952546068606959,
+      "nearest_distance_median": 8.13007752125912,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.106777001172304,
+    "score_gpu_s": 265.38999562337995,
+    "adam20_gpu_s": 9614.241281356663
+  },
+  "finished_unix_s": 1788381308.9636724
+}

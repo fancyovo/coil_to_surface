@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 7,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 68.65584644526317,
+    "score_median_valid": 68.65584644526317,
+    "score_p90_all": 71.73142230273497,
+    "volume_qs_median_valid": 38.98823224795251,
+    "coil_median_valid": 66.070824179918,
+    "volume_qs_coil_correlation_valid": -0.020048932968407925
+  },
+  "adam20": {
+    "best_score_median_valid": 75.59938623994668,
+    "best_score_p90_valid": 77.76457968335446,
+    "gain_median_valid": 7.354068641946142,
+    "volume_qs_median_valid": 52.60467332973069,
+    "coil_median_valid": 66.99979476608702,
+    "volume_qs_coil_correlation_valid": 0.11736159807150269,
+    "threshold_counts": {
+      "50": 64,
+      "70": 63,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_007/training_data.npz",
+    "improvement_count": 499,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 499
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 3.784980403939474,
+      "descriptor_total_variance": 37.80759126808248,
+      "nearest_distance_p10": 1.8282672049345625,
+      "nearest_distance_median": 3.070405991891316,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 17.341550010928746,
+      "descriptor_total_variance": 78.88485553881875,
+      "nearest_distance_p10": 6.048347538977336,
+      "nearest_distance_median": 7.9525875878825705,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.158473029732704,
+    "score_gpu_s": 265.71030347794294,
+    "adam20_gpu_s": 9197.28236734122
+  },
+  "finished_unix_s": 1788391124.1723866
+}

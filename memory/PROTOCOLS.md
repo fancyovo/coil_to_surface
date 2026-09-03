@@ -1,6 +1,6 @@
 # QH Protocol Registry
 
-Last verified: 2026-09-02 (Asia/Shanghai).
+Last verified: 2026-09-03 (Asia/Shanghai).
 
 ## Status Vocabulary
 
@@ -364,6 +364,17 @@ validity, score and score-component medians, Adam gains, threshold
 counts, component correlation, diversity, policy movement, and runtime each
 round. This experiment is not a default change. Frozen specification:
 `evaluation/axisflip_prior_distilled_online_adam20_rwcfm_abi11_v1.json`.
+The corrected formal run at commit `34a6148` converged its q0 distillation at
+epoch 201/global step 35376 and passed the independent 128-versus-128 teacher/
+Flow ABI-11 audit. The accepted reporting snapshot contains complete online
+rounds 0 through 8 only: 576 generated starts, 563 valid. Initial-score median
+rose from `63.6751` to `68.9784`, initial score-at-least-70 count rose from
+`4/64` to `22/64`, and rounds 4 through 8 were each `64/64` valid. Initial
+volume-QS and coil medians changed by `+7.7766` and `+1.8787`. Near-duplicate
+rate remained zero; descriptor variance fell by `20.6%`, a monitored mild
+contraction without evidence of catastrophic collapse in this snapshot. P107
+job `52977` remained running after the snapshot. Canonical report:
+`reports/axisflip_prior_online_rl_results_20260903.md`.
 
 Protocol `qh-axisflip-v4-representative-adam2000-64d-abi11-v1` is a separate
 long-horizon continuation of the two v4 representatives already subjected to
@@ -375,6 +386,15 @@ orthogonal directions, `h=0.0025`, learning rate `0.01`, and beta
 `(0.7,0.999)`. These screening trajectories do not repeat or replace full
 physical evaluation. Frozen specification:
 `evaluation/axisflip_v4_representative_adam2000_abi11_v1.json`.
+Students jobs `52971/52972` completed concurrently at commit `6350b73`, each
+with 2,000 accepted updates and status `ok`. Case 18 improved from long-run
+step-0 score `81.8336` to `87.6821` at step 1583; case 23 improved from
+`80.3063` to `89.5535` at step 1985. Their best-point volume-QS changes were
+`+18.9698/+21.8622`, accompanied by coil-component changes
+`-6.2991/-5.1897`. These endpoints have native screening evidence only; the
+earlier full evaluations remain attached to the Adam200 representatives.
+Canonical results are appended to
+`reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
 
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256

@@ -1,0 +1,67 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 2,
+  "sample_count": 64,
+  "valid_count": 60,
+  "valid_rate": 0.9375,
+  "status_counts": {
+    "ok": 60,
+    "no_surface": 4
+  },
+  "initial": {
+    "score_median_all": 64.35397718990433,
+    "score_median_valid": 64.90089875362756,
+    "score_p90_all": 70.62598217000341,
+    "volume_qs_median_valid": 33.15458837758456,
+    "coil_median_valid": 66.18189059557172,
+    "volume_qs_coil_correlation_valid": -0.06197320902564634
+  },
+  "adam20": {
+    "best_score_median_valid": 75.77784666684039,
+    "best_score_p90_valid": 78.16560161817912,
+    "gain_median_valid": 10.231610671691126,
+    "volume_qs_median_valid": 53.46749956068325,
+    "coil_median_valid": 66.91005428959457,
+    "volume_qs_coil_correlation_valid": -0.1577421566768169,
+    "threshold_counts": {
+      "50": 60,
+      "70": 59,
+      "80": 1
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_002/training_data.npz",
+    "improvement_count": 184,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 180
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.783224522122644,
+      "descriptor_total_variance": 37.25708167887781,
+      "nearest_distance_p10": 2.7051228643236858,
+      "nearest_distance_median": 3.5521584164977096,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 60,
+      "sampled_count": 60,
+      "descriptor_effective_rank": 21.128639505438457,
+      "descriptor_total_variance": 82.75070448490678,
+      "nearest_distance_p10": 6.801810288293541,
+      "nearest_distance_median": 8.26150855685308,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.1467781849205494,
+    "score_gpu_s": 265.0334168821573,
+    "adam20_gpu_s": 8620.316434990615
+  },
+  "finished_unix_s": 1788378729.5546377
+}

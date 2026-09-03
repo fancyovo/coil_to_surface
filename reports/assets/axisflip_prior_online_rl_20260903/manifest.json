@@ -1,0 +1,102 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "protocol": {
+    "id": "qh-axisflip-prior-distilled-online-adam20-rwcfm-abi11-v1",
+    "status": "registered-experimental",
+    "relationship_to_default": "Analytic-prior online Flow exploration; current QH default is unchanged."
+  },
+  "repository": {
+    "commit": "34a6148e0db139d4f97df6208d2ecc47635b26c7",
+    "tracked_dirty": false,
+    "available": true
+  },
+  "created_unix_s": 1788371131.2171764,
+  "slurm_job_id": "52977",
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3
+  },
+  "teacher": {
+    "dataset": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_teacher_nfp8_nc3_20260903_b03af40",
+    "dataset_repository_commit": "b03af40800573932d582b8641f315c9d026ecf0d",
+    "sample_count": 200000
+  },
+  "distillation": {
+    "directory": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_online_rl_nfp8_nc3_20260903_34a6148/distillation",
+    "checkpoint": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_online_rl_nfp8_nc3_20260903_34a6148/distillation/checkpoint_q0.pt",
+    "checkpoint_sha256": "0ba0aed8ea131dbfc44ea0b2ee0a050e1c5906dbf5f4aea82bf82aa9e402f303",
+    "convergence": {
+      "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+      "status": "converged",
+      "stopped_epoch": 201,
+      "global_step": 35376,
+      "best_validation_loss": 0.34007162089250415,
+      "validation_stale_checks": 10,
+      "recent_generated_moment_errors": [
+        0.06473332270979881,
+        0.06482983753085136,
+        0.06473078764975071
+      ],
+      "checkpoint": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_online_rl_nfp8_nc3_20260903_34a6148/distillation/checkpoint_q0.pt",
+      "finished_unix_s": 1788371088.6998634
+    }
+  },
+  "evaluator": {
+    "abi": 11,
+    "library": "/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so",
+    "library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+    "target_helicity": [
+      1,
+      8
+    ],
+    "configuration": {
+      "iota_degree": 3,
+      "surface_selection_mode": 1,
+      "surface_confidence_periods": 1,
+      "surface_theta_count": 128,
+      "surface_trace_steps": 400,
+      "surface_flux_bisection_iters": 6
+    }
+  },
+  "adam20": {
+    "optimizer_checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "optimizer_checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "parameter_space": "exact-unclipped standardized data coordinates",
+    "iterations": 20,
+    "directions": 64,
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [
+      0.7,
+      0.999
+    ],
+    "axis_policy": "screen globally, then reuse the selected axis from optimizer step 0",
+    "initial_score_tolerance": 0.1,
+    "target": "best valid point among steps 0 through 20"
+  },
+  "round": {
+    "workers": 4,
+    "samples_per_worker": 16,
+    "samples": 64,
+    "flow_steps": 32,
+    "seed": 2026090302
+  },
+  "update": {
+    "current_policy_fraction": 0.85,
+    "improved_fraction": 0.1,
+    "q0_fraction": 0.05,
+    "invalid_weight": 0.05,
+    "valid_weight": "1 plus within-round best-score percentile",
+    "replay_capacity": 512,
+    "replay_policy": "FIFO over valid Adam20 best endpoints",
+    "train_steps": 250,
+    "batch_per_gpu": 256,
+    "learning_rate": 5e-05
+  },
+  "parallelism": {
+    "collection": "four independent one-GPU workers, 16 samples each",
+    "training": "four-GPU DDP",
+    "serial_reason": "Flow q(k+1) depends on the complete scored Adam20 batch from q(k)"
+  }
+}

@@ -1158,6 +1158,15 @@ An open critical correction blocks promotion and external reporting.
   model initialization, rank-local noise, epoch order, coil permutation,
   validation, and generated monitoring. The incomplete `52974` artifacts support
   no q0-quality or RL conclusion.
+- Compaction-restart operation correction: despite the earlier recorded quoting
+  failure, the first post-compaction status probe again passed a quoted custom
+  `squeue -o` format through PowerShell and the remote shell split it into
+  invalid arguments. A separate read also guessed that the registered protocol
+  lived under `protocols/`, while `git show --name-only` established its actual
+  path under `evaluation/`. Both commands were read-only, returned nonzero, and
+  supplied no experimental evidence. Remote queue checks now use unformatted
+  `squeue` unless a stdin-fed shell script is required; repository paths must be
+  discovered with `rg --files` or commit metadata before reading them.
 - Primary evidence: the failed commands returned nonzero before changing
   experiment state. The repository-root imports were fixed before commit
   `b03af40`; the bundle was recreated from the named branch and transferred by
@@ -1177,10 +1186,47 @@ An open critical correction blocks promotion and external reporting.
   a four-worker round-summary/replay transaction. NPZ reads that precede replay
   replacement now use context managers and close before `os.replace`.
   Future remote synchronization uses a named ref in the bundle and explicit
-  source/destination paths.
-- Promotion/reporting blocker: open until the committed implementation passes
-  Slurm test-only checks and stable GPU startup; it does not affect the current
-  QH default.
+  source/destination paths. Post-compaction remote probes must reuse the same
+  quoting-safe forms instead of reconstructing the previously failing command.
+- Promotion/reporting blocker: resolved for experimental execution after the
+  corrected commit passed Slurm checks, q0 convergence and audit, and nine
+  complete online rounds. The experiment remains registered-experimental and
+  does not affect the current QH default.
+
+## CORR-20260903-79 - Report preparation used wrong artifact fields and fragile shell quoting
+
+- Severity/status: low / corrected before report delivery.
+- Discovered by: Codex during Adam2000/RL acceptance reporting.
+- Errors: the first report renderer assumed the long-run manifest exposed
+  `long_continuation.sample_id`, while the frozen manifest identifies the source
+  through `source_best`; that renderer invocation stopped before writing report
+  figures. A later inline Python display command used quoting that PowerShell
+  parsed as an invalid f-string command. After context compaction, a custom
+  `sinfo -o` format again crossed PowerShell, WSL and SSH with unsafe quoting,
+  and the remote shell interpreted `%a` as a command. A subsequent multi-file
+  memory patch used an inexact protocol context and was rejected atomically.
+  The first report-mirror tool wrapper also contained an invalid JavaScript
+  argument object and stopped before invoking PowerShell. A later two-report
+  patch omitted its second file header and was rejected atomically. The first
+  staged report check also found four Markdown hard-break lines with trailing
+  spaces; ordinary paragraph breaks replaced them before commit.
+- Primary evidence: all six operations returned nonzero or failed before tool
+  dispatch. The renderer error
+  occurred before output generation; the two display probes were read-only;
+  the patch changed no file. No optimizer, dataset, checkpoint, Slurm job or
+  frozen result changed.
+- Corrected fact and scope: sample identity is derived from the frozen
+  `source_best` path and `nc` from the run manifest. Report values are read from
+  the two complete summaries and nine complete round summaries. Slurm partition
+  state is checked with direct `scontrol show partition ... -o` commands.
+- Containment/regression: the renderer now completes for exactly two long runs
+  and rounds 0--8, generated figures were inspected, and all report links are
+  checked locally. The remote preflight was restarted in full after the failed
+  formatted query. Knowledge-file edits were split by verified exact context.
+  Future cross-shell scheduler checks use unformatted output or stdin-fed
+  scripts.
+- Promotion/reporting blocker: resolved after rerunning the renderer and the
+  report post-generation audit; scientific conclusions are unaffected.
 
 ## Required Entry Template
 

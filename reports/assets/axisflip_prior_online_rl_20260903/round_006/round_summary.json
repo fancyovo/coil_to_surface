@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 6,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 68.22110763079009,
+    "score_median_valid": 68.22110763079009,
+    "score_p90_all": 71.87973024456963,
+    "volume_qs_median_valid": 39.272176739732956,
+    "coil_median_valid": 66.63578856546562,
+    "volume_qs_coil_correlation_valid": -0.3018673329444611
+  },
+  "adam20": {
+    "best_score_median_valid": 75.7731654451177,
+    "best_score_p90_valid": 78.43631824152702,
+    "gain_median_valid": 7.254637685033785,
+    "volume_qs_median_valid": 52.8402341956983,
+    "coil_median_valid": 67.11167910050433,
+    "volume_qs_coil_correlation_valid": -0.04763836045256181,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_006/training_data.npz",
+    "improvement_count": 435,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 435
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 3.5804128378080735,
+      "descriptor_total_variance": 53.5772921369679,
+      "nearest_distance_p10": 2.2144014651847366,
+      "nearest_distance_median": 3.6681778682101656,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 12.035306589704556,
+      "descriptor_total_variance": 93.6701094886377,
+      "nearest_distance_p10": 6.759854923148959,
+      "nearest_distance_median": 8.294138428548335,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 2.856473669409752,
+    "score_gpu_s": 265.2991891130805,
+    "adam20_gpu_s": 9441.080351974815
+  },
+  "finished_unix_s": 1788388700.3967066
+}

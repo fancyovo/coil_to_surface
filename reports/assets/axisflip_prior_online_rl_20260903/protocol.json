@@ -1,0 +1,70 @@
+{
+  "protocol_id": "qh-axisflip-prior-distilled-online-adam20-rwcfm-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-03",
+  "purpose": "Distill the positive-hand compact-flexible analytic prior and iteratively enrich valid, locally improvable nfp=8,nc=3 starts.",
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3,
+    "fixed_for_this_experiment": true
+  },
+  "teacher": {
+    "generator_format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+    "preset": "compact_flexible",
+    "sample_role": "registered_scoring",
+    "axis_chirality": -1,
+    "sample_count": 200000,
+    "storage": "two immutable float32 physical-token NPY shards plus verified manifest",
+    "split": "90/5/5 by seed-offset modulo 20"
+  },
+  "distillation": {
+    "model": "CoilFlowTransformer",
+    "width": 256,
+    "layers": 6,
+    "heads": 8,
+    "hidden": 704,
+    "parameter_count": 5761380,
+    "normalization": "geometry statistics from teacher train split; current scale is mean absolute base-coil current",
+    "current_contract": "all q0 teacher currents are equal; the learned channel remains available for Adam-produced relative current allocation",
+    "seeding": "model, per-rank training noise, epoch order, coil permutation, validation, and generation-monitor streams are recorded deterministic functions of the run seed",
+    "convergence": "validation plateau with 0.3% relative improvement threshold and patience 10, plus three stable generated-distribution checks",
+    "maximum_epochs": "5000 runaway safety bound only; reaching it without the convergence gate fails the job"
+  },
+  "online_round": {
+    "sample_count": 64,
+    "parallel_workers": 4,
+    "samples_per_worker": 16,
+    "invalid": "retain represented start, skip Adam, assign weight 0.05",
+    "valid": "run Adam20 and use the best valid endpoint from steps 0 through 20",
+    "valid_weight": "bounded to [1,2] by within-round/replay best-score rank",
+    "loss_mixture": {
+      "current_policy": 0.85,
+      "improved_and_replay": 0.10,
+      "original_teacher": 0.05
+    },
+    "replay_capacity": 512,
+    "replay_policy": "FIFO over valid best endpoints",
+    "flow_updates": 250,
+    "flow_learning_rate": 0.00005,
+    "optimizer_state": "Raw training weights and AdamW moments persist across policy rounds after a fresh round-0 online optimizer; EMA weights define the sampled policy"
+  },
+  "adam20": {
+    "score_abi": 11,
+    "target_helicity": [1, 8],
+    "parameter_space": "exact-unclipped standardized data coordinates",
+    "iterations": 20,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal centered directions",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "axis_and_score_gate": "global screening axis reused at optimizer step 0 with score tolerance 0.1"
+  },
+  "resources": {
+    "teacher_generation": "16 P107 CPU cores plus 24 Students CPU cores",
+    "distillation_and_online": "four P107 RTX5090 GPUs and 16 CPU cores",
+    "slurm_wall_limit": "24 hours with one-hour graceful reserve",
+    "maximum_online_rounds": 48
+  },
+  "default_impact": "none; qh-flow-screen32-adam200-64d-abi11-v1 remains the current default"
+}

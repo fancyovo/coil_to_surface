@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-09-02 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-09-03 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -160,69 +160,16 @@
   RL limitation for structured physical priors. The canonical failure report
   is on `codex/qh-online-validity-rwcfm-zero@9079fa3` and mirrored in
   `_shared_reports/qh_online_rwcfm_failed_20260901.md`.
-- Analytic-prior v1 contracted axis, surface, and contour amplitudes until the
-  result resembled circular-axis tokamak coils. Its partial ABI-11 scores cannot
-  establish the requested prior's abundance.
-- The user accepted only the `balanced_stellarator` v2 morphology for a short
-  scoring batch. Protocol
-  `qh-axis-surface-contour-balanced-score-abi11-v2` measured 6000 samples over
-  26 `nc<=4` conditions with no optimization. Its maximum ABI-11 total score was
-  `16.4393`; 56 samples reached 10, and none reached 20 or 50. The coil-component
-  median was `72.4114`, with 22.12% at 80 or above. See
-  `reports/axis_surface_prior_balanced_v2_results_20260901.md`.
-- Scoring commit `1dcfd18` and arrays `51614/51615` produced all 6000 rows with
-  zero scoring errors. Analysis `51616` wrote valid aggregate artifacts before
-  its v1-family selector failed; commit `5cbb97a` and CPU job `51627` repaired
-  representative selection against the unchanged rows. `CORR-20260901-48`
-  records the contained analysis error.
-- The v2 inner surface is a geometric reference, not a computed magnetic
-  surface, and the construction axis is not a verified magnetic axis. The
-  registered experiment does not modify the current QH default.
-- Follow-up protocol
-  `qh-axis-surface-contour-balanced-random-ok-adam200-64d-abi11-v1` completed
-  83/84 selected valid starts at frozen run commit `11f703f`; every completed
-  trajectory finished Adam200 with status `ok`, no runtime failure occurred,
-  and one `nc=1` sample was not started under the five-hour reserve gate.
-  Historical best reached 50 in 31/83 trajectories, including 13/83 within 50
-  updates; maximum score was `69.6456`. Multiplying by the measured `0.375`
-  initial-valid rate gives estimated all-prior abundance 14.01% for Adam200 and
-  5.87% for best-so-far@50. Full evaluation of representative high-score cases
-  `axisv2_case_02986` and `axisv2_case_04428` accepted nested standard surfaces
-  at `s=0.64` and `s=0.81`, with volumes `0.0740` and `0.0925 m3` and direct
-  `QH_(1,+1)` errors `0.0170` and `0.0172`. The DESC solves reduced mean normalized force by
-  about 360-fold and 834-fold but reached the 50-iteration limit. See
+- Analytic-prior v1 is visually invalid because it resembles circular-axis
+  tokamak coils. The accepted balanced-v2 morphology produced 6000 ABI-11
+  scores with maximum `16.4393`; its conditional Adam200 follow-up and two full
+  evaluations are historical evidence in
   `reports/axis_surface_prior_balanced_v2_adam200_results_20260901.md`.
-- Direct-data continuation protocol
-  `qh-axis-surface-balanced-top2-continue-adam200-64d-abi11-v1` completed two
-  independent Adam200 workers in array `52206`. `axisv2_case_02986` (`nc=4`)
-  improved from its `69.6472` continuation re-evaluation to `70.0929`;
-  `axisv2_case_04428` (`nc=2`) improved
-  from `69.1175` to `69.6224`. These are ABI-11 screening values. The failed
-  wrapper-less attempt `52174` performed no optimizer step and is quarantined
-  under `CORR-20260901-62`.
-- Compact-flexible v3 score-only sampling centers winding radius at `0.20 m`,
-  widens noncircular shape variation, and excludes `nc=5`. Arrays `52244/52245`
-  completed all 3600 ABI-11 evaluations with zero errors; 569 were `status=ok`
-  (`15.8056%`). The total-score maximum was `46.6289`; the coil-component
-  median and maximum were `72.0143` and `84.5682`. Analysis `52246` completed.
-- Follow-up protocol
-  `qh-axis-surface-contour-compact-flexible-random-ok-adam200-64d-abi11-v1`
-  uniformly selected 120 of the 569 valid starts at seed `20260904` and assigned
-  20 cost-balanced trajectories to each of six GPUs. All 120 trajectories
-  completed 200 updates with zero failures. Best-so-far reached 50 by update 50
-  in 65/120 cases and by update 200 in 97/120; the maximum was `68.8804`.
-  Combining these conditional rates with the `15.8056%` initial-valid rate gives
-  estimated all-prior abundances of `8.56%` at Adam50 and `12.78%` at Adam200.
-  See `reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
-  Representative full evaluations accepted `axisv3_case_01341` at `s=0.24`,
-  volume `0.026633 m3`, direct `QH_(1,+1)` error `0.009187`, with nearest outer failure
-  `s=0.36`; and `axisv3_case_02832` at `s=0.36`, volume `0.046051 m3`, direct
-  `QH_(1,+1)` error `0.009728`, with nearest outer failure `s=0.49`. Both DESC solves
-  retained nested boundaries and reduced mean normalized force by 333-fold and
-  891-fold while reaching the 50-iteration limit. The first Poincare map stays
-  radially ordered; the second shows a pronounced multi-lobed/island-chain
-  pattern, so it is not evidence for a clean globally nested vacuum interior.
-  This registered experiment does not alter the current Flow default.
+- Compact-flexible v3 centers winding radius at `0.20 m` and excludes `nc=5`.
+  Its 3600-score batch had 569 valid starts (`15.8056%`); 97/120 selected valid
+  starts reached 50 under Adam200, for estimated all-prior abundance `12.78%`.
+  The maximum was `68.8804`. Full details and two physical evaluations are in
+  `reports/axis_surface_prior_compact_flexible_v3_adam200_results_20260902.md`.
 - The signed-helicity audit found all 569 valid compact-v3 starts and all 120
   positive-target Adam200 trajectories on the negative-iota branch. The leading
   bias is the fixed-sign construction-axis harmonic; surface and contour signs
@@ -238,6 +185,23 @@
   `19.4311 -> 59.1199`; coil stayed near 69. Full evaluation accepted
   `s=0.49` surfaces for cases 18/23 with direct QH errors `0.001626/0.002174`; both DESC boundaries stayed nested at the 50-step cap. See
   `reports/axis_surface_prior_axisflip_v4_results_20260902.md`; no default change.
+- Fixed-condition teacher protocol `nfp=8,nc=3` synthesized 200,000 positive-hand
+  compact-flexible-v4 samples at commit `b03af40` using 16 P107 plus 24 Students
+  CPU cores. Jobs `52958/52959/52960` completed and the immutable dataset passed
+  manifest verification.
+- Corrected experimental commit `34a6148` converged q0 distillation at epoch
+  201/step 35376 and passed an independent teacher-versus-Flow ABI-11 audit.
+  P107 job `52977` then completed reportable online rounds 0--8: initial-score
+  median improved `63.6751 -> 68.9784`, score-at-least-70 improved
+  `4/64 -> 22/64`, and rounds 4--8 were fully valid. Near duplicates remained
+  zero while descriptor variance contracted `20.6%`; the job continues under
+  monitoring. See `reports/axisflip_prior_online_rl_results_20260903.md`.
+- Independent positive-hand Adam2000 continuations of full-evaluated v4 cases
+  18 and 23 completed 2,000 updates each as Students jobs `52971/52972`, reaching
+  native screening bests `87.6821/89.5535`. Both traded about 5--6 coil points
+  for about 19--22 volume-QS points. See the supplement in
+  `reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
+- Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map
 

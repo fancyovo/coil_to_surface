@@ -1,0 +1,125 @@
+{
+  "format": "axisflip_compact_prior_teacher_dataset_v1",
+  "status": "complete",
+  "repository_commit": "b03af40800573932d582b8641f315c9d026ecf0d",
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3
+  },
+  "generator": {
+    "format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+    "preset": "compact_flexible",
+    "sample_role": "registered_scoring",
+    "axis_chirality": -1,
+    "surface_phi_samples": 96,
+    "surface_theta_samples": 48
+  },
+  "sample_count": 200000,
+  "seed_start": 203609030000,
+  "seed_stop_exclusive": 203609230000,
+  "split": {
+    "rule": "seed offset modulo 20",
+    "train_remainders": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "validation_remainder": 18,
+    "test_remainder": 19,
+    "fractions": {
+      "train": 0.9,
+      "validation": 0.05,
+      "test": 0.05
+    }
+  },
+  "shards": [
+    {
+      "format": "axisflip_compact_prior_teacher_shard_v1",
+      "dataset_format": "axisflip_compact_prior_teacher_dataset_v1",
+      "shard_name": "p107_000000_080000",
+      "repository_commit": "b03af40800573932d582b8641f315c9d026ecf0d",
+      "generator": {
+        "format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+        "preset": "compact_flexible",
+        "sample_role": "registered_scoring",
+        "axis_chirality": -1,
+        "surface_phi_samples": 96,
+        "surface_theta_samples": 48
+      },
+      "condition": {
+        "nfp": 8,
+        "n_base_coils": 3
+      },
+      "seed_start": 203609030000,
+      "seed_stop_exclusive": 203609110000,
+      "count": 80000,
+      "workers": 16,
+      "block_size": 128,
+      "tokens_file": "p107_000000_080000.tokens.npy",
+      "tokens_sha256": "4f221bc386602ad6e59e41514de750d64ed6c54c8cfc3c299ca52b21f396a438",
+      "tokens_dtype": "float32",
+      "tokens_shape": [
+        80000,
+        3,
+        100
+      ],
+      "current_min_a": 104166.6640625,
+      "current_max_a": 104166.6640625,
+      "wall_s": 2394.963333565742,
+      "samples_per_s": 33.40343414815123,
+      "finished_unix_s": 1788368332.3624036
+    },
+    {
+      "format": "axisflip_compact_prior_teacher_shard_v1",
+      "dataset_format": "axisflip_compact_prior_teacher_dataset_v1",
+      "shard_name": "students_080000_200000",
+      "repository_commit": "b03af40800573932d582b8641f315c9d026ecf0d",
+      "generator": {
+        "format": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
+        "preset": "compact_flexible",
+        "sample_role": "registered_scoring",
+        "axis_chirality": -1,
+        "surface_phi_samples": 96,
+        "surface_theta_samples": 48
+      },
+      "condition": {
+        "nfp": 8,
+        "n_base_coils": 3
+      },
+      "seed_start": 203609110000,
+      "seed_stop_exclusive": 203609230000,
+      "count": 120000,
+      "workers": 24,
+      "block_size": 128,
+      "tokens_file": "students_080000_200000.tokens.npy",
+      "tokens_sha256": "dcb284a52159cd4c8aa9b06d3c89b868c8963891d052cce433d24bb3f395c69f",
+      "tokens_dtype": "float32",
+      "tokens_shape": [
+        120000,
+        3,
+        100
+      ],
+      "current_min_a": 104166.6640625,
+      "current_max_a": 104166.6640625,
+      "wall_s": 2857.4454794973135,
+      "samples_per_s": 41.99555192252018,
+      "finished_unix_s": 1788368804.8909807
+    }
+  ],
+  "finished_unix_s": 1788368808.2476861
+}

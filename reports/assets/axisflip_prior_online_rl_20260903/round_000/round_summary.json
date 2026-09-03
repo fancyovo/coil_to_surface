@@ -1,0 +1,68 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 0,
+  "sample_count": 64,
+  "valid_count": 60,
+  "valid_rate": 0.9375,
+  "status_counts": {
+    "ok": 60,
+    "flux_rejected": 1,
+    "no_surface": 3
+  },
+  "initial": {
+    "score_median_all": 63.675077830768814,
+    "score_median_valid": 64.11045084558782,
+    "score_p90_all": 68.64681966734649,
+    "volume_qs_median_valid": 30.988119643658635,
+    "coil_median_valid": 64.11266411028208,
+    "volume_qs_coil_correlation_valid": 0.04032501293904385
+  },
+  "adam20": {
+    "best_score_median_valid": 75.97137220874085,
+    "best_score_p90_valid": 78.0871475289393,
+    "gain_median_valid": 12.329573676467945,
+    "volume_qs_median_valid": 53.51150467677362,
+    "coil_median_valid": 66.59027023776278,
+    "volume_qs_coil_correlation_valid": 0.05205847371550834,
+    "threshold_counts": {
+      "50": 60,
+      "70": 59,
+      "80": 0
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_000/training_data.npz",
+    "improvement_count": 64,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 60
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 5.124235760942865,
+      "descriptor_total_variance": 40.53058621251248,
+      "nearest_distance_p10": 2.498036914490597,
+      "nearest_distance_median": 3.5624224800537254,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 60,
+      "sampled_count": 60,
+      "descriptor_effective_rank": 17.89105490027779,
+      "descriptor_total_variance": 81.34148382293509,
+      "nearest_distance_p10": 6.808064370745221,
+      "nearest_distance_median": 7.794996858313351,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 5.27556886151433,
+    "score_gpu_s": 265.40112505853176,
+    "adam20_gpu_s": 8588.005625028163
+  },
+  "finished_unix_s": 1788373812.9040794
+}

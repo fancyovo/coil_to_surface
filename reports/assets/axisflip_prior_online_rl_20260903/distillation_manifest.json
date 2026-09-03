@@ -1,0 +1,54 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "q0_distillation",
+  "status": "converged",
+  "code_commit": "34a6148e0db139d4f97df6208d2ecc47635b26c7",
+  "teacher_dataset": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_prior_teacher_nfp8_nc3_20260903_b03af40",
+  "teacher_repository_commit": "b03af40800573932d582b8641f315c9d026ecf0d",
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3
+  },
+  "split_counts": {
+    "train": 180000,
+    "validation": 10000,
+    "test": 10000
+  },
+  "model_config": {
+    "token_dim": 100,
+    "width": 256,
+    "layers": 6,
+    "heads": 8,
+    "hidden": 704,
+    "max_nfp": 16
+  },
+  "parameter_count": 5761380,
+  "normalizer": {
+    "source": "axis-flip analytic teacher only",
+    "current_mean_a": 104166.6640625,
+    "current_scale_a": 104166.6640625,
+    "current_l1_a": {
+      "8:3": 312499.9921875
+    }
+  },
+  "q0_normalized_training_cache": "q0_train_normalized.npy",
+  "seeding": {
+    "model": 2026090301,
+    "training_torch_by_rank": "model seed + 1000000 + rank",
+    "epoch_order": "model seed + epoch",
+    "coil_permutation": "model seed + 100000 * epoch + rank",
+    "validation": 2026990301,
+    "generated_monitor": 2026890301
+  },
+  "convergence": {
+    "minimum_epochs": 10,
+    "validation_relative_improvement": 0.003,
+    "validation_patience": 10,
+    "generated_moment_stability_checks": 3,
+    "generated_moment_stability_absolute_tolerance": 0.01,
+    "maximum_epochs_is_safety_only": 5000
+  },
+  "created_unix_s": 1788370421.595624,
+  "slurm_job_id": "52977",
+  "convergence_artifact": "convergence.json"
+}

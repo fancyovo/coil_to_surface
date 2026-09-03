@@ -1,0 +1,66 @@
+{
+  "format": "axisflip_prior_distilled_online_adam20_rwcfm_v1",
+  "stage": "round_collected",
+  "round": 4,
+  "sample_count": 64,
+  "valid_count": 64,
+  "valid_rate": 1.0,
+  "status_counts": {
+    "ok": 64
+  },
+  "initial": {
+    "score_median_all": 67.51291617639731,
+    "score_median_valid": 67.51291617639731,
+    "score_p90_all": 71.29452887035397,
+    "volume_qs_median_valid": 36.98636465687753,
+    "coil_median_valid": 65.50658647497364,
+    "volume_qs_coil_correlation_valid": -0.10700114088320506
+  },
+  "adam20": {
+    "best_score_median_valid": 75.7063935677634,
+    "best_score_p90_valid": 77.76260377122945,
+    "gain_median_valid": 8.381382249145425,
+    "volume_qs_median_valid": 52.96222251242297,
+    "coil_median_valid": 66.79469019427792,
+    "volume_qs_coil_correlation_valid": -0.08063464537934224,
+    "threshold_counts": {
+      "50": 64,
+      "70": 64,
+      "80": 1
+    }
+  },
+  "training": {
+    "data_file": "rounds/round_004/training_data.npz",
+    "improvement_count": 307,
+    "invalid_weight": 0.05,
+    "valid_weight_min": 1.0,
+    "valid_weight_max": 2.0,
+    "replay_size_after_round": 307
+  },
+  "diversity": {
+    "current": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 4.726613096857108,
+      "descriptor_total_variance": 40.24379659445204,
+      "nearest_distance_p10": 2.2558198710270974,
+      "nearest_distance_median": 3.5024909836319615,
+      "near_duplicate_rate_1e-4": 0.0
+    },
+    "improved_valid": {
+      "count": 64,
+      "sampled_count": 64,
+      "descriptor_effective_rank": 19.429026576665056,
+      "descriptor_total_variance": 80.9042402692478,
+      "nearest_distance_p10": 6.942039830227726,
+      "nearest_distance_median": 8.109441125072607,
+      "near_duplicate_rate_1e-4": 0.0
+    }
+  },
+  "runtime": {
+    "flow_gpu_s": 3.0906498543918133,
+    "score_gpu_s": 265.64973370730877,
+    "adam20_gpu_s": 9168.298924323171
+  },
+  "finished_unix_s": 1788383713.4871821
+}

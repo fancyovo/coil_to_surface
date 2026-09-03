@@ -1,0 +1,33 @@
+{
+  "protocol_id": "qh-axisflip-r012-top2-continue-adam3000-64d-r04-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-04",
+  "source": {
+    "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1",
+    "run_commit": "70a1102829da50d9054d929d1cd7073780909268",
+    "cases": [
+      {"case_id": 36, "trajectory_id": "axisflip_r012_case_0000036", "adam200_best_score": 80.27242566591161},
+      {"case_id": 4, "trajectory_id": "axisflip_r012_case_0000004", "adam200_best_score": 79.39490321966287}
+    ],
+    "start": "each frozen Adam200 best under the R04 evaluator"
+  },
+  "optimizer": {
+    "score_abi": 11,
+    "score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+    "coil_curvature_p95_scale_m_inv": 25.0,
+    "new_iterations": 3000,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal centered directions",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "target_helicity": [1, 8]
+  },
+  "resources": {
+    "jobs": 2,
+    "per_job": "one Students RTX5090, 8 CPU cores, 32G memory",
+    "parallelism": "both independent cases run concurrently",
+    "wall_limit": "1 day"
+  },
+  "default_impact": "none"
+}

@@ -2,13 +2,13 @@
 #SBATCH --account=competition
 #SBATCH --partition=P107-RTX5090
 #SBATCH --qos=qos_p107-rtx5090
-#SBATCH --job-name=axis-prior-rl
+#SBATCH --job-name=r012-traj-rl
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:4
 #SBATCH --mem=128G
-#SBATCH --time=1-00:00:00
+#SBATCH --time=4-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -19,14 +19,16 @@ dataset="${AXIS_RL_DATASET:?set AXIS_RL_DATASET}"
 run_root="${AXIS_RL_RUN_ROOT:?set AXIS_RL_RUN_ROOT}"
 commit="${AXIS_RL_COMMIT:?set AXIS_RL_COMMIT}"
 score_lib="${AXIS_RL_SCORE_LIB:?set AXIS_RL_SCORE_LIB}"
+score_lib_manifest="${AXIS_RL_SCORE_LIB_MANIFEST:?set AXIS_RL_SCORE_LIB_MANIFEST}"
+score_lib_sha="${AXIS_RL_SCORE_LIB_SHA:?set AXIS_RL_SCORE_LIB_SHA}"
 optimizer_checkpoint="${AXIS_RL_OPTIMIZER_CHECKPOINT:?set AXIS_RL_OPTIMIZER_CHECKPOINT}"
 optimizer_checkpoint_sha="${AXIS_RL_OPTIMIZER_CHECKPOINT_SHA:?set AXIS_RL_OPTIMIZER_CHECKPOINT_SHA}"
-max_rounds="${AXIS_RL_MAX_ROUNDS:-48}"
 
 cd "$repo"
 mkdir -p "$run_root" "$repo/logs"
 test -f "$dataset/dataset_manifest.json"
 test -f "$score_lib"
+test -f "$score_lib_manifest"
 test -f "$optimizer_checkpoint"
 export PYTHONPATH="$repo:$repo/gpu_backend/python${PYTHONPATH:+:$PYTHONPATH}"
 export OMP_NUM_THREADS=1
@@ -103,10 +105,12 @@ python scripts/axisflip_prior_online_rl.py prepare \
   --distillation-dir "$run_root/distillation" \
   --dataset-dir "$dataset" \
   --score-lib "$score_lib" \
+  --score-library-manifest "$score_lib_manifest" \
+  --expected-score-lib-sha "$score_lib_sha" \
   --optimizer-checkpoint "$optimizer_checkpoint" \
   --expected-optimizer-checkpoint-sha "$optimizer_checkpoint_sha" \
   --expected-commit "$commit" \
-  --sample-seed 2026090302 \
+  --sample-seed 2026090402 \
   --train-steps 250 \
   --train-batch-per-gpu 256 \
   --learning-rate 5e-5
@@ -132,12 +136,13 @@ if (( audit_status != 0 )); then
 fi
 python scripts/axisflip_prior_online_rl.py summarize-audit --run-root "$run_root"
 
-for ((round_index=0; round_index<max_rounds; round_index+=1)); do
+round_index=0
+while true; do
   if [[ -f "$run_root/STOP_AFTER_ROUND" ]]; then
     echo "graceful stop sentinel observed before round $round_index"
     break
   fi
-  if (( SECONDS - job_started >= 82800 )); then
+  if (( SECONDS - job_started >= 342000 )); then
     echo "stopping before round $round_index with one-hour Slurm reserve"
     break
   fi
@@ -169,6 +174,7 @@ for ((round_index=0; round_index<max_rounds; round_index+=1)); do
     scripts/axisflip_prior_online_rl.py train-round \
     --run-root "$run_root" \
     --round-index "$round_index"
+  ((round_index += 1))
 done
 
 echo "axis-prior online RL stopped cleanly; run_root=$run_root"

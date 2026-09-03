@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--protocol-id", required=True)
     parser.add_argument("--expected-commit", required=True)
     parser.add_argument("--nfp", type=int, required=True)
+    parser.add_argument("--requested-iterations", type=int, default=2000)
     args = parser.parse_args()
     commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
@@ -54,7 +55,7 @@ def main() -> None:
         "source_best_iteration": int(
             best["original_space_local_gradient_adam"]["best_iteration"]
         ),
-        "requested_iterations": 2000,
+        "requested_iterations": args.requested_iterations,
         "target_helicity": [1, args.nfp],
         "code_commit": commit,
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),

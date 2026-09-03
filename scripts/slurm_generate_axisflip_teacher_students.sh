@@ -5,8 +5,8 @@
 #SBATCH --job-name=axisrl-teacher-stu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=24
-#SBATCH --mem=96G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
@@ -25,9 +25,9 @@ export NUMEXPR_NUM_THREADS=1
 
 python scripts/generate_axisflip_prior_dataset.py generate \
   --output-dir "$dataset" \
-  --shard-name students_080000_200000 \
-  --seed-start 203609110000 \
-  --count 120000 \
-  --workers 24 \
+  --shard-name students_128000_200000 \
+  --seed-start 204609168000 \
+  --count 72000 \
+  --workers 8 \
   --block-size 128 \
   --expected-commit "$commit"

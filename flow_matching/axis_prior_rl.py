@@ -15,9 +15,9 @@ from flow_matching.flow import physical_flow_feature_weights
 from flow_matching.model import CoilFlowTransformer
 
 
-PROTOCOL_ID = "qh-axisflip-prior-distilled-online-adam20-rwcfm-abi11-v1"
-FORMAT = "axisflip_prior_distilled_online_adam20_rwcfm_v1"
-TEACHER_FORMAT = "axisflip_compact_prior_teacher_dataset_v1"
+PROTOCOL_ID = "qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1"
+FORMAT = "axisflip_r012_distilled_online_adam20_trajectory_rwcfm_r04_v1"
+TEACHER_FORMAT = "axisflip_r012_prior_teacher_dataset_v1"
 NFP = 8
 N_BASE_COILS = 3
 TOKEN_DIM = 100

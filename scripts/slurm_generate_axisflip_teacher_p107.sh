@@ -25,9 +25,9 @@ export NUMEXPR_NUM_THREADS=1
 
 python scripts/generate_axisflip_prior_dataset.py generate \
   --output-dir "$dataset" \
-  --shard-name p107_000000_080000 \
-  --seed-start 203609030000 \
-  --count 80000 \
+  --shard-name p107_000000_128000 \
+  --seed-start 204609040000 \
+  --count 128000 \
   --workers 16 \
   --block-size 128 \
   --expected-commit "$commit"

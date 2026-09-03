@@ -518,3 +518,35 @@ maximum was `80.2724`. Effective radius increased in all 12, while median
 paired volume-QS and coil changes were `+48.0524/-0.4595`. This experiment does
 not change the current QH default. Canonical report:
 `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
+
+Protocol
+`qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1`
+is the registered second analytic-prior online Flow experiment. It fixes
+`nfp=8,nc=3`, synthesizes a fresh 200,000-sample R012 teacher corpus, fits a
+fresh normalizer, and trains the same 5,761,380-parameter set-valued
+Transformer to the existing convergence gates. No v1 checkpoint, normalizer,
+or replay state is reused. The q0 audit, policy screening, Adam20 gradient
+endpoints, formal centers, and replay scores all use the frozen experimental
+ABI-11 R04 library with curvature-p95 scale `25 m^-1`; this does not change the
+default ABI-11 library.
+
+Each valid rollout stores all 21 formal centers from step 0 through step 20;
+an invalid rollout stores only its represented step-0 start. Finite-difference
+gradient endpoints never enter replay. The 512-rollout FIFO evicts whole
+rollouts. Point weights are
+`(0.01 + exp((clip(score,0,100)-pool_max_score)/7.5))/rollout_length` and the
+weighted loss is normalized by total sampled weight. The loss mixture remains
+85% current policy, 10% trajectory replay, and 5% original R012 teacher. Per-
+GPU trajectory batch size is 256 times the ceiling of mean replay points per
+rollout, capped at 21 times; microbatch accumulation completes before each of
+the unchanged 250 optimizer updates. Four P107 GPUs run 64 samples per round
+without a round-count limit, stopping at the four-day wall reserve or the
+user-controlled round sentinel. Frozen specification:
+`evaluation/axisflip_r012_trajectory_online_rl_r04_abi11_v1.json`.
+
+Protocol `qh-axisflip-r012-top2-continue-adam3000-64d-r04-abi11-v1` runs two
+independent Students jobs from the frozen Adam200 bests of R012 cases 36 and 4.
+Each performs 3,000 new exact-data Adam updates with the same R04 library, 64
+fresh orthogonal centered directions, `h=0.0025`, learning rate `0.01`, and
+beta `(0.7,0.999)`. Frozen specification:
+`evaluation/axisflip_r012_top2_adam3000_r04_abi11_v1.json`.

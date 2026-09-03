@@ -20,12 +20,12 @@ from flow_matching.axis_prior_rl import (
 )
 from scripts.axisflip_prior_online_rl import (
     FORMAT,
-    INVALID_WEIGHT,
     PROTOCOL_ID,
     compact_native,
+    load_adam20_centers,
     save_online_checkpoint,
-    score_rank_weights,
     summarize_round,
+    trajectory_reward_weights,
     wilson_interval,
 )
 from scripts.flow_runtime import repository_provenance
@@ -95,10 +95,19 @@ def test_small_model_matches_previous_online_architecture() -> None:
     assert model.parameter_count == 5_761_380
 
 
-def test_rank_weights_are_bounded_and_ties_are_exchangeable() -> None:
-    weights = score_rank_weights(np.asarray([4.0, 1.0, 4.0, 2.0]))
-    np.testing.assert_allclose(weights, [11.0 / 6.0, 1.0, 11.0 / 6.0, 4.0 / 3.0])
-    assert np.all((weights >= 1.0) & (weights <= 2.0))
+def test_trajectory_weights_are_softmax_like_with_rollout_normalization() -> None:
+    weights, reference = trajectory_reward_weights(
+        np.asarray([80.0, 70.0, 0.0]),
+        np.asarray([2, 2, 1]),
+        temperature=10.0,
+        epsilon=0.01,
+    )
+    assert reference == 80.0
+    np.testing.assert_allclose(
+        weights,
+        [(1.0 + 0.01) / 2.0, (np.exp(-1.0) + 0.01) / 2.0, np.exp(-8.0) + 0.01],
+    )
+    assert weights[0] > weights[1] > weights[2] > 0.0
 
 
 def test_wilson_interval_and_distribution_stability_guards() -> None:
@@ -128,6 +137,45 @@ def test_native_compaction_removes_nonfinite_json_values() -> None:
     json.dumps(compact, allow_nan=False)
 
 
+def test_adam20_replay_loads_all_21_contiguous_formal_centers(tmp_path: Path) -> None:
+    trajectory = tmp_path / "trajectory"
+    trajectory.mkdir()
+    normalizer = fit_prior_normalizer(teacher_tokens())
+    base = teacher_tokens(1)[0].astype(np.float64)
+    for step in range(21):
+        physical = base.copy()
+        physical[0, 0] += 0.01 * step
+        payload = {
+            "raw": {
+                "x": physical[:, :33].tolist(),
+                "y": physical[:, 33:66].tolist(),
+                "z": physical[:, 66:99].tolist(),
+                "current": physical[:, 99].tolist(),
+            },
+            "original_space_local_gradient_adam": {
+                "iteration": step,
+                "native_score": {
+                    "status": "ok",
+                    "score": 40.0 + step,
+                    "components": {"volume_qs": 20.0 + step, "coil": 60.0 - step},
+                },
+            },
+        }
+        (trajectory / f"step_{step:04d}.json").write_text(
+            json.dumps(payload), encoding="utf-8"
+        )
+
+    targets, scores, volume_qs, coil, steps = load_adam20_centers(
+        tmp_path, normalizer
+    )
+    assert targets.shape == (21, 3, 100)
+    np.testing.assert_array_equal(steps, np.arange(21))
+    np.testing.assert_allclose(scores, np.arange(40.0, 61.0))
+    np.testing.assert_allclose(volume_qs, np.arange(20.0, 41.0))
+    np.testing.assert_allclose(coil, np.arange(60.0, 39.0, -1.0))
+    assert not np.array_equal(targets[0], targets[-1])
+
+
 def test_registered_rl_and_long_horizon_protocols_pin_current_optimizer() -> None:
     root = Path(__file__).resolve().parents[1]
     online = json.loads(
@@ -146,6 +194,24 @@ def test_registered_rl_and_long_horizon_protocols_pin_current_optimizer() -> Non
     assert long_run["optimizer"]["score_abi"] == 11
     assert long_run["optimizer"]["iterations"] == 2000
     assert long_run["optimizer"]["directions"] == 64
+    trajectory = json.loads(
+        (root / "evaluation" / "axisflip_r012_trajectory_online_rl_r04_abi11_v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    continuation = json.loads(
+        (root / "evaluation" / "axisflip_r012_top2_adam3000_r04_abi11_v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert trajectory["online_round"]["replay_capacity_rollouts"] == 512
+    assert trajectory["online_round"]["reward"] == {
+        "temperature": 7.5,
+        "epsilon": 0.01,
+        "weight": "(epsilon + exp((clip(score,0,100)-pool_max_score)/temperature)) / rollout_length",
+    }
+    assert continuation["optimizer"]["new_iterations"] == 3000
+    assert continuation["optimizer"]["score_library_sha256"] == trajectory["evaluator"]["library_sha256"]
 
 
 def test_online_checkpoint_retains_continuous_optimizer_state(tmp_path: Path) -> None:
@@ -184,14 +250,24 @@ def test_round_summary_builds_weighted_batch_and_replay(tmp_path: Path) -> None:
         "protocol": {"id": PROTOCOL_ID},
         "condition": {"nfp": 8, "n_base_coils": 3},
         "repository": repository_provenance(Path(__file__).resolve().parents[1]),
+        "update": {
+            "reward_temperature": 7.5,
+            "reward_epsilon": 0.01,
+            "base_batch_per_gpu": 256,
+            "trajectory_microbatch_per_gpu": 256,
+        },
     }
     (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     np.savez(
         tmp_path / "replay_pool.npz",
-        improved=np.empty((0, 3, 100), dtype=np.float32),
-        weights=np.empty(0, dtype=np.float32),
-        best_scores=np.empty(0, dtype=np.float64),
-        sample_ids=np.empty(0, dtype="U64"),
+        targets=np.empty((0, 3, 100), dtype=np.float32),
+        scores=np.empty(0, dtype=np.float64),
+        volume_qs=np.empty(0, dtype=np.float64),
+        coil=np.empty(0, dtype=np.float64),
+        rollout_ids=np.empty(0, dtype="U64"),
+        steps=np.empty(0, dtype=np.int16),
+        rollout_lengths=np.empty(0, dtype=np.int16),
+        rollout_valid=np.empty(0, dtype=np.bool_),
     )
     for worker in range(4):
         worker_dir = tmp_path / "rounds" / "round_000" / f"worker_{worker:02d}"
@@ -206,6 +282,21 @@ def test_round_summary_builds_weighted_batch_and_replay(tmp_path: Path) -> None:
         sample_ids = np.asarray(
             [f"r000_w{worker:02d}_i{index:02d}" for index in range(16)], dtype="U64"
         )
+        trajectory_targets = []
+        trajectory_scores = []
+        trajectory_ids = []
+        trajectory_steps = []
+        trajectory_lengths = []
+        trajectory_valid = []
+        for index, sample_id in enumerate(sample_ids):
+            length = 21 if valid[index] else 1
+            trajectory_targets.append(np.repeat(improved[index : index + 1], length, axis=0))
+            trajectory_scores.append(np.linspace(initial[index], best[index], length))
+            trajectory_ids.append(np.full(length, sample_id, dtype="U64"))
+            trajectory_steps.append(np.arange(length, dtype=np.int16))
+            trajectory_lengths.append(np.full(length, length, dtype=np.int16))
+            trajectory_valid.append(np.full(length, valid[index], dtype=np.bool_))
+        trajectory_scores_array = np.concatenate(trajectory_scores)
         np.savez(
             worker_dir / "batch.npz",
             current=current,
@@ -219,6 +310,14 @@ def test_round_summary_builds_weighted_batch_and_replay(tmp_path: Path) -> None:
             best_coil=best + 20.0,
             statuses=statuses,
             sample_ids=sample_ids,
+            trajectory_targets=np.concatenate(trajectory_targets),
+            trajectory_scores=trajectory_scores_array,
+            trajectory_volume_qs=trajectory_scores_array + 10.0,
+            trajectory_coil=trajectory_scores_array + 20.0,
+            trajectory_ids=np.concatenate(trajectory_ids),
+            trajectory_steps=np.concatenate(trajectory_steps),
+            trajectory_lengths=np.concatenate(trajectory_lengths),
+            trajectory_valid=np.concatenate(trajectory_valid),
         )
         summary = {
             "format": FORMAT,
@@ -236,11 +335,10 @@ def test_round_summary_builds_weighted_batch_and_replay(tmp_path: Path) -> None:
     summarize_round(SimpleNamespace(run_root=tmp_path, round_index=0))
     training = np.load(tmp_path / "rounds" / "round_000" / "training_data.npz")
     assert training["current"].shape == (64, 3, 100)
-    assert training["improved"].shape == (64, 3, 100)
-    assert np.all(training["improved_weights"][~training["current_valid"]] == INVALID_WEIGHT)
-    assert np.all(training["improved_weights"][training["current_valid"]] >= 1.0)
+    assert training["targets"].shape == (704, 3, 100)
+    assert np.all(training["target_weights"] > 0.0)
     replay = np.load(tmp_path / "replay_pool.npz")
-    assert replay["improved"].shape == (32, 3, 100)
+    assert replay["targets"].shape == (704, 3, 100)
     summary = json.loads(
         (tmp_path / "rounds" / "round_000" / "round_summary.json").read_text(
             encoding="utf-8"
@@ -248,3 +346,5 @@ def test_round_summary_builds_weighted_batch_and_replay(tmp_path: Path) -> None:
     )
     assert summary["valid_count"] == 32
     assert summary["valid_rate"] == 0.5
+    assert summary["training"]["replay_rollout_count_after_round"] == 64
+    assert summary["training"]["trajectory_batch_per_gpu"] == 2816

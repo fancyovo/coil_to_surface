@@ -255,3 +255,27 @@ its paired gain median was `+48.0524`, while the coil component median changed
 of `0.0751 m`. Relaxing curvature p95 removes a consistent coil-score reward
 for growth but does not keep optimized geometry near the 0.12 m prior scale.
 Any follow-up that requires compact final coils must target size explicitly.
+
+## DEC-20260904-01 - R012 trajectory-replay online Flow experiment
+
+Status: active registered experiment; no default impact.
+
+The second structured-prior RL run starts from a fresh distillation of the
+fixed `nfp=8,nc=3` R012 generator and uses the experimental R04 curvature score
+throughout its complete scoring and Adam20 path. It does not warm-start the
+earlier v4 prior policy.
+
+All formal Adam20 centers enter a 512-rollout FIFO. Rollout-length division
+prevents the 21 highly correlated centers of a legal optimization from gaining
+21 times the objective mass solely through storage, while a score-temperature
+weight with `tau=7.5` and epsilon `0.01` retains low-score starts with small
+positive mass. The trajectory batch grows with the mean stored rollout length;
+microbatch accumulation keeps the number of optimizer updates fixed at 250.
+The 85/10/5 policy/reward/original-prior mixture remains unchanged so this run
+tests the new prior, scorer, and trajectory target construction without also
+changing the outer RL step strength.
+
+Four P107 GPUs run until the four-day wall reserve or an explicit
+`STOP_AFTER_ROUND` sentinel, with no round-count cap. In parallel, the two
+Students GPUs continue R012 Adam200 best cases 36 and 4 through 3,000 new R04
+Adam updates, one independent job per GPU.

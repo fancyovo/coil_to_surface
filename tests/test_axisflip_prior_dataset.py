@@ -22,7 +22,7 @@ def test_block_tasks_cover_requested_seed_range() -> None:
 def test_teacher_generation_is_deterministic_and_fixed_condition() -> None:
     offset_a, tokens_a = generate_block((7, 123456, 1))
     offset_b, tokens_b = generate_block((7, 123456, 1))
-    assert GENERATOR_FORMAT.endswith("axis_flip_v4")
+    assert GENERATOR_FORMAT.endswith("axis_flip_r012_v1")
     assert offset_a == offset_b == 7
     assert tokens_a.shape == (1, N_BASE_COILS, TOKEN_DIM)
     assert tokens_a.dtype == np.float32

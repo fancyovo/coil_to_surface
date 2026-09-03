@@ -21,13 +21,14 @@ if str(REPO_ROOT) not in sys.path:
 from flow_matching.axis_surface_prior_v2 import sample_shaped_prior_prototype
 
 
-FORMAT = "axisflip_compact_prior_teacher_dataset_v1"
-SHARD_FORMAT = "axisflip_compact_prior_teacher_shard_v1"
+FORMAT = "axisflip_r012_prior_teacher_dataset_v1"
+SHARD_FORMAT = "axisflip_r012_prior_teacher_shard_v1"
 NFP = 8
 N_BASE_COILS = 3
 TOKEN_DIM = 100
 PRESET = "compact_flexible"
-GENERATOR_FORMAT = "axis_surface_contour_prior_compact_flexible_axis_flip_v4"
+GENERATOR_FORMAT = "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1"
+MINOR_RADIUS_M = 0.12
 
 
 def file_sha256(path: Path) -> str:
@@ -78,6 +79,7 @@ def generate_block(task: tuple[int, int, int]) -> tuple[int, np.ndarray]:
             surface_theta_samples=48,
             sample_role="registered_scoring",
             axis_chirality=-1,
+            minor_radius_m=MINOR_RADIUS_M,
         )
         if generated.metadata.get("format") != GENERATOR_FORMAT:
             raise RuntimeError("generator format changed during teacher synthesis")
@@ -152,6 +154,8 @@ def generate_shard(args: argparse.Namespace) -> None:
             "preset": PRESET,
             "sample_role": "registered_scoring",
             "axis_chirality": -1,
+            "minor_radius_center_m": MINOR_RADIUS_M,
+            "minor_radius_range_m": [0.108, 0.132],
             "surface_phi_samples": 96,
             "surface_theta_samples": 48,
         },

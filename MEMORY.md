@@ -12,8 +12,8 @@
   on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
-- Active exploration branch: `codex/axis-surface-prior`, based directly on
-  `main@de75f6d`. Protocol
+- Active exploration branch: `codex/r012-trajectory-replay-rl`, continuing
+  R012/R04 work based directly on `main@de75f6d`. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
   gate and is invalidated. The accepted balanced-v2 experiment completed 6000
   ABI-11 score-only samples under arrays `51614/51615`; repaired analysis job
@@ -233,10 +233,14 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
+- Active protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1`
+  freshly distills fixed `nfp=8,nc=3` R012 and uses frozen R04. Valid Adam20
+  rollouts contribute 21 centers to a 512-rollout FIFO with `tau=7.5`, epsilon
+  `0.01`, and length normalization. P107 uses four GPUs for four days without a
+  round cap; two Students jobs give R012 cases 36/4 3,000 new R04 Adam updates.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map
-
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.
 - `memory/WRITING.md`: deliverable rules; `memory/HISTORY.md`: evidence chronology.

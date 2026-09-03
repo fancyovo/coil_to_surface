@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from contextlib import nullcontext
 import json
 import math
 import os
@@ -33,7 +34,7 @@ from flow_matching.axis_prior_rl import (  # noqa: E402
     file_sha256,
     inverse_tokens,
     load_teacher_dataset,
-    online_objective,
+    per_sample_flow_terms,
     random_permute_coils,
     split_masks,
     transform_tokens,
@@ -43,7 +44,6 @@ from flow_matching.flow import integrate_flow  # noqa: E402
 from flow_matching.model import CoilFlowTransformer  # noqa: E402
 from flow_matching.optimization import (  # noqa: E402
     CURRENT_NATIVE_SCORE_ABI,
-    CURRENT_NATIVE_SCORE_LIBRARY_SHA256,
 )
 from scripts.flow_runtime import repository_provenance  # noqa: E402
 from scripts.native_score_runtime import token_case, write_json  # noqa: E402
@@ -55,8 +55,12 @@ WORKER_COUNT = 4
 SAMPLES_PER_WORKER = 16
 SAMPLES_PER_ROUND = WORKER_COUNT * SAMPLES_PER_WORKER
 REPLAY_CAPACITY = 512
-INVALID_WEIGHT = 0.05
 FLOW_STEPS = 32
+REWARD_EPSILON = 0.01
+REWARD_TEMPERATURE = 7.5
+MAX_TRAJECTORY_POINTS = 21
+R04_CURVATURE_P95_SCALE_M_INV = 25.0
+R04_CURVATURE_MAX_SCALE_M_INV = 35.0
 
 
 def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -106,8 +110,24 @@ def load_policy_checkpoint(
 
 def prepare(args: argparse.Namespace) -> None:
     provenance = require_clean_repository(args.expected_commit)
-    if file_sha256(args.score_lib) != CURRENT_NATIVE_SCORE_LIBRARY_SHA256:
-        raise ValueError("score library is not the promoted ABI-11 build")
+    if args.reward_temperature <= 0.0 or args.reward_epsilon <= 0.0:
+        raise ValueError("reward temperature and epsilon must be positive")
+    score_sha = file_sha256(args.score_lib)
+    if score_sha != args.expected_score_lib_sha:
+        raise ValueError("score library SHA-256 differs from the frozen R04 build")
+    score_manifest = load_json(args.score_library_manifest)
+    if (
+        score_manifest.get("interface_abi") != CURRENT_NATIVE_SCORE_ABI
+        or score_manifest.get("sha256") != score_sha
+        or score_manifest.get("cmake_overrides", {}).get(
+            "SGPU_COIL_CURVATURE_P95_SCALE"
+        )
+        != R04_CURVATURE_P95_SCALE_M_INV
+        or score_manifest.get("coil_curvature_p95_radius_m") != 0.04
+        or score_manifest.get("coil_curvature_max_scale_m_inv")
+        != R04_CURVATURE_MAX_SCALE_M_INV
+    ):
+        raise ValueError("score library manifest does not describe ABI-11 R04")
     if file_sha256(args.optimizer_checkpoint) != args.expected_optimizer_checkpoint_sha:
         raise ValueError("optimizer normalizer checkpoint hash mismatch")
     convergence = load_json(args.distillation_dir / "convergence.json")
@@ -137,6 +157,7 @@ def prepare(args: argparse.Namespace) -> None:
             "dataset": str(args.dataset_dir.resolve()),
             "dataset_repository_commit": teacher_manifest["repository_commit"],
             "sample_count": teacher_manifest["sample_count"],
+            "generator": teacher_manifest["generator"],
         },
         "distillation": {
             "directory": str(args.distillation_dir.resolve()),
@@ -152,6 +173,10 @@ def prepare(args: argparse.Namespace) -> None:
             "configuration": score_config(
                 iota_degree=3, surface_theta_count=128, axis_hint=None
             ),
+            "score_library_manifest": str(args.score_library_manifest.resolve()),
+            "coil_curvature_p95_scale_m_inv": R04_CURVATURE_P95_SCALE_M_INV,
+            "coil_curvature_p95_radius_m": 0.04,
+            "coil_curvature_max_scale_m_inv": R04_CURVATURE_MAX_SCALE_M_INV,
         },
         "adam20": {
             "optimizer_checkpoint": str(args.optimizer_checkpoint.resolve()),
@@ -165,7 +190,8 @@ def prepare(args: argparse.Namespace) -> None:
             "beta": [0.7, 0.999],
             "axis_policy": "screen globally, then reuse the selected axis from optimizer step 0",
             "initial_score_tolerance": 0.1,
-            "target": "best valid point among steps 0 through 20",
+            "replay_target": "all formal centers from step 0 through step 20",
+            "gradient_endpoints_enter_replay": False,
         },
         "round": {
             "workers": WORKER_COUNT,
@@ -178,12 +204,15 @@ def prepare(args: argparse.Namespace) -> None:
             "current_policy_fraction": 0.85,
             "improved_fraction": 0.10,
             "q0_fraction": 0.05,
-            "invalid_weight": INVALID_WEIGHT,
-            "valid_weight": "1 plus within-round best-score percentile",
-            "replay_capacity": REPLAY_CAPACITY,
-            "replay_policy": "FIFO over valid Adam20 best endpoints",
+            "reward_temperature": args.reward_temperature,
+            "reward_epsilon": args.reward_epsilon,
+            "weight_rule": "(epsilon + exp((clipped_score - pool_max_score) / tau)) / rollout_length",
+            "replay_capacity_rollouts": REPLAY_CAPACITY,
+            "replay_policy": "FIFO over whole rollouts; valid rollouts have 21 centers and invalid rollouts retain step 0",
             "train_steps": args.train_steps,
-            "batch_per_gpu": args.train_batch_per_gpu,
+            "base_batch_per_gpu": args.train_batch_per_gpu,
+            "trajectory_batch_rule": "base batch multiplied by ceiling(mean replay points per rollout), capped at 21x",
+            "trajectory_microbatch_per_gpu": args.train_batch_per_gpu,
             "learning_rate": args.learning_rate,
         },
         "parallelism": {
@@ -195,10 +224,14 @@ def prepare(args: argparse.Namespace) -> None:
     atomic_write_json(args.run_root / "manifest.json", manifest)
     atomic_savez(
         args.run_root / "replay_pool.npz",
-        improved=np.empty((0, N_BASE_COILS, 100), dtype=np.float32),
-        weights=np.empty(0, dtype=np.float32),
-        best_scores=np.empty(0, dtype=np.float64),
-        sample_ids=np.empty(0, dtype="U64"),
+        targets=np.empty((0, N_BASE_COILS, 100), dtype=np.float32),
+        scores=np.empty(0, dtype=np.float64),
+        volume_qs=np.empty(0, dtype=np.float64),
+        coil=np.empty(0, dtype=np.float64),
+        rollout_ids=np.empty(0, dtype="U64"),
+        steps=np.empty(0, dtype=np.int16),
+        rollout_lengths=np.empty(0, dtype=np.int16),
+        rollout_valid=np.empty(0, dtype=np.bool_),
     )
     atomic_write_json(
         args.run_root / "progress.json",
@@ -307,6 +340,50 @@ def raw_tokens_from_case(payload: dict[str, Any]) -> np.ndarray:
     )
 
 
+def load_adam20_centers(
+    optimizer_dir: Path, prior_normalizer: CoilNormalizer
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    paths = sorted((optimizer_dir / "trajectory").glob("step_*.json"))
+    if len(paths) != MAX_TRAJECTORY_POINTS:
+        raise RuntimeError(
+            f"Adam20 center trajectory has {len(paths)} points, expected {MAX_TRAJECTORY_POINTS}"
+        )
+    targets = []
+    scores = []
+    volume_qs = []
+    coil = []
+    steps = []
+    for expected_step, path in enumerate(paths):
+        payload = load_json(path)
+        metadata = payload.get("original_space_local_gradient_adam", {})
+        if int(metadata.get("iteration", -1)) != expected_step:
+            raise RuntimeError("Adam20 center trajectory step sequence is not contiguous")
+        compact = compact_native(metadata.get("native_score", {}))
+        if compact["status"] != "ok":
+            raise RuntimeError("Adam20 center trajectory contains an invalid formal center")
+        physical = raw_tokens_from_case(payload)
+        targets.append(transform_tokens(physical[None], prior_normalizer)[0])
+        scores.append(compact["score"])
+        volume_qs.append(
+            compact["components"]["volume_qs"]
+            if compact["components"]["volume_qs"] is not None
+            else math.nan
+        )
+        coil.append(
+            compact["components"]["coil"]
+            if compact["components"]["coil"] is not None
+            else math.nan
+        )
+        steps.append(expected_step)
+    return (
+        np.asarray(targets, dtype=np.float32),
+        np.asarray(scores, dtype=np.float64),
+        np.asarray(volume_qs, dtype=np.float64),
+        np.asarray(coil, dtype=np.float64),
+        np.asarray(steps, dtype=np.int16),
+    )
+
+
 def run_adam20(
     *,
     start_path: Path,
@@ -368,7 +445,7 @@ def run_adam20(
         "--progress-every",
         "10",
         "--trajectory-every",
-        "0",
+        "1",
         "--state-every",
         "20",
     ]
@@ -446,6 +523,14 @@ def collect_worker(args: argparse.Namespace) -> None:
     statuses = []
     sample_ids = []
     records = []
+    trajectory_targets = []
+    trajectory_scores = []
+    trajectory_volume_qs = []
+    trajectory_coil = []
+    trajectory_ids = []
+    trajectory_steps = []
+    trajectory_lengths = []
+    trajectory_valid = []
     score_wall = 0.0
     adam_wall = 0.0
     for index, physical in enumerate(generated_physical):
@@ -533,6 +618,29 @@ def collect_worker(args: argparse.Namespace) -> None:
                 "wall_s": one_adam_wall,
                 "optimizer_dir": str(optimizer_dir.relative_to(args.run_root)),
             }
+            centers = load_adam20_centers(optimizer_dir, prior_normalizer)
+            center_count = len(centers[0])
+            trajectory_targets.append(centers[0])
+            trajectory_scores.append(centers[1])
+            trajectory_volume_qs.append(centers[2])
+            trajectory_coil.append(centers[3])
+            trajectory_ids.append(np.full(center_count, sample_id, dtype="U64"))
+            trajectory_steps.append(centers[4])
+            trajectory_lengths.append(
+                np.full(center_count, center_count, dtype=np.int16)
+            )
+            trajectory_valid.append(np.ones(center_count, dtype=np.bool_))
+        else:
+            trajectory_targets.append(current[index : index + 1].astype(np.float32))
+            trajectory_scores.append(initial_scores[index : index + 1].astype(np.float64))
+            trajectory_volume_qs.append(
+                initial_volume_qs[index : index + 1].astype(np.float64)
+            )
+            trajectory_coil.append(initial_coil[index : index + 1].astype(np.float64))
+            trajectory_ids.append(np.asarray([sample_id], dtype="U64"))
+            trajectory_steps.append(np.asarray([0], dtype=np.int16))
+            trajectory_lengths.append(np.asarray([1], dtype=np.int16))
+            trajectory_valid.append(np.asarray([False], dtype=np.bool_))
         records.append(
             {
                 "sample_id": sample_id,
@@ -572,6 +680,14 @@ def collect_worker(args: argparse.Namespace) -> None:
         best_coil=best_coil,
         statuses=np.asarray(statuses, dtype="U64"),
         sample_ids=np.asarray(sample_ids, dtype="U64"),
+        trajectory_targets=np.concatenate(trajectory_targets).astype(np.float32),
+        trajectory_scores=np.concatenate(trajectory_scores).astype(np.float64),
+        trajectory_volume_qs=np.concatenate(trajectory_volume_qs).astype(np.float64),
+        trajectory_coil=np.concatenate(trajectory_coil).astype(np.float64),
+        trajectory_ids=np.concatenate(trajectory_ids).astype("U64"),
+        trajectory_steps=np.concatenate(trajectory_steps).astype(np.int16),
+        trajectory_lengths=np.concatenate(trajectory_lengths).astype(np.int16),
+        trajectory_valid=np.concatenate(trajectory_valid).astype(np.bool_),
     )
     summary = {
         "format": FORMAT,
@@ -614,24 +730,29 @@ def finite_correlation(left: np.ndarray, right: np.ndarray) -> float | None:
     return float(np.corrcoef(left[keep], right[keep])[0, 1])
 
 
-def score_rank_weights(scores: np.ndarray) -> np.ndarray:
-    values = np.asarray(scores, dtype=np.float64)
-    if len(values) == 0:
-        return np.empty(0, dtype=np.float32)
-    if len(values) == 1:
-        return np.asarray([1.5], dtype=np.float32)
-    order = np.argsort(values, kind="stable")
-    ranks = np.empty(len(values), dtype=np.float64)
-    sorted_values = values[order]
-    start = 0
-    while start < len(values):
-        stop = start + 1
-        while stop < len(values) and sorted_values[stop] == sorted_values[start]:
-            stop += 1
-        average_rank = 0.5 * (start + stop - 1) / (len(values) - 1)
-        ranks[order[start:stop]] = average_rank
-        start = stop
-    return (1.0 + ranks).astype(np.float32)
+def trajectory_reward_weights(
+    scores: np.ndarray,
+    rollout_lengths: np.ndarray,
+    *,
+    temperature: float = REWARD_TEMPERATURE,
+    epsilon: float = REWARD_EPSILON,
+) -> tuple[np.ndarray, float]:
+    values = np.nan_to_num(
+        np.asarray(scores, dtype=np.float64), nan=0.0, posinf=100.0, neginf=0.0
+    )
+    lengths = np.asarray(rollout_lengths, dtype=np.float64)
+    if values.ndim != 1 or lengths.shape != values.shape or len(values) == 0:
+        raise ValueError("trajectory scores and rollout lengths must be nonempty vectors")
+    if temperature <= 0.0 or epsilon <= 0.0 or np.any(lengths < 1.0):
+        raise ValueError("reward temperature, epsilon, and rollout lengths must be positive")
+    clipped = np.clip(values, 0.0, 100.0)
+    reference = float(np.max(clipped))
+    weights = (epsilon + np.exp((clipped - reference) / temperature)) / lengths
+    return weights.astype(np.float32), reference
+
+
+def ordered_unique(values: np.ndarray) -> list[str]:
+    return list(dict.fromkeys(np.asarray(values).astype(str).tolist()))
 
 
 def summarize_round(args: argparse.Namespace) -> None:
@@ -658,37 +779,73 @@ def summarize_round(args: argparse.Namespace) -> None:
     replay_path = args.run_root / "replay_pool.npz"
     with np.load(replay_path, allow_pickle=False) as replay:
         old_replay = {name: np.asarray(replay[name]) for name in replay.files}
-    reward_improved = np.concatenate((combined["improved"], old_replay["improved"]))
-    reward_scores = np.concatenate((combined["best_scores"], old_replay["best_scores"]))
-    reward_valid = np.concatenate(
-        (valid, np.ones(len(old_replay["improved"]), dtype=np.bool_))
+    current_trajectory = {
+        "targets": combined["trajectory_targets"],
+        "scores": combined["trajectory_scores"],
+        "volume_qs": combined["trajectory_volume_qs"],
+        "coil": combined["trajectory_coil"],
+        "rollout_ids": combined["trajectory_ids"],
+        "steps": combined["trajectory_steps"],
+        "rollout_lengths": combined["trajectory_lengths"],
+        "rollout_valid": combined["trajectory_valid"],
+    }
+    reward = {
+        name: np.concatenate((current_trajectory[name], old_replay[name]))
+        for name in current_trajectory
+    }
+    update = manifest["update"]
+    reward_weights, reward_score_reference = trajectory_reward_weights(
+        reward["scores"],
+        reward["rollout_lengths"],
+        temperature=float(update["reward_temperature"]),
+        epsilon=float(update["reward_epsilon"]),
     )
-    reward_weights = np.full(len(reward_improved), INVALID_WEIGHT, dtype=np.float32)
-    reward_weights[reward_valid] = score_rank_weights(reward_scores[reward_valid])
 
-    new_replay_improved = np.concatenate((old_replay["improved"], combined["improved"][valid]))
-    new_replay_scores = np.concatenate((old_replay["best_scores"], combined["best_scores"][valid]))
-    new_replay_ids = np.concatenate((old_replay["sample_ids"], combined["sample_ids"][valid]))
-    if len(new_replay_improved) > REPLAY_CAPACITY:
-        keep = slice(len(new_replay_improved) - REPLAY_CAPACITY, None)
-        new_replay_improved = new_replay_improved[keep]
-        new_replay_scores = new_replay_scores[keep]
-        new_replay_ids = new_replay_ids[keep]
-    new_replay_weights = score_rank_weights(new_replay_scores)
+    replay_combined = {
+        name: np.concatenate((old_replay[name], current_trajectory[name]))
+        for name in current_trajectory
+    }
+    replay_rollout_order = ordered_unique(replay_combined["rollout_ids"])
+    retained_rollouts = replay_rollout_order[-REPLAY_CAPACITY:]
+    keep = np.isin(replay_combined["rollout_ids"], retained_rollouts)
+    new_replay = {name: values[keep] for name, values in replay_combined.items()}
     atomic_savez(
         replay_path,
-        improved=new_replay_improved.astype(np.float32),
-        weights=new_replay_weights.astype(np.float32),
-        best_scores=new_replay_scores.astype(np.float64),
-        sample_ids=new_replay_ids.astype("U64"),
+        targets=new_replay["targets"].astype(np.float32),
+        scores=new_replay["scores"].astype(np.float64),
+        volume_qs=new_replay["volume_qs"].astype(np.float64),
+        coil=new_replay["coil"].astype(np.float64),
+        rollout_ids=new_replay["rollout_ids"].astype("U64"),
+        steps=new_replay["steps"].astype(np.int16),
+        rollout_lengths=new_replay["rollout_lengths"].astype(np.int16),
+        rollout_valid=new_replay["rollout_valid"].astype(np.bool_),
+    )
+
+    reward_rollout_count = len(ordered_unique(reward["rollout_ids"]))
+    mean_points_per_rollout = len(reward["targets"]) / reward_rollout_count
+    base_batch = int(update["base_batch_per_gpu"])
+    trajectory_batch = base_batch * min(
+        MAX_TRAJECTORY_POINTS, max(1, math.ceil(mean_points_per_rollout))
+    )
+    weight_sum = float(np.sum(reward_weights, dtype=np.float64))
+    weight_square_sum = float(np.sum(reward_weights.astype(np.float64) ** 2))
+    weight_ess = weight_sum * weight_sum / max(weight_square_sum, 1.0e-30)
+    top_threshold = float(np.percentile(reward["scores"], 90.0))
+    top_weight_share = float(
+        np.sum(reward_weights[reward["scores"] >= top_threshold], dtype=np.float64)
+        / weight_sum
     )
 
     training_path = round_dir / "training_data.npz"
     atomic_savez(
         training_path,
         current=combined["current"].astype(np.float32),
-        improved=reward_improved.astype(np.float32),
-        improved_weights=reward_weights.astype(np.float32),
+        targets=reward["targets"].astype(np.float32),
+        target_weights=reward_weights.astype(np.float32),
+        target_scores=reward["scores"].astype(np.float64),
+        target_rollout_ids=reward["rollout_ids"].astype("U64"),
+        target_steps=reward["steps"].astype(np.int16),
+        target_rollout_lengths=reward["rollout_lengths"].astype(np.int16),
         current_valid=valid,
         initial_scores=combined["initial_scores"].astype(np.float64),
         best_scores=combined["best_scores"].astype(np.float64),
@@ -703,6 +860,18 @@ def summarize_round(args: argparse.Namespace) -> None:
     best = combined["best_scores"]
     gain = best[valid] - initial[valid]
     status_counts = dict(Counter(combined["statuses"].tolist()))
+    trajectory_by_step = {}
+    for step in range(MAX_TRAJECTORY_POINTS):
+        select = current_trajectory["steps"] == step
+        if np.any(select):
+            trajectory_by_step[str(step)] = {
+                "count": int(np.count_nonzero(select)),
+                "score_median": finite_median(current_trajectory["scores"][select]),
+                "volume_qs_median": finite_median(
+                    current_trajectory["volume_qs"][select]
+                ),
+                "coil_median": finite_median(current_trajectory["coil"][select]),
+            }
     summary = {
         "format": FORMAT,
         "stage": "round_collected",
@@ -734,14 +903,27 @@ def summarize_round(args: argparse.Namespace) -> None:
                 str(threshold): int(np.count_nonzero(best[valid] >= threshold))
                 for threshold in (50, 70, 80)
             },
+            "center_trajectory_by_step": trajectory_by_step,
         },
         "training": {
             "data_file": str(training_path.relative_to(args.run_root)),
-            "improvement_count": int(len(reward_improved)),
-            "invalid_weight": INVALID_WEIGHT,
-            "valid_weight_min": float(np.min(reward_weights[reward_valid])) if np.any(reward_valid) else None,
-            "valid_weight_max": float(np.max(reward_weights[reward_valid])) if np.any(reward_valid) else None,
-            "replay_size_after_round": int(len(new_replay_improved)),
+            "reward_point_count": int(len(reward["targets"])),
+            "reward_rollout_count": int(reward_rollout_count),
+            "mean_points_per_rollout": float(mean_points_per_rollout),
+            "reward_temperature": float(update["reward_temperature"]),
+            "reward_epsilon": float(update["reward_epsilon"]),
+            "reward_score_reference": reward_score_reference,
+            "reward_weight_min": float(np.min(reward_weights)),
+            "reward_weight_max": float(np.max(reward_weights)),
+            "reward_weight_effective_sample_size": weight_ess,
+            "reward_top_score_decile_weight_share": top_weight_share,
+            "base_batch_per_gpu": base_batch,
+            "trajectory_batch_per_gpu": trajectory_batch,
+            "trajectory_microbatch_per_gpu": int(
+                update["trajectory_microbatch_per_gpu"]
+            ),
+            "replay_rollout_count_after_round": int(len(retained_rollouts)),
+            "replay_point_count_after_round": int(len(new_replay["targets"])),
         },
         "diversity": {
             "current": diversity_summary(combined["current"], seed=1000 + args.round_index),
@@ -768,7 +950,8 @@ def summarize_round(args: argparse.Namespace) -> None:
             "initial_score_median_all": summary["initial"]["score_median_all"],
             "initial_score_median_valid": summary["initial"]["score_median_valid"],
             "adam20_best_score_median_valid": summary["adam20"]["best_score_median_valid"],
-            "replay_size": summary["training"]["replay_size_after_round"],
+            "replay_rollouts": summary["training"]["replay_rollout_count_after_round"],
+            "replay_points": summary["training"]["replay_point_count_after_round"],
             "updated_unix_s": time.time(),
         },
     )
@@ -888,13 +1071,13 @@ def train_round(args: argparse.Namespace) -> None:
     data_file = args.run_root / load_json(round_dir / "round_summary.json")["training"]["data_file"]
     data = np.load(data_file, allow_pickle=False)
     current = np.asarray(data["current"], dtype=np.float32)
-    improved = np.asarray(data["improved"], dtype=np.float32)
-    improved_weights = np.asarray(data["improved_weights"], dtype=np.float32)
+    targets = np.asarray(data["targets"], dtype=np.float32)
+    target_weights = np.asarray(data["target_weights"], dtype=np.float32)
     q0_path = Path(manifest["distillation"]["directory"]) / "q0_train_normalized.npy"
     q0 = np.load(q0_path, mmap_mode="r")
     if q0.ndim != 3 or q0.shape[1:] != (N_BASE_COILS, 100) or q0.dtype != np.float32:
         raise ValueError("q0 normalized training cache has the wrong contract")
-    weights = feature_weights(normalizer, device)
+    feature_weight_values = feature_weights(normalizer, device)
     rng = np.random.default_rng(2026090400 + args.round_index * 100 + rank)
     torch.manual_seed(2026090500 + args.round_index * 100 + rank)
     permutation_generator = torch.Generator().manual_seed(
@@ -902,37 +1085,84 @@ def train_round(args: argparse.Namespace) -> None:
     )
     metrics = []
     started = time.perf_counter()
+    round_training = load_json(round_dir / "round_summary.json")["training"]
+    base_batch_size = int(update["base_batch_per_gpu"])
+    target_batch_size = int(round_training["trajectory_batch_per_gpu"])
+    target_microbatch_size = int(update["trajectory_microbatch_per_gpu"])
+    if target_batch_size % target_microbatch_size:
+        raise ValueError("trajectory batch must be divisible by its microbatch")
+    improvement_fraction = float(update["improved_fraction"])
+    q0_fraction = float(update["q0_fraction"])
+    current_fraction = 1.0 - improvement_fraction - q0_fraction
     for step in range(1, int(update["train_steps"]) + 1):
-        batch_size = int(update["batch_per_gpu"])
         current_batch = torch.from_numpy(
-            current[rng.integers(0, len(current), size=batch_size)]
+            current[rng.integers(0, len(current), size=base_batch_size)]
         )
-        improved_indices = rng.integers(0, len(improved), size=batch_size)
-        improved_batch = torch.from_numpy(improved[improved_indices])
-        weight_batch = torch.from_numpy(improved_weights[improved_indices]).to(device=device)
-        q0_batch = torch.from_numpy(q0[rng.integers(0, len(q0), size=batch_size)])
+        q0_batch = torch.from_numpy(
+            q0[rng.integers(0, len(q0), size=base_batch_size)]
+        )
         current_batch = random_permute_coils(
             current_batch, generator=permutation_generator
-        ).to(device=device)
-        improved_batch = random_permute_coils(
-            improved_batch, generator=permutation_generator
         ).to(device=device)
         q0_batch = random_permute_coils(
             q0_batch, generator=permutation_generator
         ).to(device=device)
+        target_indices = rng.integers(0, len(targets), size=target_batch_size)
+        sampled_target_weights = target_weights[target_indices].astype(
+            np.float64, copy=False
+        )
+        target_denominator = float(np.sum(sampled_target_weights))
+        if not math.isfinite(target_denominator) or target_denominator <= 0.0:
+            raise RuntimeError("sampled trajectory weights have no positive mass")
         optimizer.zero_grad(set_to_none=True)
-        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-            loss, terms = online_objective(
-                train_model,
-                current_data=current_batch,
-                improved_data=improved_batch,
-                improved_weights=weight_batch,
-                q0_data=q0_batch,
-                feature_weights=weights,
-                improvement_fraction=float(update["improved_fraction"]),
-                q0_fraction=float(update["q0_fraction"]),
-            )
-        loss.backward()
+        accumulation_context = (
+            train_model.no_sync if world_size > 1 else lambda: nullcontext()
+        )
+        with accumulation_context():
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                current_loss = per_sample_flow_terms(
+                    train_model,
+                    current_batch,
+                    feature_weights=feature_weight_values,
+                ).mean()
+            (current_fraction * current_loss).backward()
+        with accumulation_context():
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                q0_loss = per_sample_flow_terms(
+                    train_model,
+                    q0_batch,
+                    feature_weights=feature_weight_values,
+                ).mean()
+            (q0_fraction * q0_loss).backward()
+        target_loss_value = torch.zeros((), dtype=torch.float32, device=device)
+        for offset in range(0, target_batch_size, target_microbatch_size):
+            stop = offset + target_microbatch_size
+            selected = target_indices[offset:stop]
+            target_batch = torch.from_numpy(targets[selected])
+            target_batch = random_permute_coils(
+                target_batch, generator=permutation_generator
+            ).to(device=device)
+            weight_batch = torch.from_numpy(
+                target_weights[selected].astype(np.float32, copy=False)
+            ).to(device=device)
+            is_last = stop == target_batch_size
+            sync_context = nullcontext() if is_last else accumulation_context()
+            with sync_context:
+                with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                    target_terms = per_sample_flow_terms(
+                        train_model,
+                        target_batch,
+                        feature_weights=feature_weight_values,
+                    )
+                    target_numerator = torch.sum(target_terms * weight_batch)
+                    target_loss_part = target_numerator / target_denominator
+                (improvement_fraction * target_loss_part).backward()
+            target_loss_value += target_numerator.detach() / target_denominator
+        loss = (
+            current_fraction * current_loss.detach()
+            + improvement_fraction * target_loss_value
+            + q0_fraction * q0_loss.detach()
+        )
         gradient_norm = torch.nn.utils.clip_grad_norm_(train_model.parameters(), 1.0)
         optimizer.step()
         with torch.no_grad():
@@ -943,10 +1173,10 @@ def train_round(args: argparse.Namespace) -> None:
         if step == 1 or step % 25 == 0 or step == int(update["train_steps"]):
             values = torch.stack(
                 [
-                    terms["loss"],
-                    terms["current_loss"],
-                    terms["improvement_loss"],
-                    terms["q0_loss"],
+                    loss,
+                    current_loss.detach(),
+                    target_loss_value,
+                    q0_loss.detach(),
                     torch.as_tensor(gradient_norm, dtype=torch.float32, device=device),
                 ]
             ).float()
@@ -961,6 +1191,11 @@ def train_round(args: argparse.Namespace) -> None:
                     "improvement_loss": float(values[2].cpu()),
                     "q0_loss": float(values[3].cpu()),
                     "gradient_norm": float(values[4].cpu()),
+                    "base_batch_per_gpu": base_batch_size,
+                    "trajectory_batch_per_gpu": target_batch_size,
+                    "trajectory_microbatches_per_gpu": (
+                        target_batch_size // target_microbatch_size
+                    ),
                 }
                 metrics.append(row)
                 print(json.dumps({"event": "online_train", "round": args.round_index, **row}))
@@ -997,6 +1232,9 @@ def train_round(args: argparse.Namespace) -> None:
             "round": args.round_index,
             "world_size": world_size,
             "steps": int(update["train_steps"]),
+            "base_batch_per_gpu": base_batch_size,
+            "trajectory_batch_per_gpu": target_batch_size,
+            "trajectory_microbatch_per_gpu": target_microbatch_size,
             "wall_s": time.perf_counter() - started,
             "relative_parameter_update_l2": math.sqrt(delta_square / max(base_square, 1.0e-30)),
             "paired_generated_normalized_rms_move": move,
@@ -1199,6 +1437,8 @@ def parser() -> argparse.ArgumentParser:
     prepare_command.add_argument("--distillation-dir", type=Path, required=True)
     prepare_command.add_argument("--dataset-dir", type=Path, required=True)
     prepare_command.add_argument("--score-lib", type=Path, required=True)
+    prepare_command.add_argument("--score-library-manifest", type=Path, required=True)
+    prepare_command.add_argument("--expected-score-lib-sha", required=True)
     prepare_command.add_argument("--optimizer-checkpoint", type=Path, required=True)
     prepare_command.add_argument("--expected-optimizer-checkpoint-sha", required=True)
     prepare_command.add_argument("--expected-commit", required=True)
@@ -1206,6 +1446,10 @@ def parser() -> argparse.ArgumentParser:
     prepare_command.add_argument("--train-steps", type=int, default=250)
     prepare_command.add_argument("--train-batch-per-gpu", type=int, default=256)
     prepare_command.add_argument("--learning-rate", type=float, default=5.0e-5)
+    prepare_command.add_argument(
+        "--reward-temperature", type=float, default=REWARD_TEMPERATURE
+    )
+    prepare_command.add_argument("--reward-epsilon", type=float, default=REWARD_EPSILON)
     prepare_command.set_defaults(func=prepare)
 
     collect = commands.add_parser("collect-worker")

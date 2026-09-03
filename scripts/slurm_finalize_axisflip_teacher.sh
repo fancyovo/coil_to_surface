@@ -21,7 +21,7 @@ export PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}"
 
 python scripts/generate_axisflip_prior_dataset.py finalize \
   --output-dir "$dataset" \
-  --shard-name p107_000000_080000 \
-  --shard-name students_080000_200000 \
+  --shard-name p107_000000_128000 \
+  --shard-name students_128000_200000 \
   --expected-total 200000 \
   --expected-commit "$commit"

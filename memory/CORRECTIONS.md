@@ -1612,7 +1612,30 @@ An open critical correction blocks promotion and external reporting.
   writing audit then repeated the documented Windows wildcard mistake in one
   read-only `rg` call; the corrected audit passes only explicit file paths. One
   focused pytest invocation also omitted the repository from `PYTHONPATH` and
-  failed during collection; the corrected invocation passed all 37 tests.
+  failed during collection; the corrected invocation passed all 37 tests. A
+  later RL-planning read guessed the nonexistent shortened protocol path
+  `evaluation/axisflip_prior_online_rl_abi11_v1.json` before using the tracked
+  path `evaluation/axisflip_prior_distilled_online_adam20_rwcfm_abi11_v1.json`.
+  During the approved follow-up, a direct `squeue -o` call and one `rg` pattern
+  again lost their intended PowerShell quoting; both were read-only and were
+  rerun with stdin or single-quoted arguments. An initial empty `bash -s` probe
+  was also a no-op. Two draft metadata values were corrected before testing or
+  submission: the Students teacher shard seed now starts exactly where the
+  P107 shard stops (`204609168000`), and case 4's exact Adam200 best is read
+  from `trajectories.csv` as `79.39490321966287`. A subsequent read-only local
+  search again passed wildcard paths directly to `rg` under PowerShell; the
+  corrected search used `-g` filters and explicit paths. The first remote
+  worktree inventory then returned its Git results but ended with a shell
+  syntax error in a final parent-directory loop after PowerShell/WSL newline
+  transport; it was read-only, and the mandatory remote preflight was restarted
+  before using shorter independent commands. The first Git bundle command also
+  captured complete history and produced an unnecessary 424 MB transfer file;
+  an immediate relative-path verification briefly reported it unavailable,
+  while the subsequent absolute-path verification passed. The oversized local
+  temporary is replaced by a bundle explicitly excluding the verified remote
+  ancestor before synchronization. A direct `wslpath` conversion then lost
+  Windows backslashes in argument transport and returned an invalid path; the
+  transfer instead uses the explicit `/mnt/d/...` path after a WSL file check.
 - Primary evidence: the commands returned parse, path-not-found, invalid-path,
   command-not-found, or null-path errors. Every failure was read-only or stopped
   before dispatch. No source file, remote checkout, Slurm job, score library,

@@ -28,6 +28,7 @@ surface_sha="${AXIS_SHRINK_SURFACE_SHA:?set AXIS_SHRINK_SURFACE_SHA}"
 checkpoint_sha="${AXIS_SHRINK_CHECKPOINT_SHA:?set AXIS_SHRINK_CHECKPOINT_SHA}"
 score_lib_sha="${AXIS_SHRINK_SCORE_LIB_SHA:?set AXIS_SHRINK_SCORE_LIB_SHA}"
 eval_env="${AXIS_SHRINK_EVAL_ENV:?set AXIS_SHRINK_EVAL_ENV}"
+scales="${AXIS_SHRINK_SCALES:-1.0,0.8,0.65,0.55,0.50,0.45,0.40,0.35,0.30,0.25,0.20}"
 
 cd "$repo"
 mkdir -p "$repo/logs"
@@ -72,6 +73,7 @@ python scripts/prepare_axisflip_case23_coil_shrink.py \
   --expected-checkpoint-sha "$checkpoint_sha" \
   --expected-source-best-sha "$source_best_sha" \
   --expected-surface-sha "$surface_sha" \
+  --scales "$scales" \
   --output-dir "$run_root/scan"
 
 nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --format=csv,noheader \

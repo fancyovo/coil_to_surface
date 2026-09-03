@@ -1478,6 +1478,28 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: job `53200` is excluded from scientific results;
   resolved once the replacement scan passes its gates.
 
+## CORR-20260903-89 - Scan monitoring repeated two contained operation errors
+
+- Severity/status: low / corrected during replacement-scan monitoring.
+- Discovered by: Codex while checking job `53203` and preparing its adaptive
+  follow-up.
+- Errors: one local 30-second wait and its remote `squeue` query were joined by
+  a PowerShell semicolon, despite the rule requiring separate commands. A later
+  multi-file patch also omitted the file header before a correction-ledger hunk
+  and was rejected atomically.
+- Primary evidence: `scontrol show job 53203` established that the scan was
+  still `RUNNING`; its log contained valid surface sampling and candidate rows.
+  The patch tool reported that the expected correction-ledger anchor was absent
+  from the experiment JSON and changed no file.
+- Corrected fact and scope: scan `53203` remained healthy. Neither contained
+  operation supplied a final experimental conclusion or changed remote state.
+- Affected artifacts and retained conclusions: no score, model, Slurm job,
+  source sample, or prior evidence was affected.
+- Containment/regression: timed waits and scheduler reads are issued as
+  separate tool calls. Knowledge-file edits are applied independently from
+  code and protocol patches, each against a freshly verified file anchor.
+- Promotion/reporting blocker: none.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

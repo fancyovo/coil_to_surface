@@ -26,6 +26,7 @@
   },
   "shrink_scan": {
     "scales": [1.0, 0.8, 0.65, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2],
+    "adaptive_refinement": "If the coarse scan brackets a valid-to-invalid transition, add intermediate scales inside that bracket before choosing repair starts.",
     "mapping": "p_scaled=a_nearest+scale*(p-a_nearest)",
     "refit": "order-16 least-squares Fourier fit at fixed coil parameter",
     "currents": "unchanged",

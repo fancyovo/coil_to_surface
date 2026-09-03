@@ -446,3 +446,20 @@ cap. The `axisv3_case_02832` vacuum Poincare map shows a multi-lobed/island-
 chain pattern; its accepted outer boundary and DESC equilibrium do not certify
 a clean globally nested vacuum interior. Canonical evidence is appended to the
 compact-flexible-v3 Adam200 report.
+
+Protocol
+`qh-axisflip-v4-case23-axis-centered-coil-shrink-adam200-64d-abi11-v1`
+is a registered geometry intervention on the fully evaluated case-23
+Adam2000 step-1985 best. It first audits coil-scale drift and the exact
+curvature/distance engineering-score contributions in all 50 complete v4
+original-space Adam200 trajectories. It then maps each case-23 coil point as
+`a_nearest + scale * (point - a_nearest)` around the verified magnetic axis,
+refits the original order-16 Fourier representation, preserves currents, and
+scores eleven scales from `1.0` through `0.2` with positive-hand ABI-11. The
+original `s=0.81` surface is a fixed geometric clearance reference for this
+scan. Two valid compact candidates that remain outside this reference surface
+are repaired concurrently on the two Students GPUs using 200 exact-data Adam
+updates, 64 fresh orthogonal directions, `h=0.0025`, learning rate `0.01`, and
+beta `(0.7,0.999)`. Frozen specification:
+`evaluation/axisflip_case23_coil_shrink_adam200_abi11_v1.json`. This experiment
+does not change the current QH default.

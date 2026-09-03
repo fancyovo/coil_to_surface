@@ -1366,6 +1366,71 @@ An open critical correction blocks promotion and external reporting.
   contained a malformed hunk boundary and was also rejected atomically before
   these updates were applied as separately verified patches.
 
+## CORR-20260903-84 - Post-compaction skill read wrapper did not parse
+
+- Severity/status: low / corrected before repository or remote task work.
+- Discovered by: Codex while reloading the required stellarator evaluation
+  skill after context compaction.
+- Error: the first JavaScript tool wrapper contained a malformed object
+  property after the intended `Get-Content` command and failed to parse.
+- Primary evidence: the wrapper returned a JavaScript parse error before any
+  nested command was dispatched.
+- Corrected fact and scope: the skill file was subsequently read in full with
+  a valid single-command wrapper. No file, remote state, Slurm job, model,
+  score, or scientific result was touched by the failed wrapper.
+- Affected artifacts and retained conclusions: no artifact or conclusion was
+  affected; the pre-existing RL job and all frozen experiment evidence remain
+  unchanged.
+- Containment/regression: tool wrappers now contain only explicit executable
+  calls, and required instruction reads are issued separately when combined
+  output could obscure completion.
+- Promotion/reporting blocker: none.
+
+## CORR-20260903-85 - Coil-shrink inspection guessed paths and malformed a search
+
+- Severity/status: low / corrected before implementation and execution.
+- Discovered by: Codex while locating prior axis-flip runners and surface-load
+  helpers.
+- Errors: three read-only file requests guessed script names that are absent
+  from the repository, and one combined `rg` regular expression had an
+  unclosed group. The existing tracked file list contained the authoritative
+  names.
+- Primary evidence: `Get-Content` reported path-not-found and `rg` reported a
+  parse error. No command changed repository or remote state.
+- Corrected fact and scope: the relevant entry points are
+  `prepare_axisflip_long_start.py`, `slurm_axisflip_long_adam2000_students.sh`,
+  and `run_axis_surface_prior_axisflip_stream.py`; surface reconstruction is
+  routed through the discovered `SurfaceXYZTensorFourier` helpers.
+- Affected artifacts and retained conclusions: no experiment, score, model,
+  report, or prior conclusion was affected.
+- Containment/regression: repository paths are now enumerated with
+  `git ls-files` before reads, and searches use separate fixed-string terms
+  when bracket escaping would make a combined regular expression fragile.
+- Promotion/reporting blocker: none.
+
+## CORR-20260903-86 - A broad remote library search outlived its tool yield
+
+- Severity/status: low / contained before synchronization or submission.
+- Discovered by: Codex while locating the accepted ABI-11 shared library.
+- Errors: a broad remote `find` exceeded the first tool yield and its wrapper
+  printed only stdout, discarding the returned session metadata. A follow-up
+  `pgrep` pattern then lost quoting across PowerShell and SSH, so its leading
+  `-maxdepth` token was parsed as an option.
+- Primary evidence: a plain remote process listing showed the single `find`
+  process; it exited naturally before the attempted targeted `kill`, and the
+  subsequent PID check confirmed it was absent. The accepted runtime manifest
+  then supplied the exact library path without a filesystem scan.
+- Corrected fact and scope: ABI-11 is loaded from
+  `/home/scc/pb24511935/local_surface_evaluator_worktrees/main/gpu_backend/build_native_score/libstellarator_gpu.so`
+  and must match the registered SHA-256. The failed process query supplied no
+  scientific evidence.
+- Affected artifacts and retained conclusions: no file, Slurm job, score,
+  model, or result changed; live RL job `52977` remained untouched.
+- Containment/regression: remote artifact paths are taken from frozen runtime
+  manifests first. Commands that may yield retain and report the full returned
+  session object, and process verification uses plain argument-safe `ps`.
+- Promotion/reporting blocker: none.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

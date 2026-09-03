@@ -204,3 +204,21 @@ continuous policy optimization rather than independent per-round fits.
 Distillation convergence and a teacher-versus-Flow ABI-11 audit are mandatory
 before round 0. Promotion requires observed enrichment without material
 diversity loss and explicit user acceptance.
+
+## DEC-20260903-02 - Freeze an RL policy for standard latent Adam200
+
+Status: active experimental decision; no default impact.
+
+The first test of optimization inside the RL-trained Flow latent space freezes
+the latest fully written checkpoint available at implementation time:
+`round_012.pt`, whose EMA policy follows completed online round 11. The frozen
+SHA-256 is `1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72`;
+later RL rounds cannot silently change this experiment.
+
+The comparison changes only the Flow checkpoint and fixes the condition to its
+trained support, `nfp=8,nc=3`. Screening, latent parameter space, 200 Adam
+updates, 64 fresh orthogonal centered directions, step size, Adam coefficients,
+ABI-11 target, and pipelined FP32 RK4-128 decoding match the current stable
+latent recipe. Two Students GPUs run independent workers in parallel. Four
+trajectories share each worker's sole GPU sequentially, which is the explicit
+resource reason for that ordering.

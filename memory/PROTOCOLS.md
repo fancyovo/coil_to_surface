@@ -376,6 +376,21 @@ contraction without evidence of catastrophic collapse in this snapshot. P107
 job `52977` remained running after the snapshot. Canonical report:
 `reports/axisflip_prior_online_rl_results_20260903.md`.
 
+Protocol `qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1` is a
+registered frozen-policy latent experiment at fixed `nfp=8,nc=3`. It pins the
+online-RL run's atomically complete `round_012.pt` EMA policy after source round
+11, SHA-256 `1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72`.
+Each of eight independent trajectories screens 32 standard-normal Flow latents
+and runs the selected valid start through 200 latent Adam updates with 64 fresh
+orthogonal centered directions, `h=0.005`, learning rate `0.02`, beta
+`(0.7,0.999)`, and pipelined FP32 RK4-128 decoding. The screening axis is
+reused as a strict step-0 hint with a `0.1` score-consistency gate. Two
+single-GPU Students workers run concurrently and execute four trajectories per
+GPU. The optimizer mechanics match the current QH default; the frozen RL Flow
+identity makes this a separate experiment and does not change that default.
+Frozen specification:
+`evaluation/axisflip_rl_round12_latent_adam200_abi11_v1.json`.
+
 Protocol `qh-axisflip-v4-representative-adam2000-64d-abi11-v1` is a separate
 long-horizon continuation of the two v4 representatives already subjected to
 full physical evaluation: case 18 (`nfp=8,nc=3`) and case 23

@@ -196,6 +196,12 @@
   `4/64 -> 22/64`, and rounds 4--8 were fully valid. Near duplicates remained
   zero while descriptor variance contracted `20.6%`; the job continues under
   monitoring. See `reports/axisflip_prior_online_rl_results_20260903.md`.
+- Frozen-policy latent experiment
+  `qh-axisflip-rl-round12-flow-screen32-adam200-64d-abi11-v1` uses the
+  atomically complete round-12 EMA checkpoint (source round 11, SHA-256
+  `1ffbd632...537b72`) at fixed `nfp=8,nc=3`. Only the Flow checkpoint differs
+  from the current screen32/Adam200/64D/RK4-128 latent recipe; the live RL job
+  remains untouched.
 - Independent positive-hand Adam2000 continuations of full-evaluated v4 cases
   18 and 23 completed 2,000 updates each as Students jobs `52971/52972`, reaching
   native screening bests `87.6821/89.5535`. Both traded about 5--6 coil points

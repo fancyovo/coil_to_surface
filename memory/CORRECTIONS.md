@@ -1275,6 +1275,29 @@ An open critical correction blocks promotion and external reporting.
   artifact inspection, report audit, and branch-independent mirroring. The RL
   job was out of scope and remained untouched.
 
+## CORR-20260903-81 - Frozen-RL experiment setup had local tool preparation errors
+
+- Severity/status: low / corrected before tests or remote synchronization.
+- Discovered by: Codex while preparing the round-12 latent Adam200 experiment.
+- Errors: the first tool orchestration wrapper contained stray JavaScript text
+  and failed to parse before dispatching any command. The first combined
+  knowledge-file patch then used an inexact `MEMORY.md` context and was rejected
+  atomically.
+- Primary evidence: the wrapper returned a JavaScript `SyntaxError`; the patch
+  tool reported a context-verification failure. Neither operation reached a
+  remote command, Slurm submission, checkpoint, score library, or result file.
+- Corrected fact and scope: the frozen input is the atomically complete
+  `round_012.pt` checkpoint after online round 11, SHA-256
+  `1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72`.
+  The live RL job remains unchanged.
+- Containment/regression: subsequent tool wrappers contain only executable
+  calls, and knowledge files are patched independently against freshly read
+  anchors. The experiment runner verifies checkpoint round, checkpoint hash,
+  score-library hash, clean code commit, fixed condition, and the full optimizer
+  contract before creating a worker output directory.
+- Promotion/reporting blocker: none after local tests and remote launch gates
+  pass; no scientific conclusion was affected.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

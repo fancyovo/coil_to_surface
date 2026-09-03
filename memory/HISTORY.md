@@ -95,6 +95,10 @@ reports and immutable archives retain the detailed record.
   valid. Diversity showed mild variance contraction with zero near duplicates,
   so the live run continued. See
   `../reports/axisflip_prior_online_rl_results_20260903.md`.
+- 2026-09-03: the atomically complete online-RL `round_012.pt` EMA checkpoint
+  was frozen by SHA-256 for a separate eight-trajectory Students experiment.
+  It retains the current screen32/latent-Adam200/64D/RK4-128 mechanics at
+  `nfp=8,nc=3`; later live-policy updates cannot alter the input.
 
 ## Evidence Routes
 

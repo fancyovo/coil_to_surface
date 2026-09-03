@@ -449,7 +449,7 @@ compact-flexible-v3 Adam200 report.
 
 Protocol
 `qh-axisflip-v4-case23-axis-centered-coil-shrink-adam200-64d-abi11-v1`
-is a registered geometry intervention on the fully evaluated case-23
+is the superseded pointwise diagnostic on the fully evaluated case-23
 Adam2000 step-1985 best. It first audits coil-scale drift and the exact
 curvature/distance engineering-score contributions in all 50 complete v4
 original-space Adam200 trajectories. It then maps each case-23 coil point as
@@ -460,9 +460,12 @@ original `s=0.81` surface is a fixed geometric clearance reference for this
 scan. Two valid compact candidates that remain outside this reference surface
 are repaired concurrently on the two Students GPUs using 200 exact-data Adam
 updates, 64 fresh orthogonal directions, `h=0.0025`, learning rate `0.01`, and
-beta `(0.7,0.999)`. Frozen specification:
-`evaluation/axisflip_case23_coil_shrink_adam200_abi11_v1.json`. This experiment
-does not change the current QH default.
+beta `(0.7,0.999)`. Its Fourier refit imported scale-dependent shape distortion:
+the maximum residual was `0.0814 m` at `scale=0.8` and `0.2646 m` at
+`scale=0.35`. Scan jobs `53203/53207` and repair jobs `53210/53211` remain
+valid evidence about that pointwise map only. Frozen specification:
+`evaluation/axisflip_case23_coil_shrink_adam200_abi11_v1.json`. The method is
+preserved as diagnostic history and does not change the current QH default.
 
 Protocol
 `qh-axisflip-v4-case23-coil-anchor-shrink-adam200-64d-abi11-v1` is the
@@ -476,4 +479,12 @@ remaining outside the fixed source `s=0.81` surface. Up to two valid outside
 candidates enter the same exact-data Adam200/64-direction ABI-11 repair used by
 the pointwise diagnostic. Frozen specification:
 `evaluation/axisflip_case23_coil_anchor_shrink_adam200_abi11_v1.json`. This
-experiment does not change the current QH default.
+experiment does not change the current QH default. Scan job `53217` found that
+`scale=0.8` retained native status `ok`, effective radius `0.38634 m`, and coil
+score `69.0738`, while volume-QS fell to `39.7922`; `scale=0.6` was the smallest
+valid scan point and `scale=0.5` was flux-rejected. Concurrent Students repair
+jobs `53223/53224` completed. The `scale=0.8` best reached `88.9862` at step
+113 while expanding by `38.84 mm` and losing `5.79 mm` minimum intercoil
+spacing; curvature contribution rose `1.7581` and distance contribution fell
+`0.5172`. The `scale=0.6` run accepted only three updates and reached `7.7187`.
+Canonical report: `reports/axisflip_case23_coil_shrink_results_20260903.md`.

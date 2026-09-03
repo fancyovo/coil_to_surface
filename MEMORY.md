@@ -216,6 +216,13 @@
   but stopped at the 50-step cap with final mean normalized force `0.02379`.
   See the supplement in
   `reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
+- Case-23 coil-shrink work uses one fixed magnetic-axis anchor per base coil and
+  an exact similarity transform. In 50 prior original-space Adam200 runs, 48
+  enlarged their effective coil radius. The shape-preserving `scale=0.8`
+  candidate repaired to `88.9862` while regrowing `38.84 mm` and losing
+  `5.79 mm` minimum spacing; `scale=0.6` remained trapped near score `7.72`.
+  The earlier pointwise-nearest-axis map is superseded diagnostic history. See
+  `reports/axisflip_case23_coil_shrink_results_20260903.md`.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map

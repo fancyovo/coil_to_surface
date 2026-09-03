@@ -1560,8 +1560,34 @@ An open critical correction blocks promotion and external reporting.
   its centroid. Unit tests verify proportional radius change, current
   preservation, and machine-precision Fourier reconstruction. The final report
   presents both maps with explicit labels.
-- Promotion/reporting blocker: the report must include the shape-preserving
-  scan before making a conclusion about near-surface coils.
+- Promotion/reporting blocker: none. Shape-preserving scan job `53217` and
+  repair jobs `53223/53224` are reported separately from the pointwise history.
+
+## CORR-20260903-92 - Report draft guessed four shape-preserving score components
+
+- Severity/status: high / corrected before staging or delivery.
+- Discovered by: Codex immediately after drafting the shape-preserving scan
+  table.
+- Error: the uncommitted report draft inserted estimated volume-QS and coil
+  component values for scales `0.80` and `0.60` without first reading those
+  fields from `scan_summary.json`. The guessed pairs were `57.3963/61.6165`
+  and `7.2494/56.9958`.
+- Primary evidence: the frozen shape-preserving scan summary records the actual
+  pairs as `39.7921959824/69.0737797190` and
+  `14.4161914336/69.7284437871`.
+- Corrected fact and scope: the report table now uses the exact machine-readable
+  values for every listed scale. Total scores, geometry values, scan statuses,
+  optimizer jobs, and source evidence were unaffected.
+- Affected artifacts and retained conclusions: the erroneous values existed
+  only in a local uncommitted draft and were never delivered, staged, synced,
+  or used to select jobs. The selection of scales `0.60/0.80` came from native
+  validity and geometry gates and remains valid.
+- Containment/regression: every numerical report table is checked against its
+  source JSON/CSV after drafting. The final writing audit includes a scripted
+  cross-check of all endpoint and scan values before commit and delivery.
+- Promotion/reporting blocker: none. The final machine check derived 18 report
+  strings from `scan_summary.json` and `repair_metrics.csv`; every value was
+  present after rounding under the report's displayed precision.
 
 ## Required Entry Template
 

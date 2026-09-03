@@ -232,7 +232,7 @@ resource reason for that ordering.
 
 ## DEC-20260903-03 - Smaller analytic-prior radius with relaxed p95 curvature scale
 
-Status: active registered experiment; no default impact.
+Status: completed registered experiment; no default impact.
 
 The fixed `nfp=8,nc=3` follow-up centers the compact-flexible axis-flipped
 winding radius at `0.12 m`. It tests whether smaller initial coils remain legal
@@ -247,3 +247,11 @@ denominator after a fixed number of legal discoveries. Six workers each
 complete two Adam200 trajectories and continue score-only sampling until their
 64-sample audit is complete. The build flag is experiment-specific; the
 default ABI-11 library and current QH protocol remain unchanged.
+
+The experiment found 95/384 legal starts and 11/12 Adam200 trajectories above
+70, with maximum `80.2724`. The volume-QS component supplied the improvement:
+its paired gain median was `+48.0524`, while the coil component median changed
+`-0.4595`. All 12 effective radii nevertheless increased, by a paired median
+of `0.0751 m`. Relaxing curvature p95 removes a consistent coil-score reward
+for growth but does not keep optimized geometry near the 0.12 m prior scale.
+Any follow-up that requires compact final coils must target size explicitly.

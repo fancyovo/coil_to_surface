@@ -1,0 +1,152 @@
+{
+  "protocol": {
+    "id": "unregistered-experimental",
+    "status": "unregistered-experimental",
+    "stage": "optimization",
+    "requirements": {
+      "native_score_abi": 11,
+      "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "actual": {
+      "parameter_space": "data",
+      "optimizer": "adam",
+      "iterations": 200,
+      "directions": 64,
+      "perturbation": 0.0025,
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "flow_steps": 128,
+      "gradient_mode": "random-orthogonal",
+      "difference": "centered",
+      "native_score_abi": 11,
+      "native_score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+      "data_start_mode": "exact-unclipped"
+    },
+    "differences_from_current": {
+      "perturbation": {
+        "expected": 0.005,
+        "actual": 0.0025
+      },
+      "learning_rate": {
+        "expected": 0.02,
+        "actual": 0.01
+      },
+      "parameter_space": {
+        "expected": "latent",
+        "actual": "data"
+      },
+      "native_score_library_sha256": {
+        "expected": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+        "actual": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f"
+      },
+      "data_start_mode": {
+        "expected": "not-applicable",
+        "actual": "exact-unclipped"
+      }
+    }
+  },
+  "repository": {
+    "commit": "70a1102829da50d9054d929d1cd7073780909268",
+    "tracked_dirty": false,
+    "available": true
+  },
+  "algorithm": "adam_with_query_batched_local_gradient",
+  "optimizer": "adam",
+  "parameter_space": "data",
+  "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+  "formal_objective": "complete native QH score for every accepted center",
+  "initial_case": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/incomplete/axisflip_r012_case_0000006.worker0.2633194.partial/start.json",
+  "initial_case_sha256": "27364f5f9bce41e66f90978c060ed0ebd0a849586195d40854336360ec77d7d5",
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "checkpoint_expectation": {
+    "step": 30000,
+    "sha256": null
+  },
+  "native_lib": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/build_curvature_r04/libstellarator_gpu.so",
+  "native_lib_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+  "native_score": {
+    "abi": 11,
+    "validated_default_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+  },
+  "nfp": 8,
+  "n_base_coils": 3,
+  "target_helicity": [
+    1,
+    8
+  ],
+  "iterations": 200,
+  "max_wall_s": 28010.834414,
+  "flow": {
+    "method": "rk4",
+    "steps": 128,
+    "dtype": "fp32",
+    "use": "none"
+  },
+  "flow_pipeline": false,
+  "coordinate_gradient": {
+    "dimension": 300,
+    "mode": "random-orthogonal",
+    "random_directions": 64,
+    "endpoint_count": 128,
+    "perturbation": 0.0025,
+    "difference": "centered",
+    "psi_grid": 48,
+    "psi_iterations": 4,
+    "alpha_iterations": 4,
+    "formal_surface_theta_count": 128,
+    "local_surface_theta_count": 64
+  },
+  "adam": {
+    "learning_rate": 0.01,
+    "beta1": 0.7,
+    "beta2": 0.999,
+    "epsilon": 1e-08,
+    "weight_decay": 0.0
+  },
+  "bfgs": {
+    "initial_trust_rms": 0.01,
+    "min_trust_rms": 1e-05,
+    "max_trust_rms": 0.05,
+    "trust_growth": 1.2,
+    "trust_shrink": 0.5,
+    "min_improvement": 0.0
+  },
+  "seed": 120260912,
+  "axis_policy": "recorded strict mixed-precision continuation from step 0",
+  "recorded_initial_score_tolerance": 0.1,
+  "devices": {
+    "flow": 0,
+    "score": 0
+  },
+  "initial_metadata_keys": [
+    "data_prior_screening",
+    "nfp",
+    "raw"
+  ],
+  "data_parameterization": {
+    "definition": "per-coordinate training-set standardization",
+    "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+    "initial_source": "direct analytic-prior geometry with unclipped coordinates",
+    "data_start_mode": "exact-unclipped",
+    "initial_clipped_fraction": 0.0,
+    "initial_roundtrip_relative_rms": 2.5809566987788404e-15,
+    "flow_calls_after_initialization": 0
+  },
+  "initial_consistency_gate": {
+    "recorded_score": 12.709353618127718,
+    "optimizer_score": 12.705562433925756,
+    "absolute_delta": 0.0037911842019617836,
+    "tolerance": 0.1,
+    "recorded_axis_hint": [
+      1.1068116053071662,
+      -4.074757592931858e-10
+    ],
+    "optimizer_axis": [
+      1.1068116053071662,
+      -4.074757592931858e-10
+    ],
+    "axis_hint_distance": 0.0
+  }
+}

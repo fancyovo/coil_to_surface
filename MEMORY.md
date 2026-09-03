@@ -228,8 +228,11 @@
   `qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1`
   centers the prior winding radius at `0.12 m`, changes only the experimental
   curvature-p95 scale to `25 m^-1` (`0.04 m` radius), retains the `35 m^-1`
-  maximum-curvature guard, and uses a fixed 384-sample legality audit plus 12
-  six-GPU Adam200 trajectories. The default ABI-11 build remains unchanged.
+  maximum-curvature guard, and completed a fixed 384-sample audit plus 12
+  six-GPU Adam200 trajectories. Legality was `95/384`; 11/12 trajectories
+  reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
+  trajectories while median paired coil score changed `-0.4595`; see
+  `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map

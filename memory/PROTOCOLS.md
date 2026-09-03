@@ -511,4 +511,10 @@ and beta `(0.7,0.999)`. Samples needed after the fixed audit to replace a failed
 trajectory remain in provenance but do not enter the primary legality rate.
 Frozen specification:
 `evaluation/axis_surface_contour_prior_r012_curvature_r04_axisflip_adam200_abi11_v1.json`.
-This experiment does not change the current QH default.
+Jobs `53296/53297` completed all six workers at commit `70a1102`. The fixed
+audit found 95 legal starts among 384 (`24.7396%`), all with positive iota.
+Eleven of 12 Adam200 trajectories reached 70; median best was `78.7184` and
+maximum was `80.2724`. Effective radius increased in all 12, while median
+paired volume-QS and coil changes were `+48.0524/-0.4595`. This experiment does
+not change the current QH default. Canonical report:
+`reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.

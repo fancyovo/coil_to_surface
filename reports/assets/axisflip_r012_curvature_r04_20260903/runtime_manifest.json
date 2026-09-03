@@ -1,0 +1,43 @@
+{
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1",
+  "status": "registered-experimental",
+  "submitted_at": "2026-09-03T22:05:39+08:00",
+  "code_commit": "70a1102829da50d9054d929d1cd7073780909268",
+  "tracked_worktree_dirty": false,
+  "condition": {"nfp": 8, "n_base_coils": 3},
+  "generator": {
+    "format": "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1",
+    "minor_radius_center_m": 0.12,
+    "minor_radius_range_m": [0.108, 0.132],
+    "construction_axis_chirality": -1,
+    "seed": 20260906
+  },
+  "score_library": {
+    "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/build_curvature_r04/libstellarator_gpu.so",
+    "sha256_path": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/score_library.sha256",
+    "abi": 11,
+    "coil_curvature_p95_scale_m_inv": 25.0,
+    "coil_curvature_p95_radius_m": 0.04,
+    "coil_curvature_max_scale_m_inv": 35.0
+  },
+  "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+  "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+  "legality_audit": {"samples_per_worker": 64, "total_samples": 384},
+  "adam200": {
+    "completed_per_worker": 2,
+    "completed_total": 12,
+    "iterations": 200,
+    "directions": 64,
+    "difference": "centered",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999]
+  },
+  "parallelization": "four independent P107 workers plus two independent Students workers",
+  "jobs": {
+    "build_and_smoke": "53295",
+    "p107": "53296",
+    "students": "53297",
+    "analysis": "53298"
+  }
+}

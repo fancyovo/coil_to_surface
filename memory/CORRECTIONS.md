@@ -1605,7 +1605,14 @@ An open critical correction blocks promotion and external reporting.
   PowerShell parsing. A later read-only verification also mistyped the explicit
   `memory/DECISIONS.md` path. A guarded local cleanup command was then rejected
   by the execution policy before deletion; its three temporary RL-transfer
-  paths remain untracked and are excluded from staging.
+  paths remain untracked and are excluded from staging. During final status
+  collection, one `squeue` format string and one `find -printf` string also
+  lost their intended remote quoting; both commands were read-only, and direct
+  argument forms supplied the required status and file inventory. The final
+  writing audit then repeated the documented Windows wildcard mistake in one
+  read-only `rg` call; the corrected audit passes only explicit file paths. One
+  focused pytest invocation also omitted the repository from `PYTHONPATH` and
+  failed during collection; the corrected invocation passed all 37 tests.
 - Primary evidence: the commands returned parse, path-not-found, invalid-path,
   command-not-found, or null-path errors. Every failure was read-only or stopped
   before dispatch. No source file, remote checkout, Slurm job, score library,

@@ -1,0 +1,325 @@
+{
+  "format": "axis_surface_prior_axisflip_r012_curvature_r04_adam200_trajectory_v1",
+  "protocol_id": "qh-axis-surface-contour-compact-flexible-axisflip-r012-curvature-r04-adam200-64d-abi11-v1",
+  "trajectory_id": "axisflip_r012_case_0000028",
+  "case": {
+    "trajectory_id": "axisflip_r012_case_0000028",
+    "case_id": 28,
+    "worker_index": 4,
+    "sequence_index": 4,
+    "nfp": 8,
+    "n_base_coils": 3,
+    "initial_score": 5.188702020421092,
+    "initial_iota": {
+      "score": 5.188702020421092,
+      "status": "ok",
+      "components": {
+        "axis": 96.44206381828552,
+        "psi": 17.804818833113373,
+        "surface": 40.65687305369705,
+        "coordinate": 43.91292934550108,
+        "volume_qs": 6.333845678486837,
+        "iota": 100.0,
+        "coil": 69.2545790370117
+      },
+      "iota_min": 1.553179383277893,
+      "iota_max": 1.8621223623211778,
+      "iota_sign": "positive"
+    },
+    "optimizer_seed": 120260934,
+    "source_row_sha256": "985e751f36cf35402ca0e5bd80ba72f1314a7ff0ccc510fe147328c3065df7aa",
+    "start": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/starts/case_0000028.json",
+    "start_sha256": "0264f0ae455f10bd29b83d73b400bf0b37b37f2583cfab05c078357d872827be"
+  },
+  "target_helicity": [
+    1,
+    8
+  ],
+  "endpoints": {
+    "initial": {
+      "score": 5.188702020421092,
+      "status": "ok",
+      "components": {
+        "axis": 96.44206381828552,
+        "psi": 17.804818833113373,
+        "surface": 40.65687305369705,
+        "coordinate": 43.91292934550108,
+        "volume_qs": 6.333845678486837,
+        "iota": 100.0,
+        "coil": 69.2545790370117
+      },
+      "iota_min": 1.553179383277893,
+      "iota_max": 1.8621223623211778,
+      "iota_sign": "positive"
+    },
+    "best": {
+      "score": 10.061497150387337,
+      "status": "ok",
+      "components": {
+        "axis": 94.12231043711597,
+        "psi": 33.31852448379014,
+        "surface": 58.53299275528669,
+        "coordinate": 50.10379819992219,
+        "volume_qs": 9.869843219197907,
+        "iota": 100.0,
+        "coil": 68.6465599019094
+      },
+      "iota_min": 1.1403695344924927,
+      "iota_max": 1.7745126881234565,
+      "iota_sign": "positive"
+    },
+    "final": {
+      "score": 5.086030218910959,
+      "iota": 0.7712421503022515,
+      "iota_sign": "positive"
+    }
+  },
+  "optimization": {
+    "status": "ok",
+    "stop_reason": "completed_iterations",
+    "initial_score": 5.189302113313428,
+    "final_score": 5.086030218910959,
+    "best_score": 10.061497150387337,
+    "best_iteration": 4,
+    "completed_iterations": 200,
+    "completed_adam_steps": 7,
+    "completed_optimizer_steps": 7,
+    "total_wall_s": 2074.2788300537504,
+    "initial_decode_wall_s": 0.0009538042359054089,
+    "initial_score_wall_s": 0.8936439868994057,
+    "mean_iteration_wall_s": 10.366633524133357,
+    "manifest": {
+      "protocol": {
+        "id": "unregistered-experimental",
+        "status": "unregistered-experimental",
+        "stage": "optimization",
+        "requirements": {
+          "native_score_abi": 11,
+          "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+        },
+        "actual": {
+          "parameter_space": "data",
+          "optimizer": "adam",
+          "iterations": 200,
+          "directions": 64,
+          "perturbation": 0.0025,
+          "learning_rate": 0.01,
+          "beta1": 0.7,
+          "beta2": 0.999,
+          "flow_steps": 128,
+          "gradient_mode": "random-orthogonal",
+          "difference": "centered",
+          "native_score_abi": 11,
+          "native_score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+          "data_start_mode": "exact-unclipped"
+        },
+        "differences_from_current": {
+          "perturbation": {
+            "expected": 0.005,
+            "actual": 0.0025
+          },
+          "learning_rate": {
+            "expected": 0.02,
+            "actual": 0.01
+          },
+          "parameter_space": {
+            "expected": "latent",
+            "actual": "data"
+          },
+          "native_score_library_sha256": {
+            "expected": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+            "actual": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f"
+          },
+          "data_start_mode": {
+            "expected": "not-applicable",
+            "actual": "exact-unclipped"
+          }
+        }
+      },
+      "repository": {
+        "commit": "70a1102829da50d9054d929d1cd7073780909268",
+        "tracked_dirty": false,
+        "available": true
+      },
+      "algorithm": "adam_with_query_batched_local_gradient",
+      "optimizer": "adam",
+      "parameter_space": "data",
+      "gradient_objective": "dynamic local full-density score with coordinate and maximum-surface-selection derivatives omitted",
+      "formal_objective": "complete native QH score for every accepted center",
+      "initial_case": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/incomplete/axisflip_r012_case_0000028.worker4.3478829.partial/start.json",
+      "initial_case_sha256": "0264f0ae455f10bd29b83d73b400bf0b37b37f2583cfab05c078357d872827be",
+      "checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+      "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+      "checkpoint_expectation": {
+        "step": 30000,
+        "sha256": null
+      },
+      "native_lib": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/build_curvature_r04/libstellarator_gpu.so",
+      "native_lib_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+      "native_score": {
+        "abi": 11,
+        "validated_default_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+      },
+      "nfp": 8,
+      "n_base_coils": 3,
+      "target_helicity": [
+        1,
+        8
+      ],
+      "iterations": 200,
+      "max_wall_s": 26649.227735,
+      "flow": {
+        "method": "rk4",
+        "steps": 128,
+        "dtype": "fp32",
+        "use": "none"
+      },
+      "flow_pipeline": false,
+      "coordinate_gradient": {
+        "dimension": 300,
+        "mode": "random-orthogonal",
+        "random_directions": 64,
+        "endpoint_count": 128,
+        "perturbation": 0.0025,
+        "difference": "centered",
+        "psi_grid": 48,
+        "psi_iterations": 4,
+        "alpha_iterations": 4,
+        "formal_surface_theta_count": 128,
+        "local_surface_theta_count": 64
+      },
+      "adam": {
+        "learning_rate": 0.01,
+        "beta1": 0.7,
+        "beta2": 0.999,
+        "epsilon": 1e-08,
+        "weight_decay": 0.0
+      },
+      "bfgs": {
+        "initial_trust_rms": 0.01,
+        "min_trust_rms": 1e-05,
+        "max_trust_rms": 0.05,
+        "trust_growth": 1.2,
+        "trust_shrink": 0.5,
+        "min_improvement": 0.0
+      },
+      "seed": 120260934,
+      "axis_policy": "recorded strict mixed-precision continuation from step 0",
+      "recorded_initial_score_tolerance": 0.1,
+      "devices": {
+        "flow": 0,
+        "score": 0
+      },
+      "initial_metadata_keys": [
+        "data_prior_screening",
+        "nfp",
+        "raw"
+      ],
+      "data_parameterization": {
+        "definition": "per-coordinate training-set standardization",
+        "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+        "initial_source": "direct analytic-prior geometry with unclipped coordinates",
+        "data_start_mode": "exact-unclipped",
+        "initial_clipped_fraction": 0.0,
+        "initial_roundtrip_relative_rms": 0.0,
+        "flow_calls_after_initialization": 0
+      },
+      "initial_consistency_gate": {
+        "recorded_score": 5.188702020421092,
+        "optimizer_score": 5.189302113313428,
+        "absolute_delta": 0.0006000928923359794,
+        "tolerance": 0.1,
+        "recorded_axis_hint": [
+          1.0854247704692808,
+          -3.2962468759563406e-09
+        ],
+        "optimizer_axis": [
+          1.0854247704692808,
+          -3.2962468759563406e-09
+        ],
+        "axis_hint_distance": 0.0
+      }
+    }
+  },
+  "optimizer_protocol": {
+    "id": "unregistered-experimental",
+    "status": "unregistered-experimental",
+    "stage": "optimization",
+    "requirements": {
+      "native_score_abi": 11,
+      "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+    },
+    "actual": {
+      "parameter_space": "data",
+      "optimizer": "adam",
+      "iterations": 200,
+      "directions": 64,
+      "perturbation": 0.0025,
+      "learning_rate": 0.01,
+      "beta1": 0.7,
+      "beta2": 0.999,
+      "flow_steps": 128,
+      "gradient_mode": "random-orthogonal",
+      "difference": "centered",
+      "native_score_abi": 11,
+      "native_score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+      "data_start_mode": "exact-unclipped"
+    },
+    "differences_from_current": {
+      "perturbation": {
+        "expected": 0.005,
+        "actual": 0.0025
+      },
+      "learning_rate": {
+        "expected": 0.02,
+        "actual": 0.01
+      },
+      "parameter_space": {
+        "expected": "latent",
+        "actual": "data"
+      },
+      "native_score_library_sha256": {
+        "expected": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed",
+        "actual": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f"
+      },
+      "data_start_mode": {
+        "expected": "not-applicable",
+        "actual": "exact-unclipped"
+      }
+    }
+  },
+  "initial_consistency_gate": {
+    "recorded_score": 5.188702020421092,
+    "optimizer_score": 5.189302113313428,
+    "absolute_delta": 0.0006000928923359794,
+    "tolerance": 0.1,
+    "recorded_axis_hint": [
+      1.0854247704692808,
+      -3.2962468759563406e-09
+    ],
+    "optimizer_axis": [
+      1.0854247704692808,
+      -3.2962468759563406e-09
+    ],
+    "axis_hint_distance": 0.0
+  },
+  "data_parameterization": {
+    "definition": "per-coordinate training-set standardization",
+    "physical_mapping": "CoilNormalizer.inverse with canonical current L1/sign",
+    "initial_source": "direct analytic-prior geometry with unclipped coordinates",
+    "data_start_mode": "exact-unclipped",
+    "initial_clipped_fraction": 0.0,
+    "initial_roundtrip_relative_rms": 0.0,
+    "flow_calls_after_initialization": 0
+  },
+  "timing": {
+    "optimization_process_wall_s": 2087.6068596867844,
+    "trajectory_wall_s": 2087.687903659884
+  },
+  "provenance": {
+    "protocol": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/protocol.json",
+    "code_commit": "70a1102829da50d9054d929d1cd7073780909268",
+    "score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+    "checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f"
+  }
+}

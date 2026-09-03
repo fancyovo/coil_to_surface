@@ -396,6 +396,15 @@ earlier full evaluations remain attached to the Adam200 representatives.
 Canonical results are appended to
 `reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
 
+The user-requested full evaluation of the higher case-23 endpoint then used its
+step-1985 best. Students-only candidate and downstream jobs accepted the largest
+tested standard surface at `s=0.81`, volume `0.1021639 m3`, with direct
+`QH_(1,+1)=0.0002348713`; `s=1.00` failed the fixed volume-sampling budget before
+standard LS/Newton. Poincare ordering and DESC initial/final nesting passed.
+DESC reduced mean normalized force `0.78224 -> 0.02379` and stopped at the
+50-iteration cap. This physical follow-up does not change the optimizer or QH
+default.
+
 Representative full evaluation used fixed workflow commit `e4590ae` and the
 full-evaluation GPU library built at `89206f4`, SHA-256
 `23158593e57cd82300aa8d2efb2ee3023662d7f9d1765d1cfa22c84f26434af0`.

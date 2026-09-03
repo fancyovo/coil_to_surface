@@ -1,0 +1,50 @@
+Poincare currents normalized by mean|I|=104167
+Stopping box: R=[0.819225, 1.6222], Z=[-0.535415, 0.535415]
+R0 range = [1.41562, 1.48473], boundary R(phi=0) approx 1.48837
+Beginning field line tracing
+Poincare hits per line = [31, 31, 31, 31, 31, 31, 31, 31]
+Saved Poincare plot to /home/scc/pb24511935/local_surface_evaluator_runs/axisflip_case23_adam2000_best_full_eval_20260903_34a6148/full/assets/poincare.png
+Converting VMEC input to DESC input
+Generated DESC input file /home/scc/pb24511935/local_surface_evaluator_runs/axisflip_case23_adam2000_best_full_eval_20260903_34a6148/full/desc/input.check_desc:
+Building objective: force
+Precomputing transforms
+Building objective: lcfs R
+Building objective: lcfs Z
+Building objective: fixed Psi
+Building objective: fixed pressure
+Building objective: fixed current
+Building objective: fixed sheet current
+Building objective: self_consistency R
+Building objective: self_consistency Z
+Building objective: lambda gauge
+Building objective: axis R self consistency
+Building objective: axis Z self consistency
+Number of parameters: 856
+Number of objectives: 5346
+
+Starting optimization
+Using method: lsq-exact
+Warning: Maximum number of iterations has been exceeded.
+         Current function value: 2.165e-01
+         Total delta_x: 4.923e-01
+         Iterations: 50
+         Function evaluations: 55
+         Jacobian evaluations: 51
+==============================================================================================================
+                                                                 Start  -->   End
+Total (sum of squares):                                      3.203e+02  -->   2.165e-01,
+Maximum absolute Force error:                                7.207e+03  -->   2.491e+02 (N)
+Minimum absolute Force error:                                6.948e-03  -->   4.083e-04 (N)
+Average absolute Force error:                                6.067e+02  -->   1.616e+01 (N)
+Maximum absolute Force error:                                4.068e+00  -->   1.406e-01 (normalized)
+Minimum absolute Force error:                                3.922e-06  -->   2.305e-07 (normalized)
+Average absolute Force error:                                3.425e-01  -->   9.122e-03 (normalized)
+R boundary error:                                            0.000e+00  -->   2.225e-16 (m)
+Z boundary error:                                            0.000e+00  -->   4.247e-18 (m)
+Fixed Psi error:                                             0.000e+00  -->   0.000e+00 (Wb)
+Fixed pressure profile error:                                0.000e+00  -->   0.000e+00 (Pa)
+Fixed current profile error:                                 0.000e+00  -->   0.000e+00 (A)
+Fixed sheet current error:                                   0.000e+00  -->   0.000e+00 (~)
+==============================================================================================================
+
+{"status": "completed", "output": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_case23_adam2000_best_full_eval_20260903_34a6148/full"}

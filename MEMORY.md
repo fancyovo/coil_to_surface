@@ -199,7 +199,11 @@
 - Independent positive-hand Adam2000 continuations of full-evaluated v4 cases
   18 and 23 completed 2,000 updates each as Students jobs `52971/52972`, reaching
   native screening bests `87.6821/89.5535`. Both traded about 5--6 coil points
-  for about 19--22 volume-QS points. See the supplement in
+  for about 19--22 volume-QS points. Full evaluation of case 23's step-1985 best
+  accepted `s=0.81`, volume `0.102164 m3`, and direct `QH_(1,+1)=2.3487e-4`;
+  `s=1.00` was the nearest workflow rejection. DESC retained nested boundaries
+  but stopped at the 50-step cap with final mean normalized force `0.02379`.
+  See the supplement in
   `reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
 - Job and round state is volatile and must be checked directly before use.
 

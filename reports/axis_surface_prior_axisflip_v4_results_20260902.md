@@ -415,3 +415,101 @@ Adam 更新。实验继续使用正手性 ABI-11 评分、64 个每步新采样�
 - `axisflip_case_0000023`：[运行汇总](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case23_adam2000_20260903_6350b73/optimization/summary.json)；[协议清单](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case23_adam2000_20260903_6350b73/optimization/manifest.json)；[最佳点](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/axisflip_v4_case23_adam2000_20260903_6350b73/optimization/best.json)
 
 本补充不改变项目 QH 默认协议；它登记为解析先验分支上的独立长程直接数据空间实验。
+
+### 最高分 Adam2000 最佳点完整评估
+
+完整评估使用 `axisflip_case_0000023` 在 Adam2000 第 1985 步取得的全批最高分点：
+原生 ABI-11 总分 `89.553487`，体 QS 分量 `86.108603`，线圈工程分量
+`66.102066`。输入文件 SHA-256 为
+`3893410789bdf7988415aa3e28b2f7f70703872c0d8027b077d4f3af861041b1`。
+
+本次所有新计算均在 Students 完成。四个源 psi 候选作业
+`53006/53008/53010/53012`、六个标准磁面候选作业
+`53014/53016/53018/53020/53022/53024` 和外扩作业 `53029` 使用 Students
+GPU；下游作业 `53031` 使用 Students 的 `16 CPU、128G、0 GPU`。P107 上的在线 RL
+作业未参与本次评估，也未被修改。
+
+源拟合选择 `a=0.08 m`。该拟合的磁轴闭合残差为 `1.73e-8 m`，psi 留出 RMS 为
+`5.28e-4`。六个标准候选全部通过 Simsopt LS/Newton、独立 97 点稠密相对 L2 和
+法向磁场 p95 门：
+
+| s | 体积 (`m^3`) | iota | 97 点相对 L2 | 97 点法向 B 正弦 p95 | 直接 `QH_(1,+1)` |
+|---:|---:|---:|---:|---:|---:|
+| 0.12 | 0.014467 | 1.823262 | 8.57e-6 | 1.32e-5 | 2.84e-5 |
+| 0.24 | 0.029333 | 1.826806 | 9.64e-6 | 1.50e-5 | 5.88e-5 |
+| 0.36 | 0.044507 | 1.830444 | 1.08e-5 | 1.69e-5 | 9.15e-5 |
+| 0.49 | 0.061252 | 1.834485 | 1.22e-5 | 1.90e-5 | 1.30e-4 |
+| 0.64 | 0.080990 | 1.839292 | 1.40e-5 | 2.17e-5 | 1.78e-4 |
+| **0.81** | **0.102164** | **1.844512** | **1.61e-5** | **2.50e-5** | **2.35e-4** |
+
+`s=0.81` 是最大已测通过面，Newton 残差为 `1.96e-13`；直接 QA、QH、QP 误差
+分别为 `0.007753`、`0.0002349`、`0.007898`。外扩 `s=1.00` 在体积采样阶段得到
+`137132` 个有效点，低于固定最低预算 `180000`，因此在 alpha 和标准 LS/Newton
+之前被流程拒绝。该结果给出本次工作流的紧邻外层失败点，不判定 `s=1.00` 处一定
+不存在磁面。
+
+![Adam2000 最佳点的线圈与最大接受标准磁面](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/assets/coils_surface.png)
+
+[交互式线圈与磁面](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/assets/coils_surface.html) | [交互式 Boozer `|B|`](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/assets/boozer_b.html)
+
+![Adam2000 最佳点在 s=0.81 的 Poincare 截面](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/assets/poincare.png)
+
+八条场线各取得 31 次命中。四个截面中的点列保持由内向外的径向次序，图中未见
+分裂成清晰岛链。命中数限制了这张图可覆盖的跟踪长度；它支持所测区域内的真空嵌套
+判断，无法单独证明更长时间和更外区域的全局嵌套。
+
+![Adam2000 最佳点在 s=0.81 的标准磁面 Boozer |B|](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/assets/boozer_b.png)
+
+接受面上的 `|B|` 范围为 `0.4409--0.5812 T`。主等值线沿正斜率方向延伸，局部
+起伏仍然可见；直接 QH 误差量化为 `2.35e-4`。
+
+#### 与该样本 Adam200 端点的对照
+
+| 指标 | Adam200 最佳点的完整评估 | Adam2000 最佳点的完整评估 |
+|---|---:|---:|
+| 原生总分 | 80.3275 | **89.5535** |
+| 体 QS 分量 | 64.2464 | **86.1086** |
+| 线圈工程分量 | **71.2918** | 66.1021 |
+| 最大已测接受 `s` | 0.49 | **0.81** |
+| 接受面体积 (`m^3`) | 0.045235 | **0.102164** |
+| 接受面 iota | 1.099510 | 1.844512 |
+| 接受面直接 `QH_(1,+1)` | 0.002174 | **0.0002349** |
+| DESC 平均归一化力：初始 -> 最终 | 2.5371 -> **0.001982** | 0.78224 -> 0.02379 |
+
+Adam2000 最佳点的最大接受体积是 Adam200 端点的 `2.26` 倍；在更大的接受面上，
+直接 QH 误差仍低 `9.25` 倍。固定到共同的 `s=0.49` 时，Adam2000 最佳点的直接
+QH 误差为 `1.30e-4`，相对 Adam200 端点低 `16.74` 倍。这两项对照表明原生体 QS
+分量的提高对应了标准磁面上的真实真空 QH 改善。线圈工程分量下降 `5.19` 分，图中的
+线圈也保持较高几何复杂度；长程优化带来的物理收益伴随明确的工程代价。
+
+DESC 在松弛前后均报告嵌套边界。平均归一化力从 `0.78224` 降至 `0.02379`，降低
+`32.9` 倍；最终最大值和 p95 分别为 `0.1531` 和 `0.05643`。求解器运行 50 次迭代后
+达到预算上限，`success=false`。Adam2000 的 `s=0.81` 最终平均力残差约为旧
+Adam200 `s=0.49` 结果的 12 倍，因此更大真空磁面和更低直接 QH 误差尚未转化为同等
+程度的有限步 DESC 收敛。
+
+<details>
+<summary><code>axisflip_case_0000023</code> Adam2000 最佳点的完整 DESC 图组</summary>
+
+![DESC 初始边界](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/boundary_initial.png)
+![DESC 最终边界](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/boundary.png)
+![DESC Boozer 模谱](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/boozer_modes.png)
+![DESC Boozer |B|](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/boozer_B.png)
+![DESC QA 诊断](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/qs_QA.png)
+![DESC QH 诊断](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/qs_QH.png)
+![DESC QP 诊断](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/qs_QP.png)
+![DESC iota 剖面](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/desc/iota.png)
+
+</details>
+
+本次完整评估把 Adam2000 的筛选结论推进到标准磁面、独立稠密残差、真空
+Poincare、直接 Boozer QH 和有限步 DESC。结果确认了真空 QH 与可接受体积的显著
+改善，也保留了线圈工程下降和大磁面 DESC 残差偏高两项限制。
+
+#### 完整评估证据
+
+- [机器可读评估清单](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full_eval_manifest.json)
+- [磁面选择记录](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/selection.json)
+- [s=0.81 标准磁面汇总](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/surface_summaries/s_0p81_summary.json)
+- [完整下游汇总](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/full/full_summary.json)
+- [s=1.00 外层拒绝日志](assets/axis_surface_prior_axisflip_v4_20260902/adam2000/full_eval/axisflip_case_0000023_step1985/outer_s1p00/job_53029.err)

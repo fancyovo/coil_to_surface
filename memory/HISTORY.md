@@ -81,6 +81,12 @@ reports and immutable archives retain the detailed record.
   were `87.6821` and `89.5535`; volume-QS improved by `18.97/21.86` while the
   coil component decreased by `6.30/5.19`. The long-run supplement is appended
   to `../reports/axis_surface_prior_axisflip_v4_results_20260902.md`.
+- 2026-09-03: Students-only full evaluation of case 23's Adam2000 step-1985 best
+  accepted `s=0.81`, volume `0.102164 m3`, and direct `QH_(1,+1)=2.3487e-4`;
+  `s=1.00` was rejected before standard LS/Newton by the fixed volume-sampling
+  budget. Vacuum Poincare ordering and DESC boundary nesting passed. DESC
+  reduced mean normalized force by `32.9x` but reached the 50-iteration cap at
+  `0.02379`. Evidence is appended to the same v4 report.
 - 2026-09-03: 200,000 fixed-condition (`nfp=8,nc=3`) compact-v4 teacher samples
   supported converged q0 Flow distillation and an independent ABI-11 audit.
   Online Adam20 reward-weighted training completed nine reportable rounds by

@@ -1228,6 +1228,53 @@ An open critical correction blocks promotion and external reporting.
 - Promotion/reporting blocker: resolved after rerunning the renderer and the
   report post-generation audit; scientific conclusions are unaffected.
 
+## CORR-20260903-80 - Adam2000 full-evaluation command preparation contained errors
+
+- Severity/status: low / corrected; formal computation and final report passed.
+- Discovered by: Codex while preparing the full evaluation of
+  `axisflip_case_0000023` at Adam2000 step 1985.
+- Errors: one local `rg` call named a nonexistent `slurm/` directory, and a
+  second call passed PowerShell-incompatible wildcard paths to `rg`; both still
+  returned some valid matches but exited nonzero. A remote stdin script left a
+  carriage return on the final literal username, so `squeue` rejected that
+  query. The first source-candidate launcher call then reached its fixed login-
+  node ABI preflight without the CUDA 13 runtime on `LD_LIBRARY_PATH` and
+  stopped at missing `libcublas.so.13`. The first attempt to add this correction
+  also contained an empty patch and changed no file. After context compaction,
+  one formatted `squeue` call again lost its quoting, one check guessed the
+  nonexistent `surface_candidates/` directory, one `wslpath` call lost Windows
+  backslashes, one nested `find -exec sh` check was damaged by cross-shell
+  quoting, and one local search again named a nonexistent `.github/` path. A
+  first combined report/memory patch also used an inexact protocol-file context
+  and was rejected atomically.
+- Primary evidence: the failed searches and queue query were read-only. The
+  launcher failed before its submission-policy write and before every `sbatch`;
+  a subsequent queue check showed only the pre-existing RL job. The input best
+  file and full-evaluation library hashes had already matched the frozen
+  artifacts.
+- Corrected fact and scope: the evaluation uses remote project commit
+  `6350b73`, input SHA-256 `38934107...861041b1`, and the previously validated
+  full-evaluation GPU library SHA-256 `93bc6f00...539361a`. The corrected
+  launcher explicitly inherits the same CUDA wheel and CUDA 13 library paths
+  used inside the fixed compute scripts. Source jobs `53006/53008/53010/53012`
+  and surface jobs `53014/53016/53018/53020/53022/53024` were submitted
+  exclusively to Students after ABI and test-only checks. Outer-bound job
+  `53029` and CPU downstream job `53031` also ran only on Students. The selected
+  `s=0.81` surface and every downstream artifact completed successfully.
+- Containment/regression: remote connection preflight was restarted after the
+  malformed queue query. Future local searches enumerate paths with `rg --files`
+  before filtering; stdin-fed remote scripts must strip carriage returns or use
+  direct argument invocation; full-evaluation launch commands must export the
+  compute script's CUDA library path before the login-node ABI preflight. The
+  repeated same-task failures show that prose alone was insufficient: final
+  checks used unformatted `squeue`, paths discovered with `find`, and explicit
+  single-source `scp` paths. Report and memory edits were then split into
+  independently verified patches. All generated images, JSON files, and report
+  links were checked locally.
+- Promotion/reporting blocker: resolved after Students-only job closure,
+  artifact inspection, report audit, and branch-independent mirroring. The RL
+  job was out of scope and remained untouched.
+
 ## Required Entry Template
 
 - ID, title, date, severity, status, and reporter/discoverer.

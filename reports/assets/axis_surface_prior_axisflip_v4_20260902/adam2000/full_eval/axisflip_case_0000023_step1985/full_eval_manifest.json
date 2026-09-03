@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-03T09:31:35+08:00",
+  "status": "completed",
+  "sample_id": "axisflip_case_0000023",
+  "nfp": 6,
+  "nc": 4,
+  "adam2000": {
+    "protocol_id": "qh-axisflip-v4-representative-adam2000-64d-abi11-v1",
+    "code_commit": "6350b7308529e8708d8af6946508070b2aae945b",
+    "best_step": 1985,
+    "best_total": 89.55348719871684,
+    "volume_qs_component": 86.10860289775243,
+    "coil_engineering_component": 66.10206616256507,
+    "best_input_sha256": "3893410789bdf7988415aa3e28b2f7f70703872c0d8027b077d4f3af861041b1",
+    "native_score_library_sha256": "1c6c78b0dee662233215a56dbdc1e50b8ed29f2d0eee9ae8c4ff7d0403b895ed"
+  },
+  "full_evaluation": {
+    "workflow_code_commit": "6350b7308529e8708d8af6946508070b2aae945b",
+    "gpu_library_sha256": "93bc6f00d1ab278f3454275e73958a04105ac110706cbfbb3cc7bc90a539361a",
+    "gpu_library_source_commit": "d8de349b7d0d457f10402c8517e5930ddd260c7c",
+    "execution_pool": "Students only",
+    "source_fit_job_ids": [53006, 53008, 53010, 53012],
+    "source_fit_a_m": [0.04, 0.05, 0.06, 0.08],
+    "selected_a_m": 0.08,
+    "source_axis_closure_residual_m": 1.7273261711993766e-08,
+    "source_psi_validation_rms": 0.0005276586515500734,
+    "surface_job_ids": [53014, 53016, 53018, 53020, 53022, 53024],
+    "surface_s": [0.12, 0.24, 0.36, 0.49, 0.64, 0.81],
+    "outer_failure_job_id": 53029,
+    "downstream_job_id": 53031,
+    "downstream_resources": {
+      "account": "stu",
+      "partition": "Students",
+      "qos": "qos_stu_medium_2gpu",
+      "cpus": 16,
+      "memory": "128G",
+      "gpus": 0
+    }
+  },
+  "selected_surface": {
+    "s": 0.81,
+    "absolute_volume_m3": 0.10216389125750172,
+    "iota": 1.8445122091148183,
+    "G": 6.283185150673187,
+    "newton_residual_norm": 1.9588782011503882e-13,
+    "dense_relative_l2": 1.6083198215730608e-05,
+    "dense_normal_B_sine_p95": 2.4958989307350268e-05,
+    "QA_1_0": 0.007752566122661714,
+    "QH_1_1": 0.0002348713001134853,
+    "QP_0_1": 0.007898331805950034
+  },
+  "nearest_outer_rejection": {
+    "s": 1.0,
+    "stage": "surface_volume_sampler",
+    "valid_points": 137132,
+    "required_minimum_points": 180000,
+    "interpretation": "workflow rejection before alpha and standard LS/Newton"
+  },
+  "visualization": {
+    "B_abs_min_T": 0.4408635900523552,
+    "B_abs_mean_T": 0.5072930673616916,
+    "B_abs_max_T": 0.5811554768522302,
+    "poincare_hit_counts": [31, 31, 31, 31, 31, 31, 31, 31]
+  },
+  "desc": {
+    "toroidal_flux_Wb": 0.004133832440834411,
+    "nested_initial": true,
+    "nested_final": true,
+    "optimizer_success": false,
+    "optimizer_iterations": 50,
+    "optimizer_message": "Maximum number of iterations has been exceeded.",
+    "initial_force_mean_abs_normalized": 0.7822443347768414,
+    "final_force_mean_abs_normalized": 0.02378687341294426,
+    "final_force_max_abs_normalized": 0.15305621138391218,
+    "final_force_p95_abs_normalized": 0.05643215497240995
+  }
+}

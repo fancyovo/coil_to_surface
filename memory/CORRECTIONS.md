@@ -1636,6 +1636,10 @@ An open critical correction blocks promotion and external reporting.
   ancestor before synchronization. A direct `wslpath` conversion then lost
   Windows backslashes in argument transport and returned an invalid path; the
   transfer instead uses the explicit `/mnt/d/...` path after a WSL file check.
+  The first remote worktree-creation script completed its fetch and checkout,
+  then its final `--untracked-files=no` status argument retained a carriage
+  return and failed. Later remote operations use direct argument-vector
+  commands rather than PowerShell text piped to `bash -s`.
 - Primary evidence: the commands returned parse, path-not-found, invalid-path,
   command-not-found, or null-path errors. Every failure was read-only or stopped
   before dispatch. No source file, remote checkout, Slurm job, score library,

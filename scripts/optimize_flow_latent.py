@@ -628,6 +628,17 @@ def build_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--expected-checkpoint-step",
+        type=int,
+        default=30000,
+        help="Require the loaded Flow checkpoint to carry this exact training step.",
+    )
+    parser.add_argument(
+        "--expected-checkpoint-sha256",
+        default=None,
+        help="Optionally require the Flow checkpoint file to match this exact SHA-256.",
+    )
     parser.add_argument("--initial-case", type=Path, required=True)
     parser.add_argument("--lib", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
@@ -749,6 +760,14 @@ def main() -> None:
         raise ValueError("n-base-coils must be positive")
     if args.iterations < 1 or args.max_wall_s <= 0.0:
         raise ValueError("iterations and max-wall-s must be positive")
+    if args.expected_checkpoint_step < 0:
+        raise ValueError("expected-checkpoint-step must be nonnegative")
+    checkpoint_sha256 = file_sha256(args.checkpoint)
+    if (
+        args.expected_checkpoint_sha256 is not None
+        and checkpoint_sha256 != args.expected_checkpoint_sha256
+    ):
+        raise RuntimeError("Flow checkpoint SHA-256 does not match the requested input")
     if not 0.0 < args.beta1 < 1.0 or not 0.0 < args.beta2 < 1.0:
         raise ValueError("Adam betas must be in (0, 1)")
     if args.perturbation <= 0.0 or args.learning_rate <= 0.0:
@@ -937,7 +956,11 @@ def main() -> None:
             "initial_case": str(args.initial_case.resolve()),
             "initial_case_sha256": file_sha256(args.initial_case),
             "checkpoint": str(args.checkpoint.resolve()),
-            "checkpoint_sha256": file_sha256(args.checkpoint),
+            "checkpoint_sha256": checkpoint_sha256,
+            "checkpoint_expectation": {
+                "step": args.expected_checkpoint_step,
+                "sha256": args.expected_checkpoint_sha256,
+            },
             "native_lib": str(args.lib.resolve()),
             "native_lib_sha256": file_sha256(args.lib),
             "native_score": {
@@ -1052,8 +1075,11 @@ def main() -> None:
         model, normalizer, checkpoint = load_flow_checkpoint(
             args.checkpoint, flow_device
         )
-    if int(checkpoint["step"]) != 30000:
-        raise RuntimeError("unexpected flow checkpoint step")
+    if int(checkpoint["step"]) != args.expected_checkpoint_step:
+        raise RuntimeError(
+            "unexpected Flow checkpoint step: "
+            f"expected {args.expected_checkpoint_step}, got {checkpoint['step']}"
+        )
     estimator = LocalFullGradientEstimator(
         args.lib,
         nfp=args.nfp,

@@ -24,6 +24,7 @@ PERTURBATION = 0.005
 LEARNING_RATE = 0.02
 BETA1 = 0.7
 BETA2 = 0.999
+CHECKPOINT_STEP = 36616
 
 
 def file_sha256(path: Path) -> str:
@@ -107,12 +108,17 @@ def optimization_command(
     out_dir: Path,
     seed: int,
     max_wall_s: float,
+    expected_checkpoint_sha: str,
 ) -> list[str]:
     return [
         sys.executable,
         str(REPO_ROOT / "scripts" / "optimize_flow_latent.py"),
         "--checkpoint",
         str(checkpoint),
+        "--expected-checkpoint-step",
+        str(CHECKPOINT_STEP),
+        "--expected-checkpoint-sha256",
+        expected_checkpoint_sha,
         "--initial-case",
         str(initial_case),
         "--lib",
@@ -215,6 +221,8 @@ def validate_inputs(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str,
         raise RuntimeError("Flow checkpoint is not an online-policy checkpoint")
     if int(checkpoint.get("outer_round", -1)) != args.expected_outer_round:
         raise RuntimeError("Flow checkpoint outer-round mismatch")
+    if int(checkpoint["step"]) != CHECKPOINT_STEP:
+        raise RuntimeError("Flow checkpoint training-step mismatch")
     conditions = checkpoint["normalizer"].get("current_l1_a", {})
     if f"{NFP}:{N_BASE_COILS}" not in conditions:
         raise RuntimeError("Flow checkpoint normalizer lacks nfp=8,nc=3")
@@ -376,6 +384,7 @@ def main() -> None:
             out_dir=optimization_dir,
             seed=optimizer_seed,
             max_wall_s=args.per_case_max_wall_s,
+            expected_checkpoint_sha=args.expected_checkpoint_sha,
         )
         row["optimization_command"] = optimize
         return_code = run_logged(

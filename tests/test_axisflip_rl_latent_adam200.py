@@ -6,6 +6,7 @@ from pathlib import Path
 from scripts.run_axisflip_rl_latent_adam200 import (
     BETA1,
     BETA2,
+    CHECKPOINT_STEP,
     DIRECTIONS,
     FLOW_STEPS,
     ITERATIONS,
@@ -50,6 +51,7 @@ def test_commands_pin_screen32_and_current_latent_recipe(tmp_path: Path) -> None
         out_dir=tmp_path / "optimize",
         seed=18,
         max_wall_s=7200.0,
+        expected_checkpoint_sha="a" * 64,
     )
 
     assert option_value(screen, "--nfp") == str(NFP)
@@ -57,6 +59,8 @@ def test_commands_pin_screen32_and_current_latent_recipe(tmp_path: Path) -> None
     assert option_value(screen, "--candidate-count") == str(SCREEN_COUNT)
     assert option_value(screen, "--flow-steps") == str(FLOW_STEPS)
     assert option_value(optimize, "--iterations") == str(ITERATIONS)
+    assert option_value(optimize, "--expected-checkpoint-step") == str(CHECKPOINT_STEP)
+    assert option_value(optimize, "--expected-checkpoint-sha256") == "a" * 64
     assert option_value(optimize, "--random-directions") == str(DIRECTIONS)
     assert option_value(optimize, "--perturbation") == str(PERTURBATION)
     assert option_value(optimize, "--learning-rate") == str(LEARNING_RATE)

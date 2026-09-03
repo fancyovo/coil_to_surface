@@ -80,6 +80,8 @@ def test_command_line_defaults_use_the_validated_protocol() -> None:
     assert screening.candidate_count == QH_OPTIMIZATION_DEFAULTS.candidate_count
     assert screening.flow_steps == QH_OPTIMIZATION_DEFAULTS.flow_steps
     assert optimization.iterations == QH_OPTIMIZATION_DEFAULTS.iterations
+    assert optimization.expected_checkpoint_step == 30000
+    assert optimization.expected_checkpoint_sha256 is None
     assert optimization.random_directions == QH_OPTIMIZATION_DEFAULTS.directions
     assert optimization.gradient_mode == "random-orthogonal"
     assert optimization.optimizer == "adam"

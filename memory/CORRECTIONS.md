@@ -1282,7 +1282,10 @@ An open critical correction blocks promotion and external reporting.
 - Errors: the first tool orchestration wrapper contained stray JavaScript text
   and failed to parse before dispatching any command. The first combined
   knowledge-file patch then used an inexact `MEMORY.md` context and was rejected
-  atomically.
+  atomically. A later full-history bundle command yielded without output while
+  its wrapper omitted the returned session identifier; no bundle was produced.
+  A remote object probe also passed a revision suffix through PowerShell and
+  reached `git cat-file` as a malformed option.
 - Primary evidence: the wrapper returned a JavaScript `SyntaxError`; the patch
   tool reported a context-verification failure. Neither operation reached a
   remote command, Slurm submission, checkpoint, score library, or result file.
@@ -1292,11 +1295,39 @@ An open critical correction blocks promotion and external reporting.
   The live RL job remains unchanged.
 - Containment/regression: subsequent tool wrappers contain only executable
   calls, and knowledge files are patched independently against freshly read
-  anchors. The experiment runner verifies checkpoint round, checkpoint hash,
-  score-library hash, clean code commit, fixed condition, and the full optimizer
-  contract before creating a worker output directory.
+  anchors. The replacement bundle contains only commits after the verified
+  remote ancestor and passed `git bundle verify`; remote object checks use a
+  plain full hash. The experiment runner verifies checkpoint round, checkpoint
+  hash, score-library hash, clean code commit, fixed condition, and the full
+  optimizer contract before creating a worker output directory.
 - Promotion/reporting blocker: none after local tests and remote launch gates
   pass; no scientific conclusion was affected.
+
+## CORR-20260903-82 - Latent optimizer hardcoded the QUASR checkpoint step
+
+- Severity/status: medium / corrected in code; replacement execution pending.
+- Discovered by: Codex from both tasks of Students array `53046`.
+- Error: `scripts/optimize_flow_latent.py` required every Flow checkpoint to
+  have training step `30000`. That guard was valid only for the frozen QUASR
+  checkpoint and rejected the requested RL `round_012.pt` checkpoint at step
+  `36616`, despite the experiment already pinning its exact hash and round.
+- Primary evidence: tasks `53046_0` and `53046_1` both passed input validation
+  and screen32, then exited before optimizer step 0 with `RuntimeError:
+  unexpected flow checkpoint step`. Their selected ABI-11 screening scores
+  were `74.7067` and `72.6710`; no Adam result was produced.
+- Corrected fact and scope: the current default still expects checkpoint step
+  `30000`. A named experiment may now provide an explicit expected checkpoint
+  step and SHA-256; this experiment requires step `36616` and SHA-256
+  `1ffbd6329a23feb060aa2b279e96ef89d71ff5fd45e01fdaa0de768e08537b72`.
+- Affected artifacts: failed run root
+  `axisflip_rl_round12_latent_adam200_20260903_897e52b` is preserved. Its two
+  screen32 records remain valid preliminary evidence; it contains no usable
+  optimization trajectory.
+- Containment/regression: parser defaults retain `30000` and no hash override,
+  while the registered runner supplies and tests both frozen values. Input
+  checks occur before an optimizer output directory is populated.
+- Promotion/reporting blocker: replacement workers must pass step 0 and produce
+  sustained Adam progress before this correction is closed for reporting.
 
 ## Required Entry Template
 

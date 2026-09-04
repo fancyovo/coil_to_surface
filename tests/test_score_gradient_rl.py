@@ -5,6 +5,7 @@ import torch
 from torch import nn
 
 from flow_matching.data import CoilNormalizer
+from flow_matching.model import CoilFlowTransformer
 from flow_matching.score_gradient_rl import (
     N_BASE_COILS,
     TOKEN_DIM,
@@ -103,3 +104,20 @@ def test_cfm_loss_accepts_independent_draws() -> None:
     )
     assert loss.shape == (5,)
     assert torch.all(torch.isfinite(loss))
+
+
+def test_transformer_transport_term_supports_second_order_parameter_backward() -> None:
+    torch.manual_seed(5)
+    model = CoilFlowTransformer(width=8, layers=1, heads=2, hidden=16)
+    data = torch.randn(2, N_BASE_COILS, TOKEN_DIM)
+    score_gradient = torch.randn_like(data)
+    ordinary, transport = valid_flow_terms_with_transport(
+        model,
+        data,
+        score_gradient,
+        feature_weights=torch.ones(TOKEN_DIM),
+        monte_carlo_samples=2,
+        generator=torch.Generator().manual_seed(13),
+    )
+    (ordinary.mean() + 0.01 * transport.mean()).backward()
+    assert all(parameter.grad is not None for parameter in model.parameters())

@@ -8,11 +8,17 @@ the small current-channel canonicalization Jacobian is handled explicitly
 instead of silently taking a dot product between incompatible coordinates.
 """
 
-from typing import Callable
+from contextlib import nullcontext
 
 import numpy as np
 import torch
 from torch import nn
+
+try:
+    from torch.nn.attention import SDPBackend, sdpa_kernel
+except ImportError:  # pragma: no cover - only for older torch runtimes
+    SDPBackend = None
+    sdpa_kernel = None
 
 from flow_matching.data import CoilNormalizer, canonicalize_currents
 
@@ -20,6 +26,12 @@ from flow_matching.data import CoilNormalizer, canonicalize_currents
 N_BASE_COILS = 3
 TOKEN_DIM = 100
 CURRENT_INDEX = TOKEN_DIM - 1
+
+
+def _second_order_attention_context(device: torch.device):
+    if sdpa_kernel is None or SDPBackend is None:
+        return nullcontext()
+    return sdpa_kernel(SDPBackend.MATH)
 
 
 def _optimizer_coordinates_from_flow(
@@ -146,6 +158,7 @@ def cfm_loss_terms(
     feature_weights: torch.Tensor,
     noise: torch.Tensor,
     time_value: torch.Tensor,
+    force_math_attention: bool = False,
 ) -> torch.Tensor:
     """Per-sample Flow matching losses for supplied Monte Carlo draws."""
 
@@ -155,11 +168,13 @@ def cfm_loss_terms(
         raise ValueError("noise/time shapes do not match data")
     mixed = (1.0 - time_value[:, None, None]) * noise + time_value[:, None, None] * data
     target = data - noise
-    prediction = model(
-        mixed,
-        time_value,
-        torch.full((len(data),), 8, dtype=torch.long, device=data.device),
-    )
+    context = _second_order_attention_context(data.device) if force_math_attention else nullcontext()
+    with context:
+        prediction = model(
+            mixed,
+            time_value,
+            torch.full((len(data),), 8, dtype=torch.long, device=data.device),
+        )
     weights = feature_weights.to(device=data.device, dtype=torch.float32)
     square = (prediction.float() - target.float()).square() * weights
     return square.sum(dim=(1, 2)) / (N_BASE_COILS * weights.sum()).clamp_min(1.0)
@@ -222,6 +237,7 @@ def valid_flow_terms_with_transport(
         feature_weights=feature_weights,
         noise=noise,
         time_value=time_value,
+        force_math_attention=True,
     )
     input_gradient = torch.autograd.grad(
         losses.sum(), expanded, create_graph=True, retain_graph=True

@@ -279,3 +279,32 @@ Four P107 GPUs run until the four-day wall reserve or an explicit
 `STOP_AFTER_ROUND` sentinel, with no round-count cap. In parallel, the two
 Students GPUs continue R012 Adam200 best cases 36 and 4 through 3,000 new R04
 Adam updates, one independent job per GPU.
+
+## DEC-20260904-04 - First-order score-gradient Flow policy
+
+Status: active registered experiment; no default impact.
+
+The student comparison keeps R04's q0 checkpoint, `nfp=8,nc=3`, RK4-32
+generation, optimizer coordinate system, 64-direction centered gradient probe,
+`h=0.0025`, ABI-11 R04 score library, and target helicity `[1,8]`. The only
+policy change is the online update: valid scored samples contribute the direct
+first-order term `g_flow^T grad_x ell_theta(x;z,t)` on the original sample;
+invalid samples contribute ordinary Flow matching loss with `alpha=0.05`.
+There is no explicit transport target, `rho`, `epsilon` displacement, Adam20
+rollout, reward replay, or separate policy target.
+
+Each round samples 64 centers over two Student GPUs, computes one native
+128-endpoint gradient query per valid center, and performs exactly one global
+DDP AdamW update. Four independent `(z,t)` draws per center are vectorized in
+the batch. The transport forward forces math attention because the fused
+attention backward has no second derivative; ordinary Flow loss keeps the
+normal implementation. The current-coordinate chain uses an explicit local
+Jacobian, with a float32-stable directional diagnostic.
+
+Job `53957` runs from code commit `6ff70ab` in a separate worktree while R04
+job `53372` continues in its preserved worktree. After three completed rounds,
+valid rates were `14.06%, 17.19%, 15.63%, 23.44%`; accepted gradient rates
+among valid centers were `100%, 100%, 100%, 86.7%`. The fixed
+`beta=0.0060219592` was calibrated once from the q0 batch so the transport
+term's absolute mean was 10% of ordinary valid loss, then frozen. This is an
+early stability record, not evidence of promotion.

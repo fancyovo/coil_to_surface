@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-09-03 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-09-04 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -12,8 +12,9 @@
   on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
-- Active exploration branch: `codex/r012-trajectory-replay-rl`, continuing
-  R012/R04 work based directly on `main@de75f6d`. Protocol
+- Active exploration branch: `codex/r013-score-gradient-rl`, based on the
+  frozen R04 source commit `95ed6cf`; the active R04 job remains in its own
+  worktree. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
   gate and is invalidated. The accepted balanced-v2 experiment completed 6000
   ABI-11 score-only samples under arrays `51614/51615`; repaired analysis job
@@ -121,26 +122,20 @@
 
 ## Work Governance
 
-- Start new exploration from the consolidated `main`. Use a `codex/` branch
-  when an experiment changes methods, defaults, or shared code, and switch the
-  primary user-visible checkout to that branch before substantive work. A
-  secondary worktree is an explicit exception for preserved or concurrent work.
-- Keep each report's canonical copy on its owning branch and mirror finalized
-  reports plus local assets to the primary checkout's Git-excluded
-  `_shared_reports/` directory. The mirror remains visible across branch
-  switches; branch artifacts and commits remain the provenance source.
-- User acceptance of a method as the default means promotion to `main` and
-  coordinated updates to implementation defaults, protocol metadata, launchers,
-  tests, current docs, `memory/DECISIONS.md`, and any affected correction entry.
-- Preserve frozen experiment manifests. Record observed metadata separately
-  from current re-evaluation; never reconstruct settings from prose or CLI
-  defaults when a manifest exists.
+- Start new exploration from consolidated `main` on a `codex/` branch and
+  switch the primary checkout before edits; a secondary worktree is reserved
+  for preserved or concurrent work. Keep canonical reports on the owning branch
+  and mirror finalized reports/assets into Git-excluded `_shared_reports/`.
+- User acceptance promotes a method to `main` with coordinated code, manifests,
+  launchers, tests, docs, decisions, and corrections. Preserve frozen manifests
+  and never reconstruct settings from prose or CLI defaults.
 - Run independent samples and candidates concurrently up to the verified GPU or
   CPU allowance. Serial execution requires a real dependency, resource limit,
   or explicit user request and must record its reason. Full-evaluation
   launchers enforce this through submission-policy JSON files.
-- Record every discovered error in `memory/CORRECTIONS.md` in the same turn,
-  including impact, retained conclusions, evidence, containment, and status.
+- Record qualifying user-discovered or materially costly errors in
+  `memory/CORRECTIONS.md` with impact, retained conclusions, evidence,
+  containment, and status; routine self-caught fixes stay out of the ledger.
 - External documents and figures must pass `memory/WRITING.md`. Use direct,
   affirmative explanations; remove defensive contrast, ambiguous references,
   version leakage, and irrelevant claims after generation.
@@ -233,11 +228,14 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
-- Active protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1`
-  freshly distills fixed `nfp=8,nc=3` R012 and uses frozen R04. Valid Adam20
-  rollouts contribute 21 centers to a 512-rollout FIFO with `tau=7.5`, epsilon
-  `0.01`, and length normalization. P107 uses four GPUs for four days without a
-  round cap; two Students jobs give R012 cases 36/4 3,000 new R04 Adam updates.
+- Active R04 protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1`
+  runs in its preserved P107 worktree (`53372`); its 512-rollout FIFO and
+  four-day, no-round-cap policy remain unchanged.
+- New student protocol `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
+  runs as job `53957` in a separate worktree with two GPUs and no round cap.
+  After three rounds, valid rates were `14.06%, 17.19%, 15.63%, 23.44%`; 64D
+  gradients passed for 100%, 100%, 100%, and 86.7% of valid centers. Fixed
+  `beta=0.0060219592`, calibrated to a 10% transport-loss fraction.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map

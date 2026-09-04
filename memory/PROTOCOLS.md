@@ -550,3 +550,20 @@ Each performs 3,000 new exact-data Adam updates with the same R04 library, 64
 fresh orthogonal centered directions, `h=0.0025`, learning rate `0.01`, and
 beta `(0.7,0.999)`. Frozen specification:
 `evaluation/axisflip_r012_top2_adam3000_r04_abi11_v1.json`.
+
+Protocol `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1` is the
+student two-GPU strategy comparison. It pins the same R04 q0 checkpoint,
+`nfp=8,nc=3`, RK4-32 generation, ABI-11 R04 library, and one 128-endpoint
+64-direction centered score-gradient query per valid center. Its only policy
+change is one Flow update per round using
+`L_valid + 0.05 L_invalid + beta mean(g_flow^T grad_x ell)`, with four
+independent `(z,t)` draws per sample. There is no explicit transport target,
+rho, epsilon displacement, Adam20 rollout, or replay. Transport uses math
+attention so the required second derivative exists; ordinary Flow loss keeps
+the normal attention path. `beta` is calibrated once from q0 to make the
+absolute transport term 10% of ordinary valid loss, clipped to `[1e-5,0.1]`,
+then frozen. The registered manifest is
+`evaluation/axisflip_r012_score_gradient_transport_rl_r04_abi11_v1.json`.
+Job `53957` runs from commit `6ff70ab` in a separate worktree; after three
+rounds it remained stable with valid rates `14.06%,17.19%,15.63%,23.44%` and
+fixed `beta=0.0060219592`. This protocol has no default impact.

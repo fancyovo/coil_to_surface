@@ -41,7 +41,7 @@ sbatch --test-only "${sbatch_args[@]}" scripts/slurm_score_gradient_flow_rl_stud
 job_id="$(sbatch --parsable "${sbatch_args[@]}" scripts/slurm_score_gradient_flow_rl_students.sh)"
 cat > "${run_root}.submission.txt" <<EOF
 job_id=$job_id
-protocol_id=qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1
+protocol_id=qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1
 code_commit=$SCORE_GRADIENT_COMMIT
 submitted_at=$(date --iso-8601=seconds)
 EOF

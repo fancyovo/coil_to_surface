@@ -54,7 +54,7 @@ python scripts/score_gradient_flow_rl.py prepare \
   --score-library-manifest "$score_manifest" \
   --expected-score-lib-sha "$score_sha" \
   --expected-commit "$commit"
-cp "$repo/evaluation/axisflip_r012_score_gradient_transport_rl_r04_abi11_v1.json" \
+cp "$repo/evaluation/axisflip_r012_score_gradient_replay50_rl_r04_abi11_v1.json" \
   "$run_root/protocol.json"
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
   --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"

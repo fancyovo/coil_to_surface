@@ -55,11 +55,13 @@ from scripts.optimize_flow_latent import (  # noqa: E402
 from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_start  # noqa: E402
 
 
-PROTOCOL_ID = "qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1"
-FORMAT = "axisflip_r012_score_gradient_transport_rl_r04_v1"
+PROTOCOL_ID = "qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1"
+FORMAT = "axisflip_r012_score_gradient_replay50_rl_r04_v1"
 SAMPLES_PER_ROUND = 64
 SAMPLES_PER_RANK = SAMPLES_PER_ROUND // 2
 WORLD_SIZE = 2
+REPLAY_CAPACITY = 512
+FLOW_OPTIMIZER_STEPS_PER_ROUND = 50
 FLOW_STEPS = 32
 GRADIENT_DIRECTIONS = 64
 GRADIENT_PERTURBATION = 0.0025
@@ -215,14 +217,19 @@ def prepare(args: argparse.Namespace) -> None:
             "beta": None,
             "beta_calibration": "q0 no-update pilot; freeze before round 0",
             "adam20_rollout": False,
-            "replay": False,
+            "replay": {
+                "enabled": True,
+                "capacity": REPLAY_CAPACITY,
+                "sampling": "uniform with replacement",
+                "record": "one scored center with its fixed 64-direction score gradient",
+            },
             "rho": None,
             "epsilon_transport": None,
-            "flow_optimizer_steps_per_round": 1,
+            "flow_optimizer_steps_per_round": FLOW_OPTIMIZER_STEPS_PER_ROUND,
         },
         "parallelism": {
             "collection": "two independent one-GPU ranks, 32 centers each; one BatchCoilFieldGpu with 128 endpoints per valid center",
-            "training": "two-GPU DDP, one global optimizer step after the complete batch",
+            "training": "two-GPU DDP, 50 global optimizer steps per round; each step samples 32 records per rank from the synchronized replay pool",
             "center_endpoint_flattening": False,
         },
         "evaluator": {
@@ -515,42 +522,100 @@ def all_reduce_scalar(value: torch.Tensor) -> torch.Tensor:
     return result
 
 
-def train_round(
+REPLAY_ARRAY_KEYS = (
+    "current",
+    "score_gradient_flow",
+    "valid",
+    "gradient_ok",
+    "scores",
+    "volume_qs",
+    "coil",
+)
+
+
+def append_replay_pool(
+    previous: dict[str, np.ndarray] | None, incoming: dict[str, np.ndarray]
+) -> dict[str, np.ndarray]:
+    """Append scored centers and keep the newest fixed-size FIFO window."""
+    incoming_subset = {key: np.asarray(incoming[key]) for key in REPLAY_ARRAY_KEYS}
+    if previous is None:
+        combined = incoming_subset
+    else:
+        if set(previous) != set(REPLAY_ARRAY_KEYS):
+            raise ValueError("replay pool has an unexpected schema")
+        combined = {
+            key: np.concatenate((np.asarray(previous[key]), incoming_subset[key]), axis=0)
+            for key in REPLAY_ARRAY_KEYS
+        }
+    if len(combined["current"]) > REPLAY_CAPACITY:
+        combined = {key: values[-REPLAY_CAPACITY:] for key, values in combined.items()}
+    if len(combined["current"]) == 0:
+        raise ValueError("replay pool cannot be empty after appending a round")
+    return combined
+
+
+def load_replay_pool(path: Path) -> dict[str, np.ndarray] | None:
+    if not path.exists():
+        return None
+    with np.load(path, allow_pickle=False) as payload:
+        if set(payload.files) != set(REPLAY_ARRAY_KEYS):
+            raise ValueError("replay pool has an unexpected schema")
+        pool = {key: np.asarray(payload[key]) for key in REPLAY_ARRAY_KEYS}
+    lengths = {len(values) for values in pool.values()}
+    if len(lengths) != 1 or not lengths or next(iter(lengths)) > REPLAY_CAPACITY:
+        raise ValueError("replay pool lengths or capacity are invalid")
+    return pool
+
+
+def pool_to_device(pool: dict[str, np.ndarray], device: torch.device) -> dict[str, torch.Tensor]:
+    if len(pool["current"]) == 0:
+        raise ValueError("cannot train from an empty replay pool")
+    return {
+        "current": torch.from_numpy(pool["current"]).to(device=device),
+        "score_gradient_flow": torch.from_numpy(pool["score_gradient_flow"]).to(device=device),
+        "valid": torch.from_numpy(pool["valid"]).to(device=device),
+        "gradient_ok": torch.from_numpy(pool["gradient_ok"]).to(device=device),
+    }
+
+
+def train_step_from_replay(
     *,
     model: torch.nn.Module,
     ema_model: CoilFlowTransformer,
     optimizer: torch.optim.Optimizer,
     normalizer: CoilNormalizer,
-    current: np.ndarray,
-    valid: np.ndarray,
-    gradient_flow: np.ndarray,
-    gradient_ok: np.ndarray,
-    rank: int,
+    pool: dict[str, torch.Tensor],
     device: torch.device,
     beta: float,
-    round_index: int,
+    sample_generator: torch.Generator,
+    permutation_generator: torch.Generator,
+    loss_generator: torch.Generator,
 ) -> dict[str, Any]:
     feature_weight_values = feature_weights(normalizer, device)
-    permutation_generator = torch.Generator(device=device).manual_seed(
-        2026090800 + round_index * 100 + rank
+    sample_indices = torch.randint(
+        len(pool["current"]),
+        (SAMPLES_PER_RANK,),
+        generator=sample_generator,
+        device=device,
     )
-    loss_generator = torch.Generator(device=device).manual_seed(
-        2026090900 + round_index * 100 + rank
+    batch_data = pool["current"][sample_indices]
+    batch_gradient = pool["score_gradient_flow"][sample_indices]
+    batch_valid = pool["valid"][sample_indices]
+    batch_gradient_ok = pool["gradient_ok"][sample_indices]
+    valid_data = batch_data[batch_valid]
+    valid_gradient = batch_gradient[batch_valid]
+    valid_gradient = valid_gradient * batch_gradient_ok[batch_valid, None, None].to(
+        dtype=valid_gradient.dtype
     )
-    valid_data = torch.from_numpy(current[valid]).to(device=device)
-    valid_gradient = torch.from_numpy(gradient_flow[valid]).to(device=device)
-    valid_gradient = valid_gradient * torch.from_numpy(gradient_ok[valid, None, None]).to(
-        device=device, dtype=valid_gradient.dtype
-    )
-    invalid_data = torch.from_numpy(current[~valid]).to(device=device)
+    invalid_data = batch_data[~batch_valid]
     if len(valid_data) == 0:
-        valid_data = torch.from_numpy(current[:1]).to(device=device)
+        valid_data = batch_data[:1]
         valid_gradient = torch.zeros_like(valid_data)
         local_valid_count = 0
     else:
         local_valid_count = len(valid_data)
     if len(invalid_data) == 0:
-        invalid_data = torch.from_numpy(current[:1]).to(device=device)
+        invalid_data = batch_data[:1]
         local_invalid_count = 0
     else:
         local_invalid_count = len(invalid_data)
@@ -626,6 +691,77 @@ def train_round(
         "objective": float(reduced_values[3].cpu()),
         "gradient_norm": float(reduced_values[4].cpu()),
         "beta": beta,
+    }
+
+
+def train_round(
+    *,
+    model: torch.nn.Module,
+    ema_model: CoilFlowTransformer,
+    optimizer: torch.optim.Optimizer,
+    normalizer: CoilNormalizer,
+    replay_pool: dict[str, np.ndarray],
+    rank: int,
+    device: torch.device,
+    beta: float,
+    round_index: int,
+) -> dict[str, Any]:
+    """Run fixed-size replay updates while keeping the original loss unchanged."""
+    pool = pool_to_device(replay_pool, device)
+    sample_generator = torch.Generator(device=device).manual_seed(
+        2026090700 + round_index * 1000 + rank
+    )
+    permutation_generator = torch.Generator(device=device).manual_seed(
+        2026090800 + round_index * 1000 + rank
+    )
+    loss_generator = torch.Generator(device=device).manual_seed(
+        2026090900 + round_index * 1000 + rank
+    )
+    started = time.perf_counter()
+    step_summaries = []
+    for update_index in range(FLOW_OPTIMIZER_STEPS_PER_ROUND):
+        step_summary = train_step_from_replay(
+            model=model,
+            ema_model=ema_model,
+            optimizer=optimizer,
+            normalizer=normalizer,
+            pool=pool,
+            device=device,
+            beta=beta,
+            sample_generator=sample_generator,
+            permutation_generator=permutation_generator,
+            loss_generator=loss_generator,
+        )
+        step_summary["update"] = update_index
+        step_summaries.append(step_summary)
+
+    def statistic(key: str, percentile: float | None = None) -> float | None:
+        values = np.asarray([row[key] for row in step_summaries], dtype=np.float64)
+        if percentile is None:
+            return float(np.median(values))
+        return float(np.percentile(values, percentile))
+
+    return {
+        "updates": FLOW_OPTIMIZER_STEPS_PER_ROUND,
+        "pool_size": len(replay_pool["current"]),
+        "wall_s": time.perf_counter() - started,
+        "step_wall_s_median": statistic("wall_s"),
+        "step_wall_s_p90": statistic("wall_s", 90.0),
+        "objective_first": float(step_summaries[0]["objective"]),
+        "objective_last": float(step_summaries[-1]["objective"]),
+        "objective_median": statistic("objective"),
+        "objective_p90": statistic("objective", 90.0),
+        "global_valid_count_median": statistic("global_valid_count"),
+        "global_invalid_count_median": statistic("global_invalid_count"),
+        "valid_forward_wall_s_total": float(
+            sum(row["valid_forward_wall_s"] for row in step_summaries)
+        ),
+        "invalid_forward_wall_s_total": float(
+            sum(row["invalid_forward_wall_s"] for row in step_summaries)
+        ),
+        "backward_wall_s_total": float(sum(row["backward_wall_s"] for row in step_summaries)),
+        "optimizer_wall_s_total": float(sum(row["optimizer_wall_s"] for row in step_summaries)),
+        "steps": step_summaries,
     }
 
 
@@ -826,10 +962,30 @@ def run(args: argparse.Namespace) -> None:
             collection_summary = summarize_collection(
                 combined, all_records, round_index=round_index, round_dir=round_dir
             )
+            replay_pool = append_replay_pool(
+                load_replay_pool(args.run_root / "replay_pool.npz"), combined
+            )
+            atomic_savez(args.run_root / "replay_pool.npz", **replay_pool)
+            atomic_write_json(
+                args.run_root / "replay_pool.json",
+                {
+                    "format": FORMAT,
+                    "capacity": REPLAY_CAPACITY,
+                    "size": len(replay_pool["current"]),
+                    "source_round": round_index,
+                    "sampling": "uniform with replacement",
+                    "updated_unix_s": time.time(),
+                },
+            )
             beta = manifest["strategy"].get("beta")
         else:
             collection_summary = None
+            replay_pool = None
             beta = None
+        dist.barrier()
+        replay_pool = load_replay_pool(args.run_root / "replay_pool.npz")
+        if replay_pool is None:
+            raise RuntimeError("rank 0 did not publish a replay pool")
         beta_holder = torch.tensor(
             float(beta) if beta is not None else -1.0, dtype=torch.float32, device=device
         )
@@ -858,10 +1014,7 @@ def run(args: argparse.Namespace) -> None:
             ema_model=ema_model,
             optimizer=optimizer,
             normalizer=normalizer,
-            current=arrays["current"],
-            valid=arrays["valid"],
-            gradient_flow=arrays["score_gradient_flow"],
-            gradient_ok=arrays["gradient_ok"],
+            replay_pool=replay_pool,
             rank=rank,
             device=device,
             beta=beta,
@@ -905,6 +1058,8 @@ def run(args: argparse.Namespace) -> None:
                     "gradient_ok_rate_valid": collection_summary["gradient_ok_rate_valid"],
                     "initial_score_median_all": collection_summary["initial"]["score_median_all"],
                     "flow_train_wall_s": train_summary["wall_s"],
+                    "replay_pool_size": train_summary["pool_size"],
+                    "flow_updates": train_summary["updates"],
                     "updated_unix_s": time.time(),
                 },
             )

@@ -14,6 +14,7 @@ from flow_matching.score_gradient_rl import (
     map_score_gradient_to_flow,
     valid_flow_terms_with_transport,
 )
+from scripts.score_gradient_flow_rl import REPLAY_CAPACITY, append_replay_pool
 
 
 def _normalizer(scale: float, mean: float = 0.0) -> CoilNormalizer:
@@ -121,3 +122,26 @@ def test_transformer_transport_term_supports_second_order_parameter_backward() -
     )
     (ordinary.mean() + 0.01 * transport.mean()).backward()
     assert all(parameter.grad is not None for parameter in model.parameters())
+
+
+def test_replay_pool_keeps_newest_records_at_fixed_capacity() -> None:
+    capacity = REPLAY_CAPACITY
+    first = np.zeros((capacity, N_BASE_COILS, TOKEN_DIM), dtype=np.float32)
+    second = np.ones((3, N_BASE_COILS, TOKEN_DIM), dtype=np.float32)
+
+    def batch(data: np.ndarray) -> dict[str, np.ndarray]:
+        count = len(data)
+        return {
+            "current": data,
+            "score_gradient_flow": np.zeros_like(data),
+            "valid": np.ones(count, dtype=np.bool_),
+            "gradient_ok": np.ones(count, dtype=np.bool_),
+            "scores": np.arange(count, dtype=np.float64),
+            "volume_qs": np.zeros(count, dtype=np.float64),
+            "coil": np.zeros(count, dtype=np.float64),
+        }
+
+    pool = append_replay_pool(None, batch(first))
+    pool = append_replay_pool(pool, batch(second))
+    assert len(pool["current"]) == capacity
+    np.testing.assert_allclose(pool["current"][-3:], second)

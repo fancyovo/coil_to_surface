@@ -27,6 +27,7 @@ commit="${SCORE_GRADIENT_COMMIT:?set SCORE_GRADIENT_COMMIT}"
 
 cd "$repo"
 mkdir -p "$repo/logs"
+mkdir -p "$(dirname "$run_root")"
 test -f "$q0_checkpoint"
 test -f "$optimizer_checkpoint"
 test -f "$score_lib"

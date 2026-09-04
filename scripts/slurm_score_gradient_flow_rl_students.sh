@@ -44,9 +44,6 @@ cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
-  --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"
-
 python scripts/score_gradient_flow_rl.py prepare \
   --run-root "$run_root" \
   --q0-checkpoint "$q0_checkpoint" \
@@ -59,6 +56,8 @@ python scripts/score_gradient_flow_rl.py prepare \
   --expected-commit "$commit"
 cp "$repo/evaluation/axisflip_r012_score_gradient_transport_rl_r04_abi11_v1.json" \
   "$run_root/protocol.json"
+nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total \
+  --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"
 
 python -m torch.distributed.run --standalone --nproc-per-node=2 \
   scripts/score_gradient_flow_rl.py run \

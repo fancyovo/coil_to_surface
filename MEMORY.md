@@ -239,8 +239,6 @@
   updates per round. Six-round valid rates are
   `14.06%,23.44%,31.25%,53.13%,54.69%,53.13%`; gradient acceptance is
   `100%,100%,100%,97.06%,97.14%,94.12%`. Job remains active; verify state directly.
-- Job and round state is volatile and must be checked directly before use.
-
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

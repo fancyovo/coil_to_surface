@@ -12,7 +12,7 @@
   on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
-- Active exploration branch: `codex/r013-score-gradient-rl`, based on the
+- Active exploration branch: `codex/r014-score-gradient-replay50-rl`, based on the
   frozen R04 source commit `95ed6cf`; the active R04 job remains in its own
   worktree. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
@@ -231,11 +231,14 @@
 - Active R04 protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1`
   runs in its preserved P107 worktree (`53372`); its 512-rollout FIFO and
   four-day, no-round-cap policy remain unchanged.
-- New student protocol `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
-  runs as job `53957` in a separate worktree with two GPUs and no round cap.
-  After three rounds, valid rates were `14.06%, 17.19%, 15.63%, 23.44%`; 64D
-  gradients passed for 100%, 100%, 100%, and 86.7% of valid centers. Fixed
-  `beta=0.0060219592`, calibrated to a 10% transport-loss fraction.
+- Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
+  was stopped at 24 rounds (job `53957`). Active protocol
+  `qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1` is job `54046`:
+  same q0, ABI-11 R04 evaluator, loss, 64D gradients and
+  `beta=0.0060219592`, plus a 512-record FIFO pool and 50 uniform replay
+  updates per round. Five-round valid rates are
+  `14.06%,23.44%,31.25%,53.13%,54.69%`; gradient acceptance is
+  `100%,100%,100%,97.06%,97.14%`. Job remains active; verify state directly.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map

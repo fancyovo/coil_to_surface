@@ -567,3 +567,16 @@ then frozen. The registered manifest is
 Job `53957` runs from commit `6ff70ab` in a separate worktree; after three
 rounds it remained stable with valid rates `14.06%,17.19%,15.63%,23.44%` and
 fixed `beta=0.0060219592`. This protocol has no default impact.
+
+Protocol `qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1` is the
+follow-on two-GPU comparison. It keeps the predecessor's q0, ABI-11 R04
+score library, 64-direction centered gradient query, beta, and loss exactly
+unchanged. Each round appends its 64 scored centers to a FIFO pool capped at
+512 records; each of 50 Flow updates samples a global batch of 64 records
+uniformly with replacement from that pool. Invalid records and failed
+gradient checks follow the predecessor's existing loss handling. No reward
+weights, q0 mixture, Adam20 trajectory, or transport target are added. The
+registered manifest is
+`evaluation/axisflip_r012_score_gradient_replay50_rl_r04_abi11_v1.json`.
+Job `54046` is the active student run; its first five rounds are an early
+stability check, not a promotion decision.

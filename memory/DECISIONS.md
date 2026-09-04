@@ -308,3 +308,16 @@ among valid centers were `100%, 100%, 100%, 86.7%`. The fixed
 `beta=0.0060219592` was calibrated once from the q0 batch so the transport
 term's absolute mean was 10% of ordinary valid loss, then frozen. This is an
 early stability record, not evidence of promotion.
+
+## DEC-20260905-01 - Replay-only score-gradient schedule
+
+Status: active registered experiment; no default impact.
+
+The score-gradient policy comparison now uses a 512-center FIFO replay pool
+and 50 optimizer updates per outer round. Each update draws the unchanged
+global batch size (64) uniformly with replacement from the synchronized pool.
+The loss, score-gradient estimator, ABI-11 R04 evaluator, beta, optimizer,
+and EMA rule remain unchanged; P107 reward weighting and source-mixture
+sampling are deliberately excluded. The one-update run remains the historical
+control. Job `54046` completed five rounds without an observed collapse signal
+and continues running.

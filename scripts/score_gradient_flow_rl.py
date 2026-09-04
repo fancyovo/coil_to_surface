@@ -192,7 +192,10 @@ def prepare(args: argparse.Namespace) -> None:
             "source_checkpoint": str(args.q0_checkpoint.resolve()),
             "copied_checkpoint": str(q0_copy.resolve()),
             "checkpoint_sha256": file_sha256(args.q0_checkpoint),
-            "normalizer": checkpoint["normalizer"],
+            "normalizer": {
+                "source": "embedded in the pinned q0 checkpoint",
+                "checkpoint_sha256": file_sha256(args.q0_checkpoint),
+            },
             "model_config": checkpoint["model_config"],
         },
         "strategy": {

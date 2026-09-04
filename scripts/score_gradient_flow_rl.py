@@ -151,7 +151,7 @@ def prepare(args: argparse.Namespace) -> None:
     (args.run_root / "checkpoints").mkdir(parents=True, exist_ok=False)
     (args.run_root / "rounds").mkdir(parents=True, exist_ok=False)
     (args.run_root / "logs").mkdir(parents=True, exist_ok=False)
-    q0_copy = args.run_root / "checkpoints" / "round_000.pt"
+    q0_copy = args.run_root / "checkpoints" / "round_0000.pt"
     q0_copy.write_bytes(args.q0_checkpoint.read_bytes())
     manifest = {
         "format": FORMAT,

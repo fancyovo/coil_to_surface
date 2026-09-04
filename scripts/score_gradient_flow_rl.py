@@ -207,6 +207,8 @@ def prepare(args: argparse.Namespace) -> None:
             "gradient_directions": GRADIENT_DIRECTIONS,
             "gradient_difference": "centered random-orthogonal",
             "gradient_perturbation": GRADIENT_PERTURBATION,
+            "coordinate_directional_check_step": 1.0e-3,
+            "coordinate_directional_check_tolerance": COORDINATE_CHECK_TOLERANCE,
             "monte_carlo_samples": MONTE_CARLO_SAMPLES,
             "loss": "L_valid + alpha*L_invalid + beta*mean(g_flow^T grad_x ell)",
             "invalid_alpha": INVALID_ALPHA,
@@ -353,6 +355,7 @@ def collect_one(
                 current_l1_a=current_l1,
                 nfp=NFP,
                 direction=check_direction,
+                step=1.0e-3,
             )
             record["score_gradient_flow"] = gradient_flow
             record["gradient_ok"] = check_error <= COORDINATE_CHECK_TOLERANCE

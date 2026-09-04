@@ -49,6 +49,7 @@ def test_score_gradient_mapping_matches_coordinate_directional_identity() -> Non
         current_l1_a=3.0,
         nfp=8,
         direction=direction,
+        step=1.0e-3,
     )
     assert error < 2.0e-3
     # Geometry is an affine normalizer map: dx_optimizer/dx_flow = 2/4.

@@ -38,6 +38,7 @@
     "samples_per_rank": 32,
     "gradient": "one ABI-11 R04-compatible 64-direction centered finite-difference query per valid center",
     "gradient_coordinate_map": "exact geometry diagonal map plus central-difference current L1 canonicalization Jacobian",
+    "coordinate_directional_check": {"step": 0.001, "relative_error_tolerance": 0.002},
     "loss": "L_valid + alpha*L_invalid + beta*mean(g_flow^T grad_x ell)",
     "invalid_alpha": 0.05,
     "monte_carlo_samples": 4,

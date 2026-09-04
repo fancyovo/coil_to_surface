@@ -111,7 +111,7 @@ def coordinate_gradient_directional_check(
     current_l1_a: float,
     nfp: int,
     direction: np.ndarray,
-    step: float = 1.0e-5,
+    step: float = 1.0e-3,
 ) -> float:
     """Return relative error of the coordinate-chain directional identity."""
 

@@ -236,9 +236,9 @@
   `qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1` is job `54046`:
   same q0, ABI-11 R04 evaluator, loss, 64D gradients and
   `beta=0.0060219592`, plus a 512-record FIFO pool and 50 uniform replay
-  updates per round. Five-round valid rates are
-  `14.06%,23.44%,31.25%,53.13%,54.69%`; gradient acceptance is
-  `100%,100%,100%,97.06%,97.14%`. Job remains active; verify state directly.
+  updates per round. Six-round valid rates are
+  `14.06%,23.44%,31.25%,53.13%,54.69%,53.13%`; gradient acceptance is
+  `100%,100%,100%,97.06%,97.14%,94.12%`. Job remains active; verify state directly.
 - Job and round state is volatile and must be checked directly before use.
 
 ## Memory Map

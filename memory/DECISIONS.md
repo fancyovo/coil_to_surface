@@ -319,5 +319,5 @@ global batch size (64) uniformly with replacement from the synchronized pool.
 The loss, score-gradient estimator, ABI-11 R04 evaluator, beta, optimizer,
 and EMA rule remain unchanged; P107 reward weighting and source-mixture
 sampling are deliberately excluded. The one-update run remains the historical
-control. Job `54046` completed five rounds without an observed collapse signal
+control. Job `54046` completed six rounds without an observed collapse signal
 and continues running.

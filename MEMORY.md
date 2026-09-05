@@ -228,15 +228,16 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
-- Active R04 protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1` runs in preserved P107 worktree (`53372`), with complete round 61 directly verified and the job still active. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
+- The prior R04 P107 trajectory-replay job `53372` was stopped before the radius comparison. Its complete rounds remain historical evidence. Two replacement P107 jobs are active from commit `fba88eca`: `54444` tests a fresh `0.15 m` teacher/q0 and `54446` tests `0.20 m`; each uses two RTX5090 GPUs, two collection workers, and 8 CPUs. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
 - Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
-  was stopped at 24 rounds (job `53957`). Active protocol
-  `qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1` is job `54046`:
-  same q0, ABI-11 R04 evaluator, loss, 64D gradients and
-  `beta=0.0060219592`, plus a 512-record FIFO pool and 50 uniform replay
-  updates per round. The latest verified report snapshot includes complete
-  rounds 0--114 (7,360 centers), cumulative valid rate `92.12%`, and
-  valid-center gradient acceptance `97.37%`; NPZ diversity effective rank rose `4.829 -> 9.122` with zero near-duplicates. Job remains active; verify state directly.
+  was stopped at 24 rounds (job `53957`). The replay50 comparison job `54046`
+  was stopped before the schedule replacement; its complete rounds 0--203
+  remain frozen evidence. Active protocol
+  `qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1` is job
+  `54423`: same q0, ABI-11 R04 evaluator, loss, 64D gradients,
+  `beta=0.0060219592`, 512-record FIFO pool, and 64 centers per round, with
+  10 uniform replay updates per round and EMA interpolation `0.1`. Round 0 is
+  complete and the job remains active; verify state directly.
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

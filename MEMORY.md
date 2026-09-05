@@ -239,7 +239,7 @@
   `beta=0.0060219592`, plus a 512-record FIFO pool and 50 uniform replay
   updates per round. The latest verified report snapshot includes complete
   rounds 0--114 (7,360 centers), cumulative valid rate `92.12%`, and
-  valid-center gradient acceptance `97.37%`. Job remains active; verify state directly.
+  valid-center gradient acceptance `97.37%`; NPZ diversity effective rank rose `4.829 -> 9.122` with zero near-duplicates. Job remains active; verify state directly.
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

@@ -107,6 +107,12 @@ reports and immutable archives retain the detailed record.
   every trajectory improved its volume-QS component. See
   `../reports/axisflip_rl_round12_latent_adam200_results_20260903.md` and
   `CORR-20260903-82`.
+- 2026-09-05: P107 R012 trajectory-replay job `53372` reached complete round
+  61. The current highest initial point (`r048_w02_i11`) and highest Adam20
+  point (`r057_w03_i04`) received the fixed full physical evaluation in one
+  `qos_stu_default` job (`54223`, 1 GPU, 4 CPU). Both produced standard
+  LS/Newton surfaces; DESC returned non-nested boundaries for both cases. The
+  numerical summaries and visual assets are appended to the R012 report.
 
 ## Evidence Routes
 

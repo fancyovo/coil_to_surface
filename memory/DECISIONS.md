@@ -280,6 +280,14 @@ Four P107 GPUs run until the four-day wall reserve or an explicit
 Students GPUs continue R012 Adam200 best cases 36 and 4 through 3,000 new R04
 Adam updates, one independent job per GPU.
 
+The P107 stream was directly verified through complete round 61. A separate
+single-GPU `qos_stu_default` job (`54223`, 4 CPU, 16G, 4h) completed the fixed
+full physical workflow for the highest initial point `r048_w02_i11` and the
+highest Adam20 point `r057_w03_i04`. Both produced standard LS/Newton surfaces;
+their DESC outputs had non-nested initial and final boundaries, so those
+results remain diagnostic rather than strict equilibrium certificates. The
+canonical numerical and image evidence is appended to the R012 report.
+
 ## DEC-20260904-04 - First-order score-gradient Flow policy
 
 Status: active registered experiment; no default impact.

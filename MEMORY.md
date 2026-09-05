@@ -230,15 +230,17 @@
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
 - Active R04 protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1`
   runs in its preserved P107 worktree (`53372`); its 512-rollout FIFO and
-  four-day, no-round-cap policy remain unchanged.
+  four-day, no-round-cap policy remain unchanged. The latest verified report
+  snapshot includes complete rounds 0--58; the job remains active.
 - Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
   was stopped at 24 rounds (job `53957`). Active protocol
   `qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1` is job `54046`:
   same q0, ABI-11 R04 evaluator, loss, 64D gradients and
   `beta=0.0060219592`, plus a 512-record FIFO pool and 50 uniform replay
-  updates per round. Six-round valid rates are
-  `14.06%,23.44%,31.25%,53.13%,54.69%,53.13%`; gradient acceptance is
-  `100%,100%,100%,97.06%,97.14%,94.12%`. Job remains active; verify state directly.
+  updates per round. The latest verified report snapshot includes complete
+  rounds 0--111 (7,168 centers), cumulative valid rate `91.95%`, and
+  valid-center gradient acceptance `97.33%`. Job remains active; verify state
+  directly.
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

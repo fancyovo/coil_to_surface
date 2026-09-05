@@ -1,0 +1,125 @@
+{
+  "format": "axisflip_r012_score_gradient_replay50_rl_r04_v1",
+  "protocol": {
+    "id": "qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1",
+    "status": "registered-experimental",
+    "relationship_to_default": "student score-gradient policy comparison; R04 and QH defaults unchanged"
+  },
+  "repository": {
+    "commit": "a9ead14acca37fc3b6f828cb236c764d68805378",
+    "tracked_dirty": false,
+    "available": true
+  },
+  "created_unix_s": 1788542676.1475945,
+  "condition": {
+    "nfp": 8,
+    "n_base_coils": 3
+  },
+  "baseline_r04": {
+    "protocol_id": "qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1",
+    "score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+    "score_library_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/score_library_manifest.json",
+    "score_manifest_sha256": "230dad113d8cf0bf4ddbeb088ef77c078ff1c3cfed5506ce1d73ca397b5b6e27",
+    "q0_checkpoint_sha256": "4b6756a39c1e627b7aa804f1994e8cf1c7f857c003fd23d837e880239c97c3c5",
+    "optimizer_checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f",
+    "flow_steps": 32,
+    "target_helicity": [
+      1,
+      8
+    ],
+    "curvature_p95_scale_m_inv": 25.0,
+    "curvature_p95_radius_m": 0.04,
+    "curvature_max_scale_m_inv": 35.0,
+    "score_configuration": {
+      "iota_degree": 3,
+      "surface_selection_mode": 1,
+      "surface_confidence_periods": 1,
+      "surface_theta_count": 128,
+      "surface_trace_steps": 400,
+      "surface_flux_bisection_iters": 6,
+      "gradient_segments_per_coil": 256,
+      "gradient_psi_iterations": 4,
+      "gradient_alpha_iterations": 4,
+      "gradient_local_surface_theta_count": 64
+    }
+  },
+  "q0": {
+    "source_checkpoint": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_trajectory_rl_20260904_95ed6cf/distillation/checkpoint_q0.pt",
+    "copied_checkpoint": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_score_gradient_replay50_rl_20260905_a9ead14/checkpoints/round_0000.pt",
+    "checkpoint_sha256": "4b6756a39c1e627b7aa804f1994e8cf1c7f857c003fd23d837e880239c97c3c5",
+    "normalizer": {
+      "source": "embedded in the pinned q0 checkpoint",
+      "checkpoint_sha256": "4b6756a39c1e627b7aa804f1994e8cf1c7f857c003fd23d837e880239c97c3c5"
+    },
+    "model_config": {
+      "token_dim": 100,
+      "width": 256,
+      "layers": 6,
+      "heads": 8,
+      "hidden": 704,
+      "max_nfp": 16
+    }
+  },
+  "strategy": {
+    "samples_per_round": 64,
+    "world_size": 2,
+    "samples_per_rank": 32,
+    "gradient_parameter_space": "R04 exact-unclipped optimizer data coordinates",
+    "flow_parameter_space": "R04 q0 prior-normalized coordinates",
+    "gradient_directions": 64,
+    "gradient_difference": "centered random-orthogonal",
+    "gradient_perturbation": 0.0025,
+    "coordinate_directional_check_step": 0.001,
+    "coordinate_directional_check_tolerance": 0.05,
+    "monte_carlo_samples": 4,
+    "loss": "L_valid + alpha*L_invalid + beta*mean(g_flow^T grad_x ell)",
+    "invalid_alpha": 0.05,
+    "beta": 0.006021959241479635,
+    "beta_calibration": "q0 no-update pilot; freeze before round 0",
+    "adam20_rollout": false,
+    "replay": {
+      "enabled": true,
+      "capacity": 512,
+      "sampling": "uniform with replacement",
+      "record": "one scored center with its fixed 64-direction score gradient"
+    },
+    "rho": null,
+    "epsilon_transport": null,
+    "flow_optimizer_steps_per_round": 50,
+    "beta_calibration_result": {
+      "target_transport_fraction": 0.1,
+      "valid_loss_mean": 0.3290247917175293,
+      "transport_abs_mean": 5.463749779595269,
+      "beta_raw": 0.006021959368386413,
+      "beta": 0.006021959368386413
+    }
+  },
+  "parallelism": {
+    "collection": "two independent one-GPU ranks, 32 centers each; one BatchCoilFieldGpu with 128 endpoints per valid center",
+    "training": "two-GPU DDP, 50 global optimizer steps per round; each step samples 32 records per rank from the synchronized replay pool",
+    "center_endpoint_flattening": false
+  },
+  "evaluator": {
+    "abi": 11,
+    "library": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/build_curvature_r04/libstellarator_gpu.so",
+    "library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+    "manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/score_library_manifest.json",
+    "manifest_sha256": "230dad113d8cf0bf4ddbeb088ef77c078ff1c3cfed5506ce1d73ca397b5b6e27",
+    "manifest_summary": {
+      "format": "axisflip_r012_curvature_r04_score_library_v1",
+      "interface_abi": 11,
+      "path": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_curvature_r04_adam200_20260903_70a1102/build_curvature_r04/libstellarator_gpu.so",
+      "sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+      "code_commit": "70a1102829da50d9054d929d1cd7073780909268",
+      "cmake_overrides": {
+        "SGPU_COIL_CURVATURE_P95_SCALE": 25.0
+      },
+      "coil_curvature_p95_radius_m": 0.04,
+      "coil_curvature_max_scale_m_inv": 35.0
+    }
+  },
+  "paths": {
+    "optimizer_checkpoint": "/home/scc/pb24511935/local_surface_evaluator/runs/qh_flow_physical_lr_longselect_20260729/lr_3em4/checkpoint_latest.pt",
+    "optimizer_checkpoint_sha256": "39a3293a459e248a0d1ec062607a1a467128b14d8ca973aadd82e113532ab99f"
+  }
+}

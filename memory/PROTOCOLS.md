@@ -578,5 +578,6 @@ gradient checks follow the predecessor's existing loss handling. No reward
 weights, q0 mixture, Adam20 trajectory, or transport target are added. The
 registered manifest is
 `evaluation/axisflip_r012_score_gradient_replay50_rl_r04_abi11_v1.json`.
-Job `54046` is the active student run; its first six rounds are an early
-stability check, not a promotion decision.
+Job `54046` is the active student run. The current stage snapshot covers
+complete rounds 0--111; it is an early comparison result, not a promotion
+decision. See `reports/axisflip_r012_score_gradient_replay50_rl_interim_20260905.md`.

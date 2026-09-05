@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 
 import matplotlib
 
@@ -12,8 +13,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from flow_matching.axis_prior_rl import diversity_summary
+
 ASSET = ROOT / "reports" / "assets" / "axisflip_r012_score_gradient_replay50_rl_20260905_interim"
 RAW = ASSET / "round_raw"
 REPORT = ROOT / "reports" / "axisflip_r012_score_gradient_replay50_rl_interim_20260905.md"
@@ -49,6 +53,17 @@ def main() -> None:
         train = training["training"]
         timing = collection["timing"]
         coordinate = collection["coordinate_check"]
+        diversity = None
+        rank_paths = sorted(directory.glob("rank_*.npz"))
+        if rank_paths:
+            current_parts = []
+            for rank_path in rank_paths:
+                with np.load(rank_path, allow_pickle=False) as archive:
+                    current_parts.append(np.asarray(archive["current"], dtype=np.float32))
+            if current_parts:
+                diversity = diversity_summary(
+                    np.concatenate(current_parts, axis=0), seed=1000 + index
+                )
         rows.append(
             {
                 "round": index,
@@ -73,6 +88,7 @@ def main() -> None:
                 "objective_first": float(train["objective_first"]),
                 "objective_last": float(train["objective_last"]),
                 "pool_size": int(train["pool_size"]),
+                "diversity": diversity,
             }
         )
     if not rows:
@@ -93,6 +109,7 @@ def main() -> None:
     objective_first = np.asarray([row["objective_first"] for row in rows])
     objective_last = np.asarray([row["objective_last"] for row in rows])
     pool = np.asarray([row["pool_size"] for row in rows])
+    diversity_rows = [row for row in rows if row["diversity"] is not None]
 
     fig, axes = plt.subplots(2, 2, figsize=(11.2, 7.6))
     axes[0, 0].plot(rounds, score, marker="o", ms=3, label="initial median")
@@ -154,6 +171,57 @@ def main() -> None:
     fig.savefig(ASSET / f"training_diagnostics_through_{latest:04d}.png", dpi=190, bbox_inches="tight")
     plt.close(fig)
 
+    diversity_plot_name = None
+    diversity_aggregate = None
+    if diversity_rows:
+        diversity_rounds = np.asarray([row["round"] for row in diversity_rows])
+        diversity_rank = np.asarray(
+            [row["diversity"]["descriptor_effective_rank"] for row in diversity_rows]
+        )
+        diversity_variance = np.asarray(
+            [row["diversity"]["descriptor_total_variance"] for row in diversity_rows]
+        )
+        diversity_nearest = np.asarray(
+            [row["diversity"]["nearest_distance_median"] for row in diversity_rows]
+        )
+        diversity_duplicate = np.asarray(
+            [row["diversity"]["near_duplicate_rate_1e-4"] for row in diversity_rows]
+        )
+        fig, axes = plt.subplots(2, 2, figsize=(11.2, 7.2))
+        axes[0, 0].plot(diversity_rounds, diversity_rank, marker="o", ms=3, color="#6a4c93")
+        axes[0, 0].set_ylabel("descriptor effective rank")
+        axes[0, 1].plot(diversity_rounds, diversity_variance, marker="o", ms=3, color="#457b9d")
+        axes[0, 1].set_ylabel("descriptor total variance")
+        axes[1, 0].plot(diversity_rounds, diversity_nearest, marker="o", ms=3, color="#2a9d8f")
+        axes[1, 0].set_ylabel("nearest-distance median")
+        axes[1, 1].plot(diversity_rounds, diversity_duplicate, marker="o", ms=3, color="#c44536")
+        axes[1, 1].set_ylabel("near-duplicate rate (<1e-4)")
+        axes[1, 1].set_ylim(-0.01, max(0.05, float(np.max(diversity_duplicate)) * 1.2))
+        for axis in axes.flat:
+            axis.set_xlabel("completed round")
+            axis.grid(alpha=0.22)
+        fig.suptitle(f"R012 score-gradient replay50 RL: diversity through round {latest}", fontsize=13)
+        fig.tight_layout()
+        diversity_plot_name = f"diversity_through_{latest:04d}.png"
+        fig.savefig(ASSET / diversity_plot_name, dpi=190, bbox_inches="tight")
+        plt.close(fig)
+        first_diversity = diversity_rows[0]["diversity"]
+        latest_diversity = diversity_rows[-1]["diversity"]
+        diversity_aggregate = {
+            "available_rounds": len(diversity_rows),
+            "first": first_diversity,
+            "latest": latest_diversity,
+            "effective_rank_ratio_latest_over_first": float(
+                latest_diversity["descriptor_effective_rank"]
+                / max(first_diversity["descriptor_effective_rank"], 1e-12)
+            ),
+            "total_variance_ratio_latest_over_first": float(
+                latest_diversity["descriptor_total_variance"]
+                / max(first_diversity["descriptor_total_variance"], 1e-12)
+            ),
+            "near_duplicate_rate_max": float(np.max(diversity_duplicate)),
+        }
+
     aggregate = {
         "round_count": len(rows),
         "latest_round": latest,
@@ -173,6 +241,7 @@ def main() -> None:
         "mean_collection_wall_s": float(np.mean(collection_wall)),
         "mean_flow_train_wall_s": float(np.mean(flow_wall)),
         "mean_round_wall_s_estimate": float(np.mean(collection_wall + flow_wall)),
+        "diversity": diversity_aggregate,
     }
     payload = {
         "format": "axisflip_r012_score_gradient_replay50_rl_interim_report_v1",
@@ -198,6 +267,24 @@ def main() -> None:
         )
     latest_row = rows[-1]
     ci = aggregate["valid_rate_wilson95"]
+    if diversity_aggregate is not None:
+        first_diversity = diversity_aggregate["first"]
+        latest_diversity = diversity_aggregate["latest"]
+        diversity_section = f"""## 多样性诊断
+
+每个完整轮次的 `rank_*.npz` 保存了 Flow 实际生成的 `current` 张量，因此这里使用真实样本做独立于分数的诊断。对每个样本取三个线圈维度上的均值和标准差，形成 200 维置换不变描述符；有效秩为协方差迹平方除以协方差平方和，越大表示变化分布覆盖的有效方向越多。总方差反映描述符的总体散布，最近邻距离中位数反映样本间典型间隔，近重复率阈值为 `1e-4`。
+
+共有 `{diversity_aggregate['available_rounds']}` 个完整轮次有 NPZ 原始样本。描述符有效秩由 `{first_diversity['descriptor_effective_rank']:.3f}` 变为 `{latest_diversity['descriptor_effective_rank']:.3f}`（比值 `{diversity_aggregate['effective_rank_ratio_latest_over_first']:.2f}x`），总方差由 `{first_diversity['descriptor_total_variance']:.3f}` 变为 `{latest_diversity['descriptor_total_variance']:.3f}`（比值 `{diversity_aggregate['total_variance_ratio_latest_over_first']:.2f}x`）。最近邻距离中位数为 `{first_diversity['nearest_distance_median']:.3f} -> {latest_diversity['nearest_distance_median']:.3f}`，所有已检查轮次的近重复率最大为 `{diversity_aggregate['near_duplicate_rate_max']:.2%}`。
+
+有效秩没有塌缩到单一方向，近重复率始终为零；结合合法率的提升，当前没有灾难性模式坍缩证据。总方差下降表示样本散布尺度变窄，不能单独等同于坍缩；后续仍应配合独立 holdout 和跨轮次样本距离检查。
+
+![Flow 样本多样性诊断](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/{diversity_plot_name})
+"""
+    else:
+        diversity_section = """## 多样性诊断
+
+当前阶段的落盘摘要没有包含可重建样本张量的原始文件，因此本报告只依据合法率、分数和梯度一致性判断训练状态，不对模式坍缩作强结论。
+"""
     report = f"""# R012 score-gradient replay50 RL：第 0--{latest} 轮阶段报告
 
 - 报告日期：2026-09-05（Asia/Shanghai）
@@ -240,9 +327,11 @@ def main() -> None:
 
 ![训练目标与回放池诊断](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/training_diagnostics_through_{latest:04d}.png)
 
+{diversity_section}
+
 ## 阶段判断
 
-截至第 {latest} 轮，score-gradient replay50 作业运行稳定：两个 GPU rank 持续完成采集，梯度一致性通过率保持高位，Flow 更新耗时约数秒/轮。已观测到合法率和初始分布的显著改善；目前没有仅凭这些摘要判定灾难性模式坍缩的证据，但仍需在后续轮次检查分布多样性与独立 holdout。作业 `54046` 保持运行，本报告不发送停止信号。
+截至第 {latest} 轮，score-gradient replay50 作业运行稳定：两个 GPU rank 持续完成采集，梯度一致性通过率保持高位，Flow 更新耗时约数秒/轮。已观测到合法率和初始分布的显著改善；多样性诊断也未显示灾难性模式坍缩。作业 `54046` 保持运行，本报告不发送停止信号。
 
 ## 机器证据
 

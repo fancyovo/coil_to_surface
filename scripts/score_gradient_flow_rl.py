@@ -55,13 +55,38 @@ from scripts.optimize_flow_latent import (  # noqa: E402
 from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_start  # noqa: E402
 
 
-PROTOCOL_ID = "qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1"
-FORMAT = "axisflip_r012_score_gradient_replay50_rl_r04_v1"
+PROTOCOL_ID = os.environ.get(
+    "SCORE_GRADIENT_PROTOCOL_ID",
+    "qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1",
+)
+FORMAT = os.environ.get(
+    "SCORE_GRADIENT_FORMAT",
+    "axisflip_r012_score_gradient_replay50_rl_r04_v1",
+)
 SAMPLES_PER_ROUND = 64
 SAMPLES_PER_RANK = SAMPLES_PER_ROUND // 2
 WORLD_SIZE = 2
 REPLAY_CAPACITY = 512
-FLOW_OPTIMIZER_STEPS_PER_ROUND = 50
+
+
+def _env_positive_int(name: str, default: int) -> int:
+    value = int(os.environ.get(name, str(default)))
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+    return value
+
+
+def _env_unit_interval(name: str, default: float) -> float:
+    value = float(os.environ.get(name, str(default)))
+    if not 0.0 < value <= 1.0:
+        raise ValueError(f"{name} must be in (0, 1]")
+    return value
+
+
+FLOW_OPTIMIZER_STEPS_PER_ROUND = _env_positive_int(
+    "SCORE_GRADIENT_FLOW_OPTIMIZER_STEPS_PER_ROUND", 50
+)
+EMA_LERP = _env_unit_interval("SCORE_GRADIENT_EMA_LERP", 0.01)
 FLOW_STEPS = 32
 GRADIENT_DIRECTIONS = 64
 GRADIENT_PERTURBATION = 0.0025
@@ -216,6 +241,7 @@ def prepare(args: argparse.Namespace) -> None:
             "invalid_alpha": INVALID_ALPHA,
             "beta": None,
             "beta_calibration": "q0 no-update pilot; freeze before round 0",
+            "ema_lerp": EMA_LERP,
             "adam20_rollout": False,
             "replay": {
                 "enabled": True,
@@ -229,7 +255,11 @@ def prepare(args: argparse.Namespace) -> None:
         },
         "parallelism": {
             "collection": "two independent one-GPU ranks, 32 centers each; one BatchCoilFieldGpu with 128 endpoints per valid center",
-            "training": "two-GPU DDP, 50 global optimizer steps per round; each step samples 32 records per rank from the synchronized replay pool",
+            "training": (
+                "two-GPU DDP, "
+                f"{FLOW_OPTIMIZER_STEPS_PER_ROUND} global optimizer steps per round; "
+                "each step samples 32 records per rank from the synchronized replay pool"
+            ),
             "center_endpoint_flattening": False,
         },
         "evaluator": {
@@ -665,7 +695,7 @@ def train_step_from_replay(
     optimizer.step()
     with torch.no_grad():
         for target, source in zip(ema_model.parameters(), model.module.parameters(), strict=True):
-            target.lerp_(source.detach(), 0.01)
+            target.lerp_(source.detach(), EMA_LERP)
     optimizer_wall = time.perf_counter() - optimizer_started
     detached_values = torch.stack(
         [

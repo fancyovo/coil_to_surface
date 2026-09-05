@@ -332,6 +332,21 @@ sampling are deliberately excluded. The one-update run remains the historical
 control. Job `54046` has a current complete snapshot through round 114
 without a collapse signal and continues running.
 
+## DEC-20260905-02 - Ten-update, faster-EMA schedule comparison
+
+Status: registered experimental comparison; no default impact.
+
+The Students replay50 score-gradient run is replaced by a schedule-only
+comparison after the user requested a lower number of Flow updates per outer
+round. The new run keeps the 64 newly collected centers per round, 32 centers
+per rank, 512-record FIFO, 32-record-per-rank replay batch, ABI-11 R04 score
+library, 64-direction gradient estimator, frozen beta, loss, AdamW settings,
+and RK4-32 generation unchanged. It performs 10 replay updates per round
+instead of 50 and uses EMA interpolation `0.1` instead of `0.01`. The old
+`replay50` manifest and completed rounds remain frozen historical comparison
+evidence; the new protocol is
+`qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1`.
+
 ## DEC-20260905-02 - Mandatory alpha+nu full-evaluation chain
 
 Status: active project-wide evaluation invariant.

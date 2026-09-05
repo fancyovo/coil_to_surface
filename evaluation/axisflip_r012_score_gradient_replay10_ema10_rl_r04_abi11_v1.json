@@ -1,0 +1,83 @@
+{
+  "protocol_id": "qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-05",
+  "condition": {"nfp": 8, "n_base_coils": 3},
+  "baseline": {
+    "protocol_id": "qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1",
+    "relationship": "direct schedule comparison; all sampling, replay, loss, scorer, optimizer, and model settings are inherited from replay50",
+    "score_library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+    "curvature_p95_scale_m_inv": 25.0,
+    "curvature_p95_radius_m": 0.04,
+    "curvature_max_scale_m_inv": 35.0,
+    "flow_steps": 32,
+    "model": {"width": 256, "layers": 6, "heads": 8, "hidden": 704, "parameter_count": 5761380},
+    "target_helicity": [1, 8],
+    "score_configuration": {
+      "iota_degree": 3,
+      "surface_selection_mode": 1,
+      "surface_confidence_periods": 1,
+      "surface_theta_count": 128,
+      "surface_trace_steps": 400,
+      "surface_flux_bisection_iters": 6,
+      "gradient_segments_per_coil": 256,
+      "gradient_psi_iterations": 4,
+      "gradient_alpha_iterations": 4,
+      "gradient_local_surface_theta_count": 64
+    },
+    "adam_gradient": {
+      "parameter_space": "exact-unclipped standardized data coordinates",
+      "directions": 64,
+      "direction_policy": "fresh random orthogonal centered directions",
+      "perturbation": 0.0025
+    }
+  },
+  "strategy": {
+    "samples_per_round": 64,
+    "world_size": 2,
+    "samples_per_rank": 32,
+    "gradient": "one ABI-11 R04-compatible 64-direction centered finite-difference query per valid center",
+    "gradient_coordinate_map": "exact geometry diagonal map plus central-difference current L1 canonicalization Jacobian",
+    "coordinate_directional_check": {"step": 0.001, "relative_error_tolerance": 0.05},
+    "loss": "L_valid + alpha*L_invalid + beta*mean(g_flow^T grad_x ell)",
+    "invalid_alpha": 0.05,
+    "monte_carlo_samples": 4,
+    "transport_target": "none",
+    "transport_step": "none",
+    "rho": null,
+    "beta": 0.006021959241479635,
+    "beta_calibration": "inherited frozen q0 no-update pilot from replay50",
+    "flow_optimizer_steps_per_round": 10,
+    "replay": {
+      "enabled": true,
+      "capacity": 512,
+      "record": "one scored center with its fixed 64-direction score gradient",
+      "sampling": "uniform with replacement",
+      "append": "newest records appended each round; oldest records evicted after capacity"
+    },
+    "adam20_rollout": false
+  },
+  "parallelism": {
+    "collection": "two independent one-GPU ranks; each rank scores 32 centers and runs each center's 128 gradient endpoints in one batched native query",
+    "training": "two-GPU DDP; each of 10 updates samples 32 records per rank from the synchronized replay pool and uses the unchanged loss",
+    "center_endpoint_flattening": false,
+    "serial_reason": "a center must pass its own native validity and endpoint-consistency gates before its gradient is usable; independent centers are split across ranks"
+  },
+  "optimizer": {
+    "class": "AdamW",
+    "learning_rate": 0.00005,
+    "betas": [0.9, 0.95],
+    "weight_decay": 0.01,
+    "gradient_clip_norm": 1.0,
+    "ema_lerp": 0.1
+  },
+  "resources": {
+    "partition": "Students",
+    "gpus": 2,
+    "cpus_per_task": 24,
+    "wall_limit": "1 day",
+    "round_limit": null,
+    "stop": "STOP_AFTER_ROUND sentinel or wall reserve"
+  },
+  "default_impact": "none"
+}

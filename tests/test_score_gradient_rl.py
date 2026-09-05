@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import torch
 from torch import nn
+import json
+from pathlib import Path
 
 from flow_matching.data import CoilNormalizer
 from flow_matching.model import CoilFlowTransformer
@@ -14,7 +16,12 @@ from flow_matching.score_gradient_rl import (
     map_score_gradient_to_flow,
     valid_flow_terms_with_transport,
 )
-from scripts.score_gradient_flow_rl import REPLAY_CAPACITY, append_replay_pool
+from scripts.score_gradient_flow_rl import (
+    EMA_LERP,
+    FLOW_OPTIMIZER_STEPS_PER_ROUND,
+    REPLAY_CAPACITY,
+    append_replay_pool,
+)
 
 
 def _normalizer(scale: float, mean: float = 0.0) -> CoilNormalizer:
@@ -145,3 +152,18 @@ def test_replay_pool_keeps_newest_records_at_fixed_capacity() -> None:
     pool = append_replay_pool(pool, batch(second))
     assert len(pool["current"]) == capacity
     np.testing.assert_allclose(pool["current"][-3:], second)
+
+
+def test_replay10_ema10_protocol_changes_only_schedule_and_ema() -> None:
+    path = Path(__file__).parents[1] / (
+        "evaluation/axisflip_r012_score_gradient_replay10_ema10_rl_r04_abi11_v1.json"
+    )
+    protocol = json.loads(path.read_text(encoding="utf-8"))
+    strategy = protocol["strategy"]
+    assert strategy["samples_per_round"] == 64
+    assert strategy["samples_per_rank"] == 32
+    assert strategy["flow_optimizer_steps_per_round"] == 10
+    assert protocol["optimizer"]["ema_lerp"] == 0.1
+    assert protocol["baseline"]["protocol_id"].endswith("replay50-rl-r04-abi11-v1")
+    assert FLOW_OPTIMIZER_STEPS_PER_ROUND == 50
+    assert EMA_LERP == 0.01

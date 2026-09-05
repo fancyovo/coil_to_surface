@@ -578,6 +578,18 @@ gradient checks follow the predecessor's existing loss handling. No reward
 weights, q0 mixture, Adam20 trajectory, or transport target are added. The
 registered manifest is
 `evaluation/axisflip_r012_score_gradient_replay50_rl_r04_abi11_v1.json`.
-Job `54046` is the active student run. The current stage snapshot covers
-complete rounds 0--114; it is an early comparison result, not a promotion
-decision. See `reports/axisflip_r012_score_gradient_replay50_rl_interim_20260905.md`.
+Job `54046` was stopped before the schedule comparison below; its complete
+rounds 0--203 snapshot remains frozen evidence, not a promotion decision. See
+`reports/axisflip_r012_score_gradient_replay50_rl_interim_20260905.md`.
+
+Protocol `qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1` is
+the paired schedule comparison. It inherits the replay50 q0 checkpoint,
+64-center collection (`32` per rank), 512-record replay pool, unchanged
+ABI-11 R04 scorer, 64-direction gradient, beta, loss, optimizer, and RK4-32
+generation. Each round still appends 64 new scored centers and each replay
+update still samples 32 records per rank; only the number of replay updates
+per round changes from 50 to 10 and the EMA interpolation changes from 0.01
+to 0.1. The dedicated launcher and manifest are
+`scripts/submit_score_gradient_flow_rl_students_replay10_ema10.sh` and
+`evaluation/axisflip_r012_score_gradient_replay10_ema10_rl_r04_abi11_v1.json`.
+This is an experimental comparison and has no default impact.

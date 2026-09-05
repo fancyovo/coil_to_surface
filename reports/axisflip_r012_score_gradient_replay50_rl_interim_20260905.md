@@ -74,3 +74,35 @@
 - [第 0--114 轮派生统计](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/report_metrics_through_0114.json)
 
 远端 run root：`/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_score_gradient_replay50_rl_20260905_a9ead14`。
+
+## 阶段性验收更新：第 0--203 轮
+
+本次统计只使用同时存在 `collection_summary.json` 和 `training_summary.json` 的轮次。第 203 轮是当前最后一个完整轮次；作业 `54046` 仍为 `RUNNING`，本次验收没有停止或修改作业。
+
+累计共有 `13056` 个起点，其中 `12379` 个合法，累计合法率 `94.81%`，Wilson 95% 区间为 `94.42%--95.18%`。第 0--4 轮的平均合法率为 `35.31%`，第 199--203 轮为 `98.75%`；对应的初始总分中位数由 `2.050` 提升到 `55.561`，初始 P90 由 `18.905` 提升到 `62.408`。第 203 轮为 `63/64` 合法，初始总分中位数/P90 为 `52.694/62.249`。
+
+| 完整轮次 | 合法 | 梯度通过率（合法样本） | 初始总分中位数 | 初始 P90 | 体 QS 中位数 | coil 中位数 | 回放池 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 9/64 | 100.00% | 0.254 | 5.820 | 11.306 | 70.270 | 64 |
+| 33 | 64/64 | 95.31% | 45.917 | 61.819 | 19.441 | 73.608 | 512 |
+| 67 | 62/64 | 98.39% | 58.294 | 63.218 | 23.148 | 73.924 | 512 |
+| 101 | 63/64 | 96.83% | 61.474 | 65.963 | 26.166 | 73.596 | 512 |
+| 135 | 64/64 | 96.88% | 61.192 | 65.361 | 26.030 | 72.818 | 512 |
+| 169 | 63/64 | 98.41% | 56.577 | 64.026 | 23.118 | 72.092 | 512 |
+| 203 | 63/64 | 98.41% | 52.694 | 62.249 | 22.214 | 70.514 | 512 |
+
+该策略没有 Adam20 评价，因此这里不把初始分布改善写成优化后分数改善。第 199--203 轮平均体 QS/coil 为 `22.592/71.284`，第 203 轮为 `22.214/70.514`；最近阶段的初始总分波动主要来自体 QS，coil 维持在约 `70`--`71` 分。第 203 轮 QS 与 coil 的样本相关系数为 `0.208`。
+
+第 203 轮采集耗时 `303.2 s`，Flow 50 次更新耗时 `2.13 s`；其中采集阶段仍包含中心评分和合法样本的 64 方向梯度查询。累计梯度通过率按合法样本计为 `98.0%` 左右，最新轮为 `98.41%`。回放池从早期逐渐填满后保持 `512` 条。
+
+独立多样性诊断使用每轮两个 rank 的真实 `current` 张量。有效秩由第 0--4 轮均值 `5.611` 增至第 199--203 轮均值 `20.507`，第 203 轮为 `18.389`；总方差由 `32.351` 降到 `17.579`，最近邻距离中位数由 `3.281` 增至 `4.003`。204 个完整轮次的近重复率最大为 `0%`。有效秩上升、邻域间距没有收缩到零，当前没有灾难性模式坍缩证据；总方差下降表示分布尺度收窄，需要和有效秩及邻域距离联合解读。
+
+![Students replay50 第 0--203 轮合法率、梯度通过率、初始分数与分量](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/stage_20260905/stage_round_metrics_through_0203.png)
+
+![Students replay50 第 0--203 轮 Flow 目标函数](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/stage_20260905/stage_training_diagnostics_through_0203.png)
+
+![Students replay50 第 0--203 轮多样性指标](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/stage_20260905/stage_diversity_through_0203.png)
+
+![Students replay50 第 0--203 轮耗时](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/stage_20260905/stage_timing_through_0203.png)
+
+机器统计见 [Students 阶段汇总 JSON](assets/axisflip_r012_score_gradient_replay50_rl_20260905_interim/stage_20260905/stage_report_metrics_through_0203.json)，原始 run root 仍为 `/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_score_gradient_replay50_rl_20260905_a9ead14`。

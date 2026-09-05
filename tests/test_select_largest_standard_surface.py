@@ -16,6 +16,8 @@ def _write_candidate(root: Path, name: str, target_s: float, volume: float) -> N
     summary = {
         "target_s": target_s,
         "accepted_for_downstream": True,
+        "source_surface_kind": "alpha_nu",
+        "output_surface_kind": "alpha_nu_standard_ls_newton",
         "newton": {
             "state": {"geometry": {"signed_volume_m3": -volume}},
         },
@@ -41,16 +43,80 @@ def test_nested_volume_check_rejects_inner_branch_solver_successes(tmp_path: Pat
     assert rows[3]["branch_consistency"]["previous_largest_abs_volume_m3"] == 0.049
 
 
-def test_completed_candidate_that_failed_before_standard_is_outer_failure(
+def test_structured_early_rejection_is_outer_failure(
     tmp_path: Path,
 ) -> None:
     _write_candidate(tmp_path, "s_0p49", 0.49, 0.065)
+    failed = tmp_path / "s_0p64"
+    (failed / "alpha").mkdir(parents=True)
+    (failed / "alpha" / "rejection.json").write_text(
+        json.dumps(
+            {
+                "status": "rejected",
+                "stage": "fixed_budget_volume_sampling",
+                "target_s": 0.64,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    rows = load_candidate_rows(tmp_path)
+
+    assert [row["target_s"] for row in rows] == [0.49, 0.64]
+    assert rows[1]["accepted"] is False
+    assert rows[1]["evaluation_complete"] is True
+    assert rows[1]["failure_stage"] == "fixed_budget_volume_sampling"
+
+
+def test_unstructured_missing_summary_is_incomplete(tmp_path: Path) -> None:
     failed = tmp_path / "s_0p64"
     failed.mkdir()
     (failed / "gpu_postflight.csv").touch()
 
     rows = load_candidate_rows(tmp_path)
 
-    assert [row["target_s"] for row in rows] == [0.49, 0.64]
-    assert rows[1]["accepted"] is False
-    assert rows[1]["failure_stage"] == "completed_before_standard_acceptance"
+    assert len(rows) == 1
+    assert rows[0]["evaluation_complete"] is False
+    assert rows[0]["failure_stage"] == "missing_standard_summary"
+
+
+def test_accepted_summary_without_surface_artifact_is_incomplete(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "s_0p64" / "standard_rho_1"
+    output.mkdir(parents=True)
+    (output / "summary.json").write_text(
+        json.dumps({"target_s": 0.64, "accepted_for_downstream": True}),
+        encoding="utf-8",
+    )
+
+    rows = load_candidate_rows(tmp_path)
+
+    assert len(rows) == 1
+    assert rows[0]["accepted"] is False
+    assert rows[0]["evaluation_complete"] is False
+    assert rows[0]["failure_stage"] == "missing_accepted_surface_artifact"
+
+
+def test_alpha_only_surface_is_not_a_complete_candidate(tmp_path: Path) -> None:
+    output = tmp_path / "s_0p64" / "standard_rho_1"
+    output.mkdir(parents=True)
+    (output / "boozer_standard.npz").touch()
+    (output / "summary.json").write_text(
+        json.dumps(
+            {
+                "target_s": 0.64,
+                "accepted_for_downstream": True,
+                "source_surface_kind": "alpha",
+                "output_surface_kind": "alpha_nu_standard_ls_newton",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    rows = load_candidate_rows(tmp_path)
+
+    assert len(rows) == 1
+    assert rows[0]["accepted"] is False
+    assert rows[0]["evaluation_complete"] is False
+    assert rows[0]["failure_stage"] == "invalid_surface_provenance"

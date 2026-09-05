@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:RTX5090:1
 #SBATCH --mem=128G
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --exclude=anode02
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
@@ -16,8 +16,8 @@
 set -euo pipefail
 
 : "${CASE_FILE:?CASE_FILE must point to the selected CEM best.json under the project}"
-: "${TARGET:?TARGET must be QA or QH}"
-project=/home/scc/pb24511935/local_surface_evaluator
+: "${GPU_LIB:?GPU_LIB must point to the pinned native evaluator library}"
+project=${PROJECT:-/home/scc/pb24511935/local_surface_evaluator}
 output_dir=${OUTPUT_DIR:-$project/runs/cem_full_eval/${SLURM_JOB_ID}}
 
 cleanup() {
@@ -48,18 +48,14 @@ nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total 
     --format=csv,noheader,nounits > "$output_dir/gpu_preflight.csv"
 
 eval_env=${EVAL_ENV:-$project/.venv-desc016-py312}
-source "$eval_env/bin/activate"
-export CUDA_HOME=/public/app/cuda/13.0
-export PATH="$CUDA_HOME/bin:$PATH"
-export LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
-export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-16}
-export OPENBLAS_NUM_THREADS=1
-export MKL_NUM_THREADS=1
-export NUMEXPR_NUM_THREADS=1
-export MPLBACKEND=Agg
 
-python scripts/evaluate_cem_candidate_full.py \
+python3 "$project/evaluation/full_physical/run_full_evaluation.py" \
+    --project "$project" \
     --case-file "$CASE_FILE" \
-    --output-dir "$output_dir" \
-    --target "$TARGET" \
-    --gpu-device 0
+    --output-root "$output_dir" \
+    --gpu-lib "$GPU_LIB" \
+    --eval-env "$eval_env" \
+    --a-values "${A_VALUES:-0.04,0.05,0.06,0.08}" \
+    --s-edges "${S_EDGES:-0.12,0.24,0.36,0.49,0.64,0.81,1.0}" \
+    --candidate-cpus "${CANDIDATE_CPUS:-4}" \
+    --desc-cpus "${DESC_CPUS:-4}"

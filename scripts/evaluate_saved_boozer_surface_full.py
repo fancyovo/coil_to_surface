@@ -20,6 +20,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from stellarator_eval.surface_provenance import (
+    STANDARD_ALPHA_NU_SURFACE_KIND,
+    require_surface_kind,
+)
 from scripts.evaluate_cem_candidate_full import (
     preflight_desc_environment,
     render_boozer_and_geometry,
@@ -57,6 +61,11 @@ def main() -> None:
             raise FileExistsError(f"output already complete: {args.output_dir}")
 
     with np.load(args.surface_npz) as saved:
+        surface_kind = require_surface_kind(
+            saved,
+            STANDARD_ALPHA_NU_SURFACE_KIND,
+            stage="full-evaluation downstream",
+        )
         if "order" in saved:
             surface_order = int(saved["order"])
         elif args.surface_order is not None:
@@ -73,6 +82,7 @@ def main() -> None:
             if key in saved
         }
         surface_meta.setdefault("order", surface_order)
+        surface_meta["kind"] = surface_kind
 
     started = time.perf_counter()
     result = {

@@ -1,7 +1,23 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "entry_directory": "evaluation/full_physical",
   "stages": [
+    {
+      "name": "single_job_full_evaluation",
+      "entrypoint": "evaluation/full_physical/submit_full_evaluation.sh",
+      "implementations": [
+        "scripts/slurm_full_physical_evaluation.sh",
+        "evaluation/full_physical/run_full_evaluation.py",
+        "evaluation/full_physical/select_source_psi_candidate.py",
+        "evaluation/full_physical/select_largest_standard_surface.py",
+        "scripts/slurm_fit_source_psi.sh",
+        "scripts/slurm_alpha_nu_guarded_boozer.sh",
+        "scripts/alpha_clebsch_ls_experiment.py",
+        "stellarator_eval/volume_qs.py",
+        "stellarator_eval/surface_provenance.py",
+        "scripts/slurm_evaluate_saved_boozer_full_cpu.sh"
+      ]
+    },
     {
       "name": "source_psi_candidate_submission",
       "entrypoint": "evaluation/full_physical/submit_source_psi_candidates.sh",

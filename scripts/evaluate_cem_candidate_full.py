@@ -515,7 +515,7 @@ def run_desc_boundary_solve(
     return result
 
 
-def main() -> None:
+def _legacy_direct_main() -> None:
     parser = argparse.ArgumentParser(description="Run the stable Boozer/DESC evaluation for a CEM candidate.")
     parser.add_argument("--case-file", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -661,6 +661,16 @@ def main() -> None:
     result["total_time_s"] = time.perf_counter() - total_started
     write_json(args.output_dir / "full_summary.json", result)
     print(json.dumps({"status": result["status"], "output": str(args.output_dir)}), flush=True)
+
+
+def main(argv=None) -> None:
+    """Reject the retired direct point-cloud full-evaluation entry point."""
+    del argv
+    raise SystemExit(
+        "Direct point-cloud full evaluation is disabled. Use "
+        "evaluation/full_physical/submit_full_evaluation.sh; the formal "
+        "workflow requires psi -> alpha -> nu -> Simsopt LS/Newton."
+    )
 
 
 if __name__ == "__main__":

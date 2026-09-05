@@ -30,6 +30,12 @@ from stellarator_eval.field import build_field, load_case_file
 from stellarator_eval.psi import _make_gpu_field
 from stellarator_eval.serialization import write_json
 from stellarator_eval.surface import helical_qs_metric
+from stellarator_eval.surface_quality import assess_surface_acceptance
+from stellarator_eval.surface_provenance import (
+    ALPHA_NU_INITIALIZER_KIND,
+    STANDARD_ALPHA_NU_SURFACE_KIND,
+    require_surface_kind,
+)
 
 
 def main() -> None:
@@ -65,6 +71,11 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     saved = np.load(args.surface_npz)
+    source_surface_kind = require_surface_kind(
+        saved,
+        ALPHA_NU_INITIALIZER_KIND,
+        stage="standard Simsopt LS/Newton initialization",
+    )
     initial_dofs = np.asarray(saved["dofs"], dtype=float)
     initial_iota = float(saved["iota"])
     initial_G = float(saved["G"])
@@ -197,20 +208,22 @@ def main() -> None:
     solver_converged = bool(newton_result.get("success", False)) or (
         newton_residual_norm <= args.max_newton_residual_norm
     )
-    acceptance_checks = {
-        "newton_converged": solver_converged,
-        "dense_relative_l2": float(dense["relative_l2"])
-        <= args.max_final_relative_l2,
-        "dense_normal_field_p95": float(dense["normal_B_sine_p95"])
-        <= args.max_final_normal_p95,
-        "toroidal_winding": float(
+    quality = assess_surface_acceptance(
+        solver_converged=solver_converged,
+        dense_relative_l2=float(dense["relative_l2"]),
+        dense_normal_field_p95=float(dense["normal_B_sine_p95"]),
+        toroidal_winding=float(
             final["geometry"]["geometric_toroidal_winding"]["min"]
-        )
-        > 0.0,
-        "normal_nonzero": float(final["geometry"]["normal_norm"]["min"])
-        > 1e-12,
+        ),
+        normal_min=float(final["geometry"]["normal_norm"]["min"]),
+        max_final_relative_l2=args.max_final_relative_l2,
+        max_final_normal_p95=args.max_final_normal_p95,
+    )
+    acceptance_checks = {
+        **quality["hard_checks"],
+        **quality["strict_checks"],
     }
-    accepted_for_downstream = all(acceptance_checks.values())
+    accepted_for_downstream = bool(quality["accepted_for_downstream"])
     output_surface = args.output_dir / (
         "boozer_standard.npz" if accepted_for_downstream else "boozer_rejected.npz"
     )
@@ -227,7 +240,7 @@ def main() -> None:
         s_level=target_s,
         radius_mean_m=radius_mean,
         spectral_fit_rms_m=projection_rms,
-        kind="alpha_nu_standard_ls_newton",
+        kind=STANDARD_ALPHA_NU_SURFACE_KIND,
     )
     qs_errors = {}
     if accepted_for_downstream:
@@ -246,6 +259,8 @@ def main() -> None:
     output = {
         "case_file": str(args.case_file),
         "source_surface": str(args.surface_npz),
+        "source_surface_kind": source_surface_kind,
+        "output_surface_kind": STANDARD_ALPHA_NU_SURFACE_KIND,
         "nfp": nfp,
         "order": order,
         "target_s": target_s,
@@ -275,6 +290,10 @@ def main() -> None:
             "max_final_normal_p95": args.max_final_normal_p95,
         },
         "acceptance_checks": acceptance_checks,
+        "strict_quality_checks": quality["strict_checks"],
+        "hard_downstream_checks": quality["hard_checks"],
+        "quality_warnings": quality["warnings"],
+        "evaluation_quality": quality["evaluation_quality"],
         "accepted_for_downstream": accepted_for_downstream,
         "branch_diagnostics": {
             "distance_from_initial": final["distance_from_initial"],

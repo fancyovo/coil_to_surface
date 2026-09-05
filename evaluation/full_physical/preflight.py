@@ -40,7 +40,8 @@ def main() -> int:
         if path.suffix == ".py":
             py_compile.compile(str(path), doraise=True)
         elif path.suffix == ".sh":
-            subprocess.run(["bash", "-n", str(path)], check=True)
+            relative_path = path.relative_to(ROOT).as_posix()
+            subprocess.run(["bash", "-n", relative_path], cwd=ROOT, check=True)
     print(f"PASS: validated {len(paths)} fixed evaluation files.")
     return 0
 

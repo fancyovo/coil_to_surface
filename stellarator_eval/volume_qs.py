@@ -21,6 +21,19 @@ TWOPI = 2.0 * np.pi
 MU0 = 4.0e-7 * np.pi
 
 
+class InsufficientVolumeSamplesError(RuntimeError):
+    """The requested surface does not contain enough valid fixed-budget points."""
+
+    def __init__(self, available: int, minimum: int, candidate_count: int):
+        self.available = int(available)
+        self.minimum = int(minimum)
+        self.candidate_count = int(candidate_count)
+        super().__init__(
+            f"surface-volume sampler produced {self.available} valid points, "
+            f"fewer than the fixed-budget minimum {self.minimum}"
+        )
+
+
 @dataclass
 class StraightFieldFit:
     modes: list[ClebschMode]
@@ -314,9 +327,10 @@ def sample_volume_points(
         minimum_candidate_valid_fraction=config.minimum_candidate_valid_fraction,
     )
     if available < minimum_count:
-        raise RuntimeError(
-            f"surface-volume sampler produced {available} valid points, fewer than the "
-            f"fixed-budget minimum {minimum_count}"
+        raise InsufficientVolumeSamplesError(
+            available=available,
+            minimum=minimum_count,
+            candidate_count=len(phi_flat),
         )
     indices = np.flatnonzero(keep)
     if available > config.point_count:

@@ -40,6 +40,7 @@ from stellarator_eval.psi import _b_components_gpu
 from stellarator_eval.serialization import write_json
 from stellarator_eval.surface import level_curve_phi0
 from stellarator_eval.volume_qs import (
+    InsufficientVolumeSamplesError,
     apply_flux_coordinates,
     calibrate_toroidal_flux_gpu,
     sample_volume_points,
@@ -388,7 +389,20 @@ def main() -> None:
 
         if args.sampling_backend == "gpu-ray":
             stage_start = time.perf_counter()
-            points = sample_volume_points(model, volume_config, device=args.device)
+            try:
+                points = sample_volume_points(model, volume_config, device=args.device)
+            except InsufficientVolumeSamplesError as exc:
+                rejection = {
+                    "schema_version": 1,
+                    "status": "rejected",
+                    "stage": "fixed_budget_volume_sampling",
+                    "target_s": float(args.s_edge),
+                    "available_points": exc.available,
+                    "minimum_required_points": exc.minimum,
+                    "candidate_points": exc.candidate_count,
+                }
+                write_json(args.out_dir / "rejection.json", rejection)
+                raise SystemExit(3) from None
             stage_timings["volume_sampling_s"] = float(time.perf_counter() - stage_start)
             stage_start = time.perf_counter()
             apply_flux_coordinates(points, calibration)

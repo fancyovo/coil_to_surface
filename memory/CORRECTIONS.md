@@ -199,6 +199,38 @@ from Git at `bf077a8:memory/CORRECTIONS.md`.
   rather than the standard ABI-11 library. The corrected cost model and
   coordinate/path identity are required in its manifest and tests.
 
+## CORR-20260905-101 - Full evaluation accepted a self-intersecting Boozer surface
+
+- Qualification: user reported the visibly self-intersecting surface after the
+  full physical evaluation.
+- Error: the workflow treated Simsopt LS/Newton residual convergence and finite
+  volume as sufficient. It selected the largest finite-volume candidate without
+  a geometric injectivity/nestedness gate, and it did not preserve the pre-LS
+  surface coefficients for a direct before/after check. This allowed a surface
+  with residual `~1e-13` but `DESC nested_initial=false` and
+  `nested_final=false` to be presented as a usable physical surface.
+- Correction: the GPU path did feed the intended level-surface construction
+  into Simsopt (`extract_surface_backend=gpu`; selected-level fit RMS
+  `4--6e-9 m`; positive radial roots). However, the initial-best candidate
+  reports `radius_max=0.08 m`, exactly the configured hard cap, so the
+  complete toroidal grid may contain clipped rays; the run did not save the
+  pre-LS DOFs or a clipping fraction. This makes the initial geometry only
+  partially audited. The gross failure is nevertheless downstream: the
+  unconstrained Simsopt penalty LS moved to a degenerate Fourier branch from
+  an initial Boozer residual of about `16.5`; its exact Newton polish took zero
+  iterations and did not repair the geometry. The saved initial-best section
+  winds six times around the magnetic axis, and the Adam20 section has local
+  angular folds.
+- Retained evidence: GPU extraction and fit timing, raw residuals, final
+  Fourier coefficients, DESC nesting/force diagnostics, and the cross-section
+  diagnostic image remain valid as evidence of this failure. Native ABI-11
+  screening scores are unaffected; the two full physical evaluations are
+  quarantined and cannot support a claim of a valid nested surface.
+- Containment: full evaluation must save pre-LS DOFs and reject any candidate
+  with non-injective section tests, negative/near-zero surface Jacobian, or
+  failed DESC nesting before selecting by volume. The diagnostic image is
+  mirrored at `_shared_reports/axisflip_r012_surface_self_intersection_diagnostic.png`.
+
 ## Entry Template
 
 ```text

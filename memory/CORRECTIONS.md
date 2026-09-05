@@ -231,6 +231,41 @@ from Git at `bf077a8:memory/CORRECTIONS.md`.
   failed DESC nesting before selecting by volume. The diagnostic image is
   mirrored at `_shared_reports/axisflip_r012_surface_self_intersection_diagnostic.png`.
 
+## CORR-20260905-102 - Direct raw Boozer residual was compared with alpha+nu residual
+
+- Qualification: user-reported discrepancy after the full evaluation showed an
+  initial residual around `16.5`, while the historical calibration reported
+  values around `1e-3`.
+- Error: the pinned R012 full-evaluation path (`95ed6cf`) fitted the GPU level
+  surface directly with the geometric polar angle and measured
+  `np.linalg.norm(boozer_surface_residual(...))` before alpha+nu. That is an
+  unweighted raw norm over collocation points, not the normalized `1/|B|`
+  alpha+nu metric used by the historical calibration. The geometric theta also
+  has the opposite orientation from the Simsopt Boozer theta convention, so the
+  dominant error is tangential coordinate mismatch. The formal alpha+nu route
+  was therefore bypassed and the two residual definitions were treated as
+  comparable.
+- Correction: on the same R048 candidate, direct raw residual `16.5313` had a
+  normalized value `0.2223`; its tangential part was `0.2218` and its normal
+  part only `0.0150`. The correct alpha+nu route reduced the normalized
+  residual from `0.14350` (alpha only) to `0.01647`, kept the nu map positive
+  (`1+Dnu` in `[0.6934, 1.2661]`), and flattened local-G relative spread from
+  `0.14266` to `0.000984`. Standard Simsopt LS/Newton on that alpha+nu surface
+  reached dense normalized residual `0.0009976`, consistent with the historical
+  `1e-3` scale. This does not indicate an alpha+nu algebra/sign bug.
+- Retained evidence: the raw direct residual decomposition, alpha/nu summaries,
+  and dense standard-chain summary remain diagnostic evidence only. Native
+  ABI-11 score and optimization results are unaffected.
+- Containment: formal full evaluation must invoke and record the alpha+nu
+  preparation before Simsopt, report weighted/normalized residuals with their
+  definitions, and quarantine direct geometric-point-cloud results. A future
+  audit must compare residuals only after matching weighting, normalization,
+  grid, and parameterization.
+- Resolution: corrected jobs `54321` and `54323` reran both samples through the
+  enforced alpha+nu provenance chain. Their standard LS/Newton outputs are the
+  current full-evaluation results; job `54223` remains superseded diagnostic
+  evidence only.
+
 ## Entry Template
 
 ```text

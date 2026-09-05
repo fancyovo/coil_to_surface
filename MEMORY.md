@@ -228,7 +228,7 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
-- Active R04 protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1` runs in preserved P107 worktree (`53372`), with complete round 61 directly verified and the job still active. A one-card Students full evaluation of current best initial (`r048_w02_i11`) and Adam20 (`r057_w03_i04`) completed as job `54223`; its selected Simsopt surfaces are quarantined after self-intersection/DESC-nesting failure, with diagnosis appended to the R012 report and mirrored under `_shared_reports/`.
+- Active R04 protocol `qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1` runs in preserved P107 worktree (`53372`), with complete round 61 directly verified and the job still active. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
 - Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
   was stopped at 24 rounds (job `53957`). Active protocol
   `qh-axisflip-r012-score-gradient-replay50-rl-r04-abi11-v1` is job `54046`:

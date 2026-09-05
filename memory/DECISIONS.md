@@ -281,12 +281,14 @@ Students GPUs continue R012 Adam200 best cases 36 and 4 through 3,000 new R04
 Adam updates, one independent job per GPU.
 
 The P107 stream was directly verified through complete round 61. A separate
-single-GPU `qos_stu_default` job (`54223`, 4 CPU, 16G, 4h) completed the fixed
-full physical workflow for the highest initial point `r048_w02_i11` and the
-highest Adam20 point `r057_w03_i04`. Both produced standard LS/Newton surfaces;
-their DESC outputs had non-nested initial and final boundaries, so those
-results remain diagnostic rather than strict equilibrium certificates. The
-canonical numerical and image evidence is appended to the R012 report.
+single-GPU `qos_stu_default` job (`54223`, 4 CPU, 16G, 4h) completed the old
+direct-point-cloud route for the highest initial point `r048_w02_i11` and the
+highest Adam20 point `r057_w03_i04`; those outputs are retained as quarantined
+diagnostic evidence. Corrected jobs `54321` and `54323` reran both samples with
+the mandatory alpha+nu provenance chain and are now the canonical full-
+evaluation results. Their DESC boundaries are nested; the R048 run also
+reports a max-iteration warning. The canonical numerical and image evidence
+is appended to the R012 report.
 
 ## DEC-20260904-04 - First-order score-gradient Flow policy
 
@@ -329,3 +331,21 @@ and EMA rule remain unchanged; P107 reward weighting and source-mixture
 sampling are deliberately excluded. The one-update run remains the historical
 control. Job `54046` has a current complete snapshot through round 114
 without a collapse signal and continues running.
+
+## DEC-20260905-02 - Mandatory alpha+nu full-evaluation chain
+
+Status: active project-wide evaluation invariant.
+
+Every new full physical evaluation uses the fixed single-job workflow:
+source-psi selection, alpha fitting, nu toroidal correction, standard Simsopt
+LS/Newton, surface selection, then Poincare, Boozer diagnostics, HTML and DESC.
+The standard solver accepts only `kind=alpha_nu`, and downstream evaluation
+accepts only `kind=alpha_nu_standard_ls_newton`. Alpha-only and direct GPU
+point-cloud fits remain available solely as low-level diagnostics and cannot
+be presented as full evaluations.
+
+Strict dense residual limits retain their quality-grade meaning. A converged,
+correctly wound, nondegenerate standard surface may continue with an explicit
+`accepted_with_quality_warning`; the report must display each exceeded metric
+and limit. Independent samples are submitted as separate jobs and run in
+parallel whenever the verified resource allowance permits.

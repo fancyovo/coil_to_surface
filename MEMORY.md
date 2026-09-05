@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-09-04 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-09-05 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline

@@ -51,8 +51,11 @@ from scripts.optimize_flow_latent import score_config  # noqa: E402
 from scripts.prepare_axis_surface_prior_adam200 import exact_standardized_start  # noqa: E402
 
 
-WORKER_COUNT = 4
-SAMPLES_PER_WORKER = 16
+PROTOCOL_ID = os.environ.get("AXIS_RL_PROTOCOL_ID", PROTOCOL_ID)
+WORKER_COUNT = int(os.environ.get("AXIS_RL_WORKER_COUNT", "4"))
+SAMPLES_PER_WORKER = int(os.environ.get("AXIS_RL_SAMPLES_PER_WORKER", "16"))
+if WORKER_COUNT <= 0 or SAMPLES_PER_WORKER <= 0:
+    raise ValueError("AXIS_RL_WORKER_COUNT and AXIS_RL_SAMPLES_PER_WORKER must be positive")
 SAMPLES_PER_ROUND = WORKER_COUNT * SAMPLES_PER_WORKER
 REPLAY_CAPACITY = 512
 FLOW_STEPS = 32
@@ -138,6 +141,12 @@ def prepare(args: argparse.Namespace) -> None:
     if not q0.get("converged") or q0.get("format") != FORMAT:
         raise ValueError("q0 checkpoint is not an accepted converged checkpoint")
     _, _, teacher_manifest = load_teacher_dataset(args.dataset_dir, verify_hashes=True)
+    if args.expected_minor_radius_m is not None:
+        actual_radius = float(teacher_manifest["generator"].get("minor_radius_center_m", float("nan")))
+        if not math.isclose(actual_radius, args.expected_minor_radius_m, rel_tol=0.0, abs_tol=1.0e-12):
+            raise ValueError(
+                f"teacher radius {actual_radius:g} != expected {args.expected_minor_radius_m:g}"
+            )
     for name in ("rounds", "checkpoints", "audit", "logs"):
         (args.run_root / name).mkdir(parents=True, exist_ok=True)
     checkpoint_zero = args.run_root / "checkpoints" / "round_000.pt"
@@ -216,8 +225,11 @@ def prepare(args: argparse.Namespace) -> None:
             "learning_rate": args.learning_rate,
         },
         "parallelism": {
-            "collection": "four independent one-GPU workers, 16 samples each",
-            "training": "four-GPU DDP",
+            "collection": (
+                f"{WORKER_COUNT} independent one-GPU workers, "
+                f"{SAMPLES_PER_WORKER} samples each"
+            ),
+            "training": f"{WORKER_COUNT}-GPU DDP",
             "serial_reason": "Flow q(k+1) depends on the complete scored Adam20 batch from q(k)",
         },
     }
@@ -1439,6 +1451,7 @@ def parser() -> argparse.ArgumentParser:
     prepare_command.add_argument("--score-lib", type=Path, required=True)
     prepare_command.add_argument("--score-library-manifest", type=Path, required=True)
     prepare_command.add_argument("--expected-score-lib-sha", required=True)
+    prepare_command.add_argument("--expected-minor-radius-m", type=float)
     prepare_command.add_argument("--optimizer-checkpoint", type=Path, required=True)
     prepare_command.add_argument("--expected-optimizer-checkpoint-sha", required=True)
     prepare_command.add_argument("--expected-commit", required=True)

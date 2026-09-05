@@ -593,3 +593,14 @@ to 0.1. The dedicated launcher and manifest are
 `scripts/submit_score_gradient_flow_rl_students_replay10_ema10.sh` and
 `evaluation/axisflip_r012_score_gradient_replay10_ema10_rl_r04_abi11_v1.json`.
 This is an experimental comparison and has no default impact.
+
+Protocols `qh-axisflip-r015-distilled-online-adam20-trajectory-rwcfm-r04-
+abi11-v1` and `qh-axisflip-r020-distilled-online-adam20-trajectory-rwcfm-
+r04-abi11-v1` are the P107 radius comparison. Each uses a fresh 200,000-
+sample compact-flexible axis-flipped teacher at the named winding radius, a
+fresh converged q0 distillation, the unchanged R04 ABI-11 score, Adam20
+trajectory replay, 512-rollout FIFO, 250 Flow updates, and 64 samples per
+round. The four available P107 GPUs are split into two independent jobs: each
+job uses two GPUs and two collection workers with 32 samples per worker, so
+the per-round sample count and training batch remain unchanged. These are
+registered experiments with no default impact.

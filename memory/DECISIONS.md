@@ -347,6 +347,20 @@ instead of 50 and uses EMA interpolation `0.1` instead of `0.01`. The old
 evidence; the new protocol is
 `qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1`.
 
+## DEC-20260905-03 - P107 radius comparison
+
+Status: registered experimental comparison; no default impact.
+
+The previous four-GPU R012 trajectory-replay job is stopped. Two new P107
+jobs compare the same R04 ABI-11 trajectory-replay policy at compact-flexible
+teacher radii `0.15 m` and `0.20 m`. Each radius gets an independently
+regenerated 200,000-sample teacher corpus and a fresh converged q0 Flow
+distillation. The online protocol, Adam20 estimator, score library, reward,
+replay, loss mixture, 250 Flow updates, and 64 centers per round stay fixed.
+To use all four GPUs concurrently, each job is a two-GPU/two-worker
+decomposition with 32 centers per worker; this changes only resource
+decomposition, not the global round sample or batch sizes.
+
 ## DEC-20260905-02 - Mandatory alpha+nu full-evaluation chain
 
 Status: active project-wide evaluation invariant.

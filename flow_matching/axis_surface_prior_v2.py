@@ -89,9 +89,21 @@ _AXIS_FLIPPED_REGISTERED_FORMATS = {
     "compact_flexible": "axis_surface_contour_prior_compact_flexible_axis_flip_v4",
 }
 
-_RADIUS012_AXIS_FLIPPED_FORMAT = (
-    "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1"
-)
+_RADIUS_AXIS_FLIPPED_FORMATS = {
+    0.12: "axis_surface_contour_prior_compact_flexible_axis_flip_r012_v1",
+    0.15: "axis_surface_contour_prior_compact_flexible_axis_flip_r015_v1",
+    0.20: "axis_surface_contour_prior_compact_flexible_axis_flip_r020_v1",
+}
+
+
+def axis_flip_registered_format_for_radius(radius_m: float) -> str:
+    """Return the registered generator format for an experimental radius."""
+    radius = float(radius_m)
+    for registered_radius, format_name in _RADIUS_AXIS_FLIPPED_FORMATS.items():
+        if math.isclose(radius, registered_radius, rel_tol=0.0, abs_tol=1.0e-12):
+            return format_name
+    supported = ", ".join(f"{value:g}" for value in _RADIUS_AXIS_FLIPPED_FORMATS)
+    raise ValueError(f"registered compact-flexible axis-flip radii are {supported} m")
 
 _SCORING_VARIATION = {
     "balanced_stellarator": {"minor_radius": 0.15, "shape": 0.15},
@@ -212,16 +224,12 @@ def sample_shaped_prior_prototype(
         requested_radius = float(minor_radius_m)
         if not math.isfinite(requested_radius) or requested_radius <= 0.0:
             raise ValueError("minor_radius_m must be finite and positive")
-        if (
-            sample_role != "registered_scoring"
-            or preset != "compact_flexible"
-            or axis_chirality != -1
-            or not math.isclose(requested_radius, 0.12, rel_tol=0.0, abs_tol=1.0e-12)
-        ):
+        if sample_role != "registered_scoring" or preset != "compact_flexible" or axis_chirality != -1:
             raise ValueError(
-                "minor_radius_m is registered only for the 0.12 m compact-flexible "
-                "axis-flipped scoring experiment"
+                "minor_radius_m is registered only for compact-flexible axis-flipped "
+                "scoring experiments"
             )
+        axis_flip_registered_format_for_radius(requested_radius)
         parameters["minor_radius"] = requested_radius
     rng = np.random.default_rng(np.random.SeedSequence([int(seed), int(nfp), int(n_base_coils), 2]))
     if sample_role == "registered_scoring":
@@ -334,7 +342,7 @@ def sample_shaped_prior_prototype(
     registered_format = _REGISTERED_FORMATS.get(preset)
     if axis_chirality == -1:
         registered_format = (
-            _RADIUS012_AXIS_FLIPPED_FORMAT
+            axis_flip_registered_format_for_radius(minor_radius_m)
             if minor_radius_m is not None
             else _AXIS_FLIPPED_REGISTERED_FORMATS.get(preset)
         )

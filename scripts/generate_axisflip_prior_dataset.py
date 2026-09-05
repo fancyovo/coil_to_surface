@@ -18,7 +18,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from flow_matching.axis_surface_prior_v2 import sample_shaped_prior_prototype
+from flow_matching.axis_surface_prior_v2 import (
+    axis_flip_registered_format_for_radius,
+    sample_shaped_prior_prototype,
+)
 
 
 FORMAT = "axisflip_r012_prior_teacher_dataset_v1"
@@ -66,9 +69,14 @@ def require_clean_expected_commit(expected: str) -> str:
     return commit
 
 
-def generate_block(task: tuple[int, int, int]) -> tuple[int, np.ndarray]:
-    offset, seed_start, count = task
+def generate_block(task: tuple[int, int, int] | tuple[int, int, int, float]) -> tuple[int, np.ndarray]:
+    if len(task) == 3:
+        offset, seed_start, count = task
+        minor_radius_m = MINOR_RADIUS_M
+    else:
+        offset, seed_start, count, minor_radius_m = task
     tokens = np.empty((count, N_BASE_COILS, TOKEN_DIM), dtype=np.float32)
+    generator_format = axis_flip_registered_format_for_radius(minor_radius_m)
     for local_index in range(count):
         generated = sample_shaped_prior_prototype(
             seed=seed_start + local_index,
@@ -79,9 +87,9 @@ def generate_block(task: tuple[int, int, int]) -> tuple[int, np.ndarray]:
             surface_theta_samples=48,
             sample_role="registered_scoring",
             axis_chirality=-1,
-            minor_radius_m=MINOR_RADIUS_M,
+            minor_radius_m=minor_radius_m,
         )
-        if generated.metadata.get("format") != GENERATOR_FORMAT:
+        if generated.metadata.get("format") != generator_format:
             raise RuntimeError("generator format changed during teacher synthesis")
         if generated.metadata.get("construction_axis_chirality") != -1:
             raise RuntimeError("teacher generator did not use positive-hand axis flip")
@@ -89,17 +97,29 @@ def generate_block(task: tuple[int, int, int]) -> tuple[int, np.ndarray]:
     return offset, tokens
 
 
-def block_tasks(seed_start: int, count: int, block_size: int) -> list[tuple[int, int, int]]:
+def block_tasks(
+    seed_start: int,
+    count: int,
+    block_size: int,
+    minor_radius_m: float | None = None,
+) -> list[tuple[int, int, int] | tuple[int, int, int, float]]:
     if count <= 0 or block_size <= 0:
         raise ValueError("count and block size must be positive")
+    if minor_radius_m is None:
+        return [
+            (offset, seed_start + offset, min(block_size, count - offset))
+            for offset in range(0, count, block_size)
+        ]
     return [
-        (offset, seed_start + offset, min(block_size, count - offset))
+        (offset, seed_start + offset, min(block_size, count - offset), float(minor_radius_m))
         for offset in range(0, count, block_size)
     ]
 
 
 def generate_shard(args: argparse.Namespace) -> None:
     commit = require_clean_expected_commit(args.expected_commit)
+    minor_radius_m = float(args.minor_radius_m)
+    generator_format = axis_flip_registered_format_for_radius(minor_radius_m)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     tokens_path = args.output_dir / f"{args.shard_name}.tokens.npy"
     metadata_path = args.output_dir / f"{args.shard_name}.json"
@@ -112,7 +132,7 @@ def generate_shard(args: argparse.Namespace) -> None:
         dtype=np.float32,
         shape=(args.count, N_BASE_COILS, TOKEN_DIM),
     )
-    tasks = block_tasks(args.seed_start, args.count, args.block_size)
+    tasks = block_tasks(args.seed_start, args.count, args.block_size, minor_radius_m)
     started = time.perf_counter()
     completed = 0
     next_report = max(1, args.count // 20)
@@ -150,12 +170,15 @@ def generate_shard(args: argparse.Namespace) -> None:
         "shard_name": args.shard_name,
         "repository_commit": commit,
         "generator": {
-            "format": GENERATOR_FORMAT,
+            "format": generator_format,
             "preset": PRESET,
             "sample_role": "registered_scoring",
             "axis_chirality": -1,
-            "minor_radius_center_m": MINOR_RADIUS_M,
-            "minor_radius_range_m": [0.108, 0.132],
+            "minor_radius_center_m": minor_radius_m,
+            "minor_radius_range_m": [
+                minor_radius_m * 0.9,
+                minor_radius_m * 1.1,
+            ],
             "surface_phi_samples": 96,
             "surface_theta_samples": 48,
         },
@@ -244,6 +267,7 @@ def parser() -> argparse.ArgumentParser:
     generate.add_argument("--count", type=int, required=True)
     generate.add_argument("--workers", type=int, required=True)
     generate.add_argument("--block-size", type=int, default=128)
+    generate.add_argument("--minor-radius-m", type=float, default=MINOR_RADIUS_M)
     generate.add_argument("--expected-commit", required=True)
     generate.set_defaults(func=generate_shard)
     finalize = commands.add_parser("finalize")

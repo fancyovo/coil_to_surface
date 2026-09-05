@@ -28,3 +28,14 @@ def test_teacher_generation_is_deterministic_and_fixed_condition() -> None:
     assert tokens_a.dtype == np.float32
     np.testing.assert_array_equal(tokens_a, tokens_b)
     np.testing.assert_allclose(tokens_a[0, :, -1], tokens_a[0, 0, -1])
+
+
+def test_experimental_radius_formats_are_registered() -> None:
+    for radius, tag in ((0.15, "r015"), (0.20, "r020")):
+        offset, tokens = generate_block((3, 987654, 1, radius))
+        assert offset == 3
+        assert tokens.shape == (1, N_BASE_COILS, TOKEN_DIM)
+        assert np.all(np.isfinite(tokens))
+        from flow_matching.axis_surface_prior_v2 import axis_flip_registered_format_for_radius
+
+        assert axis_flip_registered_format_for_radius(radius).endswith(f"{tag}_v1")

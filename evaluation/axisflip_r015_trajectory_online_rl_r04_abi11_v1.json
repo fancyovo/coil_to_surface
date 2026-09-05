@@ -1,0 +1,75 @@
+{
+  "protocol_id": "qh-axisflip-r015-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-05",
+  "condition": {"nfp": 8, "n_base_coils": 3},
+  "teacher": {
+    "generator_format": "axis_surface_contour_prior_compact_flexible_axis_flip_r015_v1",
+    "minor_radius_center_m": 0.15,
+    "minor_radius_range_m": [0.135, 0.165],
+    "axis_chirality": -1,
+    "sample_count": 200000,
+    "split": "90/5/5 by seed-offset modulo 20"
+  },
+  "distillation": {
+    "model": "CoilFlowTransformer",
+    "width": 256,
+    "layers": 6,
+    "heads": 8,
+    "hidden": 704,
+    "parameter_count": 5761380,
+    "initialization": "fresh; no checkpoint, normalizer, or replay state from the 0.12 m experiment",
+    "convergence": "validation plateau plus three stable generated-distribution checks",
+    "maximum_epochs": "5000 is a failing runaway guard only"
+  },
+  "evaluator": {
+    "interface": "native ABI-11",
+    "library_sha256": "7b21e66329a23f18ef3cfab408d0a21410acea3c8d10d8b2463ccee7f5a3969f",
+    "coil_curvature_p95_scale_m_inv": 25.0,
+    "coil_curvature_p95_radius_m": 0.04,
+    "coil_curvature_max_scale_m_inv": 35.0,
+    "scope": "the same frozen R04 library is used for q0 audit, screening, Adam20 gradient endpoints, formal centers, and replay scores"
+  },
+  "online_round": {
+    "samples": 64,
+    "workers": 2,
+    "samples_per_worker": 32,
+    "valid_rollout": "store all 21 formal centers from Adam step 0 through step 20",
+    "invalid_rollout": "store the represented step-0 start and skip Adam",
+    "excluded_from_replay": "finite-difference gradient endpoints",
+    "replay_capacity_rollouts": 512,
+    "replay_policy": "FIFO over whole rollouts",
+    "reward": {
+      "temperature": 7.5,
+      "epsilon": 0.01,
+      "weight": "(epsilon + exp((clip(score,0,100)-pool_max_score)/temperature)) / rollout_length"
+    },
+    "loss_mixture": {
+      "current_policy": 0.85,
+      "trajectory_and_replay": 0.10,
+      "original_r012_teacher": 0.05
+    },
+    "flow_updates": 250,
+    "base_batch_per_gpu": 256,
+    "trajectory_batch": "base batch times ceil(mean(points per replay rollout)), at most 21x; microbatch 256; one optimizer step after full accumulation",
+    "learning_rate": 0.00005
+  },
+  "adam20": {
+    "parameter_space": "exact-unclipped standardized data coordinates",
+    "iterations": 20,
+    "directions": 64,
+    "direction_policy": "fresh random orthogonal centered directions",
+    "perturbation": 0.0025,
+    "learning_rate": 0.01,
+    "beta": [0.7, 0.999],
+    "target_helicity": [1, 8]
+  },
+  "resources": {
+    "teacher_generation": "one P107 two-GPU job uses 8 CPU workers",
+    "distillation_and_online": "two P107 RTX5090 GPUs and 8 CPU cores",
+    "slurm_wall_limit": "4 days",
+    "online_round_limit": null,
+    "stop": "one-hour wall reserve or STOP_AFTER_ROUND sentinel"
+  },
+  "default_impact": "none"
+}

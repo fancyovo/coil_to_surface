@@ -238,9 +238,8 @@
   same q0, ABI-11 R04 evaluator, loss, 64D gradients and
   `beta=0.0060219592`, plus a 512-record FIFO pool and 50 uniform replay
   updates per round. The latest verified report snapshot includes complete
-  rounds 0--111 (7,168 centers), cumulative valid rate `91.95%`, and
-  valid-center gradient acceptance `97.33%`. Job remains active; verify state
-  directly.
+  rounds 0--114 (7,360 centers), cumulative valid rate `92.12%`, and
+  valid-center gradient acceptance `97.37%`. Job remains active; verify state directly.
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

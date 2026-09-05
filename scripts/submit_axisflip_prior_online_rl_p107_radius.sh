@@ -31,7 +31,6 @@ cd "$AXIS_RL_REPO"
 test "$(git rev-parse HEAD)" = "$AXIS_RL_COMMIT"
 git diff --quiet
 git diff --cached --quiet
-test ! -e "$AXIS_RL_DATASET"
 test ! -e "$AXIS_RL_RUN_ROOT"
 mkdir -p "$(dirname "$AXIS_RL_DATASET")" "$(dirname "$AXIS_RL_RUN_ROOT")"
 

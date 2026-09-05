@@ -38,7 +38,6 @@ test "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["protocol
 
 cd "$repo"
 mkdir -p "$repo/logs"
-test ! -e "$dataset"
 test ! -e "$run_root"
 test -f "$score_lib"
 test -f "$score_lib_manifest"
@@ -54,33 +53,44 @@ cuda_wheel_lib="$(python -c 'from pathlib import Path; import torch; print(Path(
 test -f "$cuda_wheel_lib/libcusolver.so.12"
 export LD_LIBRARY_PATH="$cuda_wheel_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
-mkdir -p "$dataset"
-python scripts/generate_axisflip_prior_dataset.py generate \
-  --output-dir "$dataset" \
-  --shard-name p107_000000_200000 \
-  --seed-start "$sample_seed" \
-  --count 200000 \
-  --workers 8 \
-  --block-size 128 \
-  --minor-radius-m "$minor_radius_m" \
-  --expected-commit "$commit"
-python scripts/generate_axisflip_prior_dataset.py finalize \
-  --output-dir "$dataset" \
-  --shard-name p107_000000_200000 \
-  --expected-total 200000 \
-  --expected-commit "$commit"
-python - <<'PY'
+if [[ -e "$dataset/dataset_manifest.json" ]]; then
+  echo "reusing completed teacher dataset: $dataset"
+else
+  test ! -e "$dataset" || { echo "dataset exists but is incomplete: $dataset" >&2; exit 1; }
+  mkdir -p "$dataset"
+  python scripts/generate_axisflip_prior_dataset.py generate \
+    --output-dir "$dataset" \
+    --shard-name p107_000000_200000 \
+    --seed-start "$sample_seed" \
+    --count 200000 \
+    --workers 8 \
+    --block-size 128 \
+    --minor-radius-m "$minor_radius_m" \
+    --expected-commit "$commit"
+  python scripts/generate_axisflip_prior_dataset.py finalize \
+    --output-dir "$dataset" \
+    --shard-name p107_000000_200000 \
+    --expected-total 200000 \
+    --expected-commit "$commit"
+fi
+python - "$dataset/dataset_manifest.json" "$minor_radius_m" "$generator_format" <<'PY'
 import json
-import os
+import sys
 from pathlib import Path
 
-manifest = json.loads((Path(os.environ["AXIS_RL_DATASET"]) / "dataset_manifest.json").read_text())
-expected = os.environ["AXIS_RL_MINOR_RADIUS_M"]
+manifest = json.loads(Path(sys.argv[1]).read_text())
+expected = float(sys.argv[2])
+expected_format = sys.argv[3]
+if manifest.get("status") != "complete" or manifest.get("sample_count") != 200000:
+    raise SystemExit("teacher dataset manifest is incomplete or has the wrong count")
 generator = manifest["generator"]
-if generator["minor_radius_center_m"] != float(expected):
+if generator.get("format") != expected_format:
+    raise SystemExit("teacher manifest generator format mismatch")
+if generator.get("minor_radius_center_m") != expected:
     raise SystemExit("teacher manifest radius mismatch")
 PY
 
+export AXIS_RL_DISTILLATION_WORLD_SIZE=2
 python -m torch.distributed.run --standalone --nproc-per-node=2 \
   scripts/train_axisflip_prior_flow.py \
   --dataset-dir "$dataset" \

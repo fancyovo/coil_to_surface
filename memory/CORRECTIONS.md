@@ -281,6 +281,27 @@ from Git at `bf077a8:memory/CORRECTIONS.md`.
 - Containment: the dedicated manifest, launcher, runtime environment overrides,
   and regression test all assert `64/32` collection and `10` training updates.
 
+## CORR-20260905-104 - P107 two-GPU distillation was blocked by a stale world-size guard
+
+- Qualification: user-visible failed experiment requiring a corrected resubmission.
+- Error: the new P107 radius comparison intentionally split four available GPUs
+  into two independent two-GPU jobs, but the q0 distillation entry point still
+  rejected every world size other than four. Both jobs generated their complete
+  200,000-sample teacher datasets and then exited before distillation; no RL
+  round or scientific result was produced.
+- Correction: the distillation guard remains four GPUs by default and now accepts
+  an explicit `AXIS_RL_DISTILLATION_WORLD_SIZE=2` override used only by the
+  registered P107 two-GPU launcher. The launcher records the effective world
+  size and validates/reuses a complete existing dataset instead of regenerating
+  it after a pre-training failure.
+- Retained evidence: failed jobs `54444` and `54446`, their complete teacher
+  manifests and token hashes, and their logs remain frozen. The datasets are
+  reused only after status, count, generator format, radius, and per-shard hash
+  validation.
+- Containment: future resource-decomposed distillation protocols must declare
+  their expected world size in the launcher and manifest; generic four-GPU
+  defaults remain unchanged for the original registered route.
+
 ## Entry Template
 
 ```text

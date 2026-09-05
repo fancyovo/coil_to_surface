@@ -212,8 +212,14 @@ def distribution_stable(values: list[float], *, absolute_tolerance: float = 0.01
 def main() -> None:
     args = parser().parse_args()
     rank, local_rank, world_size, device = distributed_setup()
-    if world_size != 4:
-        raise ValueError("the registered distillation uses exactly four GPUs")
+    expected_world_size = int(os.environ.get("AXIS_RL_DISTILLATION_WORLD_SIZE", "4"))
+    if expected_world_size <= 0:
+        raise ValueError("AXIS_RL_DISTILLATION_WORLD_SIZE must be positive")
+    if world_size != expected_world_size:
+        raise ValueError(
+            "the registered distillation uses exactly "
+            f"{expected_world_size} GPUs (got {world_size})"
+        )
     code_commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
     ).strip()
@@ -284,6 +290,11 @@ def main() -> None:
             "teacher_dataset": str(args.dataset_dir.resolve()),
             "teacher_repository_commit": teacher_manifest["repository_commit"],
             "condition": {"nfp": NFP, "n_base_coils": N_BASE_COILS},
+            "distributed": {
+                "world_size": world_size,
+                "expected_world_size": expected_world_size,
+                "override_env": "AXIS_RL_DISTILLATION_WORLD_SIZE",
+            },
             "split_counts": {
                 "train": int(len(train_indices)),
                 "validation": int(len(validation_indices)),

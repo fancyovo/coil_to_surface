@@ -1,6 +1,6 @@
 # Current Project Memory
 
-> Current truth, verified 2026-09-05 (Asia/Shanghai). This is a compact routing
+> Current truth, verified 2026-09-06 (Asia/Shanghai). This is a compact routing
 > and safety file, not a work log. Older material is indexed under `memory/`.
 
 ## Baseline
@@ -228,7 +228,7 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
-- The prior R04 P107 trajectory-replay job `53372` was stopped before the radius comparison. Its complete rounds remain historical evidence. Two replacement P107 jobs are active from commit `fba88eca`: `54444` tests a fresh `0.15 m` teacher/q0 and `54446` tests `0.20 m`; each uses two RTX5090 GPUs, two collection workers, and 8 CPUs. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
+- The prior R04 P107 trajectory-replay job `53372` was stopped before the radius comparison. Its complete rounds remain historical evidence. The first radius submissions `54444` and `54446` failed before q0 distillation because of a stale four-GPU guard; their complete teacher datasets remain valid and were retained. Corrected jobs `55183` (`0.15 m`) and `55185` (`0.20 m`) run from commit `d8c16a7e`, reuse those datasets after manifest/hash validation, and are currently active on separate two-RTX5090 allocations with two collection workers and 8 CPUs each. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
 - Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
   was stopped at 24 rounds (job `53957`). The replay50 comparison job `54046`
   was stopped before the schedule replacement; its complete rounds 0--203

@@ -361,6 +361,13 @@ To use all four GPUs concurrently, each job is a two-GPU/two-worker
 decomposition with 32 centers per worker; this changes only resource
 decomposition, not the global round sample or batch sizes.
 
+The first submissions `54444` and `54446` stopped at q0 because the
+distillation entry point still enforced a four-GPU world size. The corrected
+submissions `55183` (`0.15 m`) and `55185` (`0.20 m`) use the explicit
+two-GPU override, retain the same protocol, and reuse the already verified
+teacher datasets. Both passed startup and were training q0 at the last check;
+no radius result is available yet.
+
 ## DEC-20260905-02 - Mandatory alpha+nu full-evaluation chain
 
 Status: active project-wide evaluation invariant.

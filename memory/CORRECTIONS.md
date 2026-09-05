@@ -266,6 +266,21 @@ from Git at `bf077a8:memory/CORRECTIONS.md`.
   current full-evaluation results; job `54223` remains superseded diagnostic
   evidence only.
 
+## CORR-20260905-103 - Training-update count was confused with sample count
+
+- Qualification: user-reported immediately after the model proposed the wrong
+  comparison variant.
+- Error: “每轮仅随机抽样 10 次” was initially interpreted as reducing the
+  newly generated center samples from 64 to 10. The requested change was to
+  reduce the replay-training optimizer updates from 50 to 10.
+- Correction: no incorrect 10-center job was submitted. The replacement
+  `replay10-ema10` protocol keeps 64 centers per round and 32 per rank, while
+  changing only the Flow replay updates to 10 and EMA interpolation to 0.1.
+- Retained evidence: the stopped replay50 job and its report remain frozen;
+  they were not overwritten.
+- Containment: the dedicated manifest, launcher, runtime environment overrides,
+  and regression test all assert `64/32` collection and `10` training updates.
+
 ## Entry Template
 
 ```text

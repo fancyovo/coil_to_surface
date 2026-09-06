@@ -37,6 +37,7 @@ from flow_matching.score_gradient_rl import (  # noqa: E402
     map_score_gradient_to_flow,
     ordinary_flow_terms,
     valid_flow_terms_with_transport,
+    valid_score_weights,
 )
 from scripts.axisflip_prior_online_rl import (  # noqa: E402
     atomic_savez,
@@ -297,6 +298,19 @@ def load_manifest(run_root: Path) -> dict[str, Any]:
         raise ValueError("score-gradient manifest has the wrong protocol")
     if manifest.get("condition") != {"nfp": NFP, "n_base_coils": N_BASE_COILS}:
         raise ValueError("score-gradient condition changed")
+    strategy = manifest["strategy"]
+    if (strategy["flow_optimizer_steps_per_round"] != FLOW_OPTIMIZER_STEPS_PER_ROUND
+            or strategy["ema_lerp"] != EMA_LERP):
+        raise ValueError("runtime schedule differs from the frozen manifest")
+    if "continuation" in manifest:
+        protocol = load_json(run_root / "protocol.json")
+        if (strategy.get("valid_score_weighting") != protocol["valid_score_weighting"]
+                or strategy["beta"] != protocol["beta"]
+                or manifest["continuation"]["start_round"] != protocol["start_round"]):
+            raise ValueError("continuation loss or starting round changed")
+        for relative, expected in protocol["source_sha256"].items():
+            if relative.startswith("checkpoints/") and file_sha256(run_root / relative) != expected:
+                raise ValueError("continuation checkpoint bytes changed")
     current = repository_provenance(REPO_ROOT)
     if manifest.get("repository") != current:
         raise RuntimeError("score-gradient repository provenance changed")
@@ -613,6 +627,7 @@ def pool_to_device(pool: dict[str, np.ndarray], device: torch.device) -> dict[st
         "score_gradient_flow": torch.from_numpy(pool["score_gradient_flow"]).to(device=device),
         "valid": torch.from_numpy(pool["valid"]).to(device=device),
         "gradient_ok": torch.from_numpy(pool["gradient_ok"]).to(device=device),
+        "scores": torch.from_numpy(pool["scores"]).to(device=device),
     }
 
 
@@ -628,6 +643,7 @@ def train_step_from_replay(
     sample_generator: torch.Generator,
     permutation_generator: torch.Generator,
     loss_generator: torch.Generator,
+    valid_weighting: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     feature_weight_values = feature_weights(normalizer, device)
     sample_indices = torch.randint(
@@ -665,6 +681,27 @@ def train_step_from_replay(
     invalid_count_tensor = torch.tensor(local_invalid_count, dtype=torch.float32, device=device)
     global_valid = all_reduce_scalar(valid_count_tensor)
     global_invalid = all_reduce_scalar(invalid_count_tensor)
+    score_weights = None
+    weight_diagnostics = {}
+    if valid_weighting is not None:
+        valid_scores = pool["scores"][sample_indices][batch_valid].detach().float()
+        maximum = valid_scores.max() if len(valid_scores) else torch.tensor(
+            -float("inf"), device=device
+        )
+        dist.all_reduce(maximum, op=dist.ReduceOp.MAX)
+        if global_valid.item() == 0:
+            maximum.fill_(0.0)
+        score_weights = valid_score_weights(
+            valid_scores, reference_max=maximum,
+            tau=valid_weighting["tau"], epsilon=valid_weighting["epsilon"],
+        )
+        weight_sum = all_reduce_scalar(score_weights.sum())
+        weight_square_sum = all_reduce_scalar(score_weights.square().sum())
+        weight_diagnostics = {
+            "valid_weight_ess": float((weight_sum.square() / weight_square_sum.clamp_min(1e-12)).item()),
+            "valid_weight_max_fraction": float(((1.0 + valid_weighting["epsilon"]) / weight_sum).item()) if global_valid.item() else 0.0,
+            "valid_score_max": float(maximum.item()) if global_valid.item() else None,
+        }
     optimizer.zero_grad(set_to_none=True)
     started = time.perf_counter()
     valid_started = time.perf_counter()
@@ -692,13 +729,25 @@ def train_step_from_replay(
     world_factor = float(WORLD_SIZE)
     objective = torch.zeros((), dtype=torch.float32, device=device)
     if float(global_valid.item()) > 0.0:
-        objective = objective + world_factor * (valid_sum + beta * transport_sum) / global_valid
+        if score_weights is None:
+            objective = objective + world_factor * (valid_sum + beta * transport_sum) / global_valid
+        else:
+            # The dummy forward on an empty rank keeps DDP graphs aligned.
+            weighted_sum = (valid_terms[:local_valid_count] * score_weights).sum()
+            objective = objective + world_factor * weighted_sum / weight_sum
+            objective = objective + world_factor * beta * transport_sum / global_valid
+            weight_diagnostics["valid_loss_weighted"] = float(
+                (all_reduce_scalar(weighted_sum.detach()) / weight_sum).item()
+            )
+            weight_diagnostics["valid_loss_unweighted"] = float(
+                (all_reduce_scalar(valid_terms[:local_valid_count].detach().sum()) / global_valid).item()
+            )
     if float(global_invalid.item()) > 0.0:
         objective = objective + world_factor * INVALID_ALPHA * invalid_sum / global_invalid
     backward_started = time.perf_counter()
     objective.backward()
     backward_wall = time.perf_counter() - backward_started
-    gradient_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    gradient_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
     optimizer_started = time.perf_counter()
     optimizer.step()
     with torch.no_grad():
@@ -729,6 +778,7 @@ def train_step_from_replay(
         "objective": float(reduced_values[3].cpu()),
         "gradient_norm": float(reduced_values[4].cpu()),
         "beta": beta,
+        **weight_diagnostics,
     }
 
 
@@ -743,8 +793,9 @@ def train_round(
     device: torch.device,
     beta: float,
     round_index: int,
+    valid_weighting: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run fixed-size replay updates while keeping the original loss unchanged."""
+    """Run fixed-size replay updates with the manifest's optional valid weighting."""
     pool = pool_to_device(replay_pool, device)
     sample_generator = torch.Generator(device=device).manual_seed(
         2026090700 + round_index * 1000 + rank
@@ -769,6 +820,7 @@ def train_round(
             sample_generator=sample_generator,
             permutation_generator=permutation_generator,
             loss_generator=loss_generator,
+            valid_weighting=valid_weighting,
         )
         step_summary["update"] = update_index
         step_summaries.append(step_summary)
@@ -902,7 +954,7 @@ def run(args: argparse.Namespace) -> None:
     )
     optimizer_normalizer = CoilNormalizer.from_dict(optimizer_checkpoint["normalizer"])
     started_job = time.perf_counter()
-    round_index = 0
+    round_index = int(manifest.get("continuation", {}).get("start_round", 0))
     while True:
         if args.max_rounds is not None and round_index >= args.max_rounds:
             break
@@ -1056,6 +1108,7 @@ def run(args: argparse.Namespace) -> None:
             rank=rank,
             device=device,
             beta=beta,
+            valid_weighting=manifest["strategy"].get("valid_score_weighting"),
             round_index=round_index,
         )
         dist.barrier()

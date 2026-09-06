@@ -1,0 +1,30 @@
+{
+  "protocol_id": "qh-axisflip-r012-valid-score-weighted-rl-r04-abi11-v1",
+  "format": "axisflip_r012_valid_score_weighted_rl_r04_v1",
+  "status": "registered-experimental",
+  "registered_date": "2026-09-06",
+  "source_protocol_id": "qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1",
+  "source_run": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_score_gradient_replay10_ema10_rl_20260905_fba88ec",
+  "source_commit": "fba88ecaa7ef39c8c17ce88c6ec3ffce81ca3377",
+  "start_round": 190,
+  "source_sha256": {
+    "manifest.json": "4d7fe1ed00c5619cd88ac55514bc93692dc0912e0ebcfa5a0de1e4b82438aedb",
+    "checkpoints/round_0190.pt": "7d6c4d658dc017c500c0faba5dec3637f224be92ed9be3d026f314e195b14f82",
+    "replay_pool.npz": "5a1db0b50277dcb559cdbbc7f58031ec1624be4d28ce98a96a789440f4f54e80"
+  },
+  "valid_score_weighting": {
+    "formula": "raw_w_i = exp((S_i - max(S_valid_global_batch))/tau) + epsilon; L_valid = sum(raw_w_i * ell_i)/sum(raw_w_i)",
+    "tau": 7.5,
+    "epsilon": 0.01,
+    "score": "detached native total score stored with each replay record",
+    "normalization": "global valid replay minibatch across both DDP ranks"
+  },
+  "inherit": ["model", "ema", "online_optimizer", "normalizer", "replay_pool", "beta", "round_index", "seed_schedule", "all_other_strategy_settings"],
+  "flow_optimizer_steps_per_round": 10,
+  "ema_lerp": 0.1,
+  "beta": 0.006021959241479635,
+  "loss": "weighted_L_valid + alpha*L_invalid + beta*mean(g_flow^T grad_x ell)",
+  "legacy_empty_invalid_rank_behavior": "preserved to keep L_invalid unchanged; dummy forward contributes if the other rank has invalid samples",
+  "resources": {"account": "stu", "partition": "Students", "qos": "qos_stu_medium_2gpu", "gpus": 2, "cpus": 24, "memory": "128G", "time": "1-00:00:00"},
+  "default_impact": "none"
+}

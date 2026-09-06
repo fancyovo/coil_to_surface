@@ -592,6 +592,13 @@ per round changes from 50 to 10 and the EMA interpolation changes from 0.01
 to 0.1. The dedicated launcher and manifest are
 `scripts/submit_score_gradient_flow_rl_students_replay10_ema10.sh` and
 `evaluation/axisflip_r012_score_gradient_replay10_ema10_rl_r04_abi11_v1.json`.
+
+The approved weighted continuation is registered in
+`evaluation/axisflip_r012_valid_score_weighted_rl_r04_abi11_v1.json`.
+It imports full online state from source round 190 and changes only the valid
+ordinary Flow loss to a global score-weighted mean. Its dedicated Students
+launcher runs a two-rank normalization smoke before preparing immutable source
+snapshots and starting training. It does not promote a new project default.
 This is an experimental comparison and has no default impact.
 
 Protocols `qh-axisflip-r015-distilled-online-adam20-trajectory-rwcfm-r04-

@@ -9,6 +9,7 @@ instead of silently taking a dot product between incompatible coordinates.
 """
 
 from contextlib import nullcontext
+import math
 
 import numpy as np
 import torch
@@ -26,6 +27,18 @@ from flow_matching.data import CoilNormalizer, canonicalize_currents
 N_BASE_COILS = 3
 TOKEN_DIM = 100
 CURRENT_INDEX = TOKEN_DIM - 1
+
+
+def valid_score_weights(
+    scores: torch.Tensor, *, reference_max: torch.Tensor, tau: float, epsilon: float
+) -> torch.Tensor:
+    """Unnormalized detached weights; reference_max is shared across DDP ranks."""
+    if not math.isfinite(tau) or tau <= 0 or not math.isfinite(epsilon) or epsilon <= 0:
+        raise ValueError("score weighting requires finite positive tau and epsilon")
+    values = scores.detach().float()
+    if not torch.isfinite(values).all():
+        raise ValueError("valid replay scores must be finite")
+    return torch.exp((values - reference_max.detach()) / tau) + epsilon
 
 
 def _second_order_attention_context(device: torch.device):

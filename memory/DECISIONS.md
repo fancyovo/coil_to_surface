@@ -397,3 +397,18 @@ replay pool, 10 Flow optimizer updates per round, EMA interpolation `0.1`,
 and no Adam20 trajectory rollout. Only the analytic-prior minor-radius center
 changes (`0.15 m` and `0.20 m`). The earlier P107 trajectory-replay jobs were
 mistaken submissions and are historical evidence only.
+
+## DEC-20260906-02 - Score-weighted valid-loss continuation
+
+Status: user-approved registered experiment; no default impact.
+
+Continue the stopped Students replay10/EMA10 run from complete checkpoint
+`round_0190.pt`, source replay round 189, retaining model, EMA, AdamW state,
+normalizers, 512 replay records, frozen beta and original round/seed indexing.
+Only L_valid changes: use detached native score weights
+`exp((S - max(S_valid_global_batch))/7.5) + 0.01`, normalized by their sum over
+the global two-rank valid replay minibatch. Invalid and transport losses retain
+their source behavior. The protocol file pins source manifest, checkpoint and
+replay hashes and records the inherited legacy empty-invalid-rank behavior.
+Source and destination must not share mutable run state. The owning branch is
+`codex/r012-valid-score-weighted-rl`.

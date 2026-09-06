@@ -1,5 +1,10 @@
 # 三组解析先验 RL 作业阶段验收
 
+> 历史快照：本报告中的 15 cm/20 cm P107 作业后来确认误用了
+> trajectory-replay/Adam20 策略并已取消。当前半径比较改用
+> score-gradient replay10/EMA10，见 `memory/CORRECTIONS.md`；原统计仍保留
+> 作为错误作业的历史证据。
+
 - 验收时间：2026-09-06 10:47（Asia/Shanghai）
 - 状态口径：三个作业均保持运行，本次只读验收，没有发送停止信号
 - 数据边界：student 采用完整轮次 0--177；15 cm 采用 0--8；20 cm 采用 0--6

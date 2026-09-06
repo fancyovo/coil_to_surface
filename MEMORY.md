@@ -228,16 +228,17 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
-- The prior R04 P107 trajectory-replay job `53372` was stopped before the radius comparison. Its complete rounds remain historical evidence. The first radius submissions `54444` and `54446` failed before q0 distillation because of a stale four-GPU guard; their complete teacher datasets remain valid and were retained. Corrected jobs `55183` (`0.15 m`) and `55185` (`0.20 m`) run from commit `d8c16a7e`, reuse those datasets after manifest/hash validation, and are currently active on separate two-RTX5090 allocations with two collection workers and 8 CPUs each. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
+- The prior R04 P107 trajectory-replay job `53372` was stopped before the radius comparison. Its complete rounds remain historical evidence. The first radius submissions `54444` and `54446` failed before q0 distillation because of a stale four-GPU guard; their complete teacher datasets remain valid and were retained. Corrected jobs `55183` (`0.15 m`) and `55185` (`0.20 m`) run from commit `d8c16a7e`, reuse those datasets after manifest/hash validation, and remain active on separate two-RTX5090 allocations. The 2026-09-06 snapshot accepted complete rounds 0--8 and 0--6: cumulative valid rates were `77.95%/97.10%`; Adam20 reached 70 on `253/576` and `427/448` total starts, and reached 80 on `0/576` and `22/448`. See `reports/axisflip_three_rl_stage_acceptance_20260906.md`. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
 - Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
   was stopped at 24 rounds (job `53957`). The replay50 comparison job `54046`
   was stopped before the schedule replacement; its complete rounds 0--203
-  remain frozen evidence. Active protocol
-  `qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1` is job
-  `54423`: same q0, ABI-11 R04 evaluator, loss, 64D gradients,
-  `beta=0.0060219592`, 512-record FIFO pool, and 64 centers per round, with
-  10 uniform replay updates per round and EMA interpolation `0.1`. Round 0 is
-  complete and the job remains active; verify state directly.
+  remain frozen evidence. Active protocol `qh-axisflip-r012-score-gradient-
+  replay10-ema10-rl-r04-abi11-v1` is job `54423`: same q0, ABI-11 R04, 64D
+  gradients, `beta=0.0060219592`, a 512-record FIFO pool, 64 centers, 10 replay
+  updates per round, and EMA interpolation `0.1`. The 2026-09-06 snapshot
+  accepted rounds 0--177: `10,808/11,392` centers were legal; last-ten legal
+  rate and initial median/P90 means were `99.69%` and `62.927/66.525`. The job
+  remains active; see `reports/axisflip_three_rl_stage_acceptance_20260906.md`.
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

@@ -1,0 +1,65 @@
+{
+  "format": "axisflip_rl_launch_audit_v1",
+  "date": "2026-09-06",
+  "timezone": "Asia/Shanghai",
+  "owning_branch": "codex/r012-valid-score-weighted-rl",
+  "default_impact": "none",
+  "verification": {
+    "checked_at": "2026-09-06T13:00:17+08:00",
+    "all_jobs_running": true,
+    "stderr_bytes_all_three_jobs": 0,
+    "students_complete_rounds": [190, 191, 192],
+    "students_latest_checkpoint": "round_0193.pt",
+    "students_initial_score_medians": [60.732116795079904, 63.47045674928549, 64.222528609215],
+    "students_valid_rates": [1.0, 1.0, 1.0],
+    "p107_complete_rounds_each": [0],
+    "p107_latest_checkpoint_each": "round_0001.pt",
+    "p107_updates_each": 10,
+    "p107_objectives_and_gradient_norms": "all 10 values finite in each job",
+    "p107_valid_counts": {"55647": 49, "55649": 64},
+    "p107_gradient_ok_counts": {"55647": 49, "55649": 63},
+    "polling": "stopped after this verification; training jobs continue",
+    "plateau_breakthrough": "not established by this short startup observation"
+  },
+  "tests": {"local_passed": 22, "gpu_ddp_scenarios_passed": ["split", "empty_rank", "all_invalid", "equal"]},
+  "students": {
+    "job_id": 55631,
+    "code_commit": "e23ad649ff46b456570a59628a90a281c752eba6",
+    "worktree": "/home/scc/pb24511935/local_surface_evaluator_worktrees/valid-weighted-e23ad649",
+    "run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_valid_score_weighted_rl_20260906_e23ad649",
+    "submitted_at": "2026-09-06T12:41:02+08:00",
+    "launcher": "scripts/slurm_score_gradient_valid_weighted_students.sh",
+    "stdout": "logs/score-valid-weighted-55631.out",
+    "stderr": "logs/score-valid-weighted-55631.err",
+    "protocol_manifest": "evaluation/axisflip_r012_valid_score_weighted_rl_r04_abi11_v1.json",
+    "source_checkpoint_round": 190,
+    "source_completed_round": 189,
+    "source_state": "model, EMA, AdamW moments and steps, normalizers, replay pool, beta and original round seed schedule",
+    "valid_weighting": {"tau": 7.5, "epsilon": 0.01, "normalization": "global DDP valid replay batch"},
+    "first_round_ess_range": [36.14561080932617, 44.29875946044922],
+    "first_round_max_weight_fraction": 0.07295574992895126,
+    "inherited_limitation": "CORR-20260906-106: original empty-invalid-rank dummy contribution retained to preserve L_invalid"
+  },
+  "p107": {
+    "code_commit": "aeeeee45c81ee6f5fdc46e967bfb7e3b484f81a1",
+    "worktree": "/home/scc/pb24511935/local_surface_evaluator_worktrees/radius-reference-aeeeee45",
+    "launcher": "scripts/slurm_score_gradient_flow_rl_p107_radius.sh",
+    "reference_manifest": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_score_gradient_replay10_ema10_rl_20260905_fba88ec/manifest.json",
+    "reference_manifest_sha256": "4d7fe1ed00c5619cd88ac55514bc93692dc0912e0ebcfa5a0de1e4b82438aedb",
+    "frozen_beta": 0.006021959241479635,
+    "actual_manifest_parity": "both runs passed exact strategy, evaluator, coordinates and condition comparisons against the original unweighted Students manifest",
+    "parallel_submission": "independent two-GPU jobs submitted together within verified 16 CPU / 4 GPU P107 allowance",
+    "runs": [
+      {"job_id": 55647, "radius_m": 0.15, "run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r015_score_gradient_replay10_ema10_rl_20260906_aeeeee45", "stdout": "logs/score-grad-r015-e10-55647.out", "stderr": "logs/score-grad-r015-e10-55647.err"},
+      {"job_id": 55649, "radius_m": 0.20, "run_root": "/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r020_score_gradient_replay10_ema10_rl_20260906_aeeeee45", "stdout": "logs/score-grad-r020-e10-55649.out", "stderr": "logs/score-grad-r020-e10-55649.err"}
+    ]
+  },
+  "superseded": {
+    "correction": "CORR-20260906-107",
+    "jobs": [{"job_id": 55576, "radius_m": 0.15, "actual_beta": 0.006204618141055107, "replacement": 55647}, {"job_id": 55577, "radius_m": 0.20, "actual_beta": 0.00544610433280468, "replacement": 55649}],
+    "cancelled_at": "2026-09-06T12:49:56+08:00",
+    "reason": "Independent beta recalibration violated the promised radius-only control.",
+    "retained_evidence": "Original artifacts and native scores remain available as radius-plus-beta exploratory results. Teacher datasets and original q0 checkpoints are valid and reused after hash verification.",
+    "restart_policy": "Restart from original radius q0; do not resume checkpoints trained using the mismatched beta."
+  }
+}

@@ -349,7 +349,9 @@ evidence; the new protocol is
 
 ## DEC-20260905-03 - P107 radius comparison
 
-Status: registered experimental comparison; no default impact.
+Status: superseded by DEC-20260906-01; the trajectory-policy selection below
+was mistaken. Teacher and q0 artifacts remain usable; online results are
+excluded from the intended radius control.
 
 The previous four-GPU R012 trajectory-replay job is stopped. Two new P107
 jobs compare the same R04 ABI-11 trajectory-replay policy at compact-flexible
@@ -397,6 +399,12 @@ replay pool, 10 Flow optimizer updates per round, EMA interpolation `0.1`,
 and no Adam20 trajectory rollout. Only the analytic-prior minor-radius center
 changes (`0.15 m` and `0.20 m`). The earlier P107 trajectory-replay jobs were
 mistaken submissions and are historical evidence only.
+
+Jobs `55576/55577` also recalibrated beta independently and are superseded
+under CORR-20260906-107. Replacements `55647/55649` at `aeeeee45` copy the full
+strategy from the hashed original Students run manifest, including frozen
+beta, and restart from the radius-specific q0 states. The new weighted
+Students continuation is a separate experiment and is not their reference.
 
 ## DEC-20260906-02 - Score-weighted valid-loss continuation
 

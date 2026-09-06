@@ -8,22 +8,16 @@
 - The authoritative private development baseline is `main` after the
   2026-08-28 consolidation. Verify the actual checkout and HEAD with Git at the
   start of repository work; do not infer them from this file.
-- The sanitized open-source sibling `../opensource_staging` was verified clean
-  on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
-  carries the current public screening and optimization interfaces while
-  retaining private research evidence.
-- Active exploration branch: `codex/r012-radius-score-gradient-rl`, based on the
-  current corrected P107 radius-comparison work. The earlier
-  `codex/r014-score-gradient-replay50-rl` branch remains historical. The frozen
-  R04 source commit is `95ed6cf`; the active R04 job remains in its own
-  worktree. Protocol
+- The public sibling `../opensource_staging` has separate provenance; verify
+  its live branch and HEAD before cross-repository work.
+- Active exploration branch: `codex/r012-valid-score-weighted-rl`, extending
+  the radius-comparison branch. Running worktrees are pinned independently;
+  verify branch and scheduler state directly. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
   gate and is invalidated. The accepted balanced-v2 experiment completed 6000
   ABI-11 score-only samples under arrays `51614/51615`; repaired analysis job
   `51627` produced the final report and representative coil views.
-- Many thousands of pre-existing untracked audit, bundle, run, and generated
-  files are present. Preserve them and stage source changes explicitly; verify
-  the live count instead of treating a recorded count as stable.
+- Preserve pre-existing untracked artifacts; stage source changes explicitly.
 
 ## Current QH Default
 
@@ -230,17 +224,22 @@
   reached 70, with maximum `80.2724`. Effective radius still grew in 12/12
   trajectories while median paired coil score changed `-0.4595`; see
   `reports/axisflip_r012_curvature_r04_adam200_results_20260903.md`.
-- The prior R04 P107 trajectory-replay job `53372` was stopped before the radius comparison. Its complete rounds remain historical evidence. The first radius submissions `54444` and `54446` failed before q0 distillation because of a stale four-GPU guard; their complete teacher datasets remain valid and were retained. Jobs `55183` and `55185` were then found to use the wrong trajectory-replay policy and cancelled. Corrected score-gradient replay10/EMA10 jobs `55576` (`0.15 m`) and `55577` (`0.20 m`) run from commit `534108b8` on a clean dedicated worktree; both are active. Their run manifests pin 64-direction score gradients, 512-record replay, 10 Flow updates per round, EMA `0.1`, and the corresponding radius. See `memory/CORRECTIONS.md` and `memory/DECISIONS.md`. The earlier one-card full evaluation (`54223`) of `r048_w02_i11` and `r057_w03_i04` is retained only as quarantined direct-point-cloud diagnostic evidence. Corrected official alpha+nu reruns (`54321`, `54323`, code `221b2469`) completed successfully; their provenance is valid and their DESC boundaries remain nested, with quality/max-iteration warnings recorded in the R012 report mirrored under `_shared_reports/`.
-- Student control `qh-axisflip-r012-score-gradient-transport-rl-r04-abi11-v1`
-  was stopped at 24 rounds (job `53957`). The replay50 comparison job `54046`
-  was stopped before the schedule replacement; its complete rounds 0--203
-  remain frozen evidence. Active protocol `qh-axisflip-r012-score-gradient-
-  replay10-ema10-rl-r04-abi11-v1` is job `54423`: same q0, ABI-11 R04, 64D
-  gradients, `beta=0.0060219592`, a 512-record FIFO pool, 64 centers, 10 replay
-  updates per round, and EMA interpolation `0.1`. The 2026-09-06 snapshot
-  accepted rounds 0--177: `10,808/11,392` centers were legal; last-ten legal
-  rate and initial median/P90 means were `99.69%` and `62.927/66.525`. The job
-  remains active; see `reports/axisflip_three_rl_stage_acceptance_20260906.md`.
+- P107 radius controls are `55647` (15 cm) and `55649` (20 cm), pinned to
+  `aeeeee45`. They copy the original unweighted Students strategy, including
+  beta `0.006021959241479635`, and start from their respective frozen q0 states.
+  Jobs `55576/55577` were stopped for a beta mismatch; earlier mistaken
+  trajectory jobs and their retained teacher/q0 artifacts are in CORR-105/107.
+- R04 full evaluations `54321/54323` completed the valid alpha+nu chain with
+  nested DESC boundaries and recorded quality warnings. Job `54223` remains
+  quarantined direct-point-cloud diagnostics; see the R012 report.
+- Students transport control `53957` stopped at 24 rounds. Replay50 job
+  `54046` stopped before the schedule replacement; complete rounds 0--203
+  remain frozen evidence. Students replay10/EMA10 job `54423` stopped after
+  complete round 189. Weighted continuation `55631`, code
+  `e23ad649`, imports `round_0190.pt` and all online state, then changes only
+  L_valid to the global weighted mean (tau 7.5, epsilon 0.01); rounds 190--192 passed.
+  See `evaluation/axisflip_rl_launch_audit_20260906.json`;
+  the prior acceptance report covers only its 0--177 snapshot (CORR-106).
 ## Memory Map
 - `memory/README.md`: memory architecture; `memory/PROTOCOLS.md`: protocols and gates.
 - `memory/CORRECTIONS.md`: error ledger; `memory/DECISIONS.md`: active decisions.

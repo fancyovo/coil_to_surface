@@ -164,6 +164,32 @@ def load_checkpoint(path: Path, device: torch.device) -> tuple[CoilFlowTransform
     return base, ema, normalizer, checkpoint
 
 
+def inherit_reference_strategy(manifest: dict[str, Any], reference: dict[str, Any]) -> None:
+    """Pin a radius control to the completed Students pilot and its full policy."""
+    if reference["protocol"]["id"] != "qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1":
+        raise ValueError("radius control requires the original unweighted Students reference")
+    for section in ("condition", "evaluator", "paths"):
+        if manifest[section] != reference[section]:
+            raise ValueError(f"radius control differs from reference: {section}")
+    actual_baseline = {k: v for k, v in manifest["baseline_r04"].items() if k != "q0_checkpoint_sha256"}
+    expected_baseline = {k: v for k, v in reference["baseline_r04"].items() if k != "q0_checkpoint_sha256"}
+    if actual_baseline != expected_baseline:
+        raise ValueError("radius control scorer or coordinate baseline differs")
+    if manifest["q0"]["model_config"] != reference["q0"]["model_config"]:
+        raise ValueError("radius control model architecture differs")
+    if reference["strategy"].get("valid_score_weighting") is not None:
+        raise ValueError("weighted continuation cannot become the radius reference")
+    ignored = {"beta", "beta_calibration", "beta_calibration_result"}
+    actual = {k: v for k, v in manifest["strategy"].items() if k not in ignored}
+    expected = {k: v for k, v in reference["strategy"].items() if k not in ignored}
+    if actual != expected:
+        raise ValueError("radius control policy differs from reference")
+    beta = reference["strategy"].get("beta")
+    if beta is None or not math.isfinite(beta) or beta <= 0:
+        raise ValueError("reference must contain the frozen positive calibrated beta")
+    manifest["strategy"] = copy.deepcopy(reference["strategy"])
+
+
 def prepare(args: argparse.Namespace) -> None:
     provenance = require_clean_repository(args.expected_commit)
     score_manifest = validate_r04_score(
@@ -284,6 +310,15 @@ def prepare(args: argparse.Namespace) -> None:
             "optimizer_checkpoint_sha256": file_sha256(args.optimizer_checkpoint),
         },
     }
+    if getattr(args, "reference_manifest", None) is not None:
+        if file_sha256(args.reference_manifest) != args.expected_reference_sha:
+            raise ValueError("reference manifest hash mismatch")
+        reference = load_json(args.reference_manifest)
+        inherit_reference_strategy(manifest, reference)
+        manifest["reference"] = {"manifest": str(args.reference_manifest.resolve()),
+            "sha256": args.expected_reference_sha, "protocol_id": reference["protocol"]["id"],
+            "strategy": "exact copy, including frozen beta; no new calibration"}
+        atomic_write_json(args.run_root / "reference_manifest.json", reference)
     atomic_write_json(args.run_root / "manifest.json", manifest)
     atomic_write_json(
         args.run_root / "progress.json",
@@ -299,6 +334,10 @@ def load_manifest(run_root: Path) -> dict[str, Any]:
     if manifest.get("condition") != {"nfp": NFP, "n_base_coils": N_BASE_COILS}:
         raise ValueError("score-gradient condition changed")
     strategy = manifest["strategy"]
+    if "reference" in manifest:
+        reference = load_json(run_root / "reference_manifest.json")
+        if strategy != reference["strategy"]:
+            raise ValueError("radius-control strategy differs from its frozen reference")
     if (strategy["flow_optimizer_steps_per_round"] != FLOW_OPTIMIZER_STEPS_PER_ROUND
             or strategy["ema_lerp"] != EMA_LERP):
         raise ValueError("runtime schedule differs from the frozen manifest")
@@ -1174,6 +1213,8 @@ def parser() -> argparse.ArgumentParser:
     prepare_command.add_argument("--score-library-manifest", type=Path, required=True)
     prepare_command.add_argument("--expected-score-lib-sha", required=True)
     prepare_command.add_argument("--expected-commit", required=True)
+    prepare_command.add_argument("--reference-manifest", type=Path)
+    prepare_command.add_argument("--expected-reference-sha")
     prepare_command.set_defaults(func=prepare)
     run_command = commands.add_parser("run")
     run_command.add_argument("--run-root", type=Path, required=True)

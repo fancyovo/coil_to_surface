@@ -12,6 +12,8 @@ set -euo pipefail
 : "${SCORE_GRADIENT_COMMIT:?}"
 : "${SCORE_GRADIENT_PRIOR_RADIUS_M:?}"
 : "${SCORE_GRADIENT_PRIOR_RADIUS_RANGE_M:?}"
+export SCORE_GRADIENT_REFERENCE_MANIFEST=/home/scc/pb24511935/local_surface_evaluator_runs/axisflip_r012_score_gradient_replay10_ema10_rl_20260905_fba88ec/manifest.json
+export SCORE_GRADIENT_REFERENCE_SHA=4d7fe1ed00c5619cd88ac55514bc93692dc0912e0ebcfa5a0de1e4b82438aedb
 repo="$SCORE_GRADIENT_REPO"
 radius="$SCORE_GRADIENT_PRIOR_RADIUS_M"
 case "$radius" in
@@ -20,9 +22,11 @@ case "$radius" in
   *) echo "unsupported prior radius: $radius" >&2; exit 2 ;;
 esac
 test -f "$manifest"
+test "$(sha256sum "$SCORE_GRADIENT_REFERENCE_MANIFEST" | awk '{print $1}')" = "$SCORE_GRADIENT_REFERENCE_SHA"
 cd "$repo"
 test "$(git rev-parse HEAD)" = "$SCORE_GRADIENT_COMMIT"
-git diff --quiet; git diff --cached --quiet
+git diff --quiet
+git diff --cached --quiet
 test ! -e "$SCORE_GRADIENT_RUN_ROOT"
 export SCORE_GRADIENT_PROTOCOL_ID="$protocol_id" SCORE_GRADIENT_FORMAT="$format"
 export SCORE_GRADIENT_PROTOCOL_MANIFEST="$manifest"
@@ -42,6 +46,9 @@ samples_per_round=64
 samples_per_rank=32
 flow_optimizer_steps_per_round=10
 ema_lerp=0.1
+reference_manifest=$SCORE_GRADIENT_REFERENCE_MANIFEST
+reference_sha256=$SCORE_GRADIENT_REFERENCE_SHA
+beta=0.006021959241479635
 code_commit=$SCORE_GRADIENT_COMMIT
 submitted_at=$(date --iso-8601=seconds)
 EOF

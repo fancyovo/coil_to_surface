@@ -1,6 +1,9 @@
 {
   "protocol_id": "qh-axisflip-r015-score-gradient-replay10-ema10-rl-r04-abi11-v1",
   "status": "registered-experimental",
+  "reference_manifest_sha256": "4d7fe1ed00c5619cd88ac55514bc93692dc0912e0ebcfa5a0de1e4b82438aedb",
+  "beta_policy": "copy the frozen Students strategy including beta; never recalibrate per radius",
+  "superseded_runs": ["55576: independently recalibrated beta, excluded from the radius-only control"],
   "condition": {"nfp": 8, "n_base_coils": 3},
   "prior": {
     "generator_format": "axis_surface_contour_prior_compact_flexible_axis_flip_r015_v1",

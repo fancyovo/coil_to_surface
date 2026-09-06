@@ -1,6 +1,40 @@
 # Correction Ledger
 
-Last reviewed: 2026-09-04 (Asia/Shanghai).
+Last reviewed: 2026-09-06 (Asia/Shanghai).
+
+## CORR-20260906-107 - P107 beta was recalibrated despite a frozen control manifest
+
+- Error: corrected score-gradient jobs `55576/55577` still ran prepare with
+  beta unset. Round 0 recalibrated beta to `0.006204618141055107` (15 cm) and
+  `0.00544610433280468` (20 cm), while their protocol files and the prior
+  completion claim promised Students beta `0.006021959241479635`.
+- Impact: the jobs ran successfully but differ in both radius and beta;
+  their online results cannot establish the intended radius-only comparison.
+  Original native scores, teacher corpora and distilled q0 states remain valid.
+- Correction: stopped both jobs; restart from their original q0 checkpoints
+  with the entire strategy copied from the hashed original Students manifest.
+  The reference is the unweighted baseline, not the new weighted continuation.
+- Containment: preparation compares scorer, coordinates, architecture and all
+  non-calibration strategy fields, then inherits frozen beta and calibration.
+  Runtime rejects a strategy/reference mismatch. Regression tests reject extra
+  changes to update count, scorer, normalizer, Flow steps or valid weighting.
+
+## CORR-20260906-106 - Legacy empty-rank ordinary-loss contribution
+
+- Error: the replay runner uses a dummy forward when a rank has no valid or
+  no invalid samples, but the original sums include that dummy whenever the
+  opposite rank has samples in that class. This can overcount the ordinary
+  loss for the class; the empty-valid transport contribution is zero.
+- Evidence: `scripts/score_gradient_flow_rl.py` in frozen source `fba88ec`.
+  Existing score and gradient observations remain native-evaluator evidence;
+  claims that every legacy update is exactly the stated class mean need this
+  qualification. Historical artifacts and checkpoints are preserved.
+- Containment: the weighted L_valid path excludes empty-rank dummy terms and
+  passes a two-rank empty-valid test. The user explicitly limited the current
+  continuation to L_valid, so L_invalid retains its source behavior. The
+  experiment manifest records this inherited limitation; a change to invalid
+  loss requires a separately identified comparison and is not silently folded
+  into this experiment.
 
 ## CORR-20260906-105 - P107 radius jobs used a different RL policy
 
@@ -12,8 +46,8 @@ historical and are excluded from the radius comparison. A dedicated P107
 score-gradient launcher and radius-specific manifests now share the Students
 algorithm settings and record the radius in each run manifest.
 
-Status: contained; corrected jobs submitted from
-`codex/r012-radius-score-gradient-rl`.
+Status: policy-family mismatch contained; the subsequent beta mismatch in
+jobs `55576/55577` is superseded by CORR-20260906-107.
 
 This ledger is intentionally selective. Add an entry only when:
 

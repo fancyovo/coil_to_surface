@@ -28,6 +28,8 @@ set -euo pipefail
 : "${SCORE_GRADIENT_PRIOR_RADIUS_M:?}"
 : "${SCORE_GRADIENT_PRIOR_RADIUS_RANGE_M:?}"
 : "${SCORE_GRADIENT_PROTOCOL_MANIFEST:?}"
+: "${SCORE_GRADIENT_REFERENCE_MANIFEST:?}"
+: "${SCORE_GRADIENT_REFERENCE_SHA:?}"
 
 repo="$SCORE_GRADIENT_REPO"
 run_root="$SCORE_GRADIENT_RUN_ROOT"
@@ -54,7 +56,9 @@ python scripts/score_gradient_flow_rl.py prepare \
   --score-lib "$SCORE_GRADIENT_SCORE_LIB" \
   --score-library-manifest "$SCORE_GRADIENT_SCORE_MANIFEST" \
   --expected-score-lib-sha "$SCORE_GRADIENT_SCORE_SHA" \
-  --expected-commit "$SCORE_GRADIENT_COMMIT"
+  --expected-commit "$SCORE_GRADIENT_COMMIT" \
+  --reference-manifest "$SCORE_GRADIENT_REFERENCE_MANIFEST" \
+  --expected-reference-sha "$SCORE_GRADIENT_REFERENCE_SHA"
 cp "$SCORE_GRADIENT_PROTOCOL_MANIFEST" "$run_root/protocol.json"
 nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits > "$run_root/gpu_preflight.csv"
 python -m torch.distributed.run --standalone --nproc-per-node=2 scripts/score_gradient_flow_rl.py run --run-root "$run_root" --max-wall-s 342000 --reserve-s 3600

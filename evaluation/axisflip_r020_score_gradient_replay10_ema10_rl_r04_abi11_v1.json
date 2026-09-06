@@ -1,0 +1,29 @@
+{
+  "protocol_id": "qh-axisflip-r020-score-gradient-replay10-ema10-rl-r04-abi11-v1",
+  "status": "registered-experimental",
+  "condition": {"nfp": 8, "n_base_coils": 3},
+  "prior": {
+    "generator_format": "axis_surface_contour_prior_compact_flexible_axis_flip_r020_v1",
+    "minor_radius_center_m": 0.20,
+    "minor_radius_range_m": [0.18, 0.22],
+    "axis_chirality": -1
+  },
+  "algorithm": {
+    "base": "qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1",
+    "flow_steps": 32,
+    "samples_per_round": 64,
+    "samples_per_rank": 32,
+    "gradient_directions": 64,
+    "gradient_perturbation": 0.0025,
+    "replay_capacity": 512,
+    "flow_optimizer_steps_per_round": 10,
+    "ema_lerp": 0.1,
+    "adam20_rollout": false,
+    "loss": "L_valid + 0.05*L_invalid + beta*mean(g_flow^T grad_x ell)",
+    "beta": 0.006021959241479635,
+    "optimizer": {"class": "AdamW", "learning_rate": 0.00005, "betas": [0.9, 0.95], "weight_decay": 0.01, "gradient_clip_norm": 1.0}
+  },
+  "evaluator": {"interface": "native ABI-11 R04", "target_helicity": [1, 8], "curvature_p95_scale_m_inv": 25.0, "curvature_p95_radius_m": 0.04, "curvature_max_scale_m_inv": 35.0},
+  "resources": {"partition": "P107-RTX5090", "gpus": 2, "cpus_per_task": 8, "memory": "64G", "wall_limit": "4 days"},
+  "comparison": "Identical to the Students score-gradient replay10/EMA10 policy; only the teacher prior minor radius differs."
+}

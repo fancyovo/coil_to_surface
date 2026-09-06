@@ -2,6 +2,19 @@
 
 Last reviewed: 2026-09-04 (Asia/Shanghai).
 
+## CORR-20260906-105 - P107 radius jobs used a different RL policy
+
+The P107 radius comparison jobs `55183` and `55185` were submitted with the
+trajectory-replay/Adam20 launcher. The intended comparison was the Students
+`score-gradient-replay10/EMA10` policy, differing only in analytic-prior minor
+radius. The jobs were stopped after confirmation; their outputs remain
+historical and are excluded from the radius comparison. A dedicated P107
+score-gradient launcher and radius-specific manifests now share the Students
+algorithm settings and record the radius in each run manifest.
+
+Status: contained; corrected jobs submitted from
+`codex/r012-radius-score-gradient-rl`.
+
 This ledger is intentionally selective. Add an entry only when:
 
 1. the model failed to notice an error and the user later identified it; or

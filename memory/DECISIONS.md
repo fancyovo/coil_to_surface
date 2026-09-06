@@ -385,3 +385,15 @@ correctly wound, nondegenerate standard surface may continue with an explicit
 `accepted_with_quality_warning`; the report must display each exceeded metric
 and limit. Independent samples are submitted as separate jobs and run in
 parallel whenever the verified resource allowance permits.
+
+## DEC-20260906-01 - Radius comparison uses the Students score-gradient policy
+
+Status: active registered experiment; no default impact.
+
+The intended P107 radius comparison keeps the Students
+`qh-axisflip-r012-score-gradient-replay10-ema10-rl-r04-abi11-v1` algorithm
+fixed: one 64-direction score-gradient query per valid center, a 512-record
+replay pool, 10 Flow optimizer updates per round, EMA interpolation `0.1`,
+and no Adam20 trajectory rollout. Only the analytic-prior minor-radius center
+changes (`0.15 m` and `0.20 m`). The earlier P107 trajectory-replay jobs were
+mistaken submissions and are historical evidence only.

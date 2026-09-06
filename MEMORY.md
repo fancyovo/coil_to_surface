@@ -12,8 +12,10 @@
   on `main` at `89d30e92b7b05687637f2589f649b8def8d3c8b7`. The private baseline
   carries the current public screening and optimization interfaces while
   retaining private research evidence.
-- Active exploration branch: `codex/r014-score-gradient-replay50-rl`, based on the
-  frozen R04 source commit `95ed6cf`; the active R04 job remains in its own
+- Active exploration branch: `codex/r012-radius-score-gradient-rl`, based on the
+  current corrected P107 radius-comparison work. The earlier
+  `codex/r014-score-gradient-replay50-rl` branch remains historical. The frozen
+  R04 source commit is `95ed6cf`; the active R04 job remains in its own
   worktree. Protocol
   `qh-axis-surface-contour-prior-score-abi11-v1` failed its visual morphology
   gate and is invalidated. The accepted balanced-v2 experiment completed 6000

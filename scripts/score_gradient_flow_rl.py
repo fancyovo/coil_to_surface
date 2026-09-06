@@ -87,6 +87,10 @@ FLOW_OPTIMIZER_STEPS_PER_ROUND = _env_positive_int(
     "SCORE_GRADIENT_FLOW_OPTIMIZER_STEPS_PER_ROUND", 50
 )
 EMA_LERP = _env_unit_interval("SCORE_GRADIENT_EMA_LERP", 0.01)
+PRIOR_RADIUS_M = os.environ.get("SCORE_GRADIENT_PRIOR_RADIUS_M")
+if PRIOR_RADIUS_M is not None:
+    PRIOR_RADIUS_M = float(PRIOR_RADIUS_M)
+PRIOR_RADIUS_RANGE_M = os.environ.get("SCORE_GRADIENT_PRIOR_RADIUS_RANGE_M")
 FLOW_STEPS = 32
 GRADIENT_DIRECTIONS = 64
 GRADIENT_PERTURBATION = 0.0025
@@ -190,6 +194,10 @@ def prepare(args: argparse.Namespace) -> None:
         "repository": provenance,
         "created_unix_s": time.time(),
         "condition": {"nfp": NFP, "n_base_coils": N_BASE_COILS},
+        "prior": {
+            "minor_radius_center_m": PRIOR_RADIUS_M,
+            "minor_radius_range_m": PRIOR_RADIUS_RANGE_M,
+        },
         "baseline_r04": {
             "protocol_id": "qh-axisflip-r012-distilled-online-adam20-trajectory-rwcfm-r04-abi11-v1",
             "score_library_sha256": R04_SCORE_SHA,
